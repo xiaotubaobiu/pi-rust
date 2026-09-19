@@ -1344,7 +1344,7 @@ mod tests {
         let transformed = crate::ai::api::openai_completions::request::transform_messages(
             &model,
             &[user_msg("Hello"), Message::Assistant(message.clone())],
-            &|id: &str| id.to_string(),
+            &|id: &str, _source: &crate::ai::types::message::AssistantMessage| id.to_string(),
         );
         let replayed = transformed
             .iter()

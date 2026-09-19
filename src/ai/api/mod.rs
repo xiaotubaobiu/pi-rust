@@ -5,6 +5,7 @@
 
 pub mod anthropic;
 pub mod openai_completions;
+pub mod openai_responses_shared;
 
 use crate::ai::transcript::TranscriptContext;
 use crate::ai::types::events::AssistantMessageEvent;

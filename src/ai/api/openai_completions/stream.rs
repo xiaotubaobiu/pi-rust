@@ -147,10 +147,11 @@ struct CustomInput {
 }
 
 /// Upstream `GrammarToolInputJsonBuffer`
-/// (`api/constrained-sampling.ts:139-144`).
+/// (`api/constrained-sampling.ts:139-144`). Shared with the openai-responses
+/// port (custom tool-call input streaming).
 #[derive(Debug, Default, Clone)]
-struct GrammarBuf {
-    input: String,
+pub(crate) struct GrammarBuf {
+    pub(crate) input: String,
     started: bool,
     closed: bool,
 }
@@ -982,8 +983,9 @@ fn get_custom_tool_call_input(state: &StreamState, content_index: usize) -> Stri
 
 /// Upstream `appendGrammarToolInputJsonDelta`
 /// (`api/constrained-sampling.ts:157-189`): wraps the raw custom input in a
-/// streamed JSON object `{"<property>":"..."}`.
-fn append_grammar_tool_input_json_delta(
+/// streamed JSON object `{"<property>":"..."}`. Shared with the
+/// openai-responses port.
+pub(crate) fn append_grammar_tool_input_json_delta(
     buffer: &mut GrammarBuf,
     input_property: &str,
     next_input: &str,

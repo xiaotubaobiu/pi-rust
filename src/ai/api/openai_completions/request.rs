@@ -653,15 +653,16 @@ fn apply_thinking_format(
 
 // ---- tools (upstream convertTools + constrained-sampling.ts) ----
 
-struct GrammarConstrainedSampling {
-    format: &'static str,
-    definition: String,
-    input_property: String,
+pub(crate) struct GrammarConstrainedSampling {
+    pub(crate) format: &'static str,
+    pub(crate) definition: String,
+    pub(crate) input_property: String,
 }
 
 /// Upstream `resolveGrammarConstrainedSampling`
-/// (`api/constrained-sampling.ts:230-263`).
-fn resolve_grammar_constrained_sampling(
+/// (`api/constrained-sampling.ts:230-263`). Shared with the openai-responses
+/// port (`convertResponsesTools` custom-tool arm).
+pub(crate) fn resolve_grammar_constrained_sampling(
     tool: &Tool,
     supports_openai_grammar_tools: bool,
 ) -> Result<Option<GrammarConstrainedSampling>, String> {
@@ -756,7 +757,8 @@ pub(crate) fn create_grammar_tool_input_properties(
 }
 
 /// Upstream `getGrammarToolInput` (`api/constrained-sampling.ts:145-155`).
-fn get_grammar_tool_input(
+/// Shared with the openai-responses port (custom_tool_call replay).
+pub(crate) fn get_grammar_tool_input(
     tool_name: &str,
     arguments: &Value,
     input_property: &str,
@@ -1382,8 +1384,9 @@ pub(crate) fn clamp_max_tokens_to_context(
 
 /// Upstream `shortHash` (`utils/hash.ts`): 32-bit arithmetic with `Math.imul`
 /// and a base-36 tail of both halves. UTF-16 code units are hashed, matching
-/// JS `charCodeAt`.
-fn short_hash(input: &str) -> String {
+/// JS `charCodeAt`. Shared with the openai-responses port (foreign item-id
+/// hashing and `pi_tool_load_` call ids).
+pub(crate) fn short_hash(input: &str) -> String {
     const DIGITS: &[u8] = b"0123456789abcdefghijklmnopqrstuvwxyz";
     fn base36(mut value: u32) -> String {
         if value == 0 {
@@ -1492,7 +1495,7 @@ fn replace_images_with_placeholder(
 pub(crate) fn transform_messages(
     model: &Model,
     messages: &[Message],
-    normalize_id: &dyn Fn(&str) -> String,
+    normalize_id: &dyn Fn(&str, &AssistantMessage) -> String,
 ) -> Vec<Message> {
     let image_aware: Vec<Message> = if model.input.contains(&ModelInput::Image) {
         messages.to_vec()
@@ -1580,7 +1583,11 @@ pub(crate) fn transform_messages(
                             let mut call = call.clone();
                             if !same_model {
                                 call.thought_signature = None;
-                                let normalized = normalize_id(&call.id);
+                                // Upstream passes the source assistant message
+                                // (transform-messages.ts:137) so per-API
+                                // normalizers can tell cross-provider from
+                                // same-provider-different-model ids.
+                                let normalized = normalize_id(&call.id, assistant);
                                 if normalized != call.id {
                                     tool_call_id_map.insert(call.id.clone(), normalized.clone());
                                     call.id = normalized;
@@ -1789,7 +1796,7 @@ fn convert_messages(
     grammar_tool_input_properties: &HashMap<String, String>,
 ) -> Result<Vec<Value>, String> {
     let normalized = resolve_transcript(context.clone(), compat.supports_mid_convo_system_messages);
-    let transformed = transform_messages(model, normalized.messages(), &|id| {
+    let transformed = transform_messages(model, normalized.messages(), &|id, _source| {
         normalize_tool_call_id(model, id)
     });
     let transcript_tools = resolve_transcript_tools(

@@ -587,7 +587,9 @@ fn build_params(
     let initial_system_text = initial_system_message
         .map(get_system_message_text)
         .unwrap_or_default();
-    let transformed = transform_messages(model, context.messages(), &normalize_tool_call_id);
+    let transformed = transform_messages(model, context.messages(), &|id, _source| {
+        normalize_tool_call_id(id)
+    });
     let conversation_messages = if initial_system_message.is_some() {
         &transformed[1..]
     } else {
