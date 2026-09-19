@@ -289,11 +289,11 @@ pub struct ConvertResponsesMessagesOptions {
 /// chooses the tier the pricing hook sees from the response and request
 /// tiers.
 pub type ResolveServiceTierHook =
-    Box<dyn FnMut(Option<&str>, Option<&str>) -> Option<String> + Send>;
+    Box<dyn FnMut(Option<&str>, Option<&str>) -> Option<String> + Send + Sync>;
 
 /// Upstream `applyServiceTierPricing` hook (openai-responses-shared.ts:116-119):
 /// adjusts the finalized usage cost for the effective service tier.
-pub type ApplyServiceTierPricingHook = Box<dyn FnMut(&mut Usage, Option<String>) + Send>;
+pub type ApplyServiceTierPricingHook = Box<dyn FnMut(&mut Usage, Option<String>) + Send + Sync>;
 
 /// Upstream `OpenAIResponsesStreamOptions` (lines 109-120): the endpoint
 /// supplied hooks the stream processor applies at finalize time.

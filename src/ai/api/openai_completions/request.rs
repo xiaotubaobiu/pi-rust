@@ -309,7 +309,10 @@ fn supported_thinking_level(model: &Model, level: Option<ThinkingLevel>) -> bool
 }
 
 /// Upstream `clampThinkingLevel` (`models.ts:935-955`); `None` is `"off"`.
-fn clamp_thinking_level(model: &Model, requested: ThinkingLevel) -> Option<ThinkingLevel> {
+pub(crate) fn clamp_thinking_level(
+    model: &Model,
+    requested: ThinkingLevel,
+) -> Option<ThinkingLevel> {
     const EXTENDED: [Option<ThinkingLevel>; 7] = [
         None,
         Some(ThinkingLevel::Minimal),
@@ -347,7 +350,7 @@ fn clamp_thinking_level(model: &Model, requested: ThinkingLevel) -> Option<Think
     available.first().copied().flatten()
 }
 
-fn level_key(level: Option<ThinkingLevel>) -> &'static str {
+pub(crate) fn level_key(level: Option<ThinkingLevel>) -> &'static str {
     match level {
         None => "off",
         Some(ThinkingLevel::Minimal) => "minimal",
@@ -366,13 +369,13 @@ fn level_str(level: ThinkingLevel) -> &'static str {
 /// `model.thinkingLevelMap[key]` with JS lookup semantics: absent vs `null` vs
 /// a mapped string are all distinct upstream.
 #[derive(Debug, Clone, PartialEq, Eq)]
-enum MappedLevel {
+pub(crate) enum MappedLevel {
     Absent,
     Null,
     Value(String),
 }
 
-fn map_level(model: &Model, key: &str) -> MappedLevel {
+pub(crate) fn map_level(model: &Model, key: &str) -> MappedLevel {
     match model
         .thinking_level_map
         .as_ref()
@@ -1142,14 +1145,14 @@ fn add_cache_control_to_text_content(message: &mut Value, marker: &Value) -> boo
 
 // ---- headers (upstream createClient, openai-completions.ts:751-794) ----
 
-fn set_header(headers: &mut Vec<(String, String)>, name: &str, value: &str) {
+pub(crate) fn set_header(headers: &mut Vec<(String, String)>, name: &str, value: &str) {
     match headers.iter_mut().find(|(key, _)| key == name) {
         Some(entry) => entry.1 = value.to_string(),
         None => headers.push((name.to_string(), value.to_string())),
     }
 }
 
-fn remove_header(headers: &mut Vec<(String, String)>, name: &str) {
+pub(crate) fn remove_header(headers: &mut Vec<(String, String)>, name: &str) {
     headers.retain(|(key, _)| key != name);
 }
 
@@ -1194,7 +1197,7 @@ fn build_headers(
 /// Upstream `resolveCacheRetention` (openai-completions.ts:289-297) +
 /// `getProviderEnvValue` (`utils/provider-env.ts`): explicit option, then the
 /// scoped env map, then the process environment, then `"short"`.
-fn resolve_cache_retention(
+pub(crate) fn resolve_cache_retention(
     retention: Option<CacheRetention>,
     env: Option<&ProviderEnv>,
 ) -> CacheRetention {
@@ -1221,7 +1224,7 @@ fn resolve_cache_retention(
 /// (`api/openai-prompt-cache.ts`): clamp by code points to 64.
 const OPENAI_PROMPT_CACHE_KEY_MAX_LENGTH: usize = 64;
 
-fn clamp_openai_prompt_cache_key(key: Option<&str>) -> Option<String> {
+pub(crate) fn clamp_openai_prompt_cache_key(key: Option<&str>) -> Option<String> {
     key.map(|key| {
         key.chars()
             .take(OPENAI_PROMPT_CACHE_KEY_MAX_LENGTH)

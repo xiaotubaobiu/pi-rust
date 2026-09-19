@@ -13,6 +13,7 @@ pub mod anthropic;
 pub mod api;
 pub mod cost;
 pub mod openai_compat;
+pub mod retry;
 pub mod transcript;
 pub mod types;
 pub mod validation;

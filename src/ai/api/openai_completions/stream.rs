@@ -19,9 +19,10 @@
 //!   partial-parse step is approximated by closing open strings/brackets and
 //!   completing dangling values (see [`parse_streaming_json`]). The never-throw
 //!   `{}` fallback contract is preserved.
-//! - Retry (`retryProviderRequest`), `onPayload`, and `onResponse` hooks land
-//!   with T8; the send seam is [`send_stream_request`]. `maxRetries` /
-//!   `maxRetryDelayMs` are accepted on the options and ignored until then.
+//! - `onPayload` and `onResponse` hooks land with a later task. The send seam
+//!   is [`send_stream_request`], which applies the T8 provider-request retry
+//!   port ([`crate::ai::retry::retry_provider_request`]) to the initial HTTP
+//!   request; mid-flight stream errors are never retried.
 //! - HTTP error bodies are surfaced as `"{status}: {body}"` (the upstream
 //!   `formatProviderError` composition with the parsed body); a non-JSON body
 //!   is used verbatim where the openai SDK keeps only its own message.
@@ -44,6 +45,7 @@ use crate::ai::api::openai_completions::request::{
 };
 use crate::ai::api::{http_client, ApiImpl};
 use crate::ai::cost::calculate_cost;
+use crate::ai::retry::{retry_provider_request, ProviderError};
 use crate::ai::transcript::{get_declared_tools, resolve_transcript, TranscriptContext};
 use crate::ai::types::compat::OpenAiCompletionsCompat;
 use crate::ai::types::content::{ThinkingContent, ToolCall};
@@ -198,7 +200,7 @@ fn get_compat(model: &Model) -> OpenAiCompletionsCompat {
 
 /// Upstream `getClientApiKey` (lines 82-86): the effective bearer key, or
 /// `"unused"` when the caller already supplies gateway auth headers.
-fn get_client_api_key(
+pub(crate) fn get_client_api_key(
     provider: &str,
     api_key: &str,
     headers: Option<&ProviderHeaders>,
@@ -272,10 +274,12 @@ pub(crate) fn format_http_error(status: u16, body_text: &str) -> String {
     }
 }
 
-/// Send the assembled request (upstream `client.chat.completions.create`).
-/// T8 seam: upstream wraps this call in `retryProviderRequest`
-/// (`utils/provider-retry.ts`) using `options.stream.max_retries` /
-/// `max_retry_delay_ms`; those options are ignored until that port lands.
+/// Send the assembled request (upstream `client.chat.completions.create`),
+/// wrapped in the provider retry policy with `options.maxRetries` /
+/// `maxRetryDelayMs` (upstream invokes the SDK with `maxRetries: 0` and wraps
+/// `retryProviderRequest` around the call). Retries cover transport failures
+/// and retryable statuses only — the SDK throws before the response stream is
+/// returned, so once stream bytes flow an error is never retried.
 async fn send_stream_request(
     cfg: &ProviderConfig,
     api_key: &str,
@@ -305,7 +309,30 @@ async fn send_stream_request(
     if let Some(ms) = options.stream.timeout_ms {
         request = request.timeout(Duration::from_millis(ms));
     }
-    request.send().await.map_err(|error| error.to_string())
+    let max_retries = options.stream.max_retries.unwrap_or(0);
+    let max_retry_delay_ms = options.stream.max_retry_delay_ms;
+    retry_provider_request(max_retries, max_retry_delay_ms, || async {
+        let response = request
+            .try_clone()
+            .expect("JSON request body is buffered and clonable")
+            .send()
+            .await
+            .map_err(|error| ProviderError::transport(error.to_string()))?;
+        let status = response.status();
+        if status.is_success() {
+            return Ok(response);
+        }
+        let status_code = status.as_u16();
+        let response_headers = response.headers().clone();
+        let body = response.text().await.unwrap_or_default();
+        Err(ProviderError::http(
+            status_code,
+            response_headers,
+            format_http_error(status_code, &body),
+        ))
+    })
+    .await
+    .map_err(|error| error.message)
 }
 
 async fn run_stream_task(
@@ -368,11 +395,6 @@ async fn drive_stream(
     let assembly = build_request(model, cfg, &normalized, options, &compat)?;
 
     let response = send_stream_request(cfg, &api_key, &assembly, options).await?;
-    let status = response.status();
-    if !status.is_success() {
-        let body = response.text().await.unwrap_or_default();
-        return Err(format_http_error(status.as_u16(), &body));
-    }
 
     // Upstream line 379: `start` after the response arrives, before any chunk.
     let _ = tx
@@ -3044,5 +3066,89 @@ mod tests {
         )
         .unwrap();
         assert_eq!(sent, expected, "wire body must equal the T3 builder output");
+    }
+
+    // ---- T8: provider-request retry on the send seam ----
+
+    /// First POST answers 429 (with a tiny server-requested delay), later
+    /// POSTs stream a complete response.
+    struct RetryFlaky {
+        attempts: std::sync::atomic::AtomicU32,
+        success: wiremock::ResponseTemplate,
+    }
+
+    impl wiremock::Respond for RetryFlaky {
+        fn respond(&self, _request: &wiremock::Request) -> wiremock::ResponseTemplate {
+            if self
+                .attempts
+                .fetch_add(1, std::sync::atomic::Ordering::SeqCst)
+                == 0
+            {
+                wiremock::ResponseTemplate::new(429)
+                    .insert_header("retry-after-ms", "15")
+                    .set_body_string("rate limited")
+            } else {
+                self.success.clone()
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn send_seam_retries_a_429_before_the_first_stream_byte() {
+        let server = wiremock::MockServer::start().await;
+        let body = format!(
+            "{}{}{}",
+            data_line(content_chunk("ok")),
+            data_line(finish_chunk("stop")),
+            done_line()
+        );
+        wiremock::Mock::given(wiremock::matchers::method("POST"))
+            .and(wiremock::matchers::path("/v1/chat/completions"))
+            .respond_with(RetryFlaky {
+                attempts: std::sync::atomic::AtomicU32::new(0),
+                success: sse(&body),
+            })
+            .mount(&server)
+            .await;
+
+        let model = base_model();
+        let options = SimpleStreamOptions {
+            stream: StreamOptions {
+                max_retries: Some(1),
+                ..Default::default()
+            },
+            ..SimpleStreamOptions::default()
+        };
+        let events =
+            collect_simple(&server, &model, &user_ctx(vec![user_msg("hi")]), &options).await;
+        assert_eq!(
+            event_types(&events),
+            ["start", "text_start", "text_delta", "text_end", "done"]
+        );
+        assert_eq!(server.received_requests().await.unwrap().len(), 2);
+    }
+
+    #[tokio::test]
+    async fn send_seam_does_not_retry_a_401() {
+        let server = wiremock::MockServer::start().await;
+        wiremock::Mock::given(wiremock::matchers::method("POST"))
+            .and(wiremock::matchers::path("/v1/chat/completions"))
+            .respond_with(wiremock::ResponseTemplate::new(401).set_body_string("bad key"))
+            .mount(&server)
+            .await;
+
+        let model = base_model();
+        let options = SimpleStreamOptions {
+            stream: StreamOptions {
+                max_retries: Some(3),
+                ..Default::default()
+            },
+            ..SimpleStreamOptions::default()
+        };
+        let events =
+            collect_simple(&server, &model, &user_ctx(vec![user_msg("hi")]), &options).await;
+        assert_eq!(events.len(), 1, "lone error event: {events:?}");
+        assert!(matches!(events[0], AssistantMessageEvent::Error { .. }));
+        assert_eq!(server.received_requests().await.unwrap().len(), 1);
     }
 }
