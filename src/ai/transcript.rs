@@ -437,6 +437,7 @@ fn ordered_set<V>(entries: &mut Vec<(String, V)>, name: String, value: V) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ai::types::tool::{ConstrainedSampling, Disabled};
     use serde_json::json;
 
     const TS: i64 = 1758240000000;
@@ -896,7 +897,7 @@ mod tests {
             .contains("constrainedSampling"));
 
         let disabled = Tool {
-            constrained_sampling: Some(json!(false)),
+            constrained_sampling: Some(ConstrainedSampling::Disabled(Disabled)),
             ..plain.clone()
         };
         let declaration = to_tool_declaration(&disabled);
@@ -921,7 +922,7 @@ mod tests {
         assert!(!declarations_equal(&read, &schema));
         // Different constrained sampling.
         let disabled = Tool {
-            constrained_sampling: Some(json!(false)),
+            constrained_sampling: Some(ConstrainedSampling::Disabled(Disabled)),
             ..read.clone()
         };
         assert!(!declarations_equal(&read, &disabled));

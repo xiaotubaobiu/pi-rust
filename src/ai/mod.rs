@@ -4,6 +4,7 @@ pub mod message;
 pub mod openai_compat;
 pub mod transcript;
 pub mod types;
+pub mod validation;
 
 use event::AiEvent;
 use tokio::sync::mpsc;
