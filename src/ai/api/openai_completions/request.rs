@@ -387,7 +387,10 @@ fn map_level(model: &Model, key: &str) -> MappedLevel {
 /// Upstream `thinkingBudgetForLevel` + `clampReasoning`
 /// (`api/simple-options.ts:57-72`): defaults overridable per level, xhigh/max
 /// share the high budget.
-fn thinking_budget_for_level(level: ThinkingLevel, custom: Option<&ThinkingBudgets>) -> u64 {
+pub(crate) fn thinking_budget_for_level(
+    level: ThinkingLevel,
+    custom: Option<&ThinkingBudgets>,
+) -> u64 {
     let clamped = match level {
         ThinkingLevel::Xhigh | ThinkingLevel::Max => ThinkingLevel::High,
         other => other,
@@ -787,7 +790,7 @@ const UNSUPPORTED_STRICT_SCHEMA_KEYS: [&str; 16] = [
 
 /// Upstream `makeStrictJsonSchema` (`api/constrained-sampling.ts:117-127`):
 /// convert a tool schema to the strict subset providers accept.
-fn make_strict_json_schema(schema: &Value) -> Result<Value, String> {
+pub(crate) fn make_strict_json_schema(schema: &Value) -> Result<Value, String> {
     let mut cloned = schema.clone();
     if !cloned.is_object() {
         return Err("root schema must have type object".into());
@@ -944,7 +947,7 @@ fn make_schema_node_strict(schema: &mut Value) -> Result<(), String> {
 /// (`api/constrained-sampling.ts:208-228`): `Some(true)` when the tool
 /// demands (and supports) strict sampling, `None` for a plain fallback,
 /// `Err` when a "require" request cannot be honored.
-fn resolve_json_schema_strict_sampling(
+pub(crate) fn resolve_json_schema_strict_sampling(
     tool: &Tool,
     supports_strict_mode: bool,
 ) -> Result<Option<bool>, String> {
@@ -1244,7 +1247,7 @@ const CONTEXT_SAFETY_TOKENS: u64 = 4096;
 const MIN_MAX_TOKENS: u64 = 1;
 /// Tokens always left for the answer when a thinking budget shares the
 /// response ceiling (`api/simple-options.ts:55`).
-const MIN_ANSWER_TOKENS: u64 = 1024;
+pub(crate) const MIN_ANSWER_TOKENS: u64 = 1024;
 
 fn estimate_text_tokens(text: &str) -> u64 {
     text.chars().count().div_ceil(CHARS_PER_TOKEN) as u64
@@ -1360,7 +1363,11 @@ fn estimate_context_tokens(messages: &[Message]) -> u64 {
 }
 
 /// Upstream `clampMaxTokensToContext` (`api/simple-options.ts:15-19`).
-fn clamp_max_tokens_to_context(model: &Model, ctx: &TranscriptContext, max_tokens: u64) -> u64 {
+pub(crate) fn clamp_max_tokens_to_context(
+    model: &Model,
+    ctx: &TranscriptContext,
+    max_tokens: u64,
+) -> u64 {
     if model.context_window == 0 {
         return max_tokens.max(MIN_MAX_TOKENS);
     }
@@ -1482,7 +1489,7 @@ fn replace_images_with_placeholder(
 /// Upstream `transformMessages` (`api/transform-messages.ts:64-235`): image
 /// downgrade, thinking-block transformation, tool-call id normalization, and
 /// synthetic tool results for orphaned calls.
-fn transform_messages(
+pub(crate) fn transform_messages(
     model: &Model,
     messages: &[Message],
     normalize_id: &dyn Fn(&str) -> String,
@@ -1758,7 +1765,7 @@ fn parse_legacy_encrypted_reasoning_detail(signature: Option<&str>) -> Option<Va
 /// Upstream `renderSystemMessageUpdate` (`utils/text.ts:28-40`): a later
 /// system message framed by section name so the model can relate it to the
 /// leading prompt.
-fn render_system_message_update(message: &SystemMessage) -> String {
+pub(crate) fn render_system_message_update(message: &SystemMessage) -> String {
     let mut parts: Vec<String> = Vec::new();
     let text = content_text(&message.content);
     if !text.is_empty() {
