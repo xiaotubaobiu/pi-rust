@@ -8,7 +8,7 @@ Pi Agent Harness 的 Rust 重写。derived from [earendil-works/pi](https://gith
 
 | 阶段 | 内容 | 状态 |
 |---|---|---|
-| M1 | 行走骨架:三层打通的最小 agent CLI | 进行中 |
+| M1 | 行走骨架:三层打通的最小 agent CLI | 已实现 |
 | M2 | `pi-ai` 完整移植(9 种 API、全部供应商、catalog、OAuth、faux、图像) | 未开始 |
 | M3 | `pi-agent-core` 完整移植(steering、hooks、并行工具、compaction) | 未开始 |
 | M4 | `pi-tui` 完整移植(自研差分渲染器、编辑器、补全) | 未开始 |
@@ -19,7 +19,10 @@ Pi Agent Harness 的 Rust 重写。derived from [earendil-works/pi](https://gith
 
 ## 状态
 
-M1 尚未开始实现。设计文档评审中。
+M1 已实现:最小 agent CLI(pirs)。用法:
+
+    cargo run -- --provider openai-compat --base-url <url> --model <id>
+    # 需要 GLM_API_KEY / OPENAI_API_KEY 或 ANTHROPIC_API_KEY
 
 ## License
 
