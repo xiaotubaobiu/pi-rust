@@ -5,7 +5,7 @@ use pi_rust::agent::tools::builtin_tools;
 use pi_rust::agent::Agent;
 use pi_rust::ai::anthropic::AnthropicProvider;
 use pi_rust::ai::openai_compat::OpenAiCompatProvider;
-use pi_rust::ai::{Provider, ProviderConfig};
+use pi_rust::ai::{Provider, ProviderConfig, ProviderIdentity};
 use pi_rust::cli::repl;
 use pi_rust::config::{load_config, resolve_api_key, Config, PROVIDERS};
 use std::sync::Arc;
@@ -69,8 +69,13 @@ async fn main() -> Result<()> {
             None => "https://api.anthropic.com".into(),
         },
         api_key: key,
-        model: cfg.model.clone(),
         max_tokens: cfg.max_tokens,
+    };
+    // One endpoint config can serve any model; the answering identity rides
+    // with the agent and fills AssistantMessage.provider/model.
+    let identity = ProviderIdentity {
+        id: cfg.provider.clone(),
+        model: cfg.model.clone(),
     };
 
     let provider: Arc<dyn Provider> = match cfg.provider.as_str() {
@@ -79,7 +84,12 @@ async fn main() -> Result<()> {
         other => bail!("unknown provider: {other}"),
     };
 
-    let mut agent = Agent::new(provider, builtin_tools(), repl::SYSTEM_PROMPT.to_string());
+    let mut agent = Agent::new(
+        provider,
+        identity,
+        builtin_tools(),
+        repl::SYSTEM_PROMPT.to_string(),
+    );
     let sessions_dir = dirs::data_local_dir()
         .unwrap_or_else(|| std::path::PathBuf::from("."))
         .join("pi-rust")

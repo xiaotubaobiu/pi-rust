@@ -229,14 +229,44 @@ pub enum StopReason {
     Deferred,
 }
 
+/// Serde helpers for cost amounts (controller ruling, Task 10): upstream
+/// TypeScript serializes dollar amounts through `JSON.stringify`, which emits
+/// integral numbers without a decimal point (`0`, never `0.0`), and re-serializing
+/// a parsed `0.0` also yields `0`. serde_json's default f64 encoding (ryu)
+/// always writes the decimal point, so an integral cost would round-trip to
+/// different bytes than upstream produced. Serialize integral values as JSON
+/// integers and pass everything else to the default f64 encoding;
+/// deserialization is the standard f64 behavior (`0` and `0.0` both parse to
+/// `0.0`, like `JSON.parse`).
+pub(crate) mod cost_amount {
+    use serde::{Deserialize, Deserializer, Serializer};
+
+    pub(crate) fn serialize<S: Serializer>(value: &f64, serializer: S) -> Result<S::Ok, S::Error> {
+        if value.is_finite() && value.fract() == 0.0 && value.abs() <= i64::MAX as f64 {
+            serializer.serialize_i64(*value as i64)
+        } else {
+            serializer.serialize_f64(*value)
+        }
+    }
+
+    pub(crate) fn deserialize<'de, D: Deserializer<'de>>(deserializer: D) -> Result<f64, D::Error> {
+        f64::deserialize(deserializer)
+    }
+}
+
 /// Upstream `Usage.cost` (types.ts:403-409): dollar amounts for the request.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UsageCost {
+    #[serde(with = "cost_amount")]
     pub input: f64,
+    #[serde(with = "cost_amount")]
     pub output: f64,
+    #[serde(with = "cost_amount")]
     pub cache_read: f64,
+    #[serde(with = "cost_amount")]
     pub cache_write: f64,
+    #[serde(with = "cost_amount")]
     pub total: f64,
 }
 
@@ -263,9 +293,13 @@ pub struct Usage {
 #[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ModelCostRates {
+    #[serde(with = "cost_amount")]
     pub input: f64,
+    #[serde(with = "cost_amount")]
     pub output: f64,
+    #[serde(with = "cost_amount")]
     pub cache_read: f64,
+    #[serde(with = "cost_amount")]
     pub cache_write: f64,
 }
 
@@ -274,21 +308,31 @@ pub struct ModelCostRates {
 #[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ModelCostTier {
+    #[serde(with = "cost_amount")]
     pub input: f64,
+    #[serde(with = "cost_amount")]
     pub output: f64,
+    #[serde(with = "cost_amount")]
     pub cache_read: f64,
+    #[serde(with = "cost_amount")]
     pub cache_write: f64,
     pub input_tokens_above: u64,
 }
 
 /// Upstream `ModelCost` (types.ts:946-949): base rates plus optional request-wide
 /// pricing tiers; the highest matching input threshold applies to the full request.
+/// Upstream defines it as `ModelCostRates & { tiers?: ... }`; the rate fields are
+/// duplicated verbatim and use the same integral-preserving cost serializer.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ModelCost {
+    #[serde(with = "cost_amount")]
     pub input: f64,
+    #[serde(with = "cost_amount")]
     pub output: f64,
+    #[serde(with = "cost_amount")]
     pub cache_read: f64,
+    #[serde(with = "cost_amount")]
     pub cache_write: f64,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tiers: Option<Vec<ModelCostTier>>,
@@ -318,7 +362,7 @@ mod tests {
 
     #[test]
     fn usage_round_trips_fixture_bytes() {
-        let fixture = r#"{"input":10,"output":5,"cacheRead":0,"cacheWrite":0,"totalTokens":15,"cost":{"input":0.01,"output":0.02,"cacheRead":0.0,"cacheWrite":0.0,"total":0.03}}"#;
+        let fixture = r#"{"input":10,"output":5,"cacheRead":0,"cacheWrite":0,"totalTokens":15,"cost":{"input":0.01,"output":0.02,"cacheRead":0,"cacheWrite":0,"total":0.03}}"#;
         let usage: Usage = serde_json::from_str(fixture).unwrap();
         assert_eq!(usage.input, 10);
         assert_eq!(usage.output, 5);
@@ -337,11 +381,39 @@ mod tests {
 
     #[test]
     fn usage_optional_fields_round_trip_when_present() {
-        let fixture = r#"{"input":1,"output":2,"cacheRead":0,"cacheWrite":3,"cacheWrite1h":3,"reasoning":2,"totalTokens":6,"cost":{"input":0.0,"output":0.0,"cacheRead":0.0,"cacheWrite":0.0,"total":0.0}}"#;
+        let fixture = r#"{"input":1,"output":2,"cacheRead":0,"cacheWrite":3,"cacheWrite1h":3,"reasoning":2,"totalTokens":6,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}}"#;
         let usage: Usage = serde_json::from_str(fixture).unwrap();
         assert_eq!(usage.cache_write_1h, Some(3));
         assert_eq!(usage.reasoning, Some(2));
         assert_eq!(serde_json::to_string(&usage).unwrap(), fixture);
+    }
+
+    #[test]
+    fn cost_amounts_emit_integral_values_without_decimal_point() {
+        // Upstream JSON.stringify(0) is `0`, never `0.0`; parsed 0.0 also
+        // re-serializes as `0`. Non-integral amounts keep their decimals.
+        let cost = UsageCost::default();
+        assert_eq!(
+            serde_json::to_string(&cost).unwrap(),
+            r#"{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}"#
+        );
+        let parsed: UsageCost = serde_json::from_str(
+            r#"{"input":0.0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}"#,
+        )
+        .unwrap();
+        assert_eq!(parsed.input, 0.0);
+        assert_eq!(
+            serde_json::to_string(&parsed).unwrap(),
+            r#"{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}"#
+        );
+        let fractional: UsageCost = serde_json::from_str(
+            r#"{"input":0.01,"output":1.5,"cacheRead":0,"cacheWrite":0,"total":0}"#,
+        )
+        .unwrap();
+        assert_eq!(
+            serde_json::to_string(&fractional).unwrap(),
+            r#"{"input":0.01,"output":1.5,"cacheRead":0,"cacheWrite":0,"total":0}"#
+        );
     }
 
     #[test]
@@ -578,7 +650,7 @@ mod tests {
 
     #[test]
     fn model_cost_with_tiers_round_trips() {
-        let fixture = r#"{"input":3.0,"output":15.0,"cacheRead":0.3,"cacheWrite":3.75,"tiers":[{"input":1.5,"output":7.5,"cacheRead":0.15,"cacheWrite":1.875,"inputTokensAbove":200000}]}"#;
+        let fixture = r#"{"input":3,"output":15,"cacheRead":0.3,"cacheWrite":3.75,"tiers":[{"input":1.5,"output":7.5,"cacheRead":0.15,"cacheWrite":1.875,"inputTokensAbove":200000}]}"#;
         let cost: ModelCost = serde_json::from_str(fixture).unwrap();
         assert_eq!(cost.input, 3.0);
         assert_eq!(cost.output, 15.0);
@@ -596,7 +668,7 @@ mod tests {
         let cost = ModelCost::default();
         assert_eq!(
             serde_json::to_string(&cost).unwrap(),
-            "{\"input\":0.0,\"output\":0.0,\"cacheRead\":0.0,\"cacheWrite\":0.0}"
+            "{\"input\":0,\"output\":0,\"cacheRead\":0,\"cacheWrite\":0}"
         );
     }
 

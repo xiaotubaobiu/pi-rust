@@ -779,7 +779,7 @@ mod tests {
         assert_eq!(
             serde_json::to_string(&events[10]).unwrap(),
             r#"{"type":"done","reason":"toolUse","message":"#.to_string()
-                + r#"{"content":[],"api":"anthropic-messages","provider":"anthropic","model":"claude-sonnet-4-5","usage":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"totalTokens":0,"cost":{"input":0.0,"output":0.0,"cacheRead":0.0,"cacheWrite":0.0,"total":0.0}},"stopReason":"pending","timestamp":1758240000000}}"#
+                + r#"{"content":[],"api":"anthropic-messages","provider":"anthropic","model":"claude-sonnet-4-5","usage":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"totalTokens":0,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}},"stopReason":"pending","timestamp":1758240000000}}"#
         );
         assert!(
             serde_json::from_str::<AssistantMessageEvent>(r#"{"type":"mystery"}"#).is_err(),

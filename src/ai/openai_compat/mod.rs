@@ -1,35 +1,52 @@
-use crate::ai::event::AiEvent;
-use crate::ai::message::{ContentBlock, Message, StopReason, Usage};
-use crate::ai::{Context, Provider, ProviderConfig};
+use crate::ai::transcript::{content_text, get_current_system_prompt, get_current_tools};
+use crate::ai::types::content::{TextContent, ThinkingContent, ToolCall};
+use crate::ai::types::events::{AssistantMessageEvent, ErrorReason, SuccessReason};
+use crate::ai::types::message::{AssistantBlock, AssistantMessage, Message, TextOrImageBlock};
+use crate::ai::types::options::SimpleStreamOptions;
+use crate::ai::types::primitives::{StopReason, Usage};
+use crate::ai::{now_ms, Provider, ProviderConfig, ProviderIdentity, TranscriptContext};
 use eventsource_stream::Eventsource;
 use futures::StreamExt;
 use tokio::sync::mpsc;
 
-/// Convert an OpenAI-compat request body from a Context.
-/// Thinking blocks are display-only and never replayed.
-pub fn build_request_body(ctx: &Context, cfg: &ProviderConfig) -> serde_json::Value {
+/// This adapter speaks the `openai-completions` API; `AssistantMessage.api`
+/// is stamped with it on every emitted message.
+const API: &str = "openai-completions";
+
+/// Convert an OpenAI-compat request body from a normalized transcript. The
+/// system prompt and tool declarations are the REPLAYED transcript state
+/// (`get_current_system_prompt`/`get_current_tools`), not the raw shorthand
+/// fields. Thinking blocks are display-only and never replayed; system
+/// messages are skipped in the message list because the replay already
+/// folded them into the prompt.
+pub fn build_request_body(
+    ctx: &TranscriptContext,
+    identity: &ProviderIdentity,
+) -> serde_json::Value {
+    let messages_slice = ctx.messages();
     let mut messages = Vec::new();
-    if !ctx.system_prompt.is_empty() {
-        messages.push(serde_json::json!({ "role": "system", "content": ctx.system_prompt }));
+    let system_prompt = get_current_system_prompt(messages_slice);
+    if !system_prompt.is_empty() {
+        messages.push(serde_json::json!({ "role": "system", "content": system_prompt }));
     }
-    for m in &ctx.messages {
+    for m in messages_slice {
         match m {
-            Message::User { content } => {
-                messages.push(serde_json::json!({ "role": "user", "content": text_of(content) }));
+            Message::User(user) => {
+                messages.push(serde_json::json!({
+                    "role": "user",
+                    "content": content_text(&user.content)
+                }));
             }
-            Message::Assistant { content, .. } => {
-                let text = text_of(content);
-                let tool_calls: Vec<serde_json::Value> = content
+            Message::Assistant(assistant) => {
+                let text = assistant_text(&assistant.content);
+                let tool_calls: Vec<serde_json::Value> = assistant
+                    .content
                     .iter()
-                    .filter_map(|b| match b {
-                        ContentBlock::ToolCall {
-                            id,
-                            name,
-                            arguments,
-                        } => Some(serde_json::json!({
-                            "id": id,
+                    .filter_map(|block| match block {
+                        AssistantBlock::ToolCall(call) => Some(serde_json::json!({
+                            "id": call.id,
                             "type": "function",
-                            "function": { "name": name, "arguments": arguments.to_string() }
+                            "function": { "name": call.name, "arguments": call.arguments.to_string() }
                         })),
                         _ => None,
                     })
@@ -40,35 +57,51 @@ pub fn build_request_body(ctx: &Context, cfg: &ProviderConfig) -> serde_json::Va
                 }
                 messages.push(msg);
             }
-            Message::ToolResult {
-                tool_call_id,
-                content,
-                ..
-            } => {
+            Message::ToolResult(result) => {
                 messages.push(serde_json::json!({
                     "role": "tool",
-                    "tool_call_id": tool_call_id,
-                    "content": text_of(content)
+                    "tool_call_id": result.tool_call_id,
+                    "content": tool_result_text(&result.content)
                 }));
             }
+            Message::System(_) => {}
         }
     }
-    let tools: Vec<serde_json::Value> = ctx
-        .tools
+    let tools: Vec<serde_json::Value> = get_current_tools(messages_slice)
         .iter()
-        .map(|t| serde_json::json!({
-            "type": "function",
-            "function": { "name": t.name, "description": t.description, "parameters": t.parameters }
-        }))
+        .map(|t| {
+            serde_json::json!({
+                "type": "function",
+                "function": { "name": t.name, "description": t.description, "parameters": t.parameters }
+            })
+        })
         .collect();
-    serde_json::json!({ "model": cfg.model, "messages": messages, "tools": tools, "stream": true })
+    serde_json::json!({
+        "model": identity.model,
+        "messages": messages,
+        "tools": tools,
+        "stream": true
+    })
 }
 
-fn text_of(content: &[ContentBlock]) -> String {
+/// Text of all text blocks of a tool result, joined by newlines.
+fn tool_result_text(content: &[TextOrImageBlock]) -> String {
+    content
+        .iter()
+        .filter_map(|block| match block {
+            TextOrImageBlock::Text(text) => Some(text.text.clone()),
+            _ => None,
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+/// Text of all text blocks, joined by newlines.
+fn assistant_text(content: &[AssistantBlock]) -> String {
     let mut parts = Vec::new();
-    for b in content {
-        if let ContentBlock::Text { text } = b {
-            parts.push(text.clone());
+    for block in content {
+        if let AssistantBlock::Text(text) = block {
+            parts.push(text.text.clone());
         }
     }
     parts.join("\n")
@@ -85,60 +118,112 @@ impl OpenAiCompatProvider {
 }
 
 impl Provider for OpenAiCompatProvider {
-    fn stream(&self, ctx: &Context) -> mpsc::Receiver<AiEvent> {
+    fn stream(
+        &self,
+        ctx: &TranscriptContext,
+        _options: &SimpleStreamOptions,
+        provider: &ProviderIdentity,
+    ) -> mpsc::Receiver<AssistantMessageEvent> {
         let (tx, rx) = mpsc::channel(64);
         let cfg = self.cfg.clone();
         let ctx = ctx.clone();
+        let provider = provider.clone();
         tokio::spawn(async move {
-            if let Err(e) = run_stream(ctx, cfg, tx.clone()).await {
-                let _ = tx
-                    .send(AiEvent::Error {
-                        message: e.to_string(),
-                    })
-                    .await;
+            if let Err(e) = run_stream(ctx, cfg, provider.clone(), tx.clone()).await {
+                let _ = tx.send(error_event(&provider, e.to_string())).await;
             }
         });
         rx
     }
 }
 
+/// The initial assistant message structure carried by the `start` event.
+fn initial_message(provider: &ProviderIdentity) -> AssistantMessage {
+    AssistantMessage {
+        content: vec![],
+        api: API.to_string(),
+        provider: provider.id.clone(),
+        model: provider.model.clone(),
+        response_model: None,
+        response_id: None,
+        provider_thinking_level: None,
+        diagnostics: None,
+        usage: Usage::default(),
+        stop_reason: StopReason::Pending,
+        deferred: None,
+        error_message: None,
+        raw_stop_reason: None,
+        end_turn: None,
+        timestamp: now_ms(),
+    }
+}
+
+/// Terminal `error` event for a failed request or stream.
+fn error_event(provider: &ProviderIdentity, message: String) -> AssistantMessageEvent {
+    let mut message_struct = initial_message(provider);
+    message_struct.stop_reason = StopReason::Error;
+    message_struct.error_message = Some(message);
+    AssistantMessageEvent::Error {
+        reason: ErrorReason::Error,
+        error: message_struct,
+    }
+}
+
+fn success_reason(reason: StopReason) -> SuccessReason {
+    match reason {
+        StopReason::Length => SuccessReason::Length,
+        StopReason::ToolUse => SuccessReason::ToolUse,
+        _ => SuccessReason::Stop,
+    }
+}
+
 #[derive(Clone)]
 struct ToolCallAcc {
+    /// Slot in the emitted message content (not the wire `index`).
+    content_index: usize,
     id: String,
     name: String,
     args: String,
 }
 
 async fn run_stream(
-    ctx: Context,
+    ctx: TranscriptContext,
     cfg: ProviderConfig,
-    tx: mpsc::Sender<AiEvent>,
+    provider: ProviderIdentity,
+    tx: mpsc::Sender<AssistantMessageEvent>,
 ) -> anyhow::Result<()> {
     let client = reqwest::Client::new();
     let url = format!("{}/chat/completions", cfg.base_url.trim_end_matches('/'));
     let resp = client
         .post(url)
         .bearer_auth(&cfg.api_key)
-        .json(&build_request_body(&ctx, &cfg))
+        .json(&build_request_body(&ctx, &provider))
         .send()
         .await?;
     let status = resp.status();
     if !status.is_success() {
         let body = resp.text().await.unwrap_or_default();
         let _ = tx
-            .send(AiEvent::Error {
-                message: format!("HTTP {status}: {body}"),
-            })
+            .send(error_event(&provider, format!("HTTP {status}: {body}")))
             .await;
         return Ok(());
     }
-    let _ = tx.send(AiEvent::Start).await;
+    let _ = tx
+        .send(AssistantMessageEvent::Start {
+            message: initial_message(&provider),
+        })
+        .await;
 
-    let mut text = String::new();
-    let mut thinking = String::new();
-    let mut tool_calls: Vec<ToolCallAcc> = Vec::new();
+    // Content blocks as opened, in event order: one thinking block, one text
+    // block (each opened lazily on its first delta), one block per tool call.
+    let mut content: Vec<AssistantBlock> = Vec::new();
+    let mut thinking_index: Option<usize> = None;
+    let mut text_index: Option<usize> = None;
+    // Slots for non-tool wire indexes stay None until a fragment arrives.
+    let mut tools: Vec<Option<ToolCallAcc>> = Vec::new();
     let mut stop_reason = StopReason::Stop;
-    let mut usage = Usage::default();
+    let mut input_tokens = 0u64;
+    let mut output_tokens = 0u64;
 
     let mut es = resp.bytes_stream().eventsource();
     while let Some(item) = es.next().await {
@@ -151,35 +236,88 @@ async fn run_stream(
         let delta = &choice["delta"];
 
         if let Some(t) = delta["reasoning_content"].as_str() {
-            thinking.push_str(t);
+            let index = match thinking_index {
+                Some(index) => index,
+                None => {
+                    let index = content.len();
+                    content.push(AssistantBlock::Thinking(ThinkingContent {
+                        thinking: String::new(),
+                        thinking_signature: None,
+                        redacted: None,
+                    }));
+                    thinking_index = Some(index);
+                    let _ = tx
+                        .send(AssistantMessageEvent::ThinkingStart {
+                            content_index: index,
+                        })
+                        .await;
+                    index
+                }
+            };
+            if let AssistantBlock::Thinking(thinking) = &mut content[index] {
+                thinking.thinking.push_str(t);
+            }
             let _ = tx
-                .send(AiEvent::ThinkingDelta {
+                .send(AssistantMessageEvent::ThinkingDelta {
+                    content_index: index,
                     delta: t.to_string(),
                 })
                 .await;
         }
         if let Some(t) = delta["content"].as_str() {
-            text.push_str(t);
+            let index = match text_index {
+                Some(index) => index,
+                None => {
+                    let index = content.len();
+                    content.push(AssistantBlock::Text(TextContent {
+                        text: String::new(),
+                        text_signature: None,
+                    }));
+                    text_index = Some(index);
+                    let _ = tx
+                        .send(AssistantMessageEvent::TextStart {
+                            content_index: index,
+                        })
+                        .await;
+                    index
+                }
+            };
+            if let AssistantBlock::Text(text) = &mut content[index] {
+                text.text.push_str(t);
+            }
             let _ = tx
-                .send(AiEvent::TextDelta {
+                .send(AssistantMessageEvent::TextDelta {
+                    content_index: index,
                     delta: t.to_string(),
                 })
                 .await;
         }
         if let Some(tcs) = delta["tool_calls"].as_array() {
             for tc in tcs {
-                let idx = tc["index"].as_u64().unwrap_or(0) as usize;
-                if tool_calls.len() <= idx {
-                    tool_calls.resize(
-                        idx + 1,
-                        ToolCallAcc {
-                            id: String::new(),
-                            name: String::new(),
-                            args: String::new(),
-                        },
-                    );
+                let index = tc["index"].as_u64().unwrap_or(0) as usize;
+                if tools.len() <= index {
+                    tools.resize(index + 1, None);
                 }
-                let acc = &mut tool_calls[idx];
+                if tools[index].is_none() {
+                    let content_index = content.len();
+                    content.push(AssistantBlock::ToolCall(ToolCall {
+                        id: String::new(),
+                        name: String::new(),
+                        arguments: serde_json::json!({}),
+                        thought_signature: None,
+                        namespace: None,
+                    }));
+                    let _ = tx
+                        .send(AssistantMessageEvent::ToolcallStart { content_index })
+                        .await;
+                    tools[index] = Some(ToolCallAcc {
+                        content_index,
+                        id: String::new(),
+                        name: String::new(),
+                        args: String::new(),
+                    });
+                }
+                let acc = tools[index].as_mut().unwrap();
                 if let Some(id) = tc["id"].as_str() {
                     acc.id = id.to_string();
                 }
@@ -188,6 +326,12 @@ async fn run_stream(
                 }
                 if let Some(a) = tc["function"]["arguments"].as_str() {
                     acc.args.push_str(a);
+                    let _ = tx
+                        .send(AssistantMessageEvent::ToolcallDelta {
+                            content_index: acc.content_index,
+                            delta: a.to_string(),
+                        })
+                        .await;
                 }
             }
         }
@@ -200,37 +344,82 @@ async fn run_stream(
         }
         if let Some(u) = chunk.get("usage") {
             if !u.is_null() {
-                usage = Usage {
-                    input_tokens: u["prompt_tokens"].as_u64().unwrap_or(0),
-                    output_tokens: u["completion_tokens"].as_u64().unwrap_or(0),
-                };
+                input_tokens = u["prompt_tokens"].as_u64().unwrap_or(0);
+                output_tokens = u["completion_tokens"].as_u64().unwrap_or(0);
             }
         }
     }
 
-    let mut content = Vec::new();
-    if !thinking.is_empty() {
-        content.push(ContentBlock::Thinking { thinking });
+    // Close open blocks; the end content is the authoritative accumulated text.
+    if let Some(index) = thinking_index {
+        let thinking = match &content[index] {
+            AssistantBlock::Thinking(thinking) => thinking.thinking.clone(),
+            _ => String::new(),
+        };
+        let _ = tx
+            .send(AssistantMessageEvent::ThinkingEnd {
+                content_index: index,
+                content: thinking,
+            })
+            .await;
     }
-    if !text.is_empty() {
-        content.push(ContentBlock::Text { text });
+    if let Some(index) = text_index {
+        let text = match &content[index] {
+            AssistantBlock::Text(text) => text.text.clone(),
+            _ => String::new(),
+        };
+        let _ = tx
+            .send(AssistantMessageEvent::TextEnd {
+                content_index: index,
+                content: text,
+            })
+            .await;
     }
-    for tc in tool_calls {
-        let arguments = serde_json::from_str(&tc.args).unwrap_or(serde_json::json!({}));
-        content.push(ContentBlock::ToolCall {
-            id: tc.id,
-            name: tc.name,
+    let mut ended: Vec<&ToolCallAcc> = tools.iter().flatten().collect();
+    ended.sort_by_key(|acc| acc.content_index);
+    for acc in ended {
+        let arguments = serde_json::from_str(&acc.args).unwrap_or(serde_json::json!({}));
+        let call = ToolCall {
+            id: acc.id.clone(),
+            name: acc.name.clone(),
             arguments,
-        });
+            thought_signature: None,
+            namespace: None,
+        };
+        content[acc.content_index] = AssistantBlock::ToolCall(call.clone());
+        let _ = tx
+            .send(AssistantMessageEvent::ToolcallEnd {
+                content_index: acc.content_index,
+                tool_call: call,
+            })
+            .await;
     }
-    let message = Message::Assistant {
+
+    let message = AssistantMessage {
         content,
+        api: API.to_string(),
+        provider: provider.id.clone(),
+        model: provider.model.clone(),
+        response_model: None,
+        response_id: None,
+        provider_thinking_level: None,
+        diagnostics: None,
+        usage: Usage {
+            input: input_tokens,
+            output: output_tokens,
+            total_tokens: input_tokens + output_tokens,
+            ..Usage::default()
+        },
         stop_reason,
-        usage,
+        deferred: None,
+        error_message: None,
+        raw_stop_reason: None,
+        end_turn: None,
+        timestamp: now_ms(),
     };
     let _ = tx
-        .send(AiEvent::Done {
-            stop_reason,
+        .send(AssistantMessageEvent::Done {
+            reason: success_reason(stop_reason),
             message,
         })
         .await;
@@ -240,26 +429,97 @@ async fn run_stream(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ai::message::Message;
-    use crate::ai::{ProviderConfig, ToolDef};
+    use crate::ai::transcript::{normalize_context, Context};
+    use crate::ai::types::content::TextContent;
+    use crate::ai::types::events::PartialAssistant;
+    use crate::ai::types::message::{
+        StringOrBlocks, TextOrImageBlock, ToolResultMessage, UserMessage,
+    };
+    use crate::ai::types::tool::Tool;
 
-    fn cfg() -> ProviderConfig {
-        ProviderConfig {
-            base_url: "http://localhost:1234/v1".into(),
-            api_key: "sk-test".into(),
+    const TS: i64 = 1758240000000;
+
+    fn identity() -> ProviderIdentity {
+        ProviderIdentity {
+            id: "openai".into(),
             model: "glm-4.6".into(),
-            max_tokens: 8192,
         }
+    }
+
+    fn tool(name: &str, description: &str) -> Tool {
+        Tool {
+            name: name.into(),
+            description: description.into(),
+            parameters: serde_json::json!({"type": "object"}),
+            constrained_sampling: None,
+        }
+    }
+
+    fn user_msg(text: &str) -> Message {
+        Message::User(UserMessage {
+            content: StringOrBlocks::Text(text.into()),
+            timestamp: TS,
+        })
+    }
+
+    fn assistant_msg(content: Vec<AssistantBlock>, stop_reason: StopReason) -> Message {
+        Message::Assistant(AssistantMessage {
+            content,
+            api: API.into(),
+            provider: "openai".into(),
+            model: "glm-4.6".into(),
+            response_model: None,
+            response_id: None,
+            provider_thinking_level: None,
+            diagnostics: None,
+            usage: Usage::default(),
+            stop_reason,
+            deferred: None,
+            error_message: None,
+            raw_stop_reason: None,
+            end_turn: None,
+            timestamp: TS,
+        })
+    }
+
+    fn text_block(text: &str) -> AssistantBlock {
+        AssistantBlock::Text(TextContent {
+            text: text.into(),
+            text_signature: None,
+        })
+    }
+
+    fn tool_result_msg(tool_call_id: &str, tool_name: &str, text: &str, is_error: bool) -> Message {
+        Message::ToolResult(ToolResultMessage {
+            tool_call_id: tool_call_id.into(),
+            tool_name: tool_name.into(),
+            content: vec![TextOrImageBlock::Text(TextContent {
+                text: text.into(),
+                text_signature: None,
+            })],
+            details: None,
+            usage: None,
+            is_error,
+            timestamp: TS,
+        })
+    }
+
+    fn context(
+        system_prompt: Option<&str>,
+        messages: Vec<Message>,
+        tools: Option<Vec<Tool>>,
+    ) -> TranscriptContext {
+        normalize_context(&Context {
+            system_prompt: system_prompt.map(str::to_string),
+            messages,
+            tools,
+        })
     }
 
     #[test]
     fn system_prompt_and_user_message() {
-        let ctx = Context {
-            system_prompt: "be brief".into(),
-            messages: vec![Message::user_text("hi")],
-            tools: vec![],
-        };
-        let body = build_request_body(&ctx, &cfg());
+        let ctx = context(Some("be brief"), vec![user_msg("hi")], None);
+        let body = build_request_body(&ctx, &identity());
         assert_eq!(body["model"], "glm-4.6");
         assert_eq!(body["stream"], true);
         assert_eq!(body["messages"][0]["role"], "system");
@@ -271,28 +531,25 @@ mod tests {
 
     #[test]
     fn assistant_tool_call_and_tool_result_replay() {
-        let ctx = Context {
-            system_prompt: String::new(),
-            messages: vec![
-                Message::user_text("ls"),
-                Message::Assistant {
-                    content: vec![ContentBlock::ToolCall {
+        let ctx = context(
+            None,
+            vec![
+                user_msg("ls"),
+                assistant_msg(
+                    vec![AssistantBlock::ToolCall(ToolCall {
                         id: "t1".into(),
                         name: "bash".into(),
                         arguments: serde_json::json!({"command": "ls"}),
-                    }],
-                    stop_reason: crate::ai::message::StopReason::ToolUse,
-                    usage: Default::default(),
-                },
-                Message::tool_result("t1".into(), "bash".into(), "out".into(), false),
+                        thought_signature: None,
+                        namespace: None,
+                    })],
+                    StopReason::ToolUse,
+                ),
+                tool_result_msg("t1", "bash", "out", false),
             ],
-            tools: vec![ToolDef {
-                name: "bash".into(),
-                description: "run".into(),
-                parameters: serde_json::json!({"type": "object"}),
-            }],
-        };
-        let body = build_request_body(&ctx, &cfg());
+            Some(vec![tool("bash", "run")]),
+        );
+        let body = build_request_body(&ctx, &identity());
         let msgs = body["messages"].as_array().unwrap();
         assert_eq!(msgs[1]["tool_calls"][0]["function"]["name"], "bash");
         // arguments must be a JSON-encoded string on the wire
@@ -307,28 +564,39 @@ mod tests {
 
     #[test]
     fn thinking_blocks_not_replayed() {
-        let ctx = Context {
-            system_prompt: String::new(),
-            messages: vec![Message::Assistant {
-                content: vec![
-                    ContentBlock::Thinking {
+        let ctx = context(
+            None,
+            vec![assistant_msg(
+                vec![
+                    AssistantBlock::Thinking(ThinkingContent {
                         thinking: "secret".into(),
-                    },
-                    ContentBlock::Text {
-                        text: "answer".into(),
-                    },
+                        thinking_signature: None,
+                        redacted: None,
+                    }),
+                    text_block("answer"),
                 ],
-                stop_reason: crate::ai::message::StopReason::Stop,
-                usage: Default::default(),
-            }],
-            tools: vec![],
-        };
-        let body = build_request_body(&ctx, &cfg());
+                StopReason::Stop,
+            )],
+            None,
+        );
+        let body = build_request_body(&ctx, &identity());
         assert_eq!(body["messages"][0]["content"], "answer");
     }
 
+    #[test]
+    fn system_messages_are_replayed_into_the_prompt_not_replayed_verbatim() {
+        // A mid-conversation system message contributes to the replayed prompt.
+        let ctx = context(Some("Base."), vec![user_msg("hi")], None);
+        let body = build_request_body(&ctx, &identity());
+        assert_eq!(body["messages"][0]["content"], "Base.");
+        assert!(body["messages"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|m| m["role"] != "system" || m == &body["messages"][0]));
+    }
+
     // --- streaming tests (require tokio) ---
-    use crate::ai::event::AiEvent;
     use crate::ai::Provider;
 
     fn sse(body: &str) -> wiremock::ResponseTemplate {
@@ -345,15 +613,37 @@ mod tests {
     }
 
     async fn collect(
-        provider: &crate::ai::openai_compat::OpenAiCompatProvider,
-        ctx: &crate::ai::Context,
-    ) -> Vec<AiEvent> {
-        let mut rx = provider.stream(ctx);
+        provider: &OpenAiCompatProvider,
+        ctx: &TranscriptContext,
+        identity: &ProviderIdentity,
+    ) -> Vec<AssistantMessageEvent> {
+        let mut rx = provider.stream(ctx, &SimpleStreamOptions::default(), identity);
         let mut out = Vec::new();
         while let Some(ev) = rx.recv().await {
             out.push(ev);
         }
         out
+    }
+
+    fn message_text(message: &AssistantMessage) -> String {
+        let mut parts = Vec::new();
+        for block in &message.content {
+            if let AssistantBlock::Text(text) = block {
+                parts.push(text.text.clone());
+            }
+        }
+        parts.join("\n")
+    }
+
+    fn message_tool_calls(message: &AssistantMessage) -> Vec<&ToolCall> {
+        message
+            .content
+            .iter()
+            .filter_map(|block| match block {
+                AssistantBlock::ToolCall(call) => Some(call),
+                _ => None,
+            })
+            .collect()
     }
 
     #[tokio::test]
@@ -372,32 +662,47 @@ mod tests {
         let provider = OpenAiCompatProvider::new(ProviderConfig {
             base_url: format!("{}/v1", server.uri()),
             api_key: "k".into(),
-            model: "m".into(),
             max_tokens: 8192,
         });
-        let ctx = crate::ai::Context {
-            system_prompt: String::new(),
-            messages: vec![Message::user_text("hi")],
-            tools: vec![],
-        };
-        let events = collect(&provider, &ctx).await;
-        assert!(matches!(events[0], AiEvent::Start));
+        let ctx = context(None, vec![user_msg("hi")], None);
+        let events = collect(&provider, &ctx, &identity()).await;
+
+        // start carries the initial message structure with identity metadata.
+        match &events[0] {
+            AssistantMessageEvent::Start { message } => {
+                assert_eq!(message.api, "openai-completions");
+                assert_eq!(message.provider, "openai");
+                assert_eq!(message.model, "glm-4.6");
+                assert!(message.content.is_empty());
+                assert_eq!(message.stop_reason, StopReason::Pending);
+            }
+            other => panic!("expected Start, got {other:?}"),
+        }
         let mut text = String::new();
         for ev in &events {
-            if let AiEvent::TextDelta { delta } = ev {
+            if let AssistantMessageEvent::TextDelta { delta, .. } = ev {
                 text.push_str(delta);
             }
         }
         assert_eq!(text, "hey");
         match events.last().unwrap() {
-            AiEvent::Done {
-                stop_reason,
-                message,
-            } => {
-                assert!(*stop_reason == crate::ai::message::StopReason::Stop);
-                assert_eq!(message.text(), "hey");
+            AssistantMessageEvent::Done { reason, message } => {
+                assert!(*reason == SuccessReason::Stop);
+                assert_eq!(message_text(message), "hey");
             }
             other => panic!("expected Done, got {other:?}"),
+        }
+        // The whole stream reconstructs through the canonical reducer to
+        // exactly the Done message.
+        let mut partial = PartialAssistant::new();
+        for ev in &events {
+            partial.apply(ev).unwrap();
+        }
+        match events.last().unwrap() {
+            AssistantMessageEvent::Done { message, .. } => {
+                assert_eq!(partial.message(), Some(message));
+            }
+            _ => unreachable!(),
         }
     }
 
@@ -431,28 +736,26 @@ mod tests {
         let provider = OpenAiCompatProvider::new(ProviderConfig {
             base_url: format!("{}/v1", server.uri()),
             api_key: "k".into(),
-            model: "m".into(),
             max_tokens: 8192,
         });
-        let ctx = crate::ai::Context {
-            system_prompt: String::new(),
-            messages: vec![Message::user_text("hi")],
-            tools: vec![],
-        };
-        let events = collect(&provider, &ctx).await;
+        let ctx = context(None, vec![user_msg("hi")], None);
+        let events = collect(&provider, &ctx, &identity()).await;
         match events.last().unwrap() {
-            AiEvent::Done {
-                stop_reason,
-                message,
-            } => {
-                assert!(*stop_reason == crate::ai::message::StopReason::ToolUse);
-                let calls = message.tool_calls();
+            AssistantMessageEvent::Done { reason, message } => {
+                assert!(*reason == SuccessReason::ToolUse);
+                let calls = message_tool_calls(message);
                 assert_eq!(calls.len(), 1);
                 assert_eq!(calls[0].name, "read_file");
                 assert_eq!(calls[0].arguments, serde_json::json!({"path": "a.txt"}));
             }
             other => panic!("expected Done, got {other:?}"),
         }
+        // Reducer-valid: the tool call arrives via start/delta/end.
+        let mut partial = PartialAssistant::new();
+        for ev in &events {
+            partial.apply(ev).unwrap();
+        }
+        assert!(partial.is_terminal());
     }
 
     #[tokio::test]
@@ -465,17 +768,19 @@ mod tests {
         let provider = OpenAiCompatProvider::new(ProviderConfig {
             base_url: server.uri(),
             api_key: "k".into(),
-            model: "m".into(),
             max_tokens: 8192,
         });
-        let ctx = crate::ai::Context {
-            system_prompt: String::new(),
-            messages: vec![Message::user_text("hi")],
-            tools: vec![],
-        };
-        let events = collect(&provider, &ctx).await;
+        let ctx = context(None, vec![user_msg("hi")], None);
+        let events = collect(&provider, &ctx, &identity()).await;
         match events.last().unwrap() {
-            AiEvent::Error { message } => assert!(message.contains("401"), "got: {message}"),
+            AssistantMessageEvent::Error { reason, error } => {
+                assert!(*reason == ErrorReason::Error);
+                let message = error.error_message.as_deref().unwrap_or_default();
+                assert!(message.contains("401"), "got: {message}");
+                assert_eq!(error.api, "openai-completions");
+                assert_eq!(error.provider, "openai");
+                assert_eq!(error.model, "glm-4.6");
+            }
             other => panic!("expected Error, got {other:?}"),
         }
     }

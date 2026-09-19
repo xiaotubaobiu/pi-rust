@@ -150,10 +150,10 @@ mod tests {
     /// is deterministic (HashMap key order), and compat/sampling/headers keys
     /// are pre-sorted because `serde_json::Value` objects reserialize in
     /// BTreeMap (sorted) order without the `preserve_order` feature.
-    const ANTHROPIC_MODEL_FIXTURE: &str = r#"{"id":"claude-sonnet-4-5","name":"Claude Sonnet 4.5","api":"anthropic-messages","provider":"anthropic","baseUrl":"https://api.anthropic.com","reasoning":true,"thinkingLevelMap":{"off":null},"input":["text","image"],"cost":{"input":3.0,"output":15.0,"cacheRead":0.3,"cacheWrite":3.75,"tiers":[{"input":1.5,"output":7.5,"cacheRead":0.15,"cacheWrite":1.875,"inputTokensAbove":200000}]},"contextWindow":200000,"maxTokens":64000,"samplingParams":{"custom_flag":true,"top_p":0.95},"headers":{"x-custom":"value"},"compat":{"forceAdaptiveThinking":true,"supportsCacheControlOnTools":false}}"#;
+    const ANTHROPIC_MODEL_FIXTURE: &str = r#"{"id":"claude-sonnet-4-5","name":"Claude Sonnet 4.5","api":"anthropic-messages","provider":"anthropic","baseUrl":"https://api.anthropic.com","reasoning":true,"thinkingLevelMap":{"off":null},"input":["text","image"],"cost":{"input":3,"output":15,"cacheRead":0.3,"cacheWrite":3.75,"tiers":[{"input":1.5,"output":7.5,"cacheRead":0.15,"cacheWrite":1.875,"inputTokensAbove":200000}]},"contextWindow":200000,"maxTokens":64000,"samplingParams":{"custom_flag":true,"top_p":0.95},"headers":{"x-custom":"value"},"compat":{"forceAdaptiveThinking":true,"supportsCacheControlOnTools":false}}"#;
 
     /// OpenAI-completions-style catalog entry with a completions compat object.
-    const OPENAI_COMPLETIONS_MODEL_FIXTURE: &str = r#"{"id":"gpt-test","name":"GPT Test","api":"openai-completions","provider":"openai","baseUrl":"https://api.openai.com/v1","reasoning":false,"input":["text"],"cost":{"input":0.0,"output":0.0,"cacheRead":0.0,"cacheWrite":0.0},"contextWindow":128000,"maxTokens":16384,"compat":{"maxTokensField":"max_tokens","supportsStore":false,"thinkingFormat":"zai"}}"#;
+    const OPENAI_COMPLETIONS_MODEL_FIXTURE: &str = r#"{"id":"gpt-test","name":"GPT Test","api":"openai-completions","provider":"openai","baseUrl":"https://api.openai.com/v1","reasoning":false,"input":["text"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":128000,"maxTokens":16384,"compat":{"maxTokensField":"max_tokens","supportsStore":false,"thinkingFormat":"zai"}}"#;
 
     fn base_model() -> Model {
         Model {
