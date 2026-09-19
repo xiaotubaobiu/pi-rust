@@ -278,8 +278,10 @@ fn normalize_tool_call_id(id: &str) -> String {
 
 /// The resolved compat flags with their upstream defaults applied. Read from
 /// the raw compat object so one invalid key cannot silently drop every
-/// setting (upstream reads fields off a plain JS object).
-struct AnthropicCompat {
+/// setting (upstream reads fields off a plain JS object). Shared with the
+/// stream port, which reads the transcript-resolution and effort-stamping
+/// flags and the fallback cost lookup inputs.
+pub(crate) struct AnthropicCompat {
     supports_eager_tool_input_streaming: bool,
     supports_long_cache_retention: bool,
     send_session_affinity_headers: bool,
@@ -288,15 +290,15 @@ struct AnthropicCompat {
     supports_temperature: bool,
     allow_empty_signature: bool,
     supports_strict_tools: bool,
-    supports_mid_convo_system_messages: bool,
+    pub(crate) supports_mid_convo_system_messages: bool,
     supports_mid_convo_tool_changes: bool,
     force_adaptive_thinking: Option<bool>,
-    supports_mid_convo_effort: bool,
+    pub(crate) supports_mid_convo_effort: bool,
     /// `model` ids of `allowedFallbackModels` (upstream maps to `{ model }`).
     allowed_fallback_models: Vec<String>,
 }
 
-fn get_anthropic_compat(model: &Model) -> AnthropicCompat {
+pub(crate) fn get_anthropic_compat(model: &Model) -> AnthropicCompat {
     let compat = model.compat.as_ref();
     let flag =
         |key: &str| -> Option<bool> { compat.and_then(|c| c.get(key)).and_then(Value::as_bool) };
@@ -355,7 +357,7 @@ fn has_header(headers: Option<&ProviderHeaders>, name: &str) -> bool {
 /// credential `cfg.api_key` (the port's wiring), then header-owned auth
 /// (gateway `Authorization`/`x-api-key`/`cf-aig-authorization`). `None` means
 /// header-owned auth: no auth header is injected.
-fn resolve_api_key(
+pub(crate) fn resolve_api_key(
     model: &Model,
     cfg: &ProviderConfig,
     options: &AnthropicOptions,
@@ -381,7 +383,7 @@ fn resolve_api_key(
 }
 
 /// Upstream `isOAuthToken` (line 906-908).
-fn is_oauth_token(api_key: &str) -> bool {
+pub(crate) fn is_oauth_token(api_key: &str) -> bool {
     api_key.contains("sk-ant-oat")
 }
 

@@ -235,8 +235,9 @@ fn truncate_error_text(text: &str, max_chars: usize) -> String {
 /// Error message for a non-2xx response: upstream's `formatProviderError`
 /// composition for the openai SDK error shape — `"{status}: {body}"` with the
 /// JSON-stringified parsed body, plus the OpenRouter `error.metadata.raw`
-/// append from the catch block (lines 714-721).
-fn format_http_error(status: u16, body_text: &str) -> String {
+/// append from the catch block (lines 714-721). Shared with the
+/// anthropic-messages port.
+pub(crate) fn format_http_error(status: u16, body_text: &str) -> String {
     let trimmed = body_text.trim();
     let (message, raw_metadata) = if trimmed.is_empty() {
         (format!("{status} status code with empty body"), None)
@@ -1228,9 +1229,27 @@ async fn finish_block(
 
 const VALID_JSON_ESCAPES: [char; 9] = ['"', '\\', '/', 'b', 'f', 'n', 'r', 't', 'u'];
 
+/// Upstream `parseJsonWithRepair` (`utils/json-parse.ts:85-95`): direct
+/// parse, then the repaired text when the repair differs, otherwise the
+/// original error. Shared with the anthropic-messages port for SSE event
+/// payloads.
+pub(crate) fn parse_json_with_repair(json: &str) -> Result<Value, serde_json::Error> {
+    match serde_json::from_str(json) {
+        Ok(value) => Ok(value),
+        Err(error) => {
+            let repaired = repair_json(json);
+            if repaired != json {
+                serde_json::from_str(&repaired)
+            } else {
+                Err(error)
+            }
+        }
+    }
+}
+
 /// Upstream `repairJson` (`utils/json-parse.ts:39-94`): escape raw control
 /// characters inside strings and double backslashes before invalid escapes.
-fn repair_json(json: &str) -> String {
+pub(crate) fn repair_json(json: &str) -> String {
     let mut repaired = String::with_capacity(json.len());
     let mut in_string = false;
     let mut chars = json.chars().peekable();
@@ -1398,7 +1417,7 @@ fn close_stack(mut completed: String, stack: Vec<char>) -> String {
 
 /// Upstream `parseStreamingJson` (`utils/json-parse.ts:103-125`): never
 /// throws; falls back to an empty object.
-fn parse_streaming_json(partial: &str) -> Value {
+pub(crate) fn parse_streaming_json(partial: &str) -> Value {
     if partial.trim().is_empty() {
         return json!({});
     }
