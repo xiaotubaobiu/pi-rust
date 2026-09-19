@@ -71,6 +71,17 @@ pub fn resolve_api_key(provider: &str, cli_key: Option<&str>) -> Option<String> 
         .find_map(|name| std::env::var(name).ok().filter(|v| !v.is_empty()))
 }
 
+/// Test-visible variant of env resolution so tests don't race provider env vars.
+#[doc(hidden)]
+pub fn resolve_api_key_env(env_name: &str, cli_key: Option<&str>) -> Option<String> {
+    if let Some(k) = cli_key {
+        if !k.is_empty() {
+            return Some(k.to_string());
+        }
+    }
+    std::env::var(env_name).ok().filter(|v| !v.is_empty())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -105,15 +116,4 @@ base_url = "https://open.bigmodel.cn/api/paas/v4"
         let missing = resolve_api_key_env("PIRS_TEST_KEY_MISSING", None);
         assert!(missing.is_none());
     }
-}
-
-/// Test-visible variant of env resolution so tests don't race provider env vars.
-#[doc(hidden)]
-pub fn resolve_api_key_env(env_name: &str, cli_key: Option<&str>) -> Option<String> {
-    if let Some(k) = cli_key {
-        if !k.is_empty() {
-            return Some(k.to_string());
-        }
-    }
-    std::env::var(env_name).ok().filter(|v| !v.is_empty())
 }

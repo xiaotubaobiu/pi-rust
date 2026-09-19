@@ -12,8 +12,8 @@ pub fn tool() -> AgentTool {
     make_tool("list_dir", "List the entries of a directory", |a: ListDirArgs| {
         Box::pin(async move {
             let mut out: Vec<String> = Vec::new();
-            let mut entries = std::fs::read_dir(&a.path).map_err(|e| format!("list failed: {e}"))?;
-            while let Some(entry) = entries.next() {
+            let entries = std::fs::read_dir(&a.path).map_err(|e| format!("list failed: {e}"))?;
+            for entry in entries {
                 let entry = entry.map_err(|e| format!("list failed: {e}"))?;
                 let name = entry.file_name().to_string_lossy().to_string();
                 let is_dir = entry.file_type().map(|t| t.is_dir()).unwrap_or(false);

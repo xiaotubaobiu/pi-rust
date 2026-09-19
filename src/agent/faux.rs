@@ -20,6 +20,12 @@ impl FauxProvider {
     }
 }
 
+impl Default for FauxProvider {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Provider for FauxProvider {
     fn stream(&self, _ctx: &Context) -> mpsc::Receiver<AiEvent> {
         let (tx, rx) = mpsc::channel(64);
