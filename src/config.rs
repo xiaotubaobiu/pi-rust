@@ -39,9 +39,8 @@ pub fn parse_config(toml_str: &str) -> anyhow::Result<Config> {
             PROVIDERS
         );
     }
-    if cfg.provider == "openai-compat" && cfg.base_url.is_none() {
-        anyhow::bail!("openai-compat requires base_url in config or --base-url");
-    }
+    // Note: the openai-compat base_url requirement is enforced in main, after
+    // CLI overrides are merged, so `--base-url` can satisfy it.
     Ok(cfg)
 }
 
@@ -111,9 +110,11 @@ base_url = "https://open.bigmodel.cn/api/paas/v4"
     }
 
     #[test]
-    fn rejects_unknown_provider_and_missing_base_url() {
+    fn rejects_unknown_provider_allows_missing_base_url() {
         assert!(parse_config("provider = \"nope\"\nmodel = \"m\"").is_err());
-        assert!(parse_config("provider = \"openai-compat\"\nmodel = \"m\"").is_err());
+        // openai-compat without base_url is accepted here; main enforces the
+        // base_url requirement after CLI overrides are merged.
+        assert!(parse_config("provider = \"openai-compat\"\nmodel = \"m\"").is_ok());
     }
 
     #[test]

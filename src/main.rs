@@ -7,7 +7,7 @@ use pi_rust::ai::anthropic::AnthropicProvider;
 use pi_rust::ai::openai_compat::OpenAiCompatProvider;
 use pi_rust::ai::{Provider, ProviderConfig};
 use pi_rust::cli::repl;
-use pi_rust::config::{load_config, resolve_api_key, Config};
+use pi_rust::config::{load_config, resolve_api_key, Config, PROVIDERS};
 use std::sync::Arc;
 
 #[derive(Parser)]
@@ -45,14 +45,28 @@ async fn main() -> Result<()> {
         cfg.base_url = args.base_url.clone();
     }
 
+    // Validate after merging CLI overrides (a config-only check would reject
+    // valid `--base-url` overrides), and before resolving the API key so an
+    // unknown provider reports a provider error, not a missing-key error.
+    if !PROVIDERS.contains(&cfg.provider.as_str()) {
+        bail!(
+            "unknown provider '{}'; expected one of {:?}",
+            cfg.provider,
+            PROVIDERS
+        );
+    }
+    if cfg.provider == "openai-compat" && cfg.base_url.is_none() {
+        bail!("openai-compat requires --base-url or base_url in config");
+    }
+
     let key = resolve_api_key(&cfg.provider, args.api_key.as_deref())
         .context("no API key found: set ANTHROPIC_API_KEY (anthropic) or GLM_API_KEY/OPENAI_API_KEY (openai-compat), or pass --api-key")?;
 
     let pcfg = ProviderConfig {
-        base_url: match (cfg.provider.as_str(), &cfg.base_url) {
-            (_, Some(url)) => url.clone(),
-            ("anthropic", None) => "https://api.anthropic.com".into(),
-            _ => bail!("openai-compat requires --base-url or base_url in config"),
+        base_url: match &cfg.base_url {
+            Some(url) => url.clone(),
+            // anthropic default; openai-compat without base_url was rejected above
+            None => "https://api.anthropic.com".into(),
         },
         api_key: key,
         model: cfg.model.clone(),

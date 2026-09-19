@@ -57,7 +57,14 @@ pub fn tool() -> AgentTool {
                     out.push_str(&stderr);
                 }
                 if out.len() > 10_000 {
-                    out.truncate(10_000);
+                    // Truncate at a char boundary: 10_000 bytes may fall inside a
+                    // multi-byte UTF-8 char (e.g. CJK output), and String::truncate
+                    // panics in that case.
+                    let mut end = 10_000;
+                    while !out.is_char_boundary(end) {
+                        end -= 1;
+                    }
+                    out.truncate(end);
                     out.push_str("\n... (truncated)");
                 }
                 if !output.status.success() {
@@ -99,5 +106,26 @@ mod tests {
         let slow = "sleep 10";
         let err = (t.execute)(serde_json::json!({"command": slow, "timeout_ms": 300})).await;
         assert!(err.unwrap_err().contains("timed out"));
+    }
+
+    // Regression test: truncating >10_000 bytes of multi-byte output used to
+    // panic because String::truncate was called mid-char (byte 10_000 falls
+    // inside a 3-byte CJK char).
+    #[tokio::test]
+    async fn truncates_multi_byte_output_without_panic() {
+        let t = tool();
+        // Emit 18_000 bytes of pure 3-byte UTF-8 chars (no newline), so byte
+        // 10_000 lands mid-character. Write raw UTF-8 bytes to stdout to avoid
+        // codepage-dependent console encoding. No spaces or double quotes in
+        // the script so it survives cmd/PowerShell argument splitting.
+        #[cfg(windows)]
+        let cmd = "powershell -NoProfile -Command [Console]::OpenStandardOutput().Write([Text.Encoding]::UTF8.GetBytes(([string]'好'*6000)),0,18000)";
+        #[cfg(not(windows))]
+        let cmd = "printf '好%.0s' $(seq 6000)";
+        let out = (t.execute)(serde_json::json!({"command": cmd}))
+            .await
+            .expect("must not panic on multi-byte truncation");
+        assert!(out.contains("... (truncated)"), "got: {out}");
+        assert!(out.chars().take(3333).all(|c| c == '好'), "got: {out}");
     }
 }

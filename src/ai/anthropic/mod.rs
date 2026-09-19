@@ -116,6 +116,7 @@ impl Provider for AnthropicProvider {
     }
 }
 
+#[derive(Clone)]
 struct ToolAcc {
     id: String,
     name: String,
@@ -150,7 +151,9 @@ async fn run_stream(
 
     let mut text = String::new();
     let mut thinking = String::new();
-    let mut tool: Option<ToolAcc> = None;
+    // Parallel tool_use blocks are accumulated by content-block index. Slots
+    // for non-tool block indexes stay empty (id == "") and are skipped below.
+    let mut tools: Vec<ToolAcc> = Vec::new();
     let mut stop_reason = StopReason::Stop;
     let mut usage = Usage::default();
 
@@ -167,11 +170,22 @@ async fn run_stream(
             "content_block_start" => {
                 let block = &data["content_block"];
                 if block["type"] == "tool_use" {
-                    tool = Some(ToolAcc {
+                    let idx = data["index"].as_u64().unwrap_or(0) as usize;
+                    if tools.len() <= idx {
+                        tools.resize(
+                            idx + 1,
+                            ToolAcc {
+                                id: String::new(),
+                                name: String::new(),
+                                json: String::new(),
+                            },
+                        );
+                    }
+                    tools[idx] = ToolAcc {
                         id: block["id"].as_str().unwrap_or_default().to_string(),
                         name: block["name"].as_str().unwrap_or_default().to_string(),
                         json: String::new(),
-                    });
+                    };
                 }
             }
             "content_block_delta" => {
@@ -199,7 +213,8 @@ async fn run_stream(
                     }
                     "input_json_delta" => {
                         if let Some(t) = delta["partial_json"].as_str() {
-                            if let Some(acc) = tool.as_mut() {
+                            let idx = data["index"].as_u64().unwrap_or(0) as usize;
+                            if let Some(acc) = tools.get_mut(idx) {
                                 acc.json.push_str(t);
                             }
                         }
@@ -237,7 +252,10 @@ async fn run_stream(
     if !text.is_empty() {
         content.push(ContentBlock::Text { text });
     }
-    if let Some(acc) = tool {
+    for acc in tools {
+        if acc.id.is_empty() {
+            continue; // slot for a non-tool content block
+        }
         let arguments = serde_json::from_str(&acc.json).unwrap_or(serde_json::json!({}));
         content.push(ContentBlock::ToolCall {
             id: acc.id,
@@ -488,6 +506,95 @@ mod tests {
                 assert_eq!(calls.len(), 1);
                 assert_eq!(calls[0].id, "t1");
                 assert_eq!(calls[0].arguments, serde_json::json!({"path": "a.txt"}));
+            }
+            other => panic!("expected Done, got {other:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn streams_multiple_parallel_tool_use_blocks() {
+        // Two tool_use blocks (plus a leading text block) with input_json
+        // split across fragments. Regression test: the accumulator used to
+        // keep only the last tool_use block, dropping parallel calls.
+        let body = format!(
+            "{}{}{}{}{}{}{}{}{}{}{}{}{}{}",
+            ev(
+                "message_start",
+                serde_json::json!({"message": {"usage": {"input_tokens": 10}}})
+            ),
+            ev(
+                "content_block_start",
+                serde_json::json!({"index": 0, "content_block": {"type": "text"}})
+            ),
+            ev(
+                "content_block_delta",
+                serde_json::json!({"index": 0, "delta": {"type": "text_delta", "text": "running both"}})
+            ),
+            ev("content_block_stop", serde_json::json!({"index": 0})),
+            ev(
+                "content_block_start",
+                serde_json::json!({"index": 1, "content_block": {"type": "tool_use", "id": "t1", "name": "read_file"}})
+            ),
+            ev(
+                "content_block_delta",
+                serde_json::json!({"index": 1, "delta": {"type": "input_json_delta", "partial_json": "{\"pa"}})
+            ),
+            ev(
+                "content_block_delta",
+                serde_json::json!({"index": 1, "delta": {"type": "input_json_delta", "partial_json": "th\": \"a.txt\"}"}})
+            ),
+            ev("content_block_stop", serde_json::json!({"index": 1})),
+            ev(
+                "content_block_start",
+                serde_json::json!({"index": 2, "content_block": {"type": "tool_use", "id": "t2", "name": "bash"}})
+            ),
+            ev(
+                "content_block_delta",
+                serde_json::json!({"index": 2, "delta": {"type": "input_json_delta", "partial_json": "{\"comm"}})
+            ),
+            ev(
+                "content_block_delta",
+                serde_json::json!({"index": 2, "delta": {"type": "input_json_delta", "partial_json": "and\": \"ls\"}"}})
+            ),
+            ev("content_block_stop", serde_json::json!({"index": 2})),
+            ev(
+                "message_delta",
+                serde_json::json!({"delta": {"stop_reason": "tool_use"}, "usage": {"output_tokens": 3}})
+            ),
+            ev("message_stop", serde_json::json!({})),
+        );
+        let server = wiremock::MockServer::start().await;
+        wiremock::Mock::given(wiremock::matchers::method("POST"))
+            .respond_with(sse(&body))
+            .mount(&server)
+            .await;
+        let provider = AnthropicProvider::new(ProviderConfig {
+            base_url: server.uri(),
+            api_key: "k".into(),
+            model: "m".into(),
+            max_tokens: 8192,
+        });
+        let ctx = crate::ai::Context {
+            system_prompt: String::new(),
+            messages: vec![Message::user_text("hi")],
+            tools: vec![],
+        };
+        let events = collect(&provider, &ctx).await;
+        match events.last().unwrap() {
+            AiEvent::Done {
+                stop_reason,
+                message,
+            } => {
+                assert!(*stop_reason == StopReason::ToolUse);
+                assert_eq!(message.text(), "running both");
+                let calls = message.tool_calls();
+                assert_eq!(calls.len(), 2, "got: {calls:?}");
+                assert_eq!(calls[0].id, "t1");
+                assert_eq!(calls[0].name, "read_file");
+                assert_eq!(calls[0].arguments, serde_json::json!({"path": "a.txt"}));
+                assert_eq!(calls[1].id, "t2");
+                assert_eq!(calls[1].name, "bash");
+                assert_eq!(calls[1].arguments, serde_json::json!({"command": "ls"}));
             }
             other => panic!("expected Done, got {other:?}"),
         }
