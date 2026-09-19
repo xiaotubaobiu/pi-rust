@@ -1,5 +1,9 @@
-use crate::ai::message::{ContentBlock, Message};
-use crate::ai::{Context, ProviderConfig};
+use crate::ai::event::AiEvent;
+use crate::ai::message::{ContentBlock, Message, StopReason, Usage};
+use crate::ai::{Context, Provider, ProviderConfig};
+use eventsource_stream::Eventsource;
+use futures::StreamExt;
+use tokio::sync::mpsc;
 
 /// Convert an OpenAI-compat request body from a Context.
 /// Thinking blocks are display-only and never replayed.
@@ -60,6 +64,129 @@ fn text_of(content: &[ContentBlock]) -> String {
         }
     }
     parts.join("\n")
+}
+
+pub struct OpenAiCompatProvider {
+    cfg: ProviderConfig,
+}
+
+impl OpenAiCompatProvider {
+    pub fn new(cfg: ProviderConfig) -> Self {
+        OpenAiCompatProvider { cfg }
+    }
+}
+
+impl Provider for OpenAiCompatProvider {
+    fn stream(&self, ctx: &Context) -> mpsc::Receiver<AiEvent> {
+        let (tx, rx) = mpsc::channel(64);
+        let cfg = self.cfg.clone();
+        let ctx = ctx.clone();
+        tokio::spawn(async move {
+            if let Err(e) = run_stream(ctx, cfg, tx.clone()).await {
+                let _ = tx.send(AiEvent::Error { message: e.to_string() }).await;
+            }
+        });
+        rx
+    }
+}
+
+#[derive(Clone)]
+struct ToolCallAcc {
+    id: String,
+    name: String,
+    args: String,
+}
+
+async fn run_stream(ctx: Context, cfg: ProviderConfig, tx: mpsc::Sender<AiEvent>) -> anyhow::Result<()> {
+    let client = reqwest::Client::new();
+    let url = format!("{}/chat/completions", cfg.base_url.trim_end_matches('/'));
+    let resp = client
+        .post(url)
+        .bearer_auth(&cfg.api_key)
+        .json(&build_request_body(&ctx, &cfg))
+        .send()
+        .await?;
+    let status = resp.status();
+    if !status.is_success() {
+        let body = resp.text().await.unwrap_or_default();
+        let _ = tx.send(AiEvent::Error { message: format!("HTTP {status}: {body}") }).await;
+        return Ok(());
+    }
+    let _ = tx.send(AiEvent::Start).await;
+
+    let mut text = String::new();
+    let mut thinking = String::new();
+    let mut tool_calls: Vec<ToolCallAcc> = Vec::new();
+    let mut stop_reason = StopReason::Stop;
+    let mut usage = Usage::default();
+
+    let mut es = resp.bytes_stream().eventsource();
+    while let Some(item) = es.next().await {
+        let ev = item?;
+        if ev.data.trim() == "[DONE]" {
+            break;
+        }
+        let chunk: serde_json::Value = serde_json::from_str(&ev.data)?;
+        let choice = &chunk["choices"][0];
+        let delta = &choice["delta"];
+
+        if let Some(t) = delta["reasoning_content"].as_str() {
+            thinking.push_str(t);
+            let _ = tx.send(AiEvent::ThinkingDelta { delta: t.to_string() }).await;
+        }
+        if let Some(t) = delta["content"].as_str() {
+            text.push_str(t);
+            let _ = tx.send(AiEvent::TextDelta { delta: t.to_string() }).await;
+        }
+        if let Some(tcs) = delta["tool_calls"].as_array() {
+            for tc in tcs {
+                let idx = tc["index"].as_u64().unwrap_or(0) as usize;
+                if tool_calls.len() <= idx {
+                    tool_calls.resize(idx + 1, ToolCallAcc { id: String::new(), name: String::new(), args: String::new() });
+                }
+                let acc = &mut tool_calls[idx];
+                if let Some(id) = tc["id"].as_str() {
+                    acc.id = id.to_string();
+                }
+                if let Some(n) = tc["function"]["name"].as_str() {
+                    acc.name = n.to_string();
+                }
+                if let Some(a) = tc["function"]["arguments"].as_str() {
+                    acc.args.push_str(a);
+                }
+            }
+        }
+        if let Some(fr) = choice["finish_reason"].as_str() {
+            stop_reason = match fr {
+                "tool_calls" | "function_call" => StopReason::ToolUse,
+                "length" => StopReason::Length,
+                _ => StopReason::Stop,
+            };
+        }
+        if let Some(u) = chunk.get("usage") {
+            if !u.is_null() {
+                usage = Usage {
+                    input_tokens: u["prompt_tokens"].as_u64().unwrap_or(0),
+                    output_tokens: u["completion_tokens"].as_u64().unwrap_or(0),
+                };
+            }
+        }
+    }
+
+    let mut content = Vec::new();
+    if !thinking.is_empty() {
+        content.push(ContentBlock::Thinking { thinking });
+    }
+    if !text.is_empty() {
+        content.push(ContentBlock::Text { text });
+    }
+    for tc in tool_calls {
+        let arguments = serde_json::from_str(&tc.args).unwrap_or(serde_json::json!({}));
+        content.push(ContentBlock::ToolCall { id: tc.id, name: tc.name, arguments });
+    }
+    let message = Message::Assistant { content, stop_reason, usage };
+    let _ = tx.send(AiEvent::Done { stop_reason, message }).await;
+    Ok(())
 }
 
 #[cfg(test)]
@@ -143,5 +270,125 @@ mod tests {
         };
         let body = build_request_body(&ctx, &cfg());
         assert_eq!(body["messages"][0]["content"], "answer");
+    }
+
+    // --- streaming tests (require tokio) ---
+    use crate::ai::event::AiEvent;
+    use crate::ai::Provider;
+
+    fn sse(body: &str) -> wiremock::ResponseTemplate {
+        wiremock::ResponseTemplate::new(200)
+            .insert_header("content-type", "text/event-stream")
+            .set_body_string(body.to_string())
+    }
+
+    fn chunk(delta: serde_json::Value) -> String {
+        format!("data: {}\n\n", serde_json::json!({"choices": [{"delta": delta}]}))
+    }
+
+    async fn collect(provider: &crate::ai::openai_compat::OpenAiCompatProvider, ctx: &crate::ai::Context) -> Vec<AiEvent> {
+        let mut rx = provider.stream(ctx);
+        let mut out = Vec::new();
+        while let Some(ev) = rx.recv().await {
+            out.push(ev);
+        }
+        out
+    }
+
+    #[tokio::test]
+    async fn streams_text_and_done() {
+        let server = wiremock::MockServer::start().await;
+        wiremock::Mock::given(wiremock::matchers::method("POST"))
+            .and(wiremock::matchers::path("/v1/chat/completions"))
+            .respond_with(sse(&format!(
+                "{}{}{}",
+                chunk(serde_json::json!({"content": "he"})),
+                chunk(serde_json::json!({"content": "y"})),
+                "data: [DONE]\n\n"
+            )))
+            .mount(&server)
+            .await;
+        let provider = OpenAiCompatProvider::new(ProviderConfig {
+            base_url: format!("{}/v1", server.uri()),
+            api_key: "k".into(),
+            model: "m".into(),
+            max_tokens: 8192,
+        });
+        let ctx = crate::ai::Context { system_prompt: String::new(), messages: vec![Message::user_text("hi")], tools: vec![] };
+        let events = collect(&provider, &ctx).await;
+        assert!(matches!(events[0], AiEvent::Start));
+        let mut text = String::new();
+        for ev in &events {
+            if let AiEvent::TextDelta { delta } = ev { text.push_str(delta); }
+        }
+        assert_eq!(text, "hey");
+        match events.last().unwrap() {
+            AiEvent::Done { stop_reason, message } => {
+                assert!(*stop_reason == crate::ai::message::StopReason::Stop);
+                assert_eq!(message.text(), "hey");
+            }
+            other => panic!("expected Done, got {other:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn streams_tool_call_with_split_arguments() {
+        let server = wiremock::MockServer::start().await;
+        let body = format!(
+            "{}{}{}{}",
+            chunk(serde_json::json!({"tool_calls": [{"index": 0, "id": "t1", "type": "function", "function": {"name": "read_file", "arguments": "{\"pa"}}]})),
+            chunk(serde_json::json!({"tool_calls": [{"index": 0, "function": {"arguments": "th\": \"a.txt\"}"}}]})),
+            chunk(serde_json::json!({})),
+            "data: [DONE]\n\n"
+        );
+        // finish_reason arrives in a choice-level field; add it to the empty chunk instead:
+        let body = body.replace(
+            &chunk(serde_json::json!({})),
+            &format!("data: {}\n\n", serde_json::json!({"choices": [{"delta": {}, "finish_reason": "tool_calls"}]})),
+        );
+        wiremock::Mock::given(wiremock::matchers::method("POST"))
+            .and(wiremock::matchers::path("/v1/chat/completions"))
+            .respond_with(sse(&body))
+            .mount(&server)
+            .await;
+        let provider = OpenAiCompatProvider::new(ProviderConfig {
+            base_url: format!("{}/v1", server.uri()),
+            api_key: "k".into(),
+            model: "m".into(),
+            max_tokens: 8192,
+        });
+        let ctx = crate::ai::Context { system_prompt: String::new(), messages: vec![Message::user_text("hi")], tools: vec![] };
+        let events = collect(&provider, &ctx).await;
+        match events.last().unwrap() {
+            AiEvent::Done { stop_reason, message } => {
+                assert!(*stop_reason == crate::ai::message::StopReason::ToolUse);
+                let calls = message.tool_calls();
+                assert_eq!(calls.len(), 1);
+                assert_eq!(calls[0].name, "read_file");
+                assert_eq!(calls[0].arguments, serde_json::json!({"path": "a.txt"}));
+            }
+            other => panic!("expected Done, got {other:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn http_error_becomes_error_event() {
+        let server = wiremock::MockServer::start().await;
+        wiremock::Mock::given(wiremock::matchers::method("POST"))
+            .respond_with(wiremock::ResponseTemplate::new(401).set_body_string("bad key"))
+            .mount(&server)
+            .await;
+        let provider = OpenAiCompatProvider::new(ProviderConfig {
+            base_url: server.uri(),
+            api_key: "k".into(),
+            model: "m".into(),
+            max_tokens: 8192,
+        });
+        let ctx = crate::ai::Context { system_prompt: String::new(), messages: vec![Message::user_text("hi")], tools: vec![] };
+        let events = collect(&provider, &ctx).await;
+        match events.last().unwrap() {
+            AiEvent::Error { message } => assert!(message.contains("401"), "got: {message}"),
+            other => panic!("expected Error, got {other:?}"),
+        }
     }
 }
