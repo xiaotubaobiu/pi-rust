@@ -733,7 +733,11 @@ fn infer_grammar_input_property(tool: &Tool) -> Result<String, String> {
     Ok(input_property)
 }
 
-fn create_grammar_tool_input_properties(
+/// Upstream `createGrammarToolInputProperties`
+/// (`api/constrained-sampling.ts:265-282`). Shared with the streaming port:
+/// custom (grammar) tool-call deltas resolve their input property from the
+/// same map the request builder uses.
+pub(crate) fn create_grammar_tool_input_properties(
     tools: &[Tool],
     supports_openai_grammar_tools: bool,
 ) -> Result<HashMap<String, String>, String> {
@@ -1695,8 +1699,9 @@ const OPENAI_COMPLETIONS_REASONING_FIELDS: [&str; 3] =
 const ASSISTANT_BRIDGE_TEXT: &str = "I have processed the tool results.";
 
 /// Upstream `isOpenAIReasoningDetail` + `hasValidCommonReasoningDetailFields`
-/// (openai-completions.ts:118-147).
-fn is_openai_reasoning_detail(value: &Value) -> bool {
+/// (openai-completions.ts:118-147). Shared with the streaming port, which
+/// validates `reasoning_details` deltas with the same predicate.
+pub(crate) fn is_openai_reasoning_detail(value: &Value) -> bool {
     let Some(object) = value.as_object() else {
         return false;
     };
