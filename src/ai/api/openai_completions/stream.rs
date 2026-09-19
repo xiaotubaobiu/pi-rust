@@ -1347,7 +1347,10 @@ fn complete_partial_json(input: &str) -> Option<String> {
                 last_significant = character;
                 token_start = index + 1;
             }
-            character if character.is_whitespace() => token_start = index + 1,
+            // `index` is a byte offset: advance by the full UTF-8 length so
+            // multi-byte whitespace (U+00A0, U+3000, ...) cannot leave
+            // token_start inside a character and panic the later slice.
+            character if character.is_whitespace() => token_start = index + character.len_utf8(),
             character => last_significant = character,
         }
     }
@@ -2536,6 +2539,66 @@ mod tests {
             event_types(&events),
             ["start", "text_start", "text_delta", "text_end", "done"]
         );
+        apply_all(&events);
+    }
+
+    #[tokio::test]
+    async fn malformed_tool_arguments_with_multibyte_whitespace_do_not_panic() {
+        // Upstream's parseStreamingJson never throws on malformed accumulated
+        // arguments (falls back to {}); the port must do the same. A multi-byte
+        // whitespace character (U+3000) outside a JSON string in the trailing
+        // fragment must not panic the stream task — a panic would kill the
+        // spawned task and the consumer would see channel closure with neither
+        // Done nor Error.
+        let server = wiremock::MockServer::start().await;
+        let fragment = format!("{{\"a\":{}", '\u{3000}');
+        let body = format!(
+            "{}{}{}",
+            data_line(delta_chunk(json!({"tool_calls": [
+                {"index": 0, "id": "call_a", "type": "function", "function": {"name": "read", "arguments": fragment}}
+            ]}))),
+            data_line(finish_chunk("tool_calls")),
+            done_line()
+        );
+        wiremock::Mock::given(wiremock::matchers::method("POST"))
+            .respond_with(sse(&body))
+            .mount(&server)
+            .await;
+
+        let model = base_model();
+        let events = collect_simple(
+            &server,
+            &model,
+            &user_ctx(vec![user_msg("hi")]),
+            &SimpleStreamOptions::default(),
+        )
+        .await;
+
+        // The stream terminates with a terminal event (never channel closure
+        // without Done/Error).
+        assert!(matches!(
+            events.last(),
+            Some(AssistantMessageEvent::Done { .. }) | Some(AssistantMessageEvent::Error { .. })
+        ));
+        // The parse falls back to {} per the never-throw contract, so the
+        // tool call ends with empty arguments and the stream completes.
+        match events.last().unwrap() {
+            AssistantMessageEvent::Done { reason, message } => {
+                assert_eq!(*reason, SuccessReason::ToolUse);
+                let calls: Vec<&crate::ai::types::ToolCall> = message
+                    .content
+                    .iter()
+                    .filter_map(|block| match block {
+                        AssistantBlock::ToolCall(call) => Some(call),
+                        _ => None,
+                    })
+                    .collect();
+                assert_eq!(calls.len(), 1);
+                assert_eq!(calls[0].name, "read");
+                assert_eq!(calls[0].arguments, serde_json::json!({}));
+            }
+            other => panic!("expected Done, got {other:?}"),
+        }
         apply_all(&events);
     }
 
