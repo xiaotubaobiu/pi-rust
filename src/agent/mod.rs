@@ -1,5 +1,6 @@
 pub mod event;
 pub mod faux;
+pub mod session;
 pub mod tool;
 pub mod tools;
 
