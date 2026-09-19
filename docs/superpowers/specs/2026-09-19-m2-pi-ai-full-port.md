@@ -23,7 +23,7 @@
 ## 2. 兼容性硬约束(JSON 层面与上游一致)
 
 - serde 序列化的字段名与判别值必须与上游 JSON 完全一致(role 标签、`type: "toolCall"`、camelCase 字段如 `toolCallId`/`stopReason`/`cacheRead`),保证:上游 pi 的 session JSONL 能被 pi-rust 读取,反之亦然(ROADMAP 兼容性标准)。
-- 枚举值集合与上游一一对应:StopReason 7 值(pending/stop/length/toolUse/error/aborted/deferred)、KnownApi 10 值、KnownProvider 38 值。
+- 枚举值集合与上游一一对应:StopReason 7 值(pending/stop/length/toolUse/error/aborted/deferred)、KnownApi 10 值、KnownProvider 40 值。
 - Compat 结构体字段名与上游 catalog JSON 一致(camelCase,如 `supportsDeveloperRole`)。
 
 ## 3. Rust 映射决定(与上游的类型机制差异,行为等价)
