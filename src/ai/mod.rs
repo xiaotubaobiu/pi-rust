@@ -1,6 +1,7 @@
 //! The `pi-ai` surface: full upstream type system (re-exported from
 //! [`types`]), transcript normalization ([`transcript`]), argument validation
-//! ([`validation`]), and the two wire-protocol providers ([`openai_compat`],
+//! ([`validation`]), request costing ([`cost`]), shared API plumbing
+//! ([`api`]), and the two wire-protocol providers ([`openai_compat`],
 //! [`anthropic`]).
 //!
 //! The M1 mini types (`message.rs`/`event.rs`) are gone: every role, block,
@@ -9,11 +10,15 @@
 //! upstream wire format.
 
 pub mod anthropic;
+pub mod api;
+pub mod cost;
 pub mod openai_compat;
 pub mod transcript;
 pub mod types;
 pub mod validation;
 
+pub use api::{http_client, pi_user_agent, ApiImpl};
+pub use cost::calculate_cost;
 pub use transcript::{Context, TranscriptContext};
 pub use types::*;
 
