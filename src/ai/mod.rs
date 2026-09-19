@@ -1,5 +1,6 @@
 pub mod event;
 pub mod message;
+pub mod openai_compat;
 
 use event::AiEvent;
 use tokio::sync::mpsc;
@@ -25,4 +26,13 @@ pub struct Context {
 pub trait Provider: Send + Sync {
     /// Start a streaming request; events flow out of the returned channel.
     fn stream(&self, ctx: &Context) -> mpsc::Receiver<AiEvent>;
+}
+
+/// Connection details for one provider endpoint.
+#[derive(Debug, Clone)]
+pub struct ProviderConfig {
+    pub base_url: String,
+    pub api_key: String,
+    pub model: String,
+    pub max_tokens: u64,
 }
