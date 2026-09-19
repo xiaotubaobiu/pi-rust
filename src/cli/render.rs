@@ -22,10 +22,18 @@ pub fn render_event(ev: &AgentEvent) {
         }
         AgentEvent::ThinkingDelta { .. } => {}
         AgentEvent::MessageEnd => println!(),
-        AgentEvent::ToolExecutionStart { tool_name, arguments, .. } => {
+        AgentEvent::ToolExecutionStart {
+            tool_name,
+            arguments,
+            ..
+        } => {
             println!("{}", tool_start_line(tool_name, arguments));
         }
-        AgentEvent::ToolExecutionEnd { tool_name, is_error, .. } => {
+        AgentEvent::ToolExecutionEnd {
+            tool_name,
+            is_error,
+            ..
+        } => {
             // preview line only; the full result text lives in the conversation context
             println!("{}", tool_end_line(tool_name, *is_error, ""));
         }

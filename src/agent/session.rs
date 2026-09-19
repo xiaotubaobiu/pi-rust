@@ -15,7 +15,10 @@ impl SessionWriter {
             .duration_since(std::time::UNIX_EPOCH)?
             .as_secs();
         let path = dir.join(format!("session-{ts}.jsonl"));
-        let file = std::fs::OpenOptions::new().create(true).append(true).open(&path)?;
+        let file = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&path)?;
         Ok(SessionWriter { file, path })
     }
 
@@ -40,8 +43,10 @@ mod tests {
     fn appends_parsable_lines() {
         let dir = tempfile::tempdir().unwrap();
         let mut s = SessionWriter::create(dir.path()).unwrap();
-        s.append(&AgentMessage::Message(Message::user_text("hello"))).unwrap();
-        s.append(&AgentMessage::Notification { text: "ui".into() }).unwrap();
+        s.append(&AgentMessage::Message(Message::user_text("hello")))
+            .unwrap();
+        s.append(&AgentMessage::Notification { text: "ui".into() })
+            .unwrap();
 
         let content = std::fs::read_to_string(s.path()).unwrap();
         let lines: Vec<&str> = content.lines().collect();

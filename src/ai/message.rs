@@ -3,9 +3,17 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum ContentBlock {
-    Text { text: String },
-    Thinking { thinking: String },
-    ToolCall { id: String, name: String, arguments: serde_json::Value },
+    Text {
+        text: String,
+    },
+    Thinking {
+        thinking: String,
+    },
+    ToolCall {
+        id: String,
+        name: String,
+        arguments: serde_json::Value,
+    },
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
@@ -29,9 +37,20 @@ pub struct Usage {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(tag = "role", rename_all = "snake_case")]
 pub enum Message {
-    User { content: Vec<ContentBlock> },
-    Assistant { content: Vec<ContentBlock>, stop_reason: StopReason, usage: Usage },
-    ToolResult { tool_call_id: String, tool_name: String, content: Vec<ContentBlock>, is_error: bool },
+    User {
+        content: Vec<ContentBlock>,
+    },
+    Assistant {
+        content: Vec<ContentBlock>,
+        stop_reason: StopReason,
+        usage: Usage,
+    },
+    ToolResult {
+        tool_call_id: String,
+        tool_name: String,
+        content: Vec<ContentBlock>,
+        is_error: bool,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -43,10 +62,17 @@ pub struct ToolCall {
 
 impl Message {
     pub fn user_text(text: impl Into<String>) -> Message {
-        Message::User { content: vec![ContentBlock::Text { text: text.into() }] }
+        Message::User {
+            content: vec![ContentBlock::Text { text: text.into() }],
+        }
     }
 
-    pub fn tool_result(tool_call_id: String, tool_name: String, text: String, is_error: bool) -> Message {
+    pub fn tool_result(
+        tool_call_id: String,
+        tool_name: String,
+        text: String,
+        is_error: bool,
+    ) -> Message {
         Message::ToolResult {
             tool_call_id,
             tool_name,
@@ -77,7 +103,11 @@ impl Message {
             content
                 .iter()
                 .filter_map(|b| match b {
-                    ContentBlock::ToolCall { id, name, arguments } => Some(ToolCall {
+                    ContentBlock::ToolCall {
+                        id,
+                        name,
+                        arguments,
+                    } => Some(ToolCall {
                         id: id.clone(),
                         name: name.clone(),
                         arguments: arguments.clone(),
@@ -101,12 +131,21 @@ mod tests {
             Message::user_text("hello"),
             Message::Assistant {
                 content: vec![
-                    ContentBlock::Thinking { thinking: "hmm".into() },
+                    ContentBlock::Thinking {
+                        thinking: "hmm".into(),
+                    },
                     ContentBlock::Text { text: "hi".into() },
-                    ContentBlock::ToolCall { id: "t1".into(), name: "read_file".into(), arguments: serde_json::json!({"path": "a.txt"}) },
+                    ContentBlock::ToolCall {
+                        id: "t1".into(),
+                        name: "read_file".into(),
+                        arguments: serde_json::json!({"path": "a.txt"}),
+                    },
                 ],
                 stop_reason: StopReason::ToolUse,
-                usage: Usage { input_tokens: 10, output_tokens: 5 },
+                usage: Usage {
+                    input_tokens: 10,
+                    output_tokens: 5,
+                },
             },
             Message::tool_result("t1".into(), "read_file".into(), "contents".into(), false),
         ];
@@ -120,7 +159,11 @@ mod tests {
     #[test]
     fn tool_calls_extracted_only_from_assistant() {
         let a = Message::Assistant {
-            content: vec![ContentBlock::ToolCall { id: "t1".into(), name: "bash".into(), arguments: serde_json::json!({}) }],
+            content: vec![ContentBlock::ToolCall {
+                id: "t1".into(),
+                name: "bash".into(),
+                arguments: serde_json::json!({}),
+            }],
             stop_reason: StopReason::ToolUse,
             usage: Usage::default(),
         };

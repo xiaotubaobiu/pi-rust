@@ -16,9 +16,15 @@ pub fn build_request_body(ctx: &Context, cfg: &ProviderConfig) -> serde_json::Va
                 messages.push(serde_json::json!({ "role": "user", "content": blocks(content) }));
             }
             Message::Assistant { content, .. } => {
-                messages.push(serde_json::json!({ "role": "assistant", "content": blocks(content) }));
+                messages
+                    .push(serde_json::json!({ "role": "assistant", "content": blocks(content) }));
             }
-            Message::ToolResult { tool_call_id, content, is_error, .. } => {
+            Message::ToolResult {
+                tool_call_id,
+                content,
+                is_error,
+                ..
+            } => {
                 messages.push(serde_json::json!({
                     "role": "user",
                     "content": [{
@@ -34,11 +40,13 @@ pub fn build_request_body(ctx: &Context, cfg: &ProviderConfig) -> serde_json::Va
     let tools: Vec<serde_json::Value> = ctx
         .tools
         .iter()
-        .map(|t| serde_json::json!({
-            "name": t.name,
-            "description": t.description,
-            "input_schema": t.parameters
-        }))
+        .map(|t| {
+            serde_json::json!({
+                "name": t.name,
+                "description": t.description,
+                "input_schema": t.parameters
+            })
+        })
         .collect();
     serde_json::json!({
         "model": cfg.model,
@@ -54,8 +62,14 @@ fn blocks(content: &[ContentBlock]) -> Vec<serde_json::Value> {
     content
         .iter()
         .filter_map(|b| match b {
-            ContentBlock::Text { text } => Some(serde_json::json!({ "type": "text", "text": text })),
-            ContentBlock::ToolCall { id, name, arguments } => Some(serde_json::json!({
+            ContentBlock::Text { text } => {
+                Some(serde_json::json!({ "type": "text", "text": text }))
+            }
+            ContentBlock::ToolCall {
+                id,
+                name,
+                arguments,
+            } => Some(serde_json::json!({
                 "type": "tool_use", "id": id, "name": name, "input": arguments
             })),
             ContentBlock::Thinking { .. } => None,
@@ -91,7 +105,11 @@ impl Provider for AnthropicProvider {
         let ctx = ctx.clone();
         tokio::spawn(async move {
             if let Err(e) = run_stream(ctx, cfg, tx.clone()).await {
-                let _ = tx.send(AiEvent::Error { message: e.to_string() }).await;
+                let _ = tx
+                    .send(AiEvent::Error {
+                        message: e.to_string(),
+                    })
+                    .await;
             }
         });
         rx
@@ -104,7 +122,11 @@ struct ToolAcc {
     json: String,
 }
 
-async fn run_stream(ctx: Context, cfg: ProviderConfig, tx: mpsc::Sender<AiEvent>) -> anyhow::Result<()> {
+async fn run_stream(
+    ctx: Context,
+    cfg: ProviderConfig,
+    tx: mpsc::Sender<AiEvent>,
+) -> anyhow::Result<()> {
     let client = reqwest::Client::new();
     let url = format!("{}/v1/messages", cfg.base_url.trim_end_matches('/'));
     let resp = client
@@ -117,7 +139,11 @@ async fn run_stream(ctx: Context, cfg: ProviderConfig, tx: mpsc::Sender<AiEvent>
     let status = resp.status();
     if !status.is_success() {
         let body = resp.text().await.unwrap_or_default();
-        let _ = tx.send(AiEvent::Error { message: format!("HTTP {status}: {body}") }).await;
+        let _ = tx
+            .send(AiEvent::Error {
+                message: format!("HTTP {status}: {body}"),
+            })
+            .await;
         return Ok(());
     }
     let _ = tx.send(AiEvent::Start).await;
@@ -134,7 +160,9 @@ async fn run_stream(ctx: Context, cfg: ProviderConfig, tx: mpsc::Sender<AiEvent>
         let data: serde_json::Value = serde_json::from_str(&ev.data)?;
         match ev.event.as_str() {
             "message_start" => {
-                usage.input_tokens = data["message"]["usage"]["input_tokens"].as_u64().unwrap_or(0);
+                usage.input_tokens = data["message"]["usage"]["input_tokens"]
+                    .as_u64()
+                    .unwrap_or(0);
             }
             "content_block_start" => {
                 let block = &data["content_block"];
@@ -152,13 +180,21 @@ async fn run_stream(ctx: Context, cfg: ProviderConfig, tx: mpsc::Sender<AiEvent>
                     "text_delta" => {
                         if let Some(t) = delta["text"].as_str() {
                             text.push_str(t);
-                            let _ = tx.send(AiEvent::TextDelta { delta: t.to_string() }).await;
+                            let _ = tx
+                                .send(AiEvent::TextDelta {
+                                    delta: t.to_string(),
+                                })
+                                .await;
                         }
                     }
                     "thinking_delta" => {
                         if let Some(t) = delta["thinking"].as_str() {
                             thinking.push_str(t);
-                            let _ = tx.send(AiEvent::ThinkingDelta { delta: t.to_string() }).await;
+                            let _ = tx
+                                .send(AiEvent::ThinkingDelta {
+                                    delta: t.to_string(),
+                                })
+                                .await;
                         }
                     }
                     "input_json_delta" => {
@@ -183,7 +219,10 @@ async fn run_stream(ctx: Context, cfg: ProviderConfig, tx: mpsc::Sender<AiEvent>
             }
             "message_stop" => break,
             "error" => {
-                let msg = data["error"]["message"].as_str().unwrap_or("unknown error").to_string();
+                let msg = data["error"]["message"]
+                    .as_str()
+                    .unwrap_or("unknown error")
+                    .to_string();
                 let _ = tx.send(AiEvent::Error { message: msg }).await;
                 return Ok(());
             }
@@ -200,10 +239,23 @@ async fn run_stream(ctx: Context, cfg: ProviderConfig, tx: mpsc::Sender<AiEvent>
     }
     if let Some(acc) = tool {
         let arguments = serde_json::from_str(&acc.json).unwrap_or(serde_json::json!({}));
-        content.push(ContentBlock::ToolCall { id: acc.id, name: acc.name, arguments });
+        content.push(ContentBlock::ToolCall {
+            id: acc.id,
+            name: acc.name,
+            arguments,
+        });
     }
-    let message = Message::Assistant { content, stop_reason, usage };
-    let _ = tx.send(AiEvent::Done { stop_reason, message }).await;
+    let message = Message::Assistant {
+        content,
+        stop_reason,
+        usage,
+    };
+    let _ = tx
+        .send(AiEvent::Done {
+            stop_reason,
+            message,
+        })
+        .await;
     Ok(())
 }
 
@@ -227,7 +279,11 @@ mod tests {
         let ctx = Context {
             system_prompt: "be brief".into(),
             messages: vec![Message::user_text("hi")],
-            tools: vec![ToolDef { name: "bash".into(), description: "run".into(), parameters: serde_json::json!({"type": "object"}) }],
+            tools: vec![ToolDef {
+                name: "bash".into(),
+                description: "run".into(),
+                parameters: serde_json::json!({"type": "object"}),
+            }],
         };
         let body = build_request_body(&ctx, &cfg());
         assert_eq!(body["system"], "be brief");
@@ -244,7 +300,11 @@ mod tests {
             messages: vec![
                 Message::user_text("ls"),
                 Message::Assistant {
-                    content: vec![ContentBlock::ToolCall { id: "t1".into(), name: "bash".into(), arguments: serde_json::json!({"command": "ls"}) }],
+                    content: vec![ContentBlock::ToolCall {
+                        id: "t1".into(),
+                        name: "bash".into(),
+                        arguments: serde_json::json!({"command": "ls"}),
+                    }],
                     stop_reason: StopReason::ToolUse,
                     usage: Default::default(),
                 },
@@ -266,8 +326,12 @@ mod tests {
             system_prompt: String::new(),
             messages: vec![Message::Assistant {
                 content: vec![
-                    ContentBlock::Thinking { thinking: "secret".into() },
-                    ContentBlock::Text { text: "answer".into() },
+                    ContentBlock::Thinking {
+                        thinking: "secret".into(),
+                    },
+                    ContentBlock::Text {
+                        text: "answer".into(),
+                    },
                 ],
                 stop_reason: StopReason::Stop,
                 usage: Default::default(),
@@ -306,12 +370,27 @@ mod tests {
     fn text_stream_body() -> String {
         format!(
             "{}{}{}{}{}{}{}",
-            ev("message_start", serde_json::json!({"message": {"usage": {"input_tokens": 10}}})),
-            ev("content_block_start", serde_json::json!({"index": 0, "content_block": {"type": "text"}})),
-            ev("content_block_delta", serde_json::json!({"index": 0, "delta": {"type": "text_delta", "text": "he"}})),
-            ev("content_block_delta", serde_json::json!({"index": 0, "delta": {"type": "text_delta", "text": "y"}})),
+            ev(
+                "message_start",
+                serde_json::json!({"message": {"usage": {"input_tokens": 10}}})
+            ),
+            ev(
+                "content_block_start",
+                serde_json::json!({"index": 0, "content_block": {"type": "text"}})
+            ),
+            ev(
+                "content_block_delta",
+                serde_json::json!({"index": 0, "delta": {"type": "text_delta", "text": "he"}})
+            ),
+            ev(
+                "content_block_delta",
+                serde_json::json!({"index": 0, "delta": {"type": "text_delta", "text": "y"}})
+            ),
             ev("content_block_stop", serde_json::json!({"index": 0})),
-            ev("message_delta", serde_json::json!({"delta": {"stop_reason": "end_turn"}, "usage": {"output_tokens": 3}})),
+            ev(
+                "message_delta",
+                serde_json::json!({"delta": {"stop_reason": "end_turn"}, "usage": {"output_tokens": 3}})
+            ),
             ev("message_stop", serde_json::json!({})),
         )
     }
@@ -330,15 +409,24 @@ mod tests {
             model: "m".into(),
             max_tokens: 8192,
         });
-        let ctx = crate::ai::Context { system_prompt: String::new(), messages: vec![Message::user_text("hi")], tools: vec![] };
+        let ctx = crate::ai::Context {
+            system_prompt: String::new(),
+            messages: vec![Message::user_text("hi")],
+            tools: vec![],
+        };
         let events = collect(&provider, &ctx).await;
         let mut text = String::new();
         for e in &events {
-            if let AiEvent::TextDelta { delta } = e { text.push_str(delta); }
+            if let AiEvent::TextDelta { delta } = e {
+                text.push_str(delta);
+            }
         }
         assert_eq!(text, "hey");
         match events.last().unwrap() {
-            AiEvent::Done { stop_reason, message } => {
+            AiEvent::Done {
+                stop_reason,
+                message,
+            } => {
                 assert!(*stop_reason == StopReason::Stop);
                 assert_eq!(message.text(), "hey");
             }
@@ -350,12 +438,27 @@ mod tests {
     async fn streams_tool_use_with_input_json_delta() {
         let body = format!(
             "{}{}{}{}{}{}{}",
-            ev("message_start", serde_json::json!({"message": {"usage": {"input_tokens": 10}}})),
-            ev("content_block_start", serde_json::json!({"index": 0, "content_block": {"type": "tool_use", "id": "t1", "name": "read_file"}})),
-            ev("content_block_delta", serde_json::json!({"index": 0, "delta": {"type": "input_json_delta", "partial_json": "{\"pa"}})),
-            ev("content_block_delta", serde_json::json!({"index": 0, "delta": {"type": "input_json_delta", "partial_json": "th\": \"a.txt\"}"}})),
+            ev(
+                "message_start",
+                serde_json::json!({"message": {"usage": {"input_tokens": 10}}})
+            ),
+            ev(
+                "content_block_start",
+                serde_json::json!({"index": 0, "content_block": {"type": "tool_use", "id": "t1", "name": "read_file"}})
+            ),
+            ev(
+                "content_block_delta",
+                serde_json::json!({"index": 0, "delta": {"type": "input_json_delta", "partial_json": "{\"pa"}})
+            ),
+            ev(
+                "content_block_delta",
+                serde_json::json!({"index": 0, "delta": {"type": "input_json_delta", "partial_json": "th\": \"a.txt\"}"}})
+            ),
             ev("content_block_stop", serde_json::json!({"index": 0})),
-            ev("message_delta", serde_json::json!({"delta": {"stop_reason": "tool_use"}, "usage": {"output_tokens": 3}})),
+            ev(
+                "message_delta",
+                serde_json::json!({"delta": {"stop_reason": "tool_use"}, "usage": {"output_tokens": 3}})
+            ),
             ev("message_stop", serde_json::json!({})),
         );
         let server = wiremock::MockServer::start().await;
@@ -369,10 +472,17 @@ mod tests {
             model: "m".into(),
             max_tokens: 8192,
         });
-        let ctx = crate::ai::Context { system_prompt: String::new(), messages: vec![Message::user_text("hi")], tools: vec![] };
+        let ctx = crate::ai::Context {
+            system_prompt: String::new(),
+            messages: vec![Message::user_text("hi")],
+            tools: vec![],
+        };
         let events = collect(&provider, &ctx).await;
         match events.last().unwrap() {
-            AiEvent::Done { stop_reason, message } => {
+            AiEvent::Done {
+                stop_reason,
+                message,
+            } => {
                 assert!(*stop_reason == StopReason::ToolUse);
                 let calls = message.tool_calls();
                 assert_eq!(calls.len(), 1);
@@ -396,7 +506,11 @@ mod tests {
             model: "m".into(),
             max_tokens: 8192,
         });
-        let ctx = crate::ai::Context { system_prompt: String::new(), messages: vec![Message::user_text("hi")], tools: vec![] };
+        let ctx = crate::ai::Context {
+            system_prompt: String::new(),
+            messages: vec![Message::user_text("hi")],
+            tools: vec![],
+        };
         let events = collect(&provider, &ctx).await;
         match events.last().unwrap() {
             AiEvent::Error { message } => assert!(message.contains("401"), "got: {message}"),

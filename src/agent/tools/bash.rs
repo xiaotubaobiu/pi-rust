@@ -18,46 +18,58 @@ pub struct BashArgs {
 }
 
 pub fn tool() -> AgentTool {
-    make_tool("bash", "Run a shell command and return its combined stdout and stderr", |a: BashArgs| {
-        Box::pin(async move {
-            let mut cmd = if cfg!(windows) {
-                let mut c = tokio::process::Command::new("cmd");
-                c.arg("/C").arg(&a.command);
-                c
-            } else {
-                let mut c = tokio::process::Command::new("sh");
-                c.arg("-c").arg(&a.command);
-                c
-            };
-            cmd.stdout(Stdio::piped())
-                .stderr(Stdio::piped())
-                .kill_on_drop(true);
+    make_tool(
+        "bash",
+        "Run a shell command and return its combined stdout and stderr",
+        |a: BashArgs| {
+            Box::pin(async move {
+                let mut cmd = if cfg!(windows) {
+                    let mut c = tokio::process::Command::new("cmd");
+                    c.arg("/C").arg(&a.command);
+                    c
+                } else {
+                    let mut c = tokio::process::Command::new("sh");
+                    c.arg("-c").arg(&a.command);
+                    c
+                };
+                cmd.stdout(Stdio::piped())
+                    .stderr(Stdio::piped())
+                    .kill_on_drop(true);
 
-            let child = cmd.spawn().map_err(|e| format!("spawn failed: {e}"))?;
-            let output = match tokio::time::timeout(Duration::from_millis(a.timeout_ms), child.wait_with_output()).await {
-                Ok(Ok(o)) => o,
-                Ok(Err(e)) => return Err(format!("command failed: {e}")),
-                Err(_) => return Err(format!("command timed out after {} ms", a.timeout_ms)),
-            };
+                let child = cmd.spawn().map_err(|e| format!("spawn failed: {e}"))?;
+                let output = match tokio::time::timeout(
+                    Duration::from_millis(a.timeout_ms),
+                    child.wait_with_output(),
+                )
+                .await
+                {
+                    Ok(Ok(o)) => o,
+                    Ok(Err(e)) => return Err(format!("command failed: {e}")),
+                    Err(_) => return Err(format!("command timed out after {} ms", a.timeout_ms)),
+                };
 
-            let mut out = String::from_utf8_lossy(&output.stdout).to_string();
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            if !stderr.is_empty() {
-                if !out.is_empty() && !out.ends_with('\n') {
-                    out.push('\n');
+                let mut out = String::from_utf8_lossy(&output.stdout).to_string();
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                if !stderr.is_empty() {
+                    if !out.is_empty() && !out.ends_with('\n') {
+                        out.push('\n');
+                    }
+                    out.push_str(&stderr);
                 }
-                out.push_str(&stderr);
-            }
-            if out.len() > 10_000 {
-                out.truncate(10_000);
-                out.push_str("\n... (truncated)");
-            }
-            if !output.status.success() {
-                return Ok(format!("exit code: {}\n{out}", output.status.code().unwrap_or(-1)));
-            }
-            Ok(out)
-        })
-    })
+                if out.len() > 10_000 {
+                    out.truncate(10_000);
+                    out.push_str("\n... (truncated)");
+                }
+                if !output.status.success() {
+                    return Ok(format!(
+                        "exit code: {}\n{out}",
+                        output.status.code().unwrap_or(-1)
+                    ));
+                }
+                Ok(out)
+            })
+        },
+    )
 }
 
 #[cfg(test)]
@@ -72,7 +84,9 @@ mod tests {
     #[tokio::test]
     async fn runs_command() {
         let t = tool();
-        let out = (t.execute)(serde_json::json!({"command": ECHO})).await.unwrap();
+        let out = (t.execute)(serde_json::json!({"command": ECHO}))
+            .await
+            .unwrap();
         assert!(out.contains("pirs_test_ok"), "got: {out}");
     }
 

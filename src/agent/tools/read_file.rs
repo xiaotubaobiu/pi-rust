@@ -9,12 +9,17 @@ pub struct ReadFileArgs {
 }
 
 pub fn tool() -> AgentTool {
-    make_tool("read_file", "Read a text file from disk and return its contents", |a: ReadFileArgs| {
-        Box::pin(async move {
-            let content = std::fs::read_to_string(&a.path).map_err(|e| format!("read failed: {e}"))?;
-            Ok(content)
-        })
-    })
+    make_tool(
+        "read_file",
+        "Read a text file from disk and return its contents",
+        |a: ReadFileArgs| {
+            Box::pin(async move {
+                let content =
+                    std::fs::read_to_string(&a.path).map_err(|e| format!("read failed: {e}"))?;
+                Ok(content)
+            })
+        },
+    )
 }
 
 #[cfg(test)]

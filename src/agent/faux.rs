@@ -12,7 +12,9 @@ pub struct FauxProvider {
 
 impl FauxProvider {
     pub fn new() -> Self {
-        FauxProvider { scripts: Mutex::new(VecDeque::new()) }
+        FauxProvider {
+            scripts: Mutex::new(VecDeque::new()),
+        }
     }
 
     pub fn push_script(&self, script: Vec<AiEvent>) {

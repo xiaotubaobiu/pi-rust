@@ -5,9 +5,22 @@ use crate::ai::message::{Message, StopReason};
 #[derive(Debug, Clone)]
 pub enum AiEvent {
     Start,
-    TextDelta { delta: String },
-    ThinkingDelta { delta: String },
-    ToolCallEnd { id: String, name: String, arguments: serde_json::Value },
-    Done { stop_reason: StopReason, message: Message },
-    Error { message: String },
+    TextDelta {
+        delta: String,
+    },
+    ThinkingDelta {
+        delta: String,
+    },
+    ToolCallEnd {
+        id: String,
+        name: String,
+        arguments: serde_json::Value,
+    },
+    Done {
+        stop_reason: StopReason,
+        message: Message,
+    },
+    Error {
+        message: String,
+    },
 }

@@ -13,21 +13,28 @@ pub struct EditFileArgs {
 }
 
 pub fn tool() -> AgentTool {
-    make_tool("edit_file", "Replace an exact, unique occurrence of text in a file", |a: EditFileArgs| {
-        Box::pin(async move {
-            let content = std::fs::read_to_string(&a.path).map_err(|e| format!("read failed: {e}"))?;
-            let count = content.matches(&a.old_string).count();
-            if count == 0 {
-                return Err("old_string not found in file".into());
-            }
-            if count > 1 {
-                return Err(format!("old_string appears {count} times; it must be unique"));
-            }
-            let updated = content.replacen(&a.old_string, &a.new_string, 1);
-            std::fs::write(&a.path, updated).map_err(|e| format!("write failed: {e}"))?;
-            Ok(format!("edited {}", a.path))
-        })
-    })
+    make_tool(
+        "edit_file",
+        "Replace an exact, unique occurrence of text in a file",
+        |a: EditFileArgs| {
+            Box::pin(async move {
+                let content =
+                    std::fs::read_to_string(&a.path).map_err(|e| format!("read failed: {e}"))?;
+                let count = content.matches(&a.old_string).count();
+                if count == 0 {
+                    return Err("old_string not found in file".into());
+                }
+                if count > 1 {
+                    return Err(format!(
+                        "old_string appears {count} times; it must be unique"
+                    ));
+                }
+                let updated = content.replacen(&a.old_string, &a.new_string, 1);
+                std::fs::write(&a.path, updated).map_err(|e| format!("write failed: {e}"))?;
+                Ok(format!("edited {}", a.path))
+            })
+        },
+    )
 }
 
 #[cfg(test)]
@@ -43,12 +50,14 @@ mod tests {
 
         let dup = (t.execute)(serde_json::json!({
             "path": path.to_str().unwrap(), "old_string": "two", "new_string": "three"
-        })).await;
+        }))
+        .await;
         assert!(dup.unwrap_err().contains("2 times"));
 
         let ok = (t.execute)(serde_json::json!({
             "path": path.to_str().unwrap(), "old_string": "one", "new_string": "uno"
-        })).await;
+        }))
+        .await;
         assert!(ok.is_ok());
         assert_eq!(std::fs::read_to_string(&path).unwrap(), "uno two two");
     }

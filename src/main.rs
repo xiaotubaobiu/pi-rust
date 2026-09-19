@@ -11,7 +11,11 @@ use pi_rust::config::{load_config, resolve_api_key, Config};
 use std::sync::Arc;
 
 #[derive(Parser)]
-#[command(name = "pirs", version, about = "Minimal coding agent CLI (Rust rewrite of pi)")]
+#[command(
+    name = "pirs",
+    version,
+    about = "Minimal coding agent CLI (Rust rewrite of pi)"
+)]
 struct Args {
     /// Provider: anthropic | openai-compat
     #[arg(long)]
@@ -31,9 +35,15 @@ struct Args {
 async fn main() -> Result<()> {
     let args = Args::parse();
     let mut cfg: Config = load_config()?;
-    if let Some(p) = args.provider { cfg.provider = p; }
-    if let Some(m) = args.model { cfg.model = m; }
-    if args.base_url.is_some() { cfg.base_url = args.base_url.clone(); }
+    if let Some(p) = args.provider {
+        cfg.provider = p;
+    }
+    if let Some(m) = args.model {
+        cfg.model = m;
+    }
+    if args.base_url.is_some() {
+        cfg.base_url = args.base_url.clone();
+    }
 
     let key = resolve_api_key(&cfg.provider, args.api_key.as_deref())
         .context("no API key found: set ANTHROPIC_API_KEY (anthropic) or GLM_API_KEY/OPENAI_API_KEY (openai-compat), or pass --api-key")?;

@@ -41,7 +41,13 @@ pub struct Agent {
 
 impl Agent {
     pub fn new(provider: Arc<dyn Provider>, tools: Vec<AgentTool>, system_prompt: String) -> Self {
-        Agent { provider, tools, system_prompt, messages: Vec::new(), max_turns: 25 }
+        Agent {
+            provider,
+            tools,
+            system_prompt,
+            messages: Vec::new(),
+            max_turns: 25,
+        }
     }
 
     fn build_context(&self) -> Context {
@@ -61,8 +67,13 @@ impl Agent {
     }
 
     /// Run one user prompt to completion of the tool-call loop.
-    pub async fn prompt(&mut self, text: &str, on_event: &mut dyn FnMut(AgentEvent)) -> anyhow::Result<()> {
-        self.messages.push(AgentMessage::Message(Message::user_text(text)));
+    pub async fn prompt(
+        &mut self,
+        text: &str,
+        on_event: &mut dyn FnMut(AgentEvent),
+    ) -> anyhow::Result<()> {
+        self.messages
+            .push(AgentMessage::Message(Message::user_text(text)));
         on_event(AgentEvent::TurnStart);
         let result = self.run_turns(on_event).await;
         on_event(AgentEvent::AgentEnd);
@@ -78,11 +89,15 @@ impl Agent {
                 match ev {
                     AiEvent::Start => {}
                     AiEvent::TextDelta { delta } => on_event(AgentEvent::AssistantDelta { delta }),
-                    AiEvent::ThinkingDelta { delta } => on_event(AgentEvent::ThinkingDelta { delta }),
+                    AiEvent::ThinkingDelta { delta } => {
+                        on_event(AgentEvent::ThinkingDelta { delta })
+                    }
                     AiEvent::ToolCallEnd { .. } => {}
                     AiEvent::Done { message, .. } => assistant = Some(message),
                     AiEvent::Error { message } => {
-                        on_event(AgentEvent::AgentError { message: message.clone() });
+                        on_event(AgentEvent::AgentError {
+                            message: message.clone(),
+                        });
                         anyhow::bail!("stream error: {message}");
                     }
                 }
@@ -103,8 +118,15 @@ impl Agent {
                     arguments: call.arguments.clone(),
                 });
                 let (output, is_error) = self.execute_tool(&call.name, call.arguments).await;
-                on_event(AgentEvent::ToolExecutionEnd { tool_call_id: call.id.clone(), tool_name: call.name.clone(), is_error });
-                self.messages.push(AgentMessage::Message(Message::tool_result(call.id, call.name, output, is_error)));
+                on_event(AgentEvent::ToolExecutionEnd {
+                    tool_call_id: call.id.clone(),
+                    tool_name: call.name.clone(),
+                    is_error,
+                });
+                self.messages
+                    .push(AgentMessage::Message(Message::tool_result(
+                        call.id, call.name, output, is_error,
+                    )));
             }
             on_event(AgentEvent::TurnEnd);
         }
@@ -132,7 +154,9 @@ mod tests {
         AiEvent::Done {
             stop_reason: StopReason::Stop,
             message: Message::Assistant {
-                content: vec![ContentBlock::Text { text: text.to_string() }],
+                content: vec![ContentBlock::Text {
+                    text: text.to_string(),
+                }],
                 stop_reason: StopReason::Stop,
                 usage: Default::default(),
             },
@@ -142,22 +166,35 @@ mod tests {
     #[tokio::test]
     async fn single_turn_no_tools() {
         let faux = Arc::new(FauxProvider::new());
-        faux.push_script(vec![AiEvent::Start, AiEvent::TextDelta { delta: "he".into() }, AiEvent::TextDelta { delta: "y".into() }, text_done("hey")]);
+        faux.push_script(vec![
+            AiEvent::Start,
+            AiEvent::TextDelta { delta: "he".into() },
+            AiEvent::TextDelta { delta: "y".into() },
+            text_done("hey"),
+        ]);
         let mut agent = Agent::new(faux.clone(), vec![], "sys".into());
 
         let mut events = Vec::new();
-        agent.prompt("hello", &mut |ev| events.push(format!("{ev:?}"))).await.unwrap();
+        agent
+            .prompt("hello", &mut |ev| events.push(format!("{ev:?}")))
+            .await
+            .unwrap();
 
         assert_eq!(agent.messages.len(), 2);
-        let deltas: Vec<&str> = events.iter().filter_map(|e| match e {
-            s if s.starts_with("AssistantDelta") => Some(s.as_str()),
-            _ => None,
-        }).collect();
+        let deltas: Vec<&str> = events
+            .iter()
+            .filter_map(|e| match e {
+                s if s.starts_with("AssistantDelta") => Some(s.as_str()),
+                _ => None,
+            })
+            .collect();
         assert_eq!(deltas.len(), 2);
         assert!(events.iter().any(|e| e.starts_with("AgentEnd")));
 
         // notification messages are filtered from LLM context
-        agent.messages.push(AgentMessage::Notification { text: "ui only".into() });
+        agent.messages.push(AgentMessage::Notification {
+            text: "ui only".into(),
+        });
         let ctx = agent.build_context();
         assert_eq!(ctx.messages.len(), 2);
         assert_eq!(ctx.system_prompt, "sys");
@@ -179,7 +216,11 @@ mod tests {
         faux.push_script(vec![AiEvent::Done {
             stop_reason: StopReason::ToolUse,
             message: Message::Assistant {
-                content: vec![ContentBlock::ToolCall { id: "t1".into(), name: "echo".into(), arguments: serde_json::json!({"text": "hi"}) }],
+                content: vec![ContentBlock::ToolCall {
+                    id: "t1".into(),
+                    name: "echo".into(),
+                    arguments: serde_json::json!({"text": "hi"}),
+                }],
                 stop_reason: StopReason::ToolUse,
                 usage: Default::default(),
             },
@@ -193,16 +234,26 @@ mod tests {
         let mut agent = Agent::new(faux.clone(), vec![echo_tool], String::new());
 
         let mut tool_events: Vec<String> = Vec::new();
-        agent.prompt("run echo", &mut |ev| {
-            if let AgentEvent::ToolExecutionEnd { tool_name, is_error, .. } = ev {
-                tool_events.push(format!("{tool_name} error={is_error}"));
-            }
-        }).await.unwrap();
+        agent
+            .prompt("run echo", &mut |ev| {
+                if let AgentEvent::ToolExecutionEnd {
+                    tool_name,
+                    is_error,
+                    ..
+                } = ev
+                {
+                    tool_events.push(format!("{tool_name} error={is_error}"));
+                }
+            })
+            .await
+            .unwrap();
 
         assert_eq!(tool_events, vec!["echo error=false".to_string()]);
         assert_eq!(agent.messages.len(), 4); // user, assistant(toolcall), toolresult, assistant(final)
         match &agent.messages[2] {
-            AgentMessage::Message(Message::ToolResult { content, is_error, .. }) => {
+            AgentMessage::Message(Message::ToolResult {
+                content, is_error, ..
+            }) => {
                 assert!(!is_error);
                 match &content[0] {
                     ContentBlock::Text { text } => assert_eq!(text, "echo: hi"),
@@ -219,7 +270,11 @@ mod tests {
         faux.push_script(vec![AiEvent::Done {
             stop_reason: StopReason::ToolUse,
             message: Message::Assistant {
-                content: vec![ContentBlock::ToolCall { id: "t1".into(), name: "echo".into(), arguments: serde_json::json!({"wrong": "arg"}) }],
+                content: vec![ContentBlock::ToolCall {
+                    id: "t1".into(),
+                    name: "echo".into(),
+                    arguments: serde_json::json!({"wrong": "arg"}),
+                }],
                 stop_reason: StopReason::ToolUse,
                 usage: Default::default(),
             },
@@ -227,7 +282,11 @@ mod tests {
         faux.push_script(vec![AiEvent::Done {
             stop_reason: StopReason::ToolUse,
             message: Message::Assistant {
-                content: vec![ContentBlock::ToolCall { id: "t2".into(), name: "nope".into(), arguments: serde_json::json!({}) }],
+                content: vec![ContentBlock::ToolCall {
+                    id: "t2".into(),
+                    name: "nope".into(),
+                    arguments: serde_json::json!({}),
+                }],
                 stop_reason: StopReason::ToolUse,
                 usage: Default::default(),
             },
@@ -240,21 +299,22 @@ mod tests {
         let mut agent = Agent::new(faux.clone(), vec![echo_tool], String::new());
 
         let mut errors: Vec<bool> = Vec::new();
-        agent.prompt("go", &mut |ev| {
-            if let AgentEvent::ToolExecutionEnd { is_error, .. } = ev {
-                errors.push(is_error);
-            }
-        }).await.unwrap();
+        agent
+            .prompt("go", &mut |ev| {
+                if let AgentEvent::ToolExecutionEnd { is_error, .. } = ev {
+                    errors.push(is_error);
+                }
+            })
+            .await
+            .unwrap();
 
         assert_eq!(errors, vec![true, true]); // invalid args, then unknown tool; final turn has no tool
         assert_eq!(agent.messages.len(), 6); // user, asst, toolresult, asst, toolresult, asst
         match agent.messages.last().unwrap() {
-            AgentMessage::Message(Message::Assistant { content, .. }) => {
-                match &content[0] {
-                    ContentBlock::Text { text } => assert_eq!(text, "done"),
-                    other => panic!("unexpected block {other:?}"),
-                }
-            }
+            AgentMessage::Message(Message::Assistant { content, .. }) => match &content[0] {
+                ContentBlock::Text { text } => assert_eq!(text, "done"),
+                other => panic!("unexpected block {other:?}"),
+            },
             other => panic!("expected final assistant message, got {other:?}"),
         }
     }
@@ -262,16 +322,20 @@ mod tests {
     #[tokio::test]
     async fn stream_error_is_reported() {
         let faux = Arc::new(FauxProvider::new());
-        faux.push_script(vec![AiEvent::Error { message: "boom".into() }]);
+        faux.push_script(vec![AiEvent::Error {
+            message: "boom".into(),
+        }]);
         let mut agent = Agent::new(faux.clone(), vec![], String::new());
 
         let mut got_error = false;
-        let result = agent.prompt("hi", &mut |ev| {
-            if let AgentEvent::AgentError { message } = ev {
-                assert_eq!(message, "boom");
-                got_error = true;
-            }
-        }).await;
+        let result = agent
+            .prompt("hi", &mut |ev| {
+                if let AgentEvent::AgentError { message } = ev {
+                    assert_eq!(message, "boom");
+                    got_error = true;
+                }
+            })
+            .await;
         assert!(result.is_err());
         assert!(got_error);
     }

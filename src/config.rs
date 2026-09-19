@@ -33,7 +33,11 @@ impl Default for Config {
 pub fn parse_config(toml_str: &str) -> anyhow::Result<Config> {
     let cfg: Config = toml::from_str(toml_str)?;
     if !PROVIDERS.contains(&cfg.provider.as_str()) {
-        anyhow::bail!("unknown provider '{}'; expected one of {:?}", cfg.provider, PROVIDERS);
+        anyhow::bail!(
+            "unknown provider '{}'; expected one of {:?}",
+            cfg.provider,
+            PROVIDERS
+        );
     }
     if cfg.provider == "openai-compat" && cfg.base_url.is_none() {
         anyhow::bail!("openai-compat requires base_url in config or --base-url");
@@ -63,7 +67,12 @@ pub fn resolve_api_key(provider: &str, cli_key: Option<&str>) -> Option<String> 
     }
     let candidates: &[&str] = match provider {
         "anthropic" => &["ANTHROPIC_API_KEY"],
-        "openai-compat" => &["GLM_API_KEY", "OPENAI_API_KEY", "DEEPSEEK_API_KEY", "MOONSHOT_API_KEY"],
+        "openai-compat" => &[
+            "GLM_API_KEY",
+            "OPENAI_API_KEY",
+            "DEEPSEEK_API_KEY",
+            "MOONSHOT_API_KEY",
+        ],
         _ => &[],
     };
     candidates
@@ -88,11 +97,14 @@ mod tests {
 
     #[test]
     fn parses_valid_config() {
-        let cfg = parse_config(r#"
+        let cfg = parse_config(
+            r#"
 provider = "openai-compat"
 model = "glm-4.6"
 base_url = "https://open.bigmodel.cn/api/paas/v4"
-"#).unwrap();
+"#,
+        )
+        .unwrap();
         assert_eq!(cfg.provider, "openai-compat");
         assert_eq!(cfg.model, "glm-4.6");
         assert_eq!(cfg.max_tokens, 8192);

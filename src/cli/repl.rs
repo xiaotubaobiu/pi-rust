@@ -42,9 +42,11 @@ pub async fn run(agent: &mut Agent, session: &mut SessionWriter, model_label: &s
             }
             text => {
                 let start = agent.messages.len();
-                let result = agent.prompt(text, &mut |ev: AgentEvent| {
-                    crate::cli::render::render_event(&ev);
-                }).await;
+                let result = agent
+                    .prompt(text, &mut |ev: AgentEvent| {
+                        crate::cli::render::render_event(&ev);
+                    })
+                    .await;
                 if let Err(e) = result {
                     println!("[error] {e}");
                 }
