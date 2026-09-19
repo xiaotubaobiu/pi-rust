@@ -1,6 +1,7 @@
 pub mod event;
 pub mod faux;
 pub mod tool;
+pub mod tools;
 
 use crate::ai::event::AiEvent;
 use crate::ai::message::Message;
