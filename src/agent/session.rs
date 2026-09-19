@@ -2,7 +2,10 @@ use crate::agent::AgentMessage;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
-/// Append-only JSONL transcript: one AgentMessage per line.
+/// Append-only JSONL transcript: one AgentMessage per line. Wrapped messages
+/// are full upstream `Message`s, so the file is upstream-compatible wire
+/// format (role tags, camelCase fields, Unix-millisecond timestamps). M1
+/// session files are not migrated.
 pub struct SessionWriter {
     file: std::fs::File,
     path: PathBuf,
@@ -37,22 +40,36 @@ impl SessionWriter {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ai::message::Message;
+    use crate::ai::types::message::{Message, StringOrBlocks, UserMessage};
 
     #[test]
-    fn appends_parsable_lines() {
+    fn appends_parsable_lines_in_upstream_wire_format() {
         let dir = tempfile::tempdir().unwrap();
         let mut s = SessionWriter::create(dir.path()).unwrap();
-        s.append(&AgentMessage::Message(Message::user_text("hello")))
-            .unwrap();
+        s.append(&AgentMessage::Message(Message::User(UserMessage {
+            content: StringOrBlocks::Text("hello".into()),
+            timestamp: 1758240000000,
+        })))
+        .unwrap();
         s.append(&AgentMessage::Notification { text: "ui".into() })
             .unwrap();
 
         let content = std::fs::read_to_string(s.path()).unwrap();
         let lines: Vec<&str> = content.lines().collect();
         assert_eq!(lines.len(), 2);
+        // Upstream-compatible wire format: role tag + camelCase field names.
+        assert_eq!(
+            lines[0],
+            r#"{"kind":"message","role":"user","content":"hello","timestamp":1758240000000}"#
+        );
         match serde_json::from_str::<AgentMessage>(lines[0]).unwrap() {
-            AgentMessage::Message(m) => assert_eq!(m.text(), "hello"),
+            AgentMessage::Message(m) => match m {
+                Message::User(user) => {
+                    assert_eq!(user.content, StringOrBlocks::Text("hello".into()));
+                    assert_eq!(user.timestamp, 1758240000000);
+                }
+                other => panic!("expected user message, got {other:?}"),
+            },
             other => panic!("expected message line, got {other:?}"),
         }
         match serde_json::from_str::<AgentMessage>(lines[1]).unwrap() {
