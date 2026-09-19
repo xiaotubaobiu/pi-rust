@@ -160,4 +160,117 @@ mod tests {
         assert_eq!(ctx.messages.len(), 2);
         assert_eq!(ctx.system_prompt, "sys");
     }
+
+    use crate::agent::tool::make_tool;
+    use schemars::JsonSchema;
+    use serde::Deserialize;
+
+    #[derive(Deserialize, JsonSchema)]
+    struct EchoArgs {
+        text: String,
+    }
+
+    #[tokio::test]
+    async fn tool_call_loop_two_turns() {
+        let faux = Arc::new(FauxProvider::new());
+        // turn 1: model requests echo tool
+        faux.push_script(vec![AiEvent::Done {
+            stop_reason: StopReason::ToolUse,
+            message: Message::Assistant {
+                content: vec![ContentBlock::ToolCall { id: "t1".into(), name: "echo".into(), arguments: serde_json::json!({"text": "hi"}) }],
+                stop_reason: StopReason::ToolUse,
+                usage: Default::default(),
+            },
+        }]);
+        // turn 2: model answers using the tool result
+        faux.push_script(vec![text_done("echo said hi")]);
+
+        let echo_tool = make_tool("echo", "echo text back", |a: EchoArgs| {
+            Box::pin(async move { Ok(format!("echo: {}", a.text)) })
+        });
+        let mut agent = Agent::new(faux.clone(), vec![echo_tool], String::new());
+
+        let mut tool_events: Vec<String> = Vec::new();
+        agent.prompt("run echo", &mut |ev| {
+            if let AgentEvent::ToolExecutionEnd { tool_name, is_error, .. } = ev {
+                tool_events.push(format!("{tool_name} error={is_error}"));
+            }
+        }).await.unwrap();
+
+        assert_eq!(tool_events, vec!["echo error=false".to_string()]);
+        assert_eq!(agent.messages.len(), 4); // user, assistant(toolcall), toolresult, assistant(final)
+        match &agent.messages[2] {
+            AgentMessage::Message(Message::ToolResult { content, is_error, .. }) => {
+                assert!(!is_error);
+                match &content[0] {
+                    ContentBlock::Text { text } => assert_eq!(text, "echo: hi"),
+                    other => panic!("unexpected block {other:?}"),
+                }
+            }
+            other => panic!("expected tool result message, got {other:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn invalid_args_and_unknown_tool_become_error_results() {
+        let faux = Arc::new(FauxProvider::new());
+        faux.push_script(vec![AiEvent::Done {
+            stop_reason: StopReason::ToolUse,
+            message: Message::Assistant {
+                content: vec![ContentBlock::ToolCall { id: "t1".into(), name: "echo".into(), arguments: serde_json::json!({"wrong": "arg"}) }],
+                stop_reason: StopReason::ToolUse,
+                usage: Default::default(),
+            },
+        }]);
+        faux.push_script(vec![AiEvent::Done {
+            stop_reason: StopReason::ToolUse,
+            message: Message::Assistant {
+                content: vec![ContentBlock::ToolCall { id: "t2".into(), name: "nope".into(), arguments: serde_json::json!({}) }],
+                stop_reason: StopReason::ToolUse,
+                usage: Default::default(),
+            },
+        }]);
+        faux.push_script(vec![text_done("done")]);
+
+        let echo_tool = make_tool("echo", "echo text back", |a: EchoArgs| {
+            Box::pin(async move { Ok(format!("echo: {}", a.text)) })
+        });
+        let mut agent = Agent::new(faux.clone(), vec![echo_tool], String::new());
+
+        let mut errors: Vec<bool> = Vec::new();
+        agent.prompt("go", &mut |ev| {
+            if let AgentEvent::ToolExecutionEnd { is_error, .. } = ev {
+                errors.push(is_error);
+            }
+        }).await.unwrap();
+
+        assert_eq!(errors, vec![true, true]); // invalid args, then unknown tool; final turn has no tool
+        assert_eq!(agent.messages.len(), 6); // user, asst, toolresult, asst, toolresult, asst
+        match agent.messages.last().unwrap() {
+            AgentMessage::Message(Message::Assistant { content, .. }) => {
+                match &content[0] {
+                    ContentBlock::Text { text } => assert_eq!(text, "done"),
+                    other => panic!("unexpected block {other:?}"),
+                }
+            }
+            other => panic!("expected final assistant message, got {other:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn stream_error_is_reported() {
+        let faux = Arc::new(FauxProvider::new());
+        faux.push_script(vec![AiEvent::Error { message: "boom".into() }]);
+        let mut agent = Agent::new(faux.clone(), vec![], String::new());
+
+        let mut got_error = false;
+        let result = agent.prompt("hi", &mut |ev| {
+            if let AgentEvent::AgentError { message } = ev {
+                assert_eq!(message, "boom");
+                got_error = true;
+            }
+        }).await;
+        assert!(result.is_err());
+        assert!(got_error);
+    }
 }
