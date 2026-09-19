@@ -3,6 +3,8 @@
 //! minus the optional deferred-response methods) and the shared HTTP client
 //! factory used by every provider request.
 
+pub mod openai_completions;
+
 use crate::ai::transcript::TranscriptContext;
 use crate::ai::types::events::AssistantMessageEvent;
 use crate::ai::types::options::{SimpleStreamOptions, StreamOptions};
