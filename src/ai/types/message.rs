@@ -17,6 +17,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 
 use super::content::{ImageContent, TextContent, ThinkingContent, ToolCall};
+use super::options::DeferredHandle;
 use super::primitives::{StopReason, Usage};
 use super::tool::{Tool, ToolReference};
 
@@ -254,11 +255,11 @@ pub struct AssistantMessage {
     pub diagnostics: Option<Vec<AssistantMessageDiagnostic>>,
     pub usage: Usage,
     pub stop_reason: StopReason,
-    /// Upstream `DeferredHandle` (types.ts:462-472). Raw JSON for M2a; the
-    /// typed struct is produced by the stream-options task and will replace
-    /// this placeholder.
+    /// Durable handle for deferred responses: set when a capable provider
+    /// continues the request asynchronously (upstream `DeferredHandle`,
+    /// types.ts:462-472, defined in `options.rs`).
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub deferred: Option<serde_json::Value>,
+    pub deferred: Option<DeferredHandle>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error_message: Option<String>,
     /// Provider-native stop reason before pi's normalization.
@@ -295,6 +296,13 @@ pub struct ToolResultMessage {
 
 /// Upstream `Message` (types.ts:546): tagged by `role` with the upstream
 /// literal values (`"toolResult"`, never `"tool_result"`).
+///
+/// The Assistant variant is intrinsically the largest payload (content blocks,
+/// usage, diagnostics, deferred handle); the size difference against the other
+/// variants crossed clippy's default threshold when `deferred` became the
+/// typed `DeferredHandle`. Boxing the variant (or the handle) would add
+/// indirection at every use site for no functional gain.
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "role", rename_all = "camelCase")]
 pub enum Message {
@@ -323,7 +331,7 @@ mod tests {
 
     const SYSTEM_FULL_PATCH: &str = r#"{"role":"system","content":[{"type":"text","text":"Extra instructions from here on."}],"sections":{"tools":"Use tools carefully.","skills":null},"toolsAdded":[{"name":"bash","description":"Run a shell command","parameters":{"properties":{"command":{"type":"string"}},"type":"object"}}],"toolsRemoved":[{"name":"weather"}],"timestamp":1758240000003}"#;
 
-    const ASSISTANT_FULL: &str = r#"{"role":"assistant","content":[{"type":"text","text":"Running ls."},{"type":"thinking","thinking":"need the listing","thinkingSignature":"sig1"},{"type":"toolCall","id":"call_1","name":"bash","arguments":{"command":"ls"}}],"api":"anthropic-messages","provider":"anthropic","model":"claude-sonnet-4-5","responseModel":"claude-sonnet-4-5-20250929","responseId":"msg_01ABC","providerThinkingLevel":"high","diagnostics":[{"type":"retry","timestamp":1758240000000,"error":{"name":"HttpError","message":"429 too many requests","stack":"at f()","code":429},"details":{"attempt":1}}],"usage":{"input":10,"output":5,"cacheRead":0,"cacheWrite":0,"cacheWrite1h":0,"reasoning":5,"totalTokens":15,"cost":{"input":0.01,"output":0.02,"cacheRead":0.0,"cacheWrite":0.0,"total":0.03}},"stopReason":"toolUse","deferred":{"api":"anthropic-messages","id":"resp_123","modelId":"claude-sonnet-4-5","provider":"anthropic"},"errorMessage":"first attempt failed","rawStopReason":"tool_use","endTurn":false,"timestamp":1758240000004}"#;
+    const ASSISTANT_FULL: &str = r#"{"role":"assistant","content":[{"type":"text","text":"Running ls."},{"type":"thinking","thinking":"need the listing","thinkingSignature":"sig1"},{"type":"toolCall","id":"call_1","name":"bash","arguments":{"command":"ls"}}],"api":"anthropic-messages","provider":"anthropic","model":"claude-sonnet-4-5","responseModel":"claude-sonnet-4-5-20250929","responseId":"msg_01ABC","providerThinkingLevel":"high","diagnostics":[{"type":"retry","timestamp":1758240000000,"error":{"name":"HttpError","message":"429 too many requests","stack":"at f()","code":429},"details":{"attempt":1}}],"usage":{"input":10,"output":5,"cacheRead":0,"cacheWrite":0,"cacheWrite1h":0,"reasoning":5,"totalTokens":15,"cost":{"input":0.01,"output":0.02,"cacheRead":0.0,"cacheWrite":0.0,"total":0.03}},"stopReason":"toolUse","deferred":{"provider":"anthropic","modelId":"claude-sonnet-4-5","api":"anthropic-messages","id":"resp_123"},"errorMessage":"first attempt failed","rawStopReason":"tool_use","endTurn":false,"timestamp":1758240000004}"#;
 
     const ASSISTANT_MINIMAL: &str = r#"{"role":"assistant","content":[],"api":"openai-completions","provider":"openai","model":"gpt-5","usage":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"totalTokens":0,"cost":{"input":0.0,"output":0.0,"cacheRead":0.0,"cacheWrite":0.0,"total":0.0}},"stopReason":"stop","timestamp":1758240000005}"#;
 
@@ -565,12 +573,15 @@ mod tests {
         assert_eq!(assistant.stop_reason, StopReason::ToolUse);
         assert_eq!(
             assistant.deferred,
-            Some(serde_json::json!({
-                "api": "anthropic-messages",
-                "id": "resp_123",
-                "modelId": "claude-sonnet-4-5",
-                "provider": "anthropic",
-            }))
+            Some(DeferredHandle {
+                provider: "anthropic".into(),
+                model_id: "claude-sonnet-4-5".into(),
+                api: "anthropic-messages".into(),
+                id: "resp_123".into(),
+                expires_at: None,
+                poll_after_ms: None,
+                data: None,
+            })
         );
         assert_eq!(assistant.error_message, Some("first attempt failed".into()));
         assert_eq!(assistant.raw_stop_reason, Some("tool_use".into()));
@@ -633,12 +644,15 @@ mod tests {
                 },
             },
             stop_reason: StopReason::ToolUse,
-            deferred: Some(serde_json::json!({
-                "api": "anthropic-messages",
-                "id": "resp_123",
-                "modelId": "claude-sonnet-4-5",
-                "provider": "anthropic",
-            })),
+            deferred: Some(DeferredHandle {
+                provider: "anthropic".into(),
+                model_id: "claude-sonnet-4-5".into(),
+                api: "anthropic-messages".into(),
+                id: "resp_123".into(),
+                expires_at: None,
+                poll_after_ms: None,
+                data: None,
+            }),
             error_message: Some("first attempt failed".into()),
             raw_stop_reason: Some("tool_use".into()),
             end_turn: Some(false),
