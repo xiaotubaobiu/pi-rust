@@ -1,3 +1,4 @@
+pub mod anthropic;
 pub mod event;
 pub mod message;
 pub mod openai_compat;
