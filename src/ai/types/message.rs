@@ -11,8 +11,10 @@
 //! milliseconds (`number` upstream, `i64` here) so upstream pi session JSONL
 //! round-trips.
 
+use serde::de::{Deserializer, MapAccess, Visitor};
+use serde::ser::{SerializeMap, Serializer};
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::fmt;
 
 use super::content::{ImageContent, TextContent, ThinkingContent, ToolCall};
 use super::primitives::{StopReason, Usage};
@@ -94,6 +96,100 @@ pub struct AssistantMessageDiagnostic {
     pub details: Option<serde_json::Value>,
 }
 
+/// Upstream `SystemMessage.sections` (types.ts:494, `Record<string, string | null>`):
+/// named prompt sections whose order is semantic. Upstream renders sections
+/// verbatim after `content` in the object's key insertion order
+/// (`Object.values` in utils/text.ts:17) and the transcript replay
+/// (utils/transcript.ts:75-92) rebuilds the wire object in first-appearance
+/// order — so the container must preserve order, not sort it. A `Vec` of pairs
+/// with hand-written serde keeps that order while the wire stays a JSON object
+/// exactly like upstream: entries serialize in stored order, and
+/// deserialization reads them in document order with JavaScript object
+/// semantics for duplicate keys (first position kept, last value wins).
+/// Upstream warns against integer-like section names because JS objects
+/// reorder those (types.ts:492); this container deliberately does not, so
+/// document order survives the round-trip byte-identically.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct Sections(Vec<(String, Option<String>)>);
+
+impl Sections {
+    /// Builds sections from name/value pairs, in render order.
+    pub fn new(pairs: Vec<(String, Option<String>)>) -> Self {
+        Self(pairs)
+    }
+
+    /// All entries in order. `Some` values are live section text; `None` is a
+    /// removal marker (only meaningful in patch messages — the transcript
+    /// replay never emits `None`).
+    pub fn as_slice(&self) -> &[(String, Option<String>)] {
+        &self.0
+    }
+
+    /// The value stored for `name`, if the section is present.
+    pub fn get(&self, name: &str) -> Option<&Option<String>> {
+        self.0
+            .iter()
+            .find(|(existing, _)| existing == name)
+            .map(|(_, value)| value)
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+}
+
+impl<'a> IntoIterator for &'a Sections {
+    type Item = &'a (String, Option<String>);
+    type IntoIter = std::slice::Iter<'a, (String, Option<String>)>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.iter()
+    }
+}
+
+impl Serialize for Sections {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let mut map = serializer.serialize_map(Some(self.0.len()))?;
+        for (name, value) in &self.0 {
+            map.serialize_entry(name, value)?;
+        }
+        map.end()
+    }
+}
+
+impl<'de> Deserialize<'de> for Sections {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        struct SectionsVisitor;
+
+        impl<'de> Visitor<'de> for SectionsVisitor {
+            type Value = Sections;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("a map of section names to text or null")
+            }
+
+            fn visit_map<A: MapAccess<'de>>(self, mut access: A) -> Result<Self::Value, A::Error> {
+                let mut pairs: Vec<(String, Option<String>)> = Vec::new();
+                while let Some((name, value)) = access.next_entry::<String, Option<String>>()? {
+                    match pairs.iter_mut().find(|(existing, _)| *existing == name) {
+                        // JS object semantics: a duplicate key keeps its first
+                        // position but takes the last value.
+                        Some(entry) => entry.1 = value,
+                        None => pairs.push((name, value)),
+                    }
+                }
+                Ok(Sections(pairs))
+            }
+        }
+
+        deserializer.deserialize_map(SectionsVisitor)
+    }
+}
+
 /// Upstream `SystemMessage` (types.ts:484-500): system instructions and tool
 /// declarations at one point in the transcript. The leading system message is
 /// the system prompt; later messages patch it — `content` adds instructions
@@ -108,10 +204,9 @@ pub struct SystemMessage {
     /// later, additional instructions.
     pub content: StringOrBlocks,
     /// Named, ordered prompt sections rendered verbatim after `content`.
-    /// BTreeMap keeps key order deterministic (upstream warns against
-    /// integer-like names because JSON objects reorder those).
+    /// Order is semantic (prompt layout); see [`Sections`].
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub sections: Option<BTreeMap<String, Option<String>>>,
+    pub sections: Option<Sections>,
     /// Complete definitions of tools that become available at this point.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tools_added: Option<Vec<Tool>>,
@@ -226,7 +321,7 @@ mod tests {
     const SYSTEM_BARE_STRING: &str =
         r#"{"role":"system","content":"You are pi.","timestamp":1758240000002}"#;
 
-    const SYSTEM_FULL_PATCH: &str = r#"{"role":"system","content":[{"type":"text","text":"Extra instructions from here on."}],"sections":{"skills":null,"tools":"Use tools carefully."},"toolsAdded":[{"name":"bash","description":"Run a shell command","parameters":{"properties":{"command":{"type":"string"}},"type":"object"}}],"toolsRemoved":[{"name":"weather"}],"timestamp":1758240000003}"#;
+    const SYSTEM_FULL_PATCH: &str = r#"{"role":"system","content":[{"type":"text","text":"Extra instructions from here on."}],"sections":{"tools":"Use tools carefully.","skills":null},"toolsAdded":[{"name":"bash","description":"Run a shell command","parameters":{"properties":{"command":{"type":"string"}},"type":"object"}}],"toolsRemoved":[{"name":"weather"}],"timestamp":1758240000003}"#;
 
     const ASSISTANT_FULL: &str = r#"{"role":"assistant","content":[{"type":"text","text":"Running ls."},{"type":"thinking","thinking":"need the listing","thinkingSignature":"sig1"},{"type":"toolCall","id":"call_1","name":"bash","arguments":{"command":"ls"}}],"api":"anthropic-messages","provider":"anthropic","model":"claude-sonnet-4-5","responseModel":"claude-sonnet-4-5-20250929","responseId":"msg_01ABC","providerThinkingLevel":"high","diagnostics":[{"type":"retry","timestamp":1758240000000,"error":{"name":"HttpError","message":"429 too many requests","stack":"at f()","code":429},"details":{"attempt":1}}],"usage":{"input":10,"output":5,"cacheRead":0,"cacheWrite":0,"cacheWrite1h":0,"reasoning":5,"totalTokens":15,"cost":{"input":0.01,"output":0.02,"cacheRead":0.0,"cacheWrite":0.0,"total":0.03}},"stopReason":"toolUse","deferred":{"api":"anthropic-messages","id":"resp_123","modelId":"claude-sonnet-4-5","provider":"anthropic"},"errorMessage":"first attempt failed","rawStopReason":"tool_use","endTurn":false,"timestamp":1758240000004}"#;
 
@@ -320,6 +415,14 @@ mod tests {
             })
         );
         let sections = system.sections.as_ref().unwrap();
+        // Document order ("tools" before "skills") is preserved, not sorted
+        // lexicographically.
+        let names: Vec<&str> = sections
+            .as_slice()
+            .iter()
+            .map(|(name, _)| name.as_str())
+            .collect();
+        assert_eq!(names, ["tools", "skills"]);
         assert_eq!(sections.len(), 2);
         assert_eq!(sections.get("skills"), Some(&None));
         assert_eq!(
@@ -338,6 +441,63 @@ mod tests {
         assert_eq!(removed.len(), 1);
         assert_eq!(removed[0].name, "weather");
         assert_eq!(serde_json::to_string(&msg).unwrap(), SYSTEM_FULL_PATCH);
+    }
+
+    #[test]
+    fn sections_order_survives_message_deserialization_and_round_trips() {
+        // Non-lexicographic order through the internally-tagged `Message`
+        // enum: serde's Content buffering must not reorder the object keys.
+        let wire = r#"{"role":"system","content":"base","sections":{"zeta":"last","alpha":"first","mid":null},"timestamp":1}"#;
+        let msg: Message = serde_json::from_str(wire).unwrap();
+        let Message::System(system) = &msg else {
+            panic!("expected system variant, got {msg:?}");
+        };
+        let sections = system.sections.as_ref().unwrap();
+        let names: Vec<&str> = sections
+            .as_slice()
+            .iter()
+            .map(|(name, _)| name.as_str())
+            .collect();
+        assert_eq!(names, ["zeta", "alpha", "mid"]);
+        // Serialization writes back in stored order, so the round-trip is
+        // byte-identical even when the order is not sorted.
+        assert_eq!(serde_json::to_string(&msg).unwrap(), wire);
+    }
+
+    #[test]
+    fn sections_duplicate_keys_keep_first_position_take_last_value() {
+        // JavaScript object semantics for duplicate JSON keys: JSON.parse
+        // keeps the first insertion position but the last value wins.
+        let wire = r#"{"name":"z","name":"a"}"#;
+        let sections: Sections = serde_json::from_str(wire).unwrap();
+        let names: Vec<&str> = sections
+            .as_slice()
+            .iter()
+            .map(|(name, _)| name.as_str())
+            .collect();
+        assert_eq!(names, ["name"]);
+        assert_eq!(sections.get("name"), Some(&Some("a".into())));
+        // Serializing writes the surviving single entry.
+        assert_eq!(serde_json::to_string(&sections).unwrap(), r#"{"name":"a"}"#);
+    }
+
+    #[test]
+    fn sections_null_values_round_trip_and_bare_struct_helpers_work() {
+        let sections = Sections::new(vec![
+            ("rules".into(), Some("<rules>x</rules>".into())),
+            ("skills".into(), None),
+        ]);
+        assert_eq!(
+            serde_json::to_string(&sections).unwrap(),
+            r#"{"rules":"<rules>x</rules>","skills":null}"#
+        );
+        let back: Sections =
+            serde_json::from_str(r#"{"rules":"<rules>x</rules>","skills":null}"#).unwrap();
+        assert_eq!(back, sections);
+        assert!(!sections.is_empty());
+        assert_eq!(sections.len(), 2);
+        assert!(Sections::default().is_empty());
+        assert_eq!(Sections::default().get("rules"), None);
     }
 
     #[test]

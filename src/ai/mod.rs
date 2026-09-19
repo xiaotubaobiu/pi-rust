@@ -2,6 +2,7 @@ pub mod anthropic;
 pub mod event;
 pub mod message;
 pub mod openai_compat;
+pub mod transcript;
 pub mod types;
 
 use event::AiEvent;
