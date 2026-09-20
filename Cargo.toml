@@ -42,4 +42,8 @@ aws-smithy-runtime-api = "=1.16.2"
 
 [dev-dependencies]
 tempfile = "3.27.0"
+# `start_paused` for the OAuth refresh timeout test: tokio auto-advances the
+# paused clock when all tasks are parked, so the 15s refresh timeout fires
+# instantly and deterministically.
+tokio = { version = "1.53.1", features = ["test-util"] }
 wiremock = "0.6.5"

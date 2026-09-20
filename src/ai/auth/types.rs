@@ -1,15 +1,14 @@
 //! Auth type system ported from upstream `packages/ai/src/auth/types.ts`:
 //! the type-tagged [`Credential`] wire format (the shape of today's
 //! `auth.json`), the [`CredentialStore`] operation options, and the
-//! interaction/data shapes shared by the api-key and OAuth auth surfaces.
+//! interaction/data shapes shared by the api-key and OAuth auth surfaces,
+//! plus the async provider-auth trait surface ([`ApiKeyAuth`]/[`OAuthAuth`]).
 //!
 //! Wire format (serde JSON) matches upstream byte-for-byte: tags
 //! (`"api_key"`/`"oauth"`) and field names (`key`, `env`, `refresh`,
 //! `access`, `expires`) round-trip a file written by upstream pi, and
 //! unknown `OAuthCredential` fields are preserved like the upstream index
-//! signature. The async provider-auth trait methods (`login`/`refresh`/
-//! `toAuth`/`resolve`) land with the resolve port (M2d Task 2); the data
-//! shapes those signatures need are fixed here.
+//! signature.
 
 use std::collections::BTreeMap;
 use std::fmt;
@@ -18,6 +17,7 @@ use futures::future::BoxFuture;
 use serde::{Deserialize, Serialize};
 use tokio_util::sync::CancellationToken;
 
+use super::resolve::ModelsError;
 use crate::ai::types::{ProviderEnv, ProviderHeaders};
 
 /// Upstream `ModelAuth` (types.ts:7-12): request auth for a single model
@@ -96,19 +96,25 @@ pub struct CredentialInfo {
     pub r#type: AuthType,
 }
 
-/// Port invention (upstream `AuthOperationOptions` wraps an `AbortSignal`):
-/// errors surfaced by auth and credential operations. Upstream rejects with
-/// JS exceptions; `Models` wraps storage failures in `ModelsError` with code
-/// `"auth"`.
+/// Port invention (upstream rejects with JS exceptions): errors surfaced by
+/// auth and credential operations. Upstream rejects with JS exceptions;
+/// `Models` wraps storage failures in `ModelsError` with code `"auth"`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AuthError {
     /// The operation's cancellation token fired (upstream `AbortError`).
+    /// Cancellation is never a `ModelsError` — upstream aborts surface as
+    /// `AbortError` even when an internal catch would have wrapped them.
     Cancelled,
     /// Storage failure inside a credential store implementation.
     Storage(String),
     /// Failure propagated from a `modify` callback or auth flow (upstream
     /// rejections propagate unchanged).
     Operation(String),
+    /// Typed [`ModelsError`] from an auth flow, propagated unchanged through
+    /// `modify`: upstream throws `ModelsError` from the resolve flow's refresh
+    /// callback and re-wraps only the *other* store failures, so the two must
+    /// stay distinguishable through the callback's error channel.
+    Models(ModelsError),
 }
 
 impl fmt::Display for AuthError {
@@ -117,6 +123,7 @@ impl fmt::Display for AuthError {
             AuthError::Cancelled => write!(f, "auth operation cancelled"),
             AuthError::Storage(message) => write!(f, "credential storage failure: {message}"),
             AuthError::Operation(message) => write!(f, "auth operation failed: {message}"),
+            AuthError::Models(error) => write!(f, "{error}"),
         }
     }
 }
@@ -165,8 +172,9 @@ impl AuthOperationOptions {
 }
 
 /// Upstream `AuthContext` (types.ts:97-101): environment access for auth
-/// resolution. Injectable for tests; the default implementation (upstream
-/// `auth/context.ts`) lands with the resolve port.
+/// resolution. Injectable for tests; [`DefaultAuthContext`](crate::ai::auth::context::DefaultAuthContext)
+/// ports the upstream `auth/context.ts` default (process env + `~`-aware file
+/// checks).
 pub trait AuthContext: Send + Sync {
     /// Value of an environment variable, `None` when unset.
     fn env<'a>(&'a self, name: &'a str) -> BoxFuture<'a, Option<String>>;
@@ -320,22 +328,65 @@ impl AuthInteraction for ProviderAuthInteraction {
     }
 }
 
+/// Upstream `ApiKeyAuth` input object (types.ts:182-198): the shared
+/// `{ ctx, credential, signal }` shape of the optional `check` and the
+/// required `resolve` calls. `options` is the port's [`AuthOperationOptions`]
+/// standing in for the upstream concrete `AbortSignal` (implementations check
+/// it at entry and between awaits, like upstream `signal.throwIfAborted()`).
+pub struct ApiKeyAuthInput<'a> {
+    /// Environment access (scoped overrides already overlaid by the caller).
+    pub ctx: &'a dyn AuthContext,
+    /// The stored api-key credential, when one exists.
+    pub credential: Option<&'a ApiKeyCredential>,
+    /// Cancellation for the resolution.
+    pub options: &'a AuthOperationOptions,
+}
+
 /// Upstream `ApiKeyAuth` (types.ts:170-199): api-key auth — stored key or
 /// provider env plus ambient sources (env vars, AWS profiles, ADC files).
-/// Ambient-only providers omit `login`.
-///
-/// Data shape only in M2d Task 1; the async `login`/`check`/`resolve` methods
-/// land with the resolve port (Task 2) without changing this shape.
+/// Ambient-only providers omit `login` ([`ApiKeyAuth::login`] defaults to
+/// `None`).
 pub trait ApiKeyAuth: Send + Sync {
     /// Display name, e.g. "Anthropic API key".
     fn name(&self) -> &str;
+
+    /// Interactive setup (prompt for key/provider env). `None` = ambient-only
+    /// (upstream optional `login?`).
+    fn login<'a>(
+        &'a self,
+        interaction: ProviderAuthInteraction,
+    ) -> Option<BoxFuture<'a, Result<ApiKeyCredential, AuthError>>> {
+        let _ = interaction;
+        None
+    }
+
+    /// Optional side-effect-free availability check. Use this when
+    /// [`ApiKeyAuth::resolve`] may execute commands or perform other
+    /// request-time work. `None` means Models checks availability by
+    /// resolving auth (upstream optional `check?`).
+    fn check<'a>(
+        &'a self,
+        input: ApiKeyAuthInput<'a>,
+    ) -> Option<BoxFuture<'a, Result<Option<AuthCheck>, AuthError>>> {
+        let _ = input;
+        None
+    }
+
+    /// Resolve auth from the stored credential and/or ambient sources, merging
+    /// per field (`credential.key ?? env("...")`, `credential.env?.NAME ??
+    /// env("...")`). `Ok(None)` = not configured. Resolution is
+    /// provider-scoped; model-specific endpoint preparation happens after auth
+    /// has been resolved.
+    fn resolve<'a>(
+        &'a self,
+        input: ApiKeyAuthInput<'a>,
+    ) -> BoxFuture<'a, Result<Option<AuthResult>, AuthError>>;
 }
 
-/// Upstream `OAuthAuth` (types.ts:206-230): OAuth auth. The `refresh`/`toAuth`
-/// split (Task 2) lets `Models` own the locked refresh pattern.
-///
-/// Data shape only in M2d Task 1; the async `login`/`refresh`/`toAuth`
-/// methods land with the resolve port (Task 2) without changing this shape.
+/// Upstream `OAuthAuth` (types.ts:206-230): OAuth auth. The `refresh`/`to_auth`
+/// split lets `Models` own the locked refresh pattern: `refresh` produces a
+/// credential (run under the store lock by the resolve flow), `to_auth` derives
+/// request auth from whatever credential ends up stored.
 pub trait OAuthAuth: Send + Sync {
     /// Display name, e.g. "Anthropic (Claude Pro/Max)".
     fn name(&self) -> &str;
@@ -351,6 +402,31 @@ pub trait OAuthAuth: Send + Sync {
     fn login_label(&self) -> Option<&str> {
         None
     }
+
+    /// Interactive login returning the credential to store.
+    fn login<'a>(
+        &'a self,
+        interaction: ProviderAuthInteraction,
+    ) -> BoxFuture<'a, Result<OAuthCredential, AuthError>>;
+
+    /// Exchange the refresh token. Network call; errors on failure
+    /// (`invalid_grant` etc.). The resolve flow runs this under the store
+    /// lock. Upstream passes a concrete `AbortSignal`; the port passes the
+    /// operation options (the token is optional, and the flow layers its
+    /// refresh timeout on top).
+    fn refresh<'a>(
+        &'a self,
+        credential: OAuthCredential,
+        options: &'a AuthOperationOptions,
+    ) -> BoxFuture<'a, Result<OAuthCredential, AuthError>>;
+
+    /// Side-effect-free derivation of request auth from a valid credential.
+    /// Covers per-credential baseUrl (GitHub Copilot). Async so lazy wrappers
+    /// can load the implementation on first use.
+    fn to_auth<'a>(
+        &'a self,
+        credential: OAuthCredential,
+    ) -> BoxFuture<'a, Result<ModelAuth, AuthError>>;
 }
 
 /// Upstream `ProviderAuth` (types.ts:237-240): provider auth. At least one of
