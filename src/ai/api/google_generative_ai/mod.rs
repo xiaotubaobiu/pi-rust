@@ -40,11 +40,14 @@
 //!   contract). `options.signal` aborts, `onPayload`/`onResponse`, and
 //!   `fetch` injection have no port surface (M2a options omission); the two
 //!   abort checks and the catch block's `"aborted"` branch are unreachable.
-//! - The stream chunk `finishReason` is kept as a raw string and mapped with
-//!   the shared `map_stop_reason_string` (STOP → stop, MAX_TOKENS → length,
-//!   everything else → error): upstream feeds the SDK string through an
-//!   equivalent switch, and unknown provider reasons preserve the raw value
-//!   instead of failing chunk deserialization.
+//! - The stream chunk `finishReason` is kept as a raw string on the message
+//!   (`rawStopReason`) and mapped by parsing it into the shared
+//!   `GoogleFinishReason` enum and applying `map_stop_reason` (STOP → stop,
+//!   MAX_TOKENS → length, every other enum value → error). Unknown provider
+//!   strings throw `Unhandled stop reason: {raw}` mid-loop — upstream's
+//!   `mapStopReason` default arm throws the same message, aborting the stream
+//!   into the catch block — instead of failing chunk deserialization or
+//!   silently continuing.
 //! - SSE transport errors and malformed data payloads surface as the error
 //!   event with the parse/transport message (upstream: the SDK's
 //!   `SyntaxError` / `Incomplete JSON segment at the end` reach the same
@@ -77,11 +80,11 @@ use serde::Deserialize;
 use serde_json::{json, Map, Value};
 
 use crate::ai::api::google_shared::{
-    convert_messages, convert_tools, get_disabled_google_thinking_config, map_stop_reason_string,
+    convert_messages, convert_tools, get_disabled_google_thinking_config, map_stop_reason,
     resolve_google_function_calling_mode, resolve_google_thinking_level, retain_thought_signature,
     retry_google_request, supports_google_strict_tool_sampling, to_google_sdk_thinking_level,
     to_google_thinking_level, uses_google_thinking_level, GoogleApiThinkingLevel, GoogleContent,
-    GoogleThinkingConfig, ResolvedGoogleThinkingLevel,
+    GoogleFinishReason, GoogleThinkingConfig, ResolvedGoogleThinkingLevel,
 };
 use crate::ai::api::openai_completions::request::{
     clamp_max_tokens_to_context, clamp_thinking_level, remove_header, set_header,
@@ -169,11 +172,13 @@ impl ApiImpl for GoogleGenerativeAi {
         let collapsed = collapse_system_messages(ctx.clone());
         // Upstream direct-`stream` callers pass the API-specific extensions;
         // the port's `StreamOptions` surface carries none of them.
-        let google = GoogleOptions {
-            stream: options.clone(),
-            ..GoogleOptions::default()
-        };
-        run_stream(cfg.clone(), model.clone(), collapsed, Ok(google))
+        run_stream(
+            cfg.clone(),
+            model.clone(),
+            collapsed,
+            options.clone(),
+            Ok((None, None)),
+        )
     }
 
     fn stream_simple(
@@ -186,32 +191,36 @@ impl ApiImpl for GoogleGenerativeAi {
         // Upstream `streamSimple` (lines 304-345): buildBaseOptions shaping
         // (context-clamped maxTokens default over the ORIGINAL context), the
         // toolChoice passthrough, and the thinking resolution. A clamped
-        // "off" and a missing reasoning both disable thinking.
+        // "off" and a missing reasoning both disable thinking. The extension
+        // resolution may fail (unsupported thinking-level map); the error is
+        // carried into the task AFTER the API-key check so the upstream throw
+        // order (key first, map second) holds.
         let mut stream_options = options.stream.clone();
         stream_options.max_tokens = Some(clamp_max_tokens_to_context(
             model,
             ctx,
             options.stream.max_tokens.unwrap_or(model.max_tokens),
         ));
-        let google = google_options_from_simple(model, stream_options, options);
+        let extensions = google_options_from_simple(model, options);
         run_stream(
             cfg.clone(),
             model.clone(),
             collapse_system_messages(ctx.clone()),
-            google,
+            stream_options,
+            extensions,
         )
     }
 }
 
+/// The streamSimple-derived extension fields (upstream `GoogleOptions` minus
+/// the base options): `toolChoice` and `thinking`, fallible because the
+/// thinking-level map can reject. Kept separate from the base options so the
+/// missing-key error can be resolved first inside the task.
+type GoogleExtensions = Result<(Option<String>, Option<GoogleThinkingOption>), String>;
+
 /// Upstream `streamSimple` thinking/toolChoice resolution (lines 314-344).
 /// Falls with the `resolveGoogleThinkingLevel` error for unsupported maps.
-/// `stream_options` carries the buildBaseOptions shaping (the clamped
-/// maxTokens default).
-fn google_options_from_simple(
-    model: &Model,
-    stream_options: StreamOptions,
-    options: &SimpleStreamOptions,
-) -> Result<GoogleOptions, String> {
+fn google_options_from_simple(model: &Model, options: &SimpleStreamOptions) -> GoogleExtensions {
     // Upstream `toolChoice: options?.toolChoice` — the provider-neutral
     // `"auto" | "none"` forwards as the Google mode strings.
     let tool_choice = options
@@ -250,11 +259,7 @@ fn google_options_from_simple(
         },
     };
 
-    Ok(GoogleOptions {
-        stream: stream_options,
-        tool_choice,
-        thinking,
-    })
+    Ok((tool_choice, thinking))
 }
 
 /// Upstream `getGoogleBudget` (lines 430-470): custom budgets first, then the
@@ -304,11 +309,12 @@ fn run_stream(
     cfg: ProviderConfig,
     model: Model,
     ctx: TranscriptContext,
-    google: Result<GoogleOptions, String>,
+    stream_options: StreamOptions,
+    extensions: GoogleExtensions,
 ) -> mpsc::Receiver<AssistantMessageEvent> {
     let (tx, rx) = mpsc::channel(64);
     tokio::spawn(async move {
-        run_stream_task(cfg, model, ctx, google, tx).await;
+        run_stream_task(cfg, model, ctx, stream_options, extensions, tx).await;
     });
     rx
 }
@@ -337,7 +343,8 @@ async fn run_stream_task(
     cfg: ProviderConfig,
     model: Model,
     ctx: TranscriptContext,
-    google: Result<GoogleOptions, String>,
+    stream_options: StreamOptions,
+    extensions: GoogleExtensions,
     tx: mpsc::Sender<AssistantMessageEvent>,
 ) {
     let mut output = AssistantMessage {
@@ -358,13 +365,18 @@ async fn run_stream_task(
         timestamp: now_ms(),
     };
     let outcome: Result<(), String> = async {
-        // Upstream lines 87-93: the fetch check has no port surface; the API
-        // key is checked first (the provider-config fallback is the port
-        // wiring, per the M2c ruling). The streamSimple thinking-map error
-        // surfaces right after (upstream throws it from streamSimple, second
-        // in line after the missing key).
-        let google = google?;
-        let api_key = resolve_api_key(&model, &cfg, &google)?;
+        // Upstream line 87 (the fetch check has no port surface) and
+        // streamSimple lines 309-312: the missing-key error throws FIRST
+        // (the provider-config fallback is the port wiring, per the M2c
+        // ruling), and the streamSimple thinking-map error (line 326) throws
+        // second. Both surface as the lone error event (port contract).
+        let api_key = resolve_api_key(&model, &cfg, &stream_options)?;
+        let (tool_choice, thinking) = extensions?;
+        let google = GoogleOptions {
+            stream: stream_options,
+            tool_choice,
+            thinking,
+        };
         let headers = build_headers(&model, &google);
         let params = build_params(&model, &ctx, &google)?;
         let url = resolve_endpoint(&model)?;
@@ -545,15 +557,22 @@ async fn process_chunk(
             }
         }
 
-        // Upstream lines 223-229: raw finish-reason preservation and the
-        // STOP-with-tool-call → toolUse promotion.
+        // Upstream lines 223-229: the raw string is recorded first
+        // (`output.rawStopReason = candidate.finishReason`), then
+        // `mapStopReason` maps the known enum values (STOP → stop,
+        // MAX_TOKENS → length, every other enum value → error) and its
+        // default arm THROWS `Unhandled stop reason: {raw}` for unknown
+        // strings — aborting the loop into the catch block. A later valid
+        // finish reason must not rescue the stream.
         if let Some(finish_reason) = candidate
             .finish_reason
             .as_deref()
             .filter(|finish_reason| !finish_reason.is_empty())
         {
             output.raw_stop_reason = Some(finish_reason.to_string());
-            let mut stop_reason = map_stop_reason_string(finish_reason);
+            let reason = serde_json::from_value::<GoogleFinishReason>(Value::from(finish_reason))
+                .map_err(|_| format!("Unhandled stop reason: {finish_reason}"))?;
+            let mut stop_reason = map_stop_reason(reason);
             if stop_reason == StopReason::Stop
                 && output
                     .content
@@ -758,14 +777,14 @@ async fn process_function_call_part(
 
 /// The request credential (upstream lines 90-93 read `options?.apiKey`): the
 /// options key, then the provider credential `cfg.api_key` (the port's
-/// wiring, per the M2c ruling). Upstream throws when both are missing.
+/// wiring, per the M2c ruling). Upstream throws when both are missing —
+/// before any thinking-map resolution error.
 fn resolve_api_key(
     model: &Model,
     cfg: &ProviderConfig,
-    options: &GoogleOptions,
+    stream_options: &StreamOptions,
 ) -> Result<String, String> {
-    if let Some(key) = options
-        .stream
+    if let Some(key) = stream_options
         .api_key
         .as_deref()
         .filter(|key| !key.is_empty())
@@ -2169,11 +2188,17 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn unknown_finish_reasons_preserve_the_raw_string() {
+    async fn unknown_finish_reasons_abort_the_stream_with_the_upstream_message() {
         let server = wiremock::MockServer::start().await;
+        // A later valid finish reason must not rescue the stream: upstream's
+        // mapStopReason throws on the unknown value and the loop never
+        // resumes.
         mount(
             &server,
-            &[json!({"candidates": [{"finishReason": "SOMETHING_NEW"}]})],
+            &[
+                json!({"candidates": [{"finishReason": "SOMETHING_NEW"}]}),
+                json!({"candidates": [{"finishReason": "STOP"}]}),
+            ],
         )
         .await;
         let model = model(&format!("{}/v1beta", server.uri()));
@@ -2181,11 +2206,79 @@ mod tests {
         let (_, _, _, events) =
             capture_simple(&server, &model, &ctx, &SimpleStreamOptions::default()).await;
         let error = error_of(&events);
+        assert_eq!(error.stop_reason, StopReason::Error);
+        // The raw string is recorded before the throw (upstream line 224).
         assert_eq!(error.raw_stop_reason.as_deref(), Some("SOMETHING_NEW"));
         assert_eq!(
             error.error_message.as_deref(),
-            Some("Provider stopped with: SOMETHING_NEW")
+            Some("Unhandled stop reason: SOMETHING_NEW")
         );
+    }
+
+    /// Every known finish-reason wire string parses through the enum and maps
+    /// like the shared `mapStopReason`; unknown strings do not parse — the
+    /// mapping site turns that into the upstream `Unhandled stop reason` throw.
+    #[test]
+    fn every_known_finish_reason_string_parses_and_maps() {
+        for (wire, expected) in [
+            ("STOP", StopReason::Stop),
+            ("MAX_TOKENS", StopReason::Length),
+            ("FINISH_REASON_UNSPECIFIED", StopReason::Error),
+            ("SAFETY", StopReason::Error),
+            ("BLOCKLIST", StopReason::Error),
+            ("PROHIBITED_CONTENT", StopReason::Error),
+            ("SPII", StopReason::Error),
+            ("RECITATION", StopReason::Error),
+            ("LANGUAGE", StopReason::Error),
+            ("OTHER", StopReason::Error),
+            ("MALFORMED_FUNCTION_CALL", StopReason::Error),
+            ("UNEXPECTED_TOOL_CALL", StopReason::Error),
+            ("TOO_MANY_TOOL_CALLS", StopReason::Error),
+            ("IMAGE_SAFETY", StopReason::Error),
+            ("IMAGE_PROHIBITED_CONTENT", StopReason::Error),
+            ("IMAGE_RECITATION", StopReason::Error),
+            ("IMAGE_OTHER", StopReason::Error),
+            ("NO_IMAGE", StopReason::Error),
+        ] {
+            let reason = serde_json::from_value::<GoogleFinishReason>(Value::from(wire))
+                .unwrap_or_else(|error| panic!("{wire}: {error}"));
+            assert_eq!(map_stop_reason(reason), expected, "{wire}");
+        }
+        assert!(
+            serde_json::from_value::<GoogleFinishReason>(Value::from("SOMETHING_NEW")).is_err()
+        );
+    }
+
+    #[tokio::test]
+    async fn missing_key_wins_over_an_invalid_thinking_map() {
+        let server = wiremock::MockServer::start().await;
+        mount(&server, &[text_chunk("pong")]).await;
+        let model = Model {
+            thinking_level_map: Some(level_map(&[("xhigh", Some("extreme"))])),
+            ..model_with_id(&format!("{}/v1beta", server.uri()), "gemini-2.5-flash")
+        };
+        let ctx = ctx_with(vec![user_msg("hi")]);
+        let options = SimpleStreamOptions {
+            reasoning: Some(ThinkingLevel::Xhigh),
+            ..SimpleStreamOptions::default()
+        };
+        let api = GoogleGenerativeAi;
+        let mut request_cfg = cfg();
+        request_cfg.api_key = String::new();
+        let mut rx = api.stream_simple(&request_cfg, &model, &ctx, &options);
+        let mut events = Vec::new();
+        while let Some(event) = rx.recv().await {
+            events.push(event);
+        }
+        // Upstream streamSimple throws the missing-key error (lines 309-312)
+        // before the thinking-map error (line 326).
+        let error = error_of(&events);
+        assert_eq!(
+            error.error_message.as_deref(),
+            Some("No API key for provider: google")
+        );
+        assert_eq!(events.len(), 1);
+        assert!(apply_all(&events).is_terminal());
     }
 
     // ---- 6. errors over the wire ----
