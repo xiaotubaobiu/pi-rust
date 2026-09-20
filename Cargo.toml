@@ -39,6 +39,14 @@ aws-sigv4 = "=1.5.3"
 # signer's identity inputs; see the bedrock module docs.
 aws-credential-types = "=1.3.0"
 aws-smithy-runtime-api = "=1.16.2"
+# OAuth flow support (auth/oauth module), pinned exact. All three are already
+# in the dependency tree, so no new upstream code is pulled: `sha2` (via
+# aws-sigv4) hashes the PKCE S256 challenge, `rand` (via aws-lc-rs consumers)
+# supplies the code_verifier entropy, and `url` (via reqwest) ports the
+# upstream WHATWG `URL` parsing of pasted redirect URLs.
+sha2 = "=0.11.0"
+rand = "=0.10.2"
+url = "=2.5.8"
 
 [dev-dependencies]
 tempfile = "3.27.0"

@@ -20,6 +20,7 @@ pub mod context;
 pub mod credential_store;
 pub mod env_api_keys;
 pub mod helpers;
+pub mod oauth;
 pub mod resolve;
 pub mod types;
 
@@ -30,6 +31,7 @@ pub use env_api_keys::{
     ANTHROPIC_AUTH_TOKEN_ENV, ANTHROPIC_OAUTH_TOKEN_ENV,
 };
 pub use helpers::{env_api_key_auth, lazy_oauth, EnvApiKeyAuth, LazyOAuth, OAuthLoader};
+pub use oauth::AnthropicOAuth;
 pub use resolve::{
     resolve_provider_auth, AuthResolutionOverrides, ModelsError, ModelsErrorCode,
     DEFAULT_OAUTH_MINIMUM_VALIDITY_MS, DEFAULT_OAUTH_REFRESH_TIMEOUT_MS,
