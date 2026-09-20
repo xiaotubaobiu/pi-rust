@@ -49,12 +49,19 @@ pub trait ApiImpl: Send + Sync {
 /// generation would be cut off mid-stream. This client applies a 60-second
 /// CONNECT timeout only and no total timeout, mirroring the M2a deferral
 /// closed here.
+///
+/// Idle keep-alive pooling is disabled (`pool_max_idle_per_host(0)`): pi
+/// issues one streaming POST per turn, so reuse buys nothing, and pooled
+/// sockets to short-lived endpoints (tests, gateways) outlive their peers —
+/// a recycled port then resets the stale connection and surfaces as a
+/// spurious transport error.
 pub fn http_client() -> reqwest::Client {
     static CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
     CLIENT
         .get_or_init(|| {
             reqwest::Client::builder()
                 .connect_timeout(std::time::Duration::from_secs(60))
+                .pool_max_idle_per_host(0)
                 .user_agent(pi_user_agent())
                 .build()
                 .expect("shared reqwest client must build")
