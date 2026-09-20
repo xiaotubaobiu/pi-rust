@@ -63,10 +63,15 @@ const MAX_SAFE_INTEGER: u64 = 9_007_199_254_740_991;
 /// HTTP status and response headers the SDK attaches. `status: None` models a
 /// transport/setup failure (upstream `undefined`), which the policy always
 /// retries.
+///
+/// `headers` is boxed to keep the struct small (40 bytes): the header map is
+/// heap-backed anyway, and an inline `HeaderMap` pushes `Result<T,
+/// ProviderError>` over clippy's `result_large_err` threshold for every
+/// provider call site.
 #[derive(Debug, Clone)]
 pub struct ProviderError {
     pub status: Option<u16>,
-    pub headers: Option<reqwest::header::HeaderMap>,
+    pub headers: Option<Box<reqwest::header::HeaderMap>>,
     pub message: String,
 }
 
@@ -88,7 +93,7 @@ impl ProviderError {
     ) -> Self {
         ProviderError {
             status: Some(status),
-            headers: Some(headers),
+            headers: Some(Box::new(headers)),
             message: message.into(),
         }
     }
