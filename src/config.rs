@@ -2,19 +2,33 @@ use serde::{Deserialize, Serialize};
 
 use crate::ai::types::{Model, ModelCost, ModelInput};
 
-pub const PROVIDERS: &[&str] = &["anthropic", "openai-compat", "openai-responses"];
+/// Upstream `KnownProvider` ids (packages/ai/src/types.ts:35-75) that the
+/// port wires. Ambient-auth flows (google-vertex ADC, bedrock AWS profiles,
+/// codex OAuth) land in M2d; those providers work with an explicit key now.
+pub const PROVIDERS: &[&str] = &[
+    "anthropic",
+    "openai-compat",
+    "openai-responses",
+    "azure-openai-responses",
+    "openai-codex",
+    "google",
+    "google-vertex",
+    "mistral",
+    "amazon-bedrock",
+    "pi-messages",
+];
 
 /// Default context window for hand-declared models (no catalog lookup yet).
 pub const DEFAULT_CONTEXT_WINDOW: u64 = 200_000;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
-    /// "anthropic", "openai-compat", or "openai-responses"
+    /// One of [`PROVIDERS`], e.g. "anthropic" or "openai-compat".
     pub provider: String,
     /// Model id sent to the provider, e.g. "claude-sonnet-4-5" or "glm-4.6".
     pub model: String,
-    /// API base URL. Required for openai-compat/openai-responses; default
-    /// https://api.anthropic.com for anthropic.
+    /// API base URL. Required for openai-compat/openai-responses/pi-messages;
+    /// other providers default per [`resolve_base_url`].
     #[serde(default)]
     pub base_url: Option<String>,
     #[serde(default = "default_max_tokens")]
@@ -46,28 +60,59 @@ impl Default for Config {
     }
 }
 
-/// The wire-protocol API id a configured provider speaks (fills
-/// `Model.api`). One provider id per supported wire protocol.
+/// The wire-protocol API id a configured provider id speaks (fills
+/// `Model.api`). Ids are the upstream `KnownApi` strings
+/// (packages/ai/src/types.ts:17-27).
 pub fn api_for_provider(provider: &str) -> anyhow::Result<&'static str> {
     match provider {
         "anthropic" => Ok("anthropic-messages"),
         "openai-compat" => Ok("openai-completions"),
         "openai-responses" => Ok("openai-responses"),
+        "azure-openai-responses" => Ok("azure-openai-responses"),
+        "openai-codex" => Ok("openai-codex-responses"),
+        "google" => Ok("google-generative-ai"),
+        "google-vertex" => Ok("google-vertex"),
+        "mistral" => Ok("mistral-conversations"),
+        "amazon-bedrock" => Ok("bedrock-converse-stream"),
+        "pi-messages" => Ok("pi-messages"),
         other => anyhow::bail!("unknown provider: {other}"),
     }
 }
 
-/// Base URL for the model/endpoint: the configured value, or the Anthropic
-/// default. `openai-compat`/`openai-responses` callers must have validated a
-/// base URL exists (main does, after CLI overrides are merged).
+/// Base URL for the model/endpoint: the configured value, or the provider's
+/// upstream default. Defaults mirror the upstream provider registry
+/// (`packages/ai/src/providers/*.ts`); an empty default means the API
+/// implementation resolves the endpoint itself (azure: the
+/// `AZURE_OPENAI_BASE_URL`/`AZURE_OPENAI_RESOURCE_NAME` env chain; vertex:
+/// the express/global default base). `openai-compat`/`openai-responses`/
+/// `pi-messages` callers must have validated a base URL exists (main does,
+/// after CLI overrides are merged).
 pub fn resolve_base_url(cfg: &Config) -> anyhow::Result<String> {
     match &cfg.base_url {
         Some(url) => Ok(url.clone()),
-        None if cfg.provider == "anthropic" => Ok("https://api.anthropic.com".to_string()),
-        None => anyhow::bail!(
-            "provider '{}' requires --base-url or base_url in config",
-            cfg.provider
-        ),
+        None => match cfg.provider.as_str() {
+            "anthropic" => Ok("https://api.anthropic.com".to_string()),
+            // providers/google.ts:10
+            "google" => Ok("https://generativelanguage.googleapis.com/v1beta".to_string()),
+            // providers/openai-codex.ts:11; the API impl falls back to the
+            // same default, so this only makes Model.base_url self-describing.
+            "openai-codex" => Ok("https://chatgpt.com/backend-api".to_string()),
+            // providers/mistral.ts:10
+            "mistral" => Ok("https://api.mistral.ai".to_string()),
+            // Upstream bedrock has no provider base URL (the SDK resolves the
+            // regional endpoint) and defaults the region to us-east-1
+            // (bedrock-converse-stream.ts:202); a standard endpoint base
+            // reproduces both in the port's endpoint resolution matrix.
+            "amazon-bedrock" => Ok("https://bedrock-runtime.us-east-1.amazonaws.com".to_string()),
+            // Azure resolves from its env chain inside the API impl (erroring
+            // with the upstream message when unset); vertex falls back to the
+            // express/global default base.
+            "azure-openai-responses" | "google-vertex" => Ok(String::new()),
+            _ => anyhow::bail!(
+                "provider '{}' requires --base-url or base_url in config",
+                cfg.provider
+            ),
+        },
     }
 }
 
@@ -123,7 +168,11 @@ pub fn load_config() -> anyhow::Result<Config> {
 
 /// Env var candidates consulted (in order) when no explicit key is given.
 /// `openai-responses` accepts the same keys as `openai-compat`: both speak
-/// the OpenAI family of APIs.
+/// the OpenAI family of APIs. New-provider entries mirror upstream
+/// `getApiKeyEnvVars` (packages/ai/src/env-api-keys.ts:68-120).
+/// `openai-codex` (OAuth), `amazon-bedrock` (ambient AWS credential chain),
+/// and `pi-messages` (no upstream env var) have no candidates: they take an
+/// explicit `--api-key` only until M2d adds the ambient flows.
 pub fn api_key_env_candidates(provider: &str) -> &'static [&'static str] {
     match provider {
         "anthropic" => &["ANTHROPIC_API_KEY"],
@@ -133,6 +182,10 @@ pub fn api_key_env_candidates(provider: &str) -> &'static [&'static str] {
             "DEEPSEEK_API_KEY",
             "MOONSHOT_API_KEY",
         ],
+        "azure-openai-responses" => &["AZURE_OPENAI_API_KEY"],
+        "google" => &["GEMINI_API_KEY"],
+        "google-vertex" => &["GOOGLE_CLOUD_API_KEY"],
+        "mistral" => &["MISTRAL_API_KEY"],
         _ => &[],
     }
 }
@@ -222,6 +275,26 @@ base_url = "https://open.bigmodel.cn/api/paas/v4"
             api_for_provider("openai-responses").unwrap(),
             "openai-responses"
         );
+        // Upstream KnownApi wire ids (types.ts:17-27).
+        assert_eq!(
+            api_for_provider("azure-openai-responses").unwrap(),
+            "azure-openai-responses"
+        );
+        assert_eq!(
+            api_for_provider("openai-codex").unwrap(),
+            "openai-codex-responses"
+        );
+        assert_eq!(api_for_provider("google").unwrap(), "google-generative-ai");
+        assert_eq!(api_for_provider("google-vertex").unwrap(), "google-vertex");
+        assert_eq!(
+            api_for_provider("mistral").unwrap(),
+            "mistral-conversations"
+        );
+        assert_eq!(
+            api_for_provider("amazon-bedrock").unwrap(),
+            "bedrock-converse-stream"
+        );
+        assert_eq!(api_for_provider("pi-messages").unwrap(), "pi-messages");
         assert!(api_for_provider("nope").is_err());
     }
 
@@ -268,5 +341,82 @@ base_url = "https://open.bigmodel.cn/api/paas/v4"
         );
         assert_eq!(api_key_env_candidates("anthropic"), &["ANTHROPIC_API_KEY"]);
         assert!(PROVIDERS.contains(&"openai-responses"));
+    }
+
+    // ---- Task 9: full provider surface wired ----
+
+    #[test]
+    fn new_provider_env_candidates_follow_upstream() {
+        // env-api-keys.ts getApiKeyEnvVars entries.
+        assert_eq!(
+            api_key_env_candidates("azure-openai-responses"),
+            &["AZURE_OPENAI_API_KEY"]
+        );
+        assert_eq!(api_key_env_candidates("google"), &["GEMINI_API_KEY"]);
+        assert_eq!(
+            api_key_env_candidates("google-vertex"),
+            &["GOOGLE_CLOUD_API_KEY"]
+        );
+        assert_eq!(api_key_env_candidates("mistral"), &["MISTRAL_API_KEY"]);
+        // No upstream env vars: codex is OAuth (M2d), bedrock uses the ambient
+        // AWS credential chain (M2d), pi-messages defines none.
+        assert!(api_key_env_candidates("openai-codex").is_empty());
+        assert!(api_key_env_candidates("amazon-bedrock").is_empty());
+        assert!(api_key_env_candidates("pi-messages").is_empty());
+    }
+
+    #[test]
+    fn explicit_only_providers_skip_env_and_honor_cli_key() {
+        // Empty candidate lists never consult process env, so these are
+        // race-free without the resolve_api_key_env seam.
+        assert!(resolve_api_key("openai-codex", None).is_none());
+        assert!(resolve_api_key("amazon-bedrock", None).is_none());
+        assert!(resolve_api_key("pi-messages", None).is_none());
+        // A CLI key wins before any env lookup happens.
+        assert_eq!(
+            resolve_api_key("amazon-bedrock", Some("bearer-token")).unwrap(),
+            "bearer-token"
+        );
+    }
+
+    #[test]
+    fn base_url_defaults_match_upstream_providers() {
+        // google (providers/google.ts:10), codex (providers/openai-codex.ts:11),
+        // mistral (providers/mistral.ts:10), bedrock (standard us-east-1
+        // endpoint, upstream region default).
+        let cases = [
+            ("google", "https://generativelanguage.googleapis.com/v1beta"),
+            ("openai-codex", "https://chatgpt.com/backend-api"),
+            ("mistral", "https://api.mistral.ai"),
+            (
+                "amazon-bedrock",
+                "https://bedrock-runtime.us-east-1.amazonaws.com",
+            ),
+        ];
+        for (provider, base_url) in cases {
+            let cfg = cfg_with(provider, "");
+            assert_eq!(resolve_base_url(&cfg).unwrap(), base_url, "{provider}");
+        }
+
+        // azure/vertex stay empty: the API impls resolve their own endpoint
+        // (azure env chain; vertex express/global default).
+        for provider in ["azure-openai-responses", "google-vertex"] {
+            let cfg = cfg_with(provider, "");
+            assert_eq!(resolve_base_url(&cfg).unwrap(), "", "{provider}");
+        }
+
+        // pi-messages names the pi server endpoint: required, like the
+        // openai-* family.
+        let cfg = cfg_with("pi-messages", "");
+        assert!(resolve_base_url(&cfg).is_err());
+        let cfg = cfg_with("pi-messages", "base_url = \"https://pi.example.com\"");
+        assert_eq!(resolve_base_url(&cfg).unwrap(), "https://pi.example.com");
+
+        // Every provider in PROVIDERS either resolves or requires a base URL
+        // (never panics); build_model consumes the same resolution.
+        for provider in PROVIDERS {
+            let cfg = cfg_with(provider, "");
+            let _ = resolve_base_url(&cfg);
+        }
     }
 }
