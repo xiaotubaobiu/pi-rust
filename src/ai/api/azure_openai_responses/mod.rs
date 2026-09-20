@@ -805,6 +805,69 @@ mod tests {
             .collect()
     }
 
+    /// Removes the AZURE_OPENAI_* process variables for the duration of a
+    /// test and restores the prior values on drop — the port analog of the
+    /// upstream oracle's `beforeEach`/`afterEach` `process.env`
+    /// sanitization. A scoped env map cannot express absence: missing keys
+    /// fall through to the process environment (upstream
+    /// `env?.[name] || process.env[name]`), so the env-absence branches need
+    /// this guard to stay hermetic.
+    struct EnvGuard {
+        saved: Vec<(String, Option<String>)>,
+    }
+
+    impl EnvGuard {
+        fn sanitize() -> EnvGuard {
+            let mut saved = Vec::new();
+            for name in [
+                "AZURE_OPENAI_BASE_URL",
+                "AZURE_OPENAI_RESOURCE_NAME",
+                "AZURE_OPENAI_API_VERSION",
+                "AZURE_OPENAI_DEPLOYMENT_NAME_MAP",
+            ] {
+                saved.push((name.to_string(), std::env::var(name).ok()));
+                std::env::remove_var(name);
+            }
+            EnvGuard { saved }
+        }
+    }
+
+    impl Drop for EnvGuard {
+        fn drop(&mut self) {
+            for (name, value) in &self.saved {
+                match value {
+                    Some(value) => std::env::set_var(name, value),
+                    None => std::env::remove_var(name),
+                }
+            }
+        }
+    }
+
+    /// The scoped env pinned into wire tests that leave it unset. An absent
+    /// or keyless scoped map falls through to the process environment
+    /// (upstream `getProviderEnvValue`), so a machine exporting
+    /// AZURE_OPENAI_* variables would otherwise redirect the request. The
+    /// pinned values reproduce the suite's expected defaults (the wiremock
+    /// endpoint, api-version `v1`, and deployment = model id via a map entry
+    /// that parses to nothing).
+    fn pinned_env(server: &wiremock::MockServer) -> ProviderEnv {
+        env_map(&[
+            ("AZURE_OPENAI_BASE_URL", &format!("{}/v1", server.uri())),
+            ("AZURE_OPENAI_API_VERSION", "v1"),
+            ("AZURE_OPENAI_DEPLOYMENT_NAME_MAP", " "),
+        ])
+    }
+
+    fn hermetic_options(
+        mut options: SimpleStreamOptions,
+        server: &wiremock::MockServer,
+    ) -> SimpleStreamOptions {
+        if options.stream.env.is_none() {
+            options.stream.env = Some(pinned_env(server));
+        }
+        options
+    }
+
     fn sse(body: &str) -> wiremock::ResponseTemplate {
         wiremock::ResponseTemplate::new(200)
             .insert_header("content-type", "text/event-stream")
@@ -845,7 +908,8 @@ mod tests {
         options: &SimpleStreamOptions,
     ) -> Vec<AssistantMessageEvent> {
         let api = AzureOpenAiResponses;
-        let mut rx = api.stream_simple(&cfg(server), model, ctx, options);
+        let options = hermetic_options(options.clone(), server);
+        let mut rx = api.stream_simple(&cfg(server), model, ctx, &options);
         let mut out = Vec::new();
         while let Some(event) = rx.recv().await {
             out.push(event);
@@ -860,7 +924,11 @@ mod tests {
         options: &StreamOptions,
     ) -> Vec<AssistantMessageEvent> {
         let api = AzureOpenAiResponses;
-        let mut rx = api.stream(&cfg(server), model, ctx, options);
+        let mut stream_options = options.clone();
+        if stream_options.env.is_none() {
+            stream_options.env = Some(pinned_env(server));
+        }
+        let mut rx = api.stream(&cfg(server), model, ctx, &stream_options);
         let mut out = Vec::new();
         while let Some(event) = rx.recv().await {
             out.push(event);
@@ -964,14 +1032,19 @@ mod tests {
             ),
         ];
         for (input, expected) in cases {
-            let resolved = resolve_azure_config(&model(input), None).unwrap();
+            // The upstream oracle sets AZURE_OPENAI_BASE_URL per case; the
+            // scoped map is the port's injection point (and wins over
+            // model.baseUrl, which carries the same value here).
+            let env = env_map(&[("AZURE_OPENAI_BASE_URL", input)]);
+            let resolved = resolve_azure_config(&model(input), Some(&env)).unwrap();
             assert_eq!(resolved.base_url, expected, "input: {input}");
         }
     }
 
     #[test]
     fn invalid_base_url_is_rejected() {
-        let error = resolve_azure_config(&model("not-a-url"), None).unwrap_err();
+        let env = env_map(&[("AZURE_OPENAI_BASE_URL", "not-a-url")]);
+        let error = resolve_azure_config(&model("not-a-url"), Some(&env)).unwrap_err();
         assert!(error.contains("Invalid Azure OpenAI base URL"), "{error}");
         // The same failure surfaces on the wire as the lone error event.
     }
@@ -990,7 +1063,14 @@ mod tests {
             "https://from-env.openai.azure.com/openai/v1"
         );
 
-        let env = env_map(&[("AZURE_OPENAI_RESOURCE_NAME", "from-resource")]);
+        // The resource name only wins when no base URL resolves: the
+        // whitespace BASE_URL entry falls through (empty after trim, like
+        // upstream's `||` chain), keeping the case hermetic against a
+        // machine-exported AZURE_OPENAI_BASE_URL.
+        let env = env_map(&[
+            ("AZURE_OPENAI_BASE_URL", " "),
+            ("AZURE_OPENAI_RESOURCE_NAME", "from-resource"),
+        ]);
         let resolved =
             resolve_azure_config(&model("https://from-model.openai.azure.com"), Some(&env))
                 .unwrap();
@@ -1002,6 +1082,9 @@ mod tests {
 
     #[test]
     fn missing_base_url_errors_with_upstream_guidance() {
+        // The env-absence branch: sanitize the machine environment (an empty
+        // scoped map would still fall through to it).
+        let _guard = EnvGuard::sanitize();
         let error = resolve_azure_config(&model(""), None).unwrap_err();
         assert_eq!(
             error,
@@ -1012,7 +1095,10 @@ mod tests {
 
     #[test]
     fn api_version_defaults_to_v1_and_env_overrides() {
-        let resolved = resolve_azure_config(&model("https://r.openai.azure.com"), None).unwrap();
+        let resolved = {
+            let _guard = EnvGuard::sanitize();
+            resolve_azure_config(&model("https://r.openai.azure.com"), None).unwrap()
+        };
         assert_eq!(resolved.api_version, "v1");
         let env = env_map(&[("AZURE_OPENAI_API_VERSION", "2024-12-01")]);
         let resolved =
@@ -1022,7 +1108,10 @@ mod tests {
 
     #[test]
     fn deployment_name_defaults_to_model_id_and_map_overrides() {
-        let resolved = resolve_deployment_name(&model("https://r.openai.azure.com"), None);
+        let resolved = {
+            let _guard = EnvGuard::sanitize();
+            resolve_deployment_name(&model("https://r.openai.azure.com"), None)
+        };
         assert_eq!(resolved, "gpt-4o-mini");
 
         let env = env_map(&[(
@@ -1079,9 +1168,15 @@ mod tests {
         mount(&server, &completed_sse()).await;
         let model = model(&format!("{}/v1", server.uri()));
         let ctx = ctx_with(vec![user_msg("hello")], None);
+        // Fully-specified scoped map: keys left out would fall through to the
+        // machine environment (upstream `getProviderEnvValue`).
         let options = SimpleStreamOptions {
             stream: StreamOptions {
-                env: Some(env_map(&[("AZURE_OPENAI_API_VERSION", "2024-12-01")])),
+                env: Some(env_map(&[
+                    ("AZURE_OPENAI_BASE_URL", &format!("{}/v1", server.uri())),
+                    ("AZURE_OPENAI_API_VERSION", "2024-12-01"),
+                    ("AZURE_OPENAI_DEPLOYMENT_NAME_MAP", " "),
+                ])),
                 ..Default::default()
             },
             ..SimpleStreamOptions::default()
@@ -1096,12 +1191,18 @@ mod tests {
         mount(&server, &completed_sse()).await;
         let model = model(&format!("{}/v1", server.uri()));
         let ctx = ctx_with(vec![user_msg("hello")], None);
+        // Fully-specified scoped map: keys left out would fall through to the
+        // machine environment (upstream `getProviderEnvValue`).
         let options = SimpleStreamOptions {
             stream: StreamOptions {
-                env: Some(env_map(&[(
-                    "AZURE_OPENAI_DEPLOYMENT_NAME_MAP",
-                    "gpt-4o-mini=gpt4o-deploy",
-                )])),
+                env: Some(env_map(&[
+                    ("AZURE_OPENAI_BASE_URL", &format!("{}/v1", server.uri())),
+                    ("AZURE_OPENAI_API_VERSION", "v1"),
+                    (
+                        "AZURE_OPENAI_DEPLOYMENT_NAME_MAP",
+                        "gpt-4o-mini=gpt4o-deploy",
+                    ),
+                ])),
                 ..Default::default()
             },
             ..SimpleStreamOptions::default()
@@ -1417,7 +1518,16 @@ mod tests {
         mount(&server, &completed_sse()).await;
         let model = model("not-a-url");
         let ctx = ctx_with(vec![user_msg("hello")], None);
-        let events = collect_simple(&server, &model, &ctx, &SimpleStreamOptions::default()).await;
+        // Pin the invalid URL through the scoped env so the helper's pinned
+        // endpoint does not override it (env beats model.baseUrl).
+        let options = SimpleStreamOptions {
+            stream: StreamOptions {
+                env: Some(env_map(&[("AZURE_OPENAI_BASE_URL", "not-a-url")])),
+                ..Default::default()
+            },
+            ..SimpleStreamOptions::default()
+        };
+        let events = collect_simple(&server, &model, &ctx, &options).await;
         let (reason, error) = error_of(&events);
         assert_eq!(reason, ErrorReason::Error);
         assert!(error
