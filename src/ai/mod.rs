@@ -1,7 +1,8 @@
 //! The `pi-ai` surface: full upstream type system (re-exported from
-//! [`types`]), transcript normalization ([`transcript`]), argument validation
-//! ([`validation`]), request costing ([`cost`]), and the wire-protocol API
-//! implementations ([`api`]) behind the uniform [`ApiImpl`] stream contract.
+//! [`types`]), auth credentials and stores ([`auth`]), transcript
+//! normalization ([`transcript`]), argument validation ([`validation`]),
+//! request costing ([`cost`]), and the wire-protocol API implementations
+//! ([`api`]) behind the uniform [`ApiImpl`] stream contract.
 //!
 //! Every role, block, event, and provider request runs on the
 //! upstream-compatible types: request bodies derive from the REPLAYED
@@ -12,6 +13,7 @@
 //! receives its [`ProviderConfig`] and [`types::Model`] explicitly.
 
 pub mod api;
+pub mod auth;
 pub mod cost;
 pub mod retry;
 pub mod transcript;
@@ -19,6 +21,7 @@ pub mod types;
 pub mod validation;
 
 pub use api::{http_client, pi_user_agent, ApiImpl};
+pub use auth::*;
 pub use cost::calculate_cost;
 pub use transcript::{Context, TranscriptContext};
 pub use types::*;

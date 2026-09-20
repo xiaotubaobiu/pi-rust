@@ -1418,6 +1418,7 @@ dependencies = [
  "tempfile",
  "tokio",
  "tokio-tungstenite",
+ "tokio-util",
  "toml",
  "wiremock",
  "zstd",
