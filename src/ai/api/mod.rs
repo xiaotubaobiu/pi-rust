@@ -4,9 +4,17 @@
 //! factory used by every provider request.
 
 pub mod anthropic;
+pub mod azure_openai_responses;
+pub mod bedrock;
+pub mod google_generative_ai;
+pub mod google_shared;
+pub mod google_vertex;
+pub mod mistral;
+pub mod openai_codex_responses;
 pub mod openai_completions;
 pub mod openai_responses;
 pub mod openai_responses_shared;
+pub mod pi_messages;
 
 use crate::ai::transcript::TranscriptContext;
 use crate::ai::types::events::AssistantMessageEvent;

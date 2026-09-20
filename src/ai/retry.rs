@@ -391,10 +391,22 @@ pub fn is_retryable_assistant_error(message: &AssistantMessage) -> bool {
 /// Case-insensitive existence matcher for the upstream pattern subset:
 /// literal characters, `.` (any single character), and a trailing `?` making
 /// the previous character optional (upstream uses `.?` gaps and one `d?`).
-fn pattern_matches(pattern: &str, text: &str) -> bool {
+/// Shared with the openai-codex-responses endpoint, whose transport retry
+/// classifiers are the same regex family (openai-codex-responses.ts:123-136).
+pub fn pattern_matches(pattern: &str, text: &str) -> bool {
     let pattern: Vec<char> = pattern.chars().collect();
     let text: Vec<char> = text.chars().collect();
     (0..=text.len()).any(|start| match_here(&pattern, 0, &text, start))
+}
+
+/// Upstream `isTerminalRateLimitError` (openai-codex-responses.ts:123-127):
+/// subscription/billing exhaustion is not a transient throttle. The
+/// alternative set is identical to [`NON_RETRYABLE_PROVIDER_LIMIT_PATTERNS`]
+/// (retry.ts:7-24), so the same matcher drives both.
+pub fn is_non_retryable_provider_limit_error(text: &str) -> bool {
+    NON_RETRYABLE_PROVIDER_LIMIT_PATTERNS
+        .into_iter()
+        .any(|pattern| pattern_matches(pattern, text))
 }
 
 fn match_here(pattern: &[char], pattern_index: usize, text: &[char], text_index: usize) -> bool {

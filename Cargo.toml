@@ -20,6 +20,22 @@ serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.151"
 tokio = { version = "1.53.1", features = ["full"] }
 toml = "1.1.6"
+# Pinned exact, disclosed in the openai_codex_responses module docs: the codex
+# websocket transport (tokio-tungstenite with rustls + native roots to match
+# reqwest 0.13's rustls TLS stack) and the zstd request-body compression the
+# codex SSE endpoint expects (upstream compresses with node:zlib
+# zstdCompressSync, level 3).
+tokio-tungstenite = { version = "=0.30.0", features = ["rustls-tls-native-roots"] }
+zstd = "=0.14.0"
+# Pinned exact, disclosed in the bedrock module docs: the SigV4 request signer
+# for the Bedrock ConverseStream endpoint (upstream delegates to the full AWS
+# SDK client; the port signs the raw reqwest request instead).
+aws-sigv4 = "=1.5.3"
+# Direct pins for the SigV4 call surface (both already in the aws-sigv4
+# dependency tree): `Credentials` and the `Identity` it converts into are the
+# signer's identity inputs; see the bedrock module docs.
+aws-credential-types = "=1.3.0"
+aws-smithy-runtime-api = "=1.16.2"
 
 [dev-dependencies]
 tempfile = "3.27.0"

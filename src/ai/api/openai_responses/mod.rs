@@ -113,7 +113,7 @@ impl ApiImpl for OpenAiResponses {
         ));
         shaped.reasoning = options
             .reasoning
-            .and_then(|level| clamp_thinking_level(model, level));
+            .and_then(|level| clamp_thinking_level(model, Some(level)));
         run_stream(cfg.clone(), model.clone(), ctx.clone(), shaped)
     }
 }
@@ -463,12 +463,19 @@ async fn run_stream_task(
     tx: mpsc::Sender<AssistantMessageEvent>,
 ) {
     let compat = get_compat(&model);
-    // Grammar input properties are computed before request assembly, matching
-    // upstream's ordering (openai-responses.ts:147-150 before line 159) for
-    // error precedence. The result is carried into the send/process block so
-    // the no-API-key check (line 143, before line 147) still fails first.
+    // Upstream resolves the transcript synchronously before anything else
+    // (openai-responses.ts:119), then computes the grammar input properties
+    // from the NORMALIZED messages (lines 147-150) — computing them from the
+    // raw context would see tools declared in mid-convo system messages that
+    // the default collapse drops (an unsupportable grammar there would fail
+    // a request upstream never surfaces). Both steps are infallible, so
+    // running them up front keeps the upstream error precedence — apiKey
+    // line 143 -> grammar line 147 -> params line 159 — in the check order
+    // inside the block below (the processor needs the grammar map at
+    // construction).
+    let normalized = resolve_transcript(ctx, Some(compat.supports_mid_convo_system_messages));
     let grammar_result = create_grammar_tool_input_properties(
-        &get_declared_tools(ctx.messages()),
+        &get_declared_tools(normalized.messages()),
         compat.supports_openai_grammar_tools,
     );
     let processor_options = ResponsesStreamOptions {
@@ -484,8 +491,6 @@ async fn run_stream_task(
             options.stream.headers.as_ref(),
         )?;
         let grammar_tool_input_properties = grammar_result?;
-        let normalized =
-            resolve_transcript(ctx.clone(), Some(compat.supports_mid_convo_system_messages));
         let assembly = assemble(
             &model,
             &normalized,
@@ -567,12 +572,15 @@ mod tests {
     use crate::ai::transcript::{normalize_context, Context};
     use crate::ai::types::events::PartialAssistant;
     use crate::ai::types::message::{
-        AssistantBlock, AssistantMessage, Message, StringOrBlocks, UserMessage,
+        AssistantBlock, AssistantMessage, Message, StringOrBlocks, SystemMessage, UserMessage,
     };
     use crate::ai::types::primitives::{ModelCost, ToolChoice};
-    use crate::ai::types::tool::{ConstrainedSampling, JsonSchemaSampling, Strict, Tool};
+    use crate::ai::types::tool::{
+        ConstrainedSampling, GrammarSampling, JsonSchemaSampling, Strict, Tool,
+    };
     use crate::ai::types::{Model, ModelInput, ThinkingLevel};
     use serde_json::json;
+    use std::collections::BTreeMap;
     use std::sync::atomic::{AtomicU32, Ordering};
 
     /// The API id stamped on every emitted message.
@@ -1109,6 +1117,62 @@ mod tests {
         let (body, _, _) =
             capture_simple(&server, &model, &ctx, &SimpleStreamOptions::default()).await;
         assert!(body["tools"][0].get("strict").is_none(), "{body}");
+    }
+
+    /// The grammar map is computed from the NORMALIZED transcript (upstream
+    /// resolves the transcript at openai-responses.ts:119 before the grammar
+    /// properties at 147-150). The default collapse rebuilds the leading
+    /// system message from the NET tool set (`getCurrentTools`), while
+    /// `getDeclaredTools` over the raw transcript collects every
+    /// `toolsAdded` and ignores `toolsRemoved` — so a grammar tool declared
+    /// mid-conversation and later removed must never reach grammar
+    /// resolution: an unsupportable grammar on a removed tool must not fail
+    /// the request.
+    #[tokio::test]
+    async fn removed_grammar_tool_in_mid_convo_system_message_does_not_error() {
+        let server = wiremock::MockServer::start().await;
+        mount(&server, &completed_sse()).await;
+        let model = model_with_compat(json!({"supportsOpenAIGrammarTools": true}));
+        let broken_grammar_tool = Tool {
+            name: "broken-grammar".into(),
+            description: "Grammar tool without a usable variant".into(),
+            parameters: json!({"type": "object", "properties": {}}),
+            constrained_sampling: Some(ConstrainedSampling::Grammar(GrammarSampling {
+                variants: BTreeMap::new(),
+            })),
+        };
+        let ctx = normalize_context(&Context {
+            system_prompt: None,
+            messages: vec![
+                user_msg("hello"),
+                Message::System(SystemMessage {
+                    content: StringOrBlocks::Text("tool available".into()),
+                    sections: None,
+                    tools_added: Some(vec![broken_grammar_tool]),
+                    tools_removed: None,
+                    timestamp: TS,
+                }),
+                user_msg("again"),
+                Message::System(SystemMessage {
+                    content: StringOrBlocks::Text("tool removed".into()),
+                    sections: None,
+                    tools_added: None,
+                    tools_removed: Some(vec![crate::ai::types::tool::ToolReference {
+                        name: "broken-grammar".into(),
+                    }]),
+                    timestamp: TS,
+                }),
+                user_msg("go"),
+            ],
+            tools: None,
+        });
+        let events = collect_simple(&server, &model, &ctx, &SimpleStreamOptions::default()).await;
+        assert_eq!(event_types(&events), ["start", "done"], "{events:?}");
+        let requests = server.received_requests().await.unwrap();
+        assert_eq!(requests.len(), 1);
+        let body: Value = serde_json::from_slice(&requests[0].body).unwrap();
+        // The removed tool is not sent and left no grammar state behind.
+        assert!(body.get("tools").is_none(), "{body}");
     }
 
     #[tokio::test]

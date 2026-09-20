@@ -1250,6 +1250,13 @@ impl ResponsesStreamProcessor {
         &self.output
     }
 
+    /// Mutable access to the live assistant message: the openai-codex
+    /// endpoint appends transport-failure diagnostics to the shared output
+    /// mid-flight (openai-codex-responses.ts:356-365).
+    pub fn output_mut(&mut self) -> &mut AssistantMessage {
+        &mut self.output
+    }
+
     /// Consumes the processor, returning the final assistant message.
     pub fn into_output(self) -> AssistantMessage {
         self.output
