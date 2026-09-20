@@ -37,8 +37,16 @@
 //!   retries cover transport failures and retryable statuses only.
 //! - The URL base is `ProviderConfig.base_url` (the port's wiring) rather
 //!   than `model.baseUrl`; both name the endpoint root in the port.
-//! - Upstream `options.timeoutMs` is not forwarded by pi-messages (the plain
-//!   `fetch` call has no timeout), so the port applies none either.
+//! - The port applies `StreamOptions.timeout_ms` like the other API ports
+//!   (the anthropic/openai-completions ports); upstream pi-messages uses a
+//!   bare `fetch` and forwards no timeout.
+//! - `streamSimple` gaps: upstream forwards a `debug` flag through its
+//!   simple options, which the port drops (structurally forced — the port's
+//!   `SimpleStreamOptions` carries no `debug` field; set it via
+//!   [`PiMessagesOptions::debug`] on the direct path). A `done`/`error`
+//!   wire event missing its `usage` object degrades to zeroed usage where
+//!   upstream would assign the absent value through — a deliberate
+//!   robustness divergence.
 //! - An unknown wire event `type` is skipped. Upstream re-emits it as
 //!   `{...event, partial}` — an event of a type outside the protocol — which
 //!   the port's closed event enum cannot represent; no state mutation
@@ -591,9 +599,11 @@ impl EventConverter {
             } => {
                 match self.partial.content.get_mut(content_index) {
                     Some(AssistantBlock::Text(text)) => text.text.push_str(&delta),
-                    _ => return Err(format!(
+                    _ => {
+                        return Err(format!(
                         "pi-messages text_delta event has no text block at index {content_index}"
-                    )),
+                    ))
+                    }
                 }
                 Ok(AssistantMessageEvent::TextDelta {
                     content_index,
