@@ -24,7 +24,14 @@
 //! - The upstream request-handler catch-all (500 "Internal error") covers
 //!   throwing `URL` parses; the Rust router has no fallible step after the
 //!   request target is read, so a malformed request line maps to the same
-//!   500 response.
+//!   500 response (disclosed: Node answers 400 before the handler there).
+//! - A failed callback-server bind wraps the OS error in "Failed to start
+//!   the OAuth callback server on host:port: …" instead of surfacing the raw
+//!   Node `EADDRINUSE` error text.
+//! - The token response parse is stricter than upstream: a 200 response
+//!   missing `access_token`/`refresh_token`/`expires_in` errors as invalid
+//!   JSON, where upstream would silently build a credential with `undefined`
+//!   fields. (Deliberate: the port never stores a corrupt credential.)
 
 use std::sync::Arc;
 
@@ -160,7 +167,12 @@ fn parse_authorization_input(input: &str) -> ParsedAuthorizationInput {
     }
 
     if value.contains("code=") {
-        let pairs = parse_urlencoded_pairs(value);
+        // `new URLSearchParams` strips a single leading `?`, so a pasted
+        // `?code=…&state=…` (browser URL bar) parses like upstream. Only this
+        // branch: the callback router splits the target off the request line
+        // first and never sees a leading `?` on its query.
+        let query = value.strip_prefix('?').unwrap_or(value);
+        let pairs = parse_urlencoded_pairs(query);
         return ParsedAuthorizationInput {
             code: first_pair(&pairs, "code"),
             state: first_pair(&pairs, "state"),
@@ -1611,6 +1623,15 @@ mod tests {
             parsed("code=a&state=b"),
             (Some("a".to_string()), Some("b".to_string()))
         );
+        // A URL-bar paste keeps its leading `?`: `new URLSearchParams` strips
+        // exactly one, so the input still parses (post-review fix).
+        assert_eq!(
+            parsed("?code=x&state=y"),
+            (Some("x".to_string()), Some("y".to_string()))
+        );
+        // Only one `?` is stripped: the remainder names a `?code` pair, so
+        // `code` is absent (same as upstream).
+        assert_eq!(parsed("??code=x"), (None, None));
         // First occurrence wins (`URLSearchParams.get`).
         assert_eq!(parsed("code=a&code=b"), (Some("a".to_string()), None));
         // A name merely containing "code=" matches nothing.
