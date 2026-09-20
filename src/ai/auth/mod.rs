@@ -31,7 +31,7 @@ pub use env_api_keys::{
     ANTHROPIC_AUTH_TOKEN_ENV, ANTHROPIC_OAUTH_TOKEN_ENV,
 };
 pub use helpers::{env_api_key_auth, lazy_oauth, EnvApiKeyAuth, LazyOAuth, OAuthLoader};
-pub use oauth::{AnthropicOAuth, OpenAICodexOAuth};
+pub use oauth::{AnthropicOAuth, GitHubCopilotOAuth, OpenAICodexOAuth};
 pub use resolve::{
     resolve_provider_auth, AuthResolutionOverrides, ModelsError, ModelsErrorCode,
     DEFAULT_OAUTH_MINIMUM_VALIDITY_MS, DEFAULT_OAUTH_REFRESH_TIMEOUT_MS,

@@ -1059,8 +1059,9 @@ fn get_retry_after_delay_ms(headers: &reqwest::header::HeaderMap, now_ms: u64) -
 
 /// IMF-fixdate parsing for the `retry-after` HTTP-date branch (upstream
 /// `Date.parse` also accepts the obsolete RFC 850 / asctime forms; Retry-After
-/// senders use IMF-fixdate).
-fn parse_http_date(value: &str) -> Option<u64> {
+/// senders use IMF-fixdate). Shared with the github-copilot OAuth flow's
+/// rate-limit retry (same upstream `Retry-After` semantics).
+pub(crate) fn parse_http_date(value: &str) -> Option<u64> {
     const MONTHS: [&str; 12] = [
         "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
     ];
