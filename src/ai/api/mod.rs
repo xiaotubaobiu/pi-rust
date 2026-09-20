@@ -22,9 +22,6 @@ use tokio::sync::mpsc;
 /// normalized [`TranscriptContext`] against one endpoint/model pair and flow
 /// events out of the returned channel following the upstream
 /// `AssistantMessageEvent` protocol (`start` first, `done`/`error` last).
-///
-/// The M1 [`crate::ai::Provider`] trait stays until T9 absorbs the M1
-/// modules; new API ports implement this trait.
 pub trait ApiImpl: Send + Sync {
     fn stream(
         &self,

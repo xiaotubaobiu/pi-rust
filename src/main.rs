@@ -3,11 +3,14 @@ use clap::Parser;
 use pi_rust::agent::session::SessionWriter;
 use pi_rust::agent::tools::builtin_tools;
 use pi_rust::agent::Agent;
-use pi_rust::ai::anthropic::AnthropicProvider;
-use pi_rust::ai::openai_compat::OpenAiCompatProvider;
-use pi_rust::ai::{Provider, ProviderConfig, ProviderIdentity};
+use pi_rust::ai::api::anthropic::AnthropicMessages;
+use pi_rust::ai::api::openai_completions::OpenAiCompletions;
+use pi_rust::ai::api::openai_responses::OpenAiResponses;
+use pi_rust::ai::{ApiImpl, ProviderConfig};
 use pi_rust::cli::repl;
-use pi_rust::config::{load_config, resolve_api_key, Config, PROVIDERS};
+use pi_rust::config::{
+    build_model, load_config, resolve_api_key, resolve_base_url, Config, PROVIDERS,
+};
 use std::sync::Arc;
 
 #[derive(Parser)]
@@ -17,18 +20,29 @@ use std::sync::Arc;
     about = "Minimal coding agent CLI (Rust rewrite of pi)"
 )]
 struct Args {
-    /// Provider: anthropic | openai-compat
+    /// Provider: anthropic | openai-compat | openai-responses
     #[arg(long)]
     provider: Option<String>,
     /// Model id, e.g. claude-sonnet-4-5 or glm-4.6
     #[arg(long)]
     model: Option<String>,
-    /// API base URL (required for openai-compat)
+    /// API base URL (required for openai-compat/openai-responses)
     #[arg(long)]
     base_url: Option<String>,
     /// API key (overrides env resolution)
     #[arg(long)]
     api_key: Option<String>,
+}
+
+/// One wire protocol per provider id; the API implementations are unit
+/// structs, so selection is a plain constructor pick.
+fn select_api(provider: &str) -> Result<Arc<dyn ApiImpl>> {
+    Ok(match provider {
+        "anthropic" => Arc::new(AnthropicMessages),
+        "openai-compat" => Arc::new(OpenAiCompletions),
+        "openai-responses" => Arc::new(OpenAiResponses),
+        other => bail!("unknown provider: {other}"),
+    })
 }
 
 #[tokio::main]
@@ -55,38 +69,30 @@ async fn main() -> Result<()> {
             PROVIDERS
         );
     }
-    if cfg.provider == "openai-compat" && cfg.base_url.is_none() {
-        bail!("openai-compat requires --base-url or base_url in config");
+    if matches!(cfg.provider.as_str(), "openai-compat" | "openai-responses")
+        && cfg.base_url.is_none()
+    {
+        bail!("{} requires --base-url or base_url in config", cfg.provider);
     }
 
-    let key = resolve_api_key(&cfg.provider, args.api_key.as_deref())
-        .context("no API key found: set ANTHROPIC_API_KEY (anthropic) or GLM_API_KEY/OPENAI_API_KEY (openai-compat), or pass --api-key")?;
+    let key = resolve_api_key(&cfg.provider, args.api_key.as_deref()).context(
+        "no API key found: set ANTHROPIC_API_KEY (anthropic) or GLM_API_KEY/OPENAI_API_KEY \
+         (openai-compat/openai-responses), or pass --api-key",
+    )?;
 
     let pcfg = ProviderConfig {
-        base_url: match &cfg.base_url {
-            Some(url) => url.clone(),
-            // anthropic default; openai-compat without base_url was rejected above
-            None => "https://api.anthropic.com".into(),
-        },
+        base_url: resolve_base_url(&cfg)?,
         api_key: key,
         max_tokens: cfg.max_tokens,
     };
-    // One endpoint config can serve any model; the answering identity rides
-    // with the agent and fills AssistantMessage.provider/model.
-    let identity = ProviderIdentity {
-        id: cfg.provider.clone(),
-        model: cfg.model.clone(),
-    };
+    let model = build_model(&cfg)?;
 
-    let provider: Arc<dyn Provider> = match cfg.provider.as_str() {
-        "anthropic" => Arc::new(AnthropicProvider::new(pcfg)),
-        "openai-compat" => Arc::new(OpenAiCompatProvider::new(pcfg)),
-        other => bail!("unknown provider: {other}"),
-    };
+    let provider = select_api(&cfg.provider)?;
 
     let mut agent = Agent::new(
         provider,
-        identity,
+        pcfg,
+        model,
         builtin_tools(),
         repl::SYSTEM_PROMPT.to_string(),
     );
@@ -98,4 +104,27 @@ async fn main() -> Result<()> {
     println!("session: {}", session.path().display());
 
     repl::run(&mut agent, &mut session, &cfg.model).await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn select_api_maps_each_provider() {
+        // The impls are unit structs; pin the selection succeeds for every
+        // supported provider (per-protocol behavior is pinned by the
+        // api module and agent-on-API integration tests).
+        assert!(select_api("anthropic").is_ok());
+        assert!(select_api("openai-compat").is_ok());
+        assert!(select_api("openai-responses").is_ok());
+    }
+
+    #[test]
+    fn select_api_rejects_unknown_provider() {
+        match select_api("nope") {
+            Err(err) => assert!(err.to_string().contains("unknown provider"), "{err}"),
+            Ok(_) => panic!("expected unknown provider to be rejected"),
+        }
+    }
 }
