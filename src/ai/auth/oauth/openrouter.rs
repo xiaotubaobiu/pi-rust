@@ -58,8 +58,8 @@ use crate::ai::auth::types::{
 use super::oauth_page::{oauth_error_html, oauth_success_html};
 use super::pkce::{generate_pkce, Pkce};
 use super::{
-    first_pair, parse_urlencoded_pairs, read_request_head, request_target, write_response, Waiter,
-    HTML_CONTENT_TYPE,
+    first_pair, parse_urlencoded_pairs, read_request_head, request_target, uuid_v4, write_response,
+    Waiter, HTML_CONTENT_TYPE,
 };
 
 /// Upstream `AUTHORIZE_URL` (openrouter.ts:20).
@@ -273,24 +273,6 @@ async fn exchange_authorization_code(
         expires: MAX_SAFE_INTEGER,
         extra: Default::default(),
     })
-}
-
-/// `crypto.randomUUID()`: a random RFC 4122 version-4 UUID from 16 `rand`
-/// bytes (version and variant bits set by hand).
-fn uuid_v4() -> String {
-    let mut bytes = [0u8; 16];
-    rand::fill(&mut bytes);
-    bytes[6] = (bytes[6] & 0x0f) | 0x40;
-    bytes[8] = (bytes[8] & 0x3f) | 0x80;
-    let hex: String = bytes.iter().map(|byte| format!("{byte:02x}")).collect();
-    format!(
-        "{}-{}-{}-{}-{}",
-        &hex[0..8],
-        &hex[8..12],
-        &hex[12..16],
-        &hex[16..20],
-        &hex[20..32]
-    )
 }
 
 /// How the callback server settles its wait (upstream `finish` calls):
@@ -1375,23 +1357,5 @@ mod tests {
         assert_eq!(TOKEN_EXCHANGE_TIMEOUT, Duration::from_secs(30));
         assert_eq!(DEFAULT_CALLBACK_HOST, "127.0.0.1");
         assert_eq!(MAX_SAFE_INTEGER, 9_007_199_254_740_991);
-    }
-
-    #[test]
-    fn uuid_v4_matches_the_rfc_4122_shape() {
-        let uuid = uuid_v4();
-        assert_eq!(uuid.len(), 36);
-        let parts: Vec<&str> = uuid.split('-').collect();
-        assert_eq!(
-            parts.iter().map(|part| part.len()).collect::<Vec<_>>(),
-            vec![8, 4, 4, 4, 12]
-        );
-        assert!(uuid
-            .bytes()
-            .all(|byte| byte.is_ascii_hexdigit() || byte == b'-'));
-        // Version 4 nibble and RFC 4122 variant bits.
-        assert!(uuid.as_bytes()[14] == b'4');
-        assert!(matches!(uuid.as_bytes()[19], b'8' | b'9' | b'a' | b'b'));
-        assert_ne!(uuid, uuid_v4());
     }
 }

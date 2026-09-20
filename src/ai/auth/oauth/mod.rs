@@ -5,8 +5,10 @@
 //! OpenAI Codex (ChatGPT Plus/Pro) flow (`openai_codex`, exposing
 //! [`OpenAICodexOAuth`]), the GitHub Copilot flow (`github_copilot`, exposing
 //! [`GitHubCopilotOAuth`]), the OpenRouter flow (`openrouter`, exposing
-//! [`OpenRouterOAuth`]) and the xAI flow (`xai`, exposing [`XaiOAuth`]).
-//! The remaining upstream flows land with their provider wiring.
+//! [`OpenRouterOAuth`]), the xAI flow (`xai`, exposing [`XaiOAuth`]), the
+//! Kimi Code flow (`kimi_coding`, exposing [`KimiCodingOAuth`]) and the
+//! Radius gateway flow (`radius`, exposing [`RadiusOAuth`]); `load` is the
+//! flow-loader registry (upstream `load.ts`).
 //!
 //! Flows are interactive through [`crate::ai::auth::types::AuthInteraction`]
 //! only: the browser gets the authorize URL via the `auth_url` event, the
@@ -22,16 +24,21 @@
 pub mod anthropic;
 pub mod device_code;
 pub mod github_copilot;
+pub mod kimi_coding;
+pub mod load;
 pub mod oauth_page;
 pub mod openai_codex;
 pub mod openrouter;
 pub mod pkce;
+pub mod radius;
 pub mod xai;
 
 pub use anthropic::AnthropicOAuth;
 pub use github_copilot::GitHubCopilotOAuth;
+pub use kimi_coding::KimiCodingOAuth;
 pub use openai_codex::OpenAICodexOAuth;
 pub use openrouter::OpenRouterOAuth;
+pub use radius::{create_radius_oauth, RadiusOAuth, RadiusOAuthOptions};
 pub use xai::XaiOAuth;
 
 use std::sync::Arc;
@@ -263,6 +270,25 @@ impl<T: Clone + Send> Waiter<T> {
     }
 }
 
+/// `crypto.randomUUID()`: a random RFC 4122 version-4 UUID from 16 `rand`
+/// bytes (version and variant bits set by hand). Upstream duplicates this
+/// per flow (`radius.ts`, `openrouter.ts`); the port hoists it here once.
+pub(crate) fn uuid_v4() -> String {
+    let mut bytes = [0u8; 16];
+    rand::fill(&mut bytes);
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    let hex: String = bytes.iter().map(|byte| format!("{byte:02x}")).collect();
+    format!(
+        "{}-{}-{}-{}-{}",
+        &hex[0..8],
+        &hex[8..12],
+        &hex[12..16],
+        &hex[16..20],
+        &hex[20..32]
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -335,6 +361,24 @@ mod tests {
         assert_eq!(parsed("  the-code  "), (Some("the-code".to_string()), None));
         assert_eq!(parsed(""), (None, None));
         assert_eq!(parsed("   "), (None, None));
+    }
+
+    #[test]
+    fn uuid_v4_matches_the_rfc_4122_shape() {
+        let uuid = uuid_v4();
+        assert_eq!(uuid.len(), 36);
+        let parts: Vec<&str> = uuid.split('-').collect();
+        assert_eq!(
+            parts.iter().map(|part| part.len()).collect::<Vec<_>>(),
+            vec![8, 4, 4, 4, 12]
+        );
+        assert!(uuid
+            .bytes()
+            .all(|byte| byte.is_ascii_hexdigit() || byte == b'-'));
+        // Version 4 nibble and RFC 4122 variant bits.
+        assert!(uuid.as_bytes()[14] == b'4');
+        assert!(matches!(uuid.as_bytes()[19], b'8' | b'9' | b'a' | b'b'));
+        assert_ne!(uuid, uuid_v4());
     }
 
     #[tokio::test]
