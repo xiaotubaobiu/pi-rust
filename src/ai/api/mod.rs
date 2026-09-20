@@ -5,6 +5,7 @@
 
 pub mod anthropic;
 pub mod azure_openai_responses;
+pub mod google_generative_ai;
 pub mod google_shared;
 pub mod openai_codex_responses;
 pub mod openai_completions;

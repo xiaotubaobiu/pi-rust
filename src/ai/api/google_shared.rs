@@ -148,13 +148,15 @@ pub fn to_google_sdk_thinking_level(level: GoogleApiThinkingLevel) -> GoogleApiT
 
 /// Upstream `ThinkingConfig` (`@google/genai`) restricted to the fields this
 /// port sets: `includeThoughts`, `thinkingBudget`, `thinkingLevel`.
+/// `thinkingBudget` is signed (`i64`) because the endpoints pass `-1` for
+/// dynamic thinking (upstream `getGoogleBudget`'s fallback), `0` to disable.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GoogleThinkingConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub include_thoughts: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub thinking_budget: Option<u64>,
+    pub thinking_budget: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub thinking_level: Option<GoogleApiThinkingLevel>,
 }
@@ -1784,6 +1786,16 @@ mod tests {
             })
             .unwrap(),
             r#"{"thinkingBudget":0}"#
+        );
+        // Negative budgets are the dynamic-thinking signal (-1) the endpoints
+        // pass through.
+        assert_eq!(
+            serde_json::to_string(&GoogleThinkingConfig {
+                thinking_budget: Some(-1),
+                ..Default::default()
+            })
+            .unwrap(),
+            r#"{"thinkingBudget":-1}"#
         );
         assert_eq!(
             serde_json::to_string(&GoogleThinkingConfig {
