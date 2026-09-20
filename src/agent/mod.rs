@@ -4,6 +4,7 @@ pub mod session;
 pub mod tool;
 pub mod tools;
 
+use crate::ai::api::ApiImpl;
 use crate::ai::transcript::{normalize_context, Context, TranscriptContext};
 use crate::ai::types::content::{TextContent, ToolCall};
 use crate::ai::types::events::AssistantMessageEvent;
@@ -13,7 +14,7 @@ use crate::ai::types::message::{
 };
 use crate::ai::types::options::SimpleStreamOptions;
 use crate::ai::types::tool::Tool;
-use crate::ai::{now_ms, Provider, ProviderIdentity};
+use crate::ai::{now_ms, Model, ProviderConfig};
 use event::AgentEvent;
 use std::sync::Arc;
 use tool::AgentTool;
@@ -44,9 +45,12 @@ pub fn convert_to_llm(messages: &[AgentMessage]) -> Vec<Message> {
 }
 
 pub struct Agent {
-    pub provider: Arc<dyn Provider>,
-    /// Fills `AssistantMessage.provider`/`model` for provider-emitted messages.
-    pub identity: ProviderIdentity,
+    pub provider: Arc<dyn ApiImpl>,
+    /// Endpoint connection details passed to every provider request.
+    pub provider_config: ProviderConfig,
+    /// Who is answering: `model.provider`/`model.id` stamp
+    /// `AssistantMessage.provider`/`model` inside the API implementation.
+    pub model: Model,
     pub tools: Vec<AgentTool>,
     pub system_prompt: String,
     pub messages: Vec<AgentMessage>,
@@ -55,14 +59,16 @@ pub struct Agent {
 
 impl Agent {
     pub fn new(
-        provider: Arc<dyn Provider>,
-        identity: ProviderIdentity,
+        provider: Arc<dyn ApiImpl>,
+        provider_config: ProviderConfig,
+        model: Model,
         tools: Vec<AgentTool>,
         system_prompt: String,
     ) -> Self {
         Agent {
             provider,
-            identity,
+            provider_config,
+            model,
             tools,
             system_prompt,
             messages: Vec::new(),
@@ -115,9 +121,13 @@ impl Agent {
     async fn run_turns(&mut self, on_event: &mut dyn FnMut(AgentEvent)) -> anyhow::Result<()> {
         for _turn in 0..self.max_turns {
             let transcript = self.build_transcript();
-            let mut rx =
-                self.provider
-                    .stream(&transcript, &SimpleStreamOptions::default(), &self.identity);
+            let options = SimpleStreamOptions::default();
+            let mut rx = self.provider.stream_simple(
+                &self.provider_config,
+                &self.model,
+                &transcript,
+                &options,
+            );
             let mut assistant: Option<AssistantMessage> = None;
             while let Some(ev) = rx.recv().await {
                 match ev {
@@ -209,8 +219,11 @@ impl Agent {
 mod tests {
     use super::*;
     use crate::agent::faux::FauxProvider;
+    use crate::ai::api::anthropic::AnthropicMessages;
+    use crate::ai::api::openai_completions::OpenAiCompletions;
     use crate::ai::types::events::{ErrorReason, SuccessReason};
     use crate::ai::types::primitives::{StopReason, Usage};
+    use crate::ai::types::{ModelCost, ModelInput};
 
     const TS: i64 = 1758240000000;
 
@@ -248,11 +261,35 @@ mod tests {
         }
     }
 
-    fn identity() -> ProviderIdentity {
-        ProviderIdentity {
-            id: "faux".into(),
-            model: "faux-model".into(),
+    fn faux_model() -> Model {
+        Model {
+            id: "faux-model".into(),
+            name: "Faux Model".into(),
+            api: "faux-api".into(),
+            provider: "faux".into(),
+            base_url: "https://faux.invalid".into(),
+            reasoning: false,
+            thinking_level_map: None,
+            input: vec![ModelInput::Text],
+            cost: ModelCost::default(),
+            context_window: 200_000,
+            max_tokens: 8192,
+            sampling_params: None,
+            headers: None,
+            compat: None,
         }
+    }
+
+    fn faux_cfg() -> ProviderConfig {
+        ProviderConfig {
+            base_url: "https://faux.invalid".into(),
+            api_key: "k".into(),
+            max_tokens: 8192,
+        }
+    }
+
+    fn faux_agent(faux: Arc<FauxProvider>, tools: Vec<AgentTool>) -> Agent {
+        Agent::new(faux, faux_cfg(), faux_model(), tools, "sys".into())
     }
 
     #[tokio::test]
@@ -277,7 +314,7 @@ mod tests {
             },
             text_done("hey"),
         ]);
-        let mut agent = Agent::new(faux.clone(), identity(), vec![], "sys".into());
+        let mut agent = faux_agent(faux.clone(), vec![]);
 
         let mut events = Vec::new();
         agent
@@ -325,6 +362,12 @@ mod tests {
         text: String,
     }
 
+    fn echo_tool() -> AgentTool {
+        make_tool("echo", "echo text back", |a: EchoArgs| {
+            Box::pin(async move { Ok(format!("echo: {}", a.text)) })
+        })
+    }
+
     fn tool_call_event(
         id: &str,
         name: &str,
@@ -357,10 +400,7 @@ mod tests {
         // turn 2: model answers using the tool result
         faux.push_script(vec![text_done("echo said hi")]);
 
-        let echo_tool = make_tool("echo", "echo text back", |a: EchoArgs| {
-            Box::pin(async move { Ok(format!("echo: {}", a.text)) })
-        });
-        let mut agent = Agent::new(faux.clone(), identity(), vec![echo_tool], String::new());
+        let mut agent = faux_agent(faux.clone(), vec![echo_tool()]);
 
         let mut tool_events: Vec<String> = Vec::new();
         agent
@@ -405,10 +445,7 @@ mod tests {
         faux.push_script(vec![tool_call_event("t2", "nope", serde_json::json!({}))]);
         faux.push_script(vec![text_done("done")]);
 
-        let echo_tool = make_tool("echo", "echo text back", |a: EchoArgs| {
-            Box::pin(async move { Ok(format!("echo: {}", a.text)) })
-        });
-        let mut agent = Agent::new(faux.clone(), identity(), vec![echo_tool], String::new());
+        let mut agent = faux_agent(faux.clone(), vec![echo_tool()]);
 
         let mut errors: Vec<bool> = Vec::new();
         agent
@@ -440,7 +477,7 @@ mod tests {
             reason: ErrorReason::Error,
             error: failed,
         }]);
-        let mut agent = Agent::new(faux.clone(), identity(), vec![], String::new());
+        let mut agent = faux_agent(faux.clone(), vec![]);
 
         let mut got_error = false;
         let result = agent
@@ -453,5 +490,344 @@ mod tests {
             .await;
         assert!(result.is_err());
         assert!(got_error);
+    }
+
+    // ---- Task 9 integration: the loop against the real ApiImpls (wiremock) ----
+
+    fn wire_model(api: &str, provider: &str, id: &str, base_url: &str) -> Model {
+        Model {
+            id: id.into(),
+            name: id.into(),
+            api: api.into(),
+            provider: provider.into(),
+            base_url: base_url.into(),
+            reasoning: false,
+            thinking_level_map: None,
+            input: vec![ModelInput::Text],
+            cost: ModelCost::default(),
+            context_window: 200_000,
+            max_tokens: 8192,
+            sampling_params: None,
+            headers: None,
+            compat: None,
+        }
+    }
+
+    fn wire_cfg(base_url: &str) -> ProviderConfig {
+        ProviderConfig {
+            base_url: base_url.into(),
+            api_key: "k".into(),
+            max_tokens: 8192,
+        }
+    }
+
+    fn data_line(json: serde_json::Value) -> String {
+        format!("data: {json}\n\n")
+    }
+
+    fn content_chunk(text: &str) -> serde_json::Value {
+        serde_json::json!({"choices": [{"delta": {"content": text}}]})
+    }
+
+    fn finish_chunk(finish_reason: &str) -> serde_json::Value {
+        serde_json::json!({"choices": [{"delta": {}, "finish_reason": finish_reason}]})
+    }
+
+    fn sse(body: &str) -> wiremock::ResponseTemplate {
+        wiremock::ResponseTemplate::new(200)
+            .insert_header("content-type", "text/event-stream")
+            .set_body_string(body.to_string())
+    }
+
+    /// One full agent prompt (text turn only) over `openai-completions`:
+    /// the loop must call `stream_simple` with the agent's config/model, the
+    /// wire body must replay the system prompt and model id, and the stored
+    /// assistant message must carry the Model-stamped metadata.
+    #[tokio::test]
+    async fn agent_runs_text_turn_on_openai_completions_api() {
+        let server = wiremock::MockServer::start().await;
+        let body = format!(
+            "{}{}{}",
+            data_line(content_chunk("he")),
+            data_line(content_chunk("y")),
+            data_line(finish_chunk("stop"))
+        );
+        wiremock::Mock::given(wiremock::matchers::method("POST"))
+            .and(wiremock::matchers::path("/v1/chat/completions"))
+            .respond_with(sse(&format!("{body}\ndata: [DONE]\n\n")))
+            .mount(&server)
+            .await;
+
+        let base = format!("{}/v1", server.uri());
+        let mut agent = Agent::new(
+            Arc::new(OpenAiCompletions),
+            wire_cfg(&base),
+            wire_model("openai-completions", "openai", "gpt-test", &base),
+            vec![],
+            "sys".into(),
+        );
+
+        let mut deltas = String::new();
+        agent
+            .prompt("hello", &mut |ev| {
+                if let AgentEvent::AssistantDelta { delta } = ev {
+                    deltas.push_str(&delta);
+                }
+            })
+            .await
+            .unwrap();
+
+        assert_eq!(deltas, "hey");
+        assert_eq!(agent.messages.len(), 2);
+        match &agent.messages[1] {
+            AgentMessage::Message(Message::Assistant(a)) => {
+                assert_eq!(a.api, "openai-completions");
+                assert_eq!(a.provider, "openai");
+                assert_eq!(a.model, "gpt-test");
+                assert_eq!(a.stop_reason, StopReason::Stop);
+            }
+            other => panic!("expected assistant message, got {other:?}"),
+        }
+
+        let requests = server.received_requests().await.unwrap();
+        assert_eq!(requests.len(), 1);
+        let sent: serde_json::Value = serde_json::from_slice(&requests[0].body).unwrap();
+        assert_eq!(sent["model"], "gpt-test");
+        assert_eq!(sent["messages"][0]["role"], "system");
+        assert_eq!(sent["messages"][0]["content"], "sys");
+        assert_eq!(sent["messages"][1]["role"], "user");
+        assert_eq!(sent["messages"][1]["content"], "hello");
+    }
+
+    /// Two-turn tool loop over `openai-completions`: streamed tool-call
+    /// fragments with split JSON arguments must execute the tool and feed
+    /// the result back as a replayed tool message on turn 2.
+    #[tokio::test]
+    async fn agent_runs_tool_loop_on_openai_completions_api() {
+        let server = wiremock::MockServer::start().await;
+        let turn1 = format!(
+            "{}{}{}",
+            data_line(serde_json::json!({"choices": [{"delta": {"tool_calls": [
+                {"index": 0, "id": "t1", "type": "function", "function": {"name": "echo", "arguments": "{\"text\":"}}
+            ]}}]})),
+            data_line(serde_json::json!({"choices": [{"delta": {"tool_calls": [
+                {"index": 0, "function": {"arguments": "\"hi\"}"}}
+            ]}}]})),
+            data_line(finish_chunk("tool_calls")),
+        );
+        let turn2 = format!(
+            "{}{}",
+            data_line(content_chunk("echo said hi")),
+            data_line(finish_chunk("stop"))
+        );
+        let served_turn1 = std::sync::atomic::AtomicBool::new(true);
+        struct Alternate {
+            turn1: String,
+            turn2: String,
+            served_turn1: std::sync::atomic::AtomicBool,
+        }
+        impl wiremock::Respond for Alternate {
+            fn respond(&self, _req: &wiremock::Request) -> wiremock::ResponseTemplate {
+                let first = self
+                    .served_turn1
+                    .swap(false, std::sync::atomic::Ordering::SeqCst);
+                let body = if first { &self.turn1 } else { &self.turn2 };
+                sse(&format!("{body}\ndata: [DONE]\n\n"))
+            }
+        }
+        wiremock::Mock::given(wiremock::matchers::method("POST"))
+            .respond_with(Alternate {
+                turn1,
+                turn2,
+                served_turn1,
+            })
+            .mount(&server)
+            .await;
+
+        let base = format!("{}/v1", server.uri());
+        let mut agent = Agent::new(
+            Arc::new(OpenAiCompletions),
+            wire_cfg(&base),
+            wire_model("openai-completions", "openai", "gpt-test", &base),
+            vec![echo_tool()],
+            "sys".into(),
+        );
+
+        agent.prompt("run echo", &mut |_| {}).await.unwrap();
+
+        assert_eq!(agent.messages.len(), 4); // user, asst(toolcall), toolresult, asst(final)
+        match &agent.messages[1] {
+            AgentMessage::Message(Message::Assistant(a)) => {
+                assert_eq!(a.stop_reason, StopReason::ToolUse);
+            }
+            other => panic!("expected assistant message, got {other:?}"),
+        }
+        match &agent.messages[2] {
+            AgentMessage::Message(Message::ToolResult(result)) => {
+                assert_eq!(result.tool_call_id, "t1");
+                match &result.content[0] {
+                    TextOrImageBlock::Text(text) => assert_eq!(text.text, "echo: hi"),
+                    other => panic!("unexpected block {other:?}"),
+                }
+            }
+            other => panic!("expected tool result, got {other:?}"),
+        }
+        // Turn 2 replays the assistant tool call and the tool result.
+        let requests = server.received_requests().await.unwrap();
+        let second: serde_json::Value = serde_json::from_slice(&requests[1].body).unwrap();
+        let roles: Vec<&str> = second["messages"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|m| m["role"].as_str().unwrap())
+            .collect();
+        assert_eq!(roles, ["system", "user", "assistant", "tool"]);
+    }
+
+    /// Same loop, `anthropic-messages` API: stamps and SSE parsing must hold
+    /// at the agent level for the second wire protocol too.
+    #[tokio::test]
+    async fn agent_runs_text_turn_on_anthropic_messages_api() {
+        let server = wiremock::MockServer::start().await;
+        // Event data carries the upstream `type` field; the impl dispatches
+        // on it (upstream parses `{type: eventName, ...}`).
+        let ev = |name: &str, data: serde_json::Value| {
+            let mut data = data;
+            data["type"] = serde_json::json!(name);
+            format!("event: {name}\ndata: {data}\n\n")
+        };
+        let body = format!(
+            "{}{}{}{}{}{}",
+            ev(
+                "message_start",
+                serde_json::json!({"message": {"id": "msg_test", "usage": {"input_tokens": 1}}})
+            ),
+            ev(
+                "content_block_start",
+                serde_json::json!({"index": 0, "content_block": {"type": "text", "text": ""}})
+            ),
+            ev(
+                "content_block_delta",
+                serde_json::json!({"index": 0, "delta": {"type": "text_delta", "text": "hey"}})
+            ),
+            ev("content_block_stop", serde_json::json!({"index": 0})),
+            ev(
+                "message_delta",
+                serde_json::json!({"delta": {"stop_reason": "end_turn"}, "usage": {"output_tokens": 1}})
+            ),
+            ev("message_stop", serde_json::json!({})),
+        );
+        wiremock::Mock::given(wiremock::matchers::method("POST"))
+            .and(wiremock::matchers::path("/v1/messages"))
+            .respond_with(sse(&body))
+            .mount(&server)
+            .await;
+
+        let base = server.uri();
+        let mut agent = Agent::new(
+            Arc::new(AnthropicMessages),
+            wire_cfg(&base),
+            wire_model("anthropic-messages", "anthropic", "claude-test", &base),
+            vec![],
+            "sys".into(),
+        );
+
+        let mut deltas = String::new();
+        agent
+            .prompt("hello", &mut |ev| {
+                if let AgentEvent::AssistantDelta { delta } = ev {
+                    deltas.push_str(&delta);
+                }
+            })
+            .await
+            .unwrap();
+
+        assert_eq!(deltas, "hey");
+        match &agent.messages[1] {
+            AgentMessage::Message(Message::Assistant(a)) => {
+                assert_eq!(a.api, "anthropic-messages");
+                assert_eq!(a.provider, "anthropic");
+                assert_eq!(a.model, "claude-test");
+                assert_eq!(a.stop_reason, StopReason::Stop);
+            }
+            other => panic!("expected assistant message, got {other:?}"),
+        }
+    }
+
+    /// Third wire protocol at the agent level: `openai-responses` streams a
+    /// text turn and stamps the Model metadata into the stored message.
+    #[tokio::test]
+    async fn agent_runs_text_turn_on_openai_responses_api() {
+        use crate::ai::api::openai_responses::OpenAiResponses;
+
+        let server = wiremock::MockServer::start().await;
+        let data = |value: serde_json::Value| format!("data: {value}\n\n");
+        let body = format!(
+            "{}{}{}{}{}",
+            data(serde_json::json!({
+                "type": "response.created",
+                "response": {"id": "resp_ok"}
+            })),
+            data(serde_json::json!({
+                "type": "response.output_item.added",
+                "output_index": 0,
+                "item": {"type": "message", "id": "msg_1", "role": "assistant", "content": []}
+            })),
+            data(serde_json::json!({
+                "type": "response.output_text.delta",
+                "output_index": 0,
+                "item_id": "msg_1",
+                "delta": "hey"
+            })),
+            data(serde_json::json!({
+                "type": "response.output_item.done",
+                "output_index": 0,
+                "item": {"type": "message", "id": "msg_1", "role": "assistant",
+                          "content": [{"type": "output_text", "text": "hey", "annotations": []}]}
+            })),
+            data(serde_json::json!({
+                "type": "response.completed",
+                "response": {"id": "resp_ok", "status": "completed",
+                              "usage": {"input_tokens": 1, "output_tokens": 1, "total_tokens": 2}}
+            })),
+        );
+        wiremock::Mock::given(wiremock::matchers::method("POST"))
+            .and(wiremock::matchers::path("/v1/responses"))
+            .respond_with(sse(&body))
+            .mount(&server)
+            .await;
+
+        let base = format!("{}/v1", server.uri());
+        let mut agent = Agent::new(
+            Arc::new(OpenAiResponses),
+            wire_cfg(&base),
+            wire_model("openai-responses", "openai", "gpt-test", &base),
+            vec![],
+            "sys".into(),
+        );
+
+        let mut deltas = String::new();
+        agent
+            .prompt("hello", &mut |ev| {
+                if let AgentEvent::AssistantDelta { delta } = ev {
+                    deltas.push_str(&delta);
+                }
+            })
+            .await
+            .unwrap();
+
+        assert_eq!(deltas, "hey");
+        match &agent.messages[1] {
+            AgentMessage::Message(Message::Assistant(a)) => {
+                assert_eq!(a.api, "openai-responses");
+                assert_eq!(a.provider, "openai");
+                assert_eq!(a.model, "gpt-test");
+                assert_eq!(a.stop_reason, StopReason::Stop);
+            }
+            other => panic!("expected assistant message, got {other:?}"),
+        }
+        let requests = server.received_requests().await.unwrap();
+        let sent: serde_json::Value = serde_json::from_slice(&requests[0].body).unwrap();
+        assert_eq!(sent["model"], "gpt-test");
     }
 }

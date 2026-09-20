@@ -1,0 +1,1165 @@
+//! Retry ports from upstream `packages/ai/src/utils/retry.ts` and
+//! `packages/ai/src/utils/provider-retry.ts`.
+//!
+//! Two independent mechanisms live upstream (and here):
+//!
+//! 1. **Provider-request retry** ([`retry_provider_request`],
+//!    [`ProviderError`]) — reproduces the pinned OpenAI/Anthropic SDK retry
+//!    policy for the INITIAL HTTP request: retryable statuses (408, 409, 429,
+//!    and 500 or higher), the `x-should-retry` header override, transport
+//!    failures (no status), `retry-after-ms`/`retry-after` delay honoring
+//!    capped by `maxRetryDelayMs` (default 60000 ms, `0` disables the cap),
+//!    and the SDK's exponential fallback with `1 - random() * 0.25` jitter.
+//!    The pi SDKs are invoked with `maxRetries: 0` and wrapped so the backoff
+//!    sleep is interruptible upstream; only the request setup is retried —
+//!    once stream bytes flow, a mid-flight error surfaces as the stream's
+//!    `error` event with no retry (upstream wraps only
+//!    `client.*.create(...).withResponse()`).
+//! 2. **Assistant-call retry** ([`retry_assistant_call`], [`RetryPolicy`],
+//!    [`is_retryable_assistant_error`], [`retry_delay_ms`]) — the agent-level
+//!    bounded retry over finished [`AssistantMessage`]s: exponential backoff
+//!    (`baseDelayMs * 2^(attempt-1)`) capped by `maxAgentDelayMs`
+//!    (default 60000), the provider error-message classifier (quota/billing
+//!    errors never retry), and the callback protocol.
+//!
+//! Deviations from upstream, all structural:
+//! - The classifier's patterns upstream are one big case-insensitive regex
+//!   joined from alternatives; no regex crate is a dependency, so the exact
+//!   pattern subset upstream uses (literals, `.` = any single character, `?` =
+//!   optional previous character) is matched by a small interpreter
+//!   ([`pattern_matches`]). Case folding is ASCII; every pattern is ASCII.
+//! - `abortableSleep`/`signal` have no port equivalent (the M2a options
+//!   omission applies to the retry loops too), so abort-during-backoff is
+//!   unreachable; the abort branches of both upstream loops are documented
+//!   rather than ported.
+//! - `retry-after` in HTTP-date form (upstream's `Date.parse` branch) is not
+//!   supported: the port parses the numeric seconds form only and falls
+//!   through to the exponential fallback otherwise.
+//! - Jitter uses a process-random source (std `RandomState`), not
+//!   `Math.random()`; the distribution shape `1 - u * 0.25` is identical and
+//!   no oracle pins its magnitude.
+//! - Delays are integer milliseconds (`u64`); fractional upstream delays
+//!   truncate toward zero exactly like `setTimeout` input, and overflowed
+//!   exponential delays saturate at `Number.MAX_SAFE_INTEGER` like upstream's
+//!   `Number.isSafeInteger` guard.
+
+use std::time::Duration;
+
+use crate::ai::types::message::AssistantMessage;
+use crate::ai::types::primitives::StopReason;
+
+// =============================================================================
+// Provider-request retry (utils/provider-retry.ts)
+// =============================================================================
+
+/// Upstream `DEFAULT_MAX_RETRY_DELAY_MS` (provider-retry.ts:1).
+pub const DEFAULT_MAX_RETRY_DELAY_MS: u64 = 60_000;
+
+/// JS `Number.MAX_SAFE_INTEGER` — the upstream saturation ceiling for
+/// overflowed exponential delays (retry.ts:115).
+const MAX_SAFE_INTEGER: u64 = 9_007_199_254_740_991;
+
+/// Upstream `ProviderError` (provider-retry.ts:9-12): an error carrying the
+/// HTTP status and response headers the SDK attaches. `status: None` models a
+/// transport/setup failure (upstream `undefined`), which the policy always
+/// retries.
+///
+/// `headers` is boxed to keep the struct small (40 bytes): the header map is
+/// heap-backed anyway, and an inline `HeaderMap` pushes `Result<T,
+/// ProviderError>` over clippy's `result_large_err` threshold for every
+/// provider call site.
+#[derive(Debug, Clone)]
+pub struct ProviderError {
+    pub status: Option<u16>,
+    pub headers: Option<Box<reqwest::header::HeaderMap>>,
+    pub message: String,
+}
+
+impl ProviderError {
+    /// A transport/setup failure: no HTTP status, no headers.
+    pub fn transport(message: impl Into<String>) -> Self {
+        ProviderError {
+            status: None,
+            headers: None,
+            message: message.into(),
+        }
+    }
+
+    /// An HTTP error response with its status and headers.
+    pub fn http(
+        status: u16,
+        headers: reqwest::header::HeaderMap,
+        message: impl Into<String>,
+    ) -> Self {
+        ProviderError {
+            status: Some(status),
+            headers: Some(Box::new(headers)),
+            message: message.into(),
+        }
+    }
+}
+
+impl std::fmt::Display for ProviderError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.message)
+    }
+}
+
+/// Upstream `isRetryableProviderError` (provider-retry.ts:23-35): the pinned
+/// OpenAI/Anthropic SDK retry policy. `x-should-retry: true/false` overrides;
+/// a missing status (transport failure) retries; otherwise 408/409/429 and
+/// everything >= 500 retry.
+pub fn is_retryable_provider_error(error: &ProviderError) -> bool {
+    let should_retry = error
+        .headers
+        .as_ref()
+        .and_then(|headers| header_str(headers, "x-should-retry"));
+    match should_retry {
+        Some("true") => return true,
+        Some("false") => return false,
+        _ => {}
+    }
+    match error.status {
+        None => true,
+        Some(status) => status == 408 || status == 409 || status == 429 || status >= 500,
+    }
+}
+
+/// Upstream `validateServerRetryDelayMs` (provider-retry.ts:37-49): a
+/// server-requested delay above the cap fails the request (`maxRetryDelayMs`
+/// defaults to 60000; `0` disables the limit). The error message reproduces
+/// the upstream template, including the `Math.ceil` to seconds.
+fn validate_server_retry_delay_ms(
+    delay_ms: u64,
+    max_retry_delay_ms: Option<u64>,
+    provider_error_message: &str,
+) -> Result<u64, String> {
+    let max_delay_ms = max_retry_delay_ms.unwrap_or(DEFAULT_MAX_RETRY_DELAY_MS);
+    if max_delay_ms > 0 && delay_ms > max_delay_ms {
+        return Err(format!(
+            "Server requested {}s retry delay (max: {}s). {provider_error_message}",
+            delay_ms.div_ceil(1000),
+            max_delay_ms.div_ceil(1000),
+        ));
+    }
+    Ok(delay_ms)
+}
+
+/// Upstream `getRetryDelayMs` (provider-retry.ts:51-67): `retry-after-ms`,
+/// then `retry-after` (numeric seconds), then the SDK's exponential fallback
+/// with jitter. Unparseable header values are skipped like upstream's
+/// `Number.isNaN` guards.
+fn get_retry_delay_ms(
+    error: &ProviderError,
+    retry_index: u32,
+    max_retry_delay_ms: Option<u64>,
+) -> Result<u64, String> {
+    let headers = error.headers.as_ref();
+    let retry_after_ms = headers.and_then(|headers| header_str(headers, "retry-after-ms"));
+    if let Some(value) = retry_after_ms.and_then(parse_ms_header) {
+        return validate_server_retry_delay_ms(value, max_retry_delay_ms, &error.message);
+    }
+    let retry_after = headers.and_then(|headers| header_str(headers, "retry-after"));
+    if let Some(seconds) = retry_after.and_then(parse_ms_header) {
+        // Upstream multiplies seconds by 1000; `parse_ms_header` is unitless,
+        // so scale here before validating.
+        return validate_server_retry_delay_ms(
+            seconds.saturating_mul(1000),
+            max_retry_delay_ms,
+            &error.message,
+        );
+    }
+    let delay = exponential_delay_ms(retry_index, pseudo_random_fraction());
+    Ok(delay)
+}
+
+/// `parseFloat` + `Number.isNaN` equivalent for a delay header: parses a
+/// finite non-negative millisecond value, clamping negatives to zero like
+/// upstream's `Math.max(0, ms)` sleep input.
+fn parse_ms_header(text: &str) -> Option<u64> {
+    let value: f64 = text.trim().parse().ok()?;
+    if value.is_nan() {
+        return None;
+    }
+    // Float-to-int casts saturate in Rust: negatives clamp to 0, huge values
+    // clamp to u64::MAX (the cap check rejects those afterwards).
+    Some(value.max(0.0) as u64)
+}
+
+/// Case-insensitive single-header lookup (`HeaderMap::get` folds case; this
+/// wrapper converts to `&str`).
+fn header_str<'a>(headers: &'a reqwest::header::HeaderMap, name: &str) -> Option<&'a str> {
+    headers.get(name).and_then(|value| value.to_str().ok())
+}
+
+/// Upstream exponential fallback (provider-retry.ts:65): `min(0.5 * 2^i, 8)s`
+/// scaled by `1 - random() * 0.25`. Split out pure so the formula is testable
+/// with an injected jitter fraction.
+fn exponential_delay_ms(retry_index: u32, jitter_fraction: f64) -> u64 {
+    let seconds = (0.5 * 2.0f64.powi(retry_index as i32)).min(8.0);
+    let millis = seconds * 1000.0 * (1.0 - jitter_fraction * 0.25);
+    (millis.max(0.0) as u64).min(MAX_SAFE_INTEGER)
+}
+
+/// A process-random fraction in `[0, 1)` standing in for `Math.random()`.
+/// `RandomState` derives per-instance keys from thread-local randomness, so
+/// hashing a fixed payload yields an unpredictable value.
+fn pseudo_random_fraction() -> f64 {
+    use std::hash::{BuildHasher, Hasher};
+    let mut hasher = std::collections::hash_map::RandomState::new().build_hasher();
+    hasher.write_u64(0x0007_0161);
+    (hasher.finish() >> 11) as f64 / (1u64 << 53) as f64
+}
+
+/// Upstream `retryProviderRequest` (provider-retry.ts:105-125): run the
+/// request-producing closure with bounded retries over
+/// [`is_retryable_provider_error`] failures. Each retry is a fresh request
+/// (the closure re-sends), so upstream's `X-Stainless-Retry-Count: 0`
+/// invariant holds trivially. The abort-signal branches have no port
+/// equivalent (module docs).
+///
+/// `max_retries` is upstream `options.maxRetries ?? 0` — the initial call
+/// never counts as a retry, and `0` disables retrying.
+pub async fn retry_provider_request<T, F, Fut>(
+    max_retries: u32,
+    max_retry_delay_ms: Option<u64>,
+    mut request: F,
+) -> Result<T, ProviderError>
+where
+    F: FnMut() -> Fut,
+    Fut: std::future::Future<Output = Result<T, ProviderError>>,
+{
+    let mut retries_remaining = max_retries;
+    loop {
+        match request().await {
+            Ok(value) => return Ok(value),
+            Err(error) => {
+                if retries_remaining == 0 || !is_retryable_provider_error(&error) {
+                    return Err(error);
+                }
+                let retry_index = max_retries - retries_remaining;
+                retries_remaining -= 1;
+                let delay = get_retry_delay_ms(&error, retry_index, max_retry_delay_ms)
+                    .map_err(ProviderError::transport)?;
+                tokio::time::sleep(Duration::from_millis(delay)).await;
+            }
+        }
+    }
+}
+
+// =============================================================================
+// Assistant-call retry (utils/retry.ts)
+// =============================================================================
+
+/// Upstream `DEFAULT_MAX_AGENT_RETRY_DELAY_MS` (retry.ts:111).
+pub const DEFAULT_MAX_AGENT_RETRY_DELAY_MS: u64 = 60_000;
+
+/// Upstream `NON_RETRYABLE_PROVIDER_LIMIT_ERROR_PATTERN` alternatives
+/// (retry.ts:7-24): subscription/account limits are not transient throttles.
+const NON_RETRYABLE_PROVIDER_LIMIT_PATTERNS: [&str; 8] = [
+    "GoUsageLimitError",
+    "FreeUsageLimitError",
+    "Monthly usage limit reached",
+    "available balance",
+    "insufficient_quota",
+    "out of budget",
+    "quota exceeded",
+    "billing",
+];
+
+/// Upstream `RETRYABLE_PROVIDER_ERROR_PATTERN` alternatives (retry.ts:26-92):
+/// generic provider load, HTTP-status, transport, and stream-truncation
+/// failures, plus explicit retry guidance. Each entry uses only literals,
+/// `.` (any character), and `?` (optional previous character).
+const RETRYABLE_PROVIDER_ERROR_PATTERNS: [&str; 43] = [
+    "overloaded",
+    "currently experiencing high demand",
+    "rate.?limit",
+    "too many requests",
+    "429",
+    "500",
+    "502",
+    "503",
+    "504",
+    "520",
+    "524",
+    "service.?unavailable",
+    "server.?error",
+    "internal.?error",
+    "provider.?returned.?error",
+    "exceeded request buffer limit while retrying upstream",
+    "network.?error",
+    "connection.?error",
+    "connection.?refused",
+    "connection.?lost",
+    "other side closed",
+    "fetch failed",
+    "getaddrinfo",
+    "ENOTFOUND",
+    "EAI_AGAIN",
+    "upstream.?connect",
+    "reset before headers",
+    "socket hang up",
+    "socket connection was closed",
+    "timed? out",
+    "timeout",
+    "terminated",
+    "websocket.?closed",
+    "websocket.?error",
+    "ended without",
+    "stream ended before message_stop",
+    "stream ended before a terminal response event",
+    "http2 request did not get a response",
+    "retry delay",
+    "you can retry your request",
+    "try your request again",
+    "please retry your request",
+    "ResourceExhausted",
+];
+
+/// Upstream `RetryPolicy` (retry.ts:101-109): bounded attempts with
+/// exponential backoff.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RetryPolicy {
+    pub enabled: bool,
+    /// Max retry attempts (0 = no retries). The initial call never counts.
+    pub max_retries: u32,
+    /// Base delay in ms; per-attempt delay is `baseDelayMs * 2^(attempt-1)`.
+    pub base_delay_ms: u64,
+    /// Optional cap for agent-level retry delays in ms (default 60000).
+    pub max_agent_delay_ms: Option<u64>,
+}
+
+/// Upstream `retryDelayMs` (retry.ts:113-117): `baseDelayMs * 2^(attempt-1)`
+/// saturated at `Number.MAX_SAFE_INTEGER`, capped by `maxAgentDelayMs`
+/// (default 60000; a 0 cap zeroes the delay).
+pub fn retry_delay_ms(policy: &RetryPolicy, attempt: u32) -> u64 {
+    let exponent = attempt.saturating_sub(1).min(63);
+    let factor = 1u64 << exponent;
+    let delay = policy
+        .base_delay_ms
+        .checked_mul(factor)
+        .unwrap_or(MAX_SAFE_INTEGER)
+        .min(MAX_SAFE_INTEGER);
+    delay.min(
+        policy
+            .max_agent_delay_ms
+            .unwrap_or(DEFAULT_MAX_AGENT_RETRY_DELAY_MS),
+    )
+}
+
+/// `onRetryScheduled` hook: `(attempt, maxAttempts, delayMs, errorMessage)`.
+pub type OnRetryScheduled = Box<dyn FnMut(u32, u32, u64, &str) + Send>;
+/// `onRetryAttemptStart` hook.
+pub type OnRetryAttemptStart = Box<dyn FnMut() + Send>;
+/// `onRetryFinished` hook: `(success, attempt, finalError?)`.
+pub type OnRetryFinished = Box<dyn FnMut(bool, u32, Option<&str>) + Send>;
+
+/// Upstream `RetryCallbacks` (retry.ts:120-132): hooks emitted around each
+/// retry. All fields optional; defaults to no-op.
+#[derive(Default)]
+pub struct RetryCallbacks {
+    /// Before the backoff sleep of each retry attempt (1-indexed).
+    pub on_retry_scheduled: Option<OnRetryScheduled>,
+    /// After the sleep, immediately before the retried call starts.
+    pub on_retry_attempt_start: Option<OnRetryAttemptStart>,
+    /// Once when the loop ends: success if a later call completed normally.
+    pub on_retry_finished: Option<OnRetryFinished>,
+}
+
+/// Upstream `isRetryableAssistantError` (retry.ts:237-242): whether a failed
+/// assistant message looks like a transient provider/transport error. Quota/
+/// billing exhaustion (the non-retryable list) wins over the retryable list.
+pub fn is_retryable_assistant_error(message: &AssistantMessage) -> bool {
+    if message.stop_reason != StopReason::Error {
+        return false;
+    }
+    let Some(error_message) = &message.error_message else {
+        return false;
+    };
+    if NON_RETRYABLE_PROVIDER_LIMIT_PATTERNS
+        .into_iter()
+        .any(|pattern| pattern_matches(pattern, error_message))
+    {
+        return false;
+    }
+    RETRYABLE_PROVIDER_ERROR_PATTERNS
+        .into_iter()
+        .any(|pattern| pattern_matches(pattern, error_message))
+}
+
+/// Case-insensitive existence matcher for the upstream pattern subset:
+/// literal characters, `.` (any single character), and a trailing `?` making
+/// the previous character optional (upstream uses `.?` gaps and one `d?`).
+fn pattern_matches(pattern: &str, text: &str) -> bool {
+    let pattern: Vec<char> = pattern.chars().collect();
+    let text: Vec<char> = text.chars().collect();
+    (0..=text.len()).any(|start| match_here(&pattern, 0, &text, start))
+}
+
+fn match_here(pattern: &[char], pattern_index: usize, text: &[char], text_index: usize) -> bool {
+    if pattern_index >= pattern.len() {
+        return true;
+    }
+    let current = pattern[pattern_index];
+    let optional = pattern.get(pattern_index + 1) == Some(&'?');
+    if optional {
+        let next = pattern_index + 2;
+        if text_index < text.len()
+            && char_matches(current, text[text_index])
+            && match_here(pattern, next, text, text_index + 1)
+        {
+            return true;
+        }
+        return match_here(pattern, next, text, text_index);
+    }
+    if text_index < text.len() && char_matches(current, text[text_index]) {
+        return match_here(pattern, pattern_index + 1, text, text_index + 1);
+    }
+    false
+}
+
+fn char_matches(pattern_char: char, text_char: char) -> bool {
+    pattern_char == '.' || pattern_char.eq_ignore_ascii_case(&text_char)
+}
+
+/// Upstream `retryAssistantCall` (retry.ts:176-226): run one
+/// assistant-producing call with bounded retry on transient errors.
+///
+/// - A non-aborted, non-error response returns immediately (success).
+/// - Aborts are terminal and never retried.
+/// - Non-retryable errors (including quota/billing) fail fast.
+/// - Otherwise retries up to `policy.max_retries` with [`retry_delay_ms`]
+///   backoff, emitting the callbacks in upstream order.
+///
+/// `policy: None` or `enabled: false` returns the first response unchanged.
+/// The abort-signal branches have no port equivalent (module docs): the
+/// backoff sleep is a plain [`tokio::time::sleep`].
+pub async fn retry_assistant_call<P, Fut>(
+    mut produce: P,
+    policy: Option<&RetryPolicy>,
+    callbacks: &mut RetryCallbacks,
+) -> AssistantMessage
+where
+    P: FnMut() -> Fut,
+    Fut: std::future::Future<Output = AssistantMessage>,
+{
+    let max_attempts = policy
+        .filter(|policy| policy.enabled)
+        .map_or(0, |policy| policy.max_retries);
+
+    let mut attempt: u32 = 0;
+    let mut last_retry: Option<(u32, String)> = None;
+    loop {
+        let response = produce().await;
+
+        // Abort: terminal but not successful. Never retry an aborted message.
+        if response.stop_reason == StopReason::Aborted {
+            if let Some((last_attempt, _)) = &last_retry {
+                if let Some(callback) = callbacks.on_retry_finished.as_mut() {
+                    callback(false, *last_attempt, None);
+                }
+            }
+            return response;
+        }
+
+        // Success: non-error, non-abort responses return as-is.
+        if response.stop_reason != StopReason::Error {
+            if let Some((last_attempt, _)) = &last_retry {
+                if let Some(callback) = callbacks.on_retry_finished.as_mut() {
+                    callback(true, *last_attempt, None);
+                }
+            }
+            return response;
+        }
+
+        // Non-retryable, or budget exhausted: return the final error message.
+        if attempt >= max_attempts || !is_retryable_assistant_error(&response) {
+            if let Some((last_attempt, _)) = &last_retry {
+                if let Some(callback) = callbacks.on_retry_finished.as_mut() {
+                    callback(false, *last_attempt, response.error_message.as_deref());
+                }
+            }
+            return response;
+        }
+
+        attempt += 1;
+        let error_message = response
+            .error_message
+            .clone()
+            .unwrap_or_else(|| "Unknown error".to_string());
+        last_retry = Some((attempt, error_message.clone()));
+        let delay_ms = retry_delay_ms(policy.expect("checked above"), attempt);
+        if let Some(callback) = callbacks.on_retry_scheduled.as_mut() {
+            callback(attempt, max_attempts, delay_ms, &error_message);
+        }
+        tokio::time::sleep(Duration::from_millis(delay_ms)).await;
+        if let Some(callback) = callbacks.on_retry_attempt_start.as_mut() {
+            callback();
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::ai::now_ms;
+    use crate::ai::types::primitives::Usage;
+    use std::sync::atomic::{AtomicU32, Ordering};
+    use std::sync::{Arc, Mutex};
+
+    // ---- fixtures ----
+
+    /// Finished-callback log entry: `(success, attempt, finalError?)`.
+    type FinishedLog = std::sync::Arc<std::sync::Mutex<Vec<(bool, u32, Option<String>)>>>;
+
+    fn message(stop_reason: StopReason, error: Option<&str>) -> AssistantMessage {
+        AssistantMessage {
+            content: Vec::new(),
+            api: "faux".to_string(),
+            provider: "faux".to_string(),
+            model: "faux".to_string(),
+            response_model: None,
+            response_id: None,
+            provider_thinking_level: None,
+            diagnostics: None,
+            usage: Usage::default(),
+            stop_reason,
+            deferred: None,
+            error_message: error.map(str::to_string),
+            raw_stop_reason: None,
+            end_turn: None,
+            timestamp: now_ms(),
+        }
+    }
+
+    fn error_msg(text: &str) -> AssistantMessage {
+        message(StopReason::Error, Some(text))
+    }
+
+    fn provider_error(status: u16, headers: &[(&str, &str)]) -> ProviderError {
+        let mut map = reqwest::header::HeaderMap::new();
+        for (name, value) in headers {
+            map.insert(
+                reqwest::header::HeaderName::from_bytes(name.as_bytes()).unwrap(),
+                reqwest::header::HeaderValue::from_str(value).unwrap(),
+            );
+        }
+        ProviderError::http(status, map, format!("Provider error: {status}"))
+    }
+
+    /// Drives `retry_provider_request` over a scripted FIFO outcome list;
+    /// returns (result, attempt count, elapsed millis).
+    async fn drive(
+        max_retries: u32,
+        max_retry_delay_ms: Option<u64>,
+        outcomes: Vec<Result<&'static str, ProviderError>>,
+    ) -> (Result<&'static str, String>, u32, u128) {
+        let attempts = Arc::new(AtomicU32::new(0));
+        let queue = Arc::new(Mutex::new(outcomes));
+        let attempts_closure = attempts.clone();
+        let start = std::time::Instant::now();
+        let result = retry_provider_request(max_retries, max_retry_delay_ms, move || {
+            let attempts = attempts_closure.clone();
+            let queue = queue.clone();
+            async move {
+                attempts.fetch_add(1, Ordering::SeqCst);
+                queue.lock().unwrap().remove(0)
+            }
+        })
+        .await
+        .map_err(|error| error.message);
+        (
+            result,
+            attempts.load(Ordering::SeqCst),
+            start.elapsed().as_millis(),
+        )
+    }
+
+    /// Drives `retry_assistant_call` over a scripted message list; returns
+    /// (final message, produce-call count).
+    async fn call(
+        policy: Option<RetryPolicy>,
+        outcomes: Vec<AssistantMessage>,
+        callbacks: &mut RetryCallbacks,
+    ) -> (AssistantMessage, u32) {
+        let attempts = Arc::new(AtomicU32::new(0));
+        let queue = Arc::new(Mutex::new(outcomes));
+        let attempts_closure = attempts.clone();
+        let final_message = retry_assistant_call(
+            move || {
+                let attempts = attempts_closure.clone();
+                let queue = queue.clone();
+                async move {
+                    attempts.fetch_add(1, Ordering::SeqCst);
+                    let outcome = { queue.lock().unwrap().first().cloned() };
+                    match outcome {
+                        Some(outcome) => {
+                            queue.lock().unwrap().remove(0);
+                            outcome
+                        }
+                        // Repeat the last outcome when the script runs dry so
+                        // "always fails" scripts need no padding.
+                        None => queue
+                            .lock()
+                            .unwrap()
+                            .last()
+                            .cloned()
+                            .expect("non-empty script"),
+                    }
+                }
+            },
+            policy.as_ref(),
+            callbacks,
+        )
+        .await;
+        (final_message, attempts.load(Ordering::SeqCst))
+    }
+
+    fn scheduled_callback(counter: Arc<AtomicU32>) -> RetryCallbacks {
+        RetryCallbacks {
+            on_retry_scheduled: Some(Box::new(move |_, _, _, _| {
+                counter.fetch_add(1, Ordering::SeqCst);
+            })),
+            ..Default::default()
+        }
+    }
+
+    // ---- provider-retry.test.ts ports ----
+
+    #[tokio::test]
+    async fn retries_retryable_provider_errors() {
+        let (result, attempts, elapsed) = drive(
+            1,
+            None,
+            vec![
+                Err(provider_error(429, &[("retry-after-ms", "20")])),
+                Ok("ok"),
+            ],
+        )
+        .await;
+        assert_eq!(result, Ok("ok"));
+        assert_eq!(attempts, 2);
+        // The provider-requested delay is honored before the second attempt.
+        assert!(elapsed >= 15, "slept {elapsed}ms");
+    }
+
+    #[tokio::test]
+    async fn does_not_retry_errors_the_provider_marks_as_non_retryable() {
+        let error = provider_error(429, &[("x-should-retry", "false")]);
+        let (result, attempts, _) = drive(2, None, vec![Err(error.clone())]).await;
+        assert_eq!(result.unwrap_err(), error.message);
+        assert_eq!(attempts, 1);
+    }
+
+    #[tokio::test]
+    async fn x_should_retry_true_forces_retry_of_a_non_retryable_status() {
+        let (result, attempts, _) = drive(
+            1,
+            None,
+            vec![
+                Err(provider_error(400, &[("x-should-retry", "true")])),
+                Ok("ok"),
+            ],
+        )
+        .await;
+        assert_eq!(result, Ok("ok"));
+        assert_eq!(attempts, 2);
+    }
+
+    #[tokio::test]
+    async fn transport_failures_without_status_are_retryable() {
+        let (result, attempts, _) = drive(
+            2,
+            None,
+            vec![
+                Err(ProviderError::transport("connection reset")),
+                Err(ProviderError::transport("connection reset")),
+                Ok("ok"),
+            ],
+        )
+        .await;
+        assert_eq!(result, Ok("ok"));
+        assert_eq!(attempts, 3);
+    }
+
+    #[tokio::test]
+    async fn rejects_a_provider_requested_retry_delay_above_the_limit() {
+        let (result, attempts, _) = drive(
+            1,
+            Some(1000),
+            vec![Err(provider_error(429, &[("retry-after", "277403")]))],
+        )
+        .await;
+        let message = result.unwrap_err();
+        assert!(
+            message.starts_with("Server requested 277403s retry delay (max: 1s)."),
+            "got: {message}"
+        );
+        assert_eq!(attempts, 1);
+    }
+
+    #[tokio::test]
+    async fn default_cap_rejects_delays_above_60_seconds() {
+        let (result, attempts, _) = drive(
+            1,
+            None,
+            vec![Err(provider_error(429, &[("retry-after-ms", "61000")]))],
+        )
+        .await;
+        assert!(result
+            .unwrap_err()
+            .starts_with("Server requested 61s retry delay (max: 60s)."),);
+        assert_eq!(attempts, 1);
+    }
+
+    #[tokio::test]
+    async fn allows_disabling_the_provider_requested_retry_delay_cap() {
+        let (result, attempts, _) = drive(
+            1,
+            Some(0),
+            vec![
+                Err(provider_error(429, &[("retry-after-ms", "15")])),
+                Ok("ok"),
+            ],
+        )
+        .await;
+        assert_eq!(result, Ok("ok"));
+        assert_eq!(attempts, 2);
+    }
+
+    #[tokio::test]
+    async fn retries_the_exact_retryable_status_set() {
+        // 408, 409, 429 and everything >= 500 retry; other statuses fail fast.
+        for (status, expected_attempts) in [
+            (408u16, 2u32),
+            (409, 2),
+            (429, 2),
+            (500, 2),
+            (502, 2),
+            (503, 2),
+            (504, 2),
+            (529, 2),
+            (400, 1),
+            (401, 1),
+            (403, 1),
+            (404, 1),
+            (499, 1),
+        ] {
+            let (_, attempts, _) = drive(
+                1,
+                None,
+                vec![
+                    Err(provider_error(status, &[("retry-after-ms", "1")])),
+                    Ok("ok"),
+                ],
+            )
+            .await;
+            assert_eq!(attempts, expected_attempts, "status {status}");
+        }
+    }
+
+    #[tokio::test]
+    async fn exhausts_retries_and_returns_the_last_error() {
+        let error = provider_error(500, &[("retry-after-ms", "1")]);
+        let (result, attempts, _) = drive(
+            2,
+            None,
+            vec![Err(error.clone()), Err(error.clone()), Err(error)],
+        )
+        .await;
+        assert!(result.is_err());
+        assert_eq!(attempts, 3);
+    }
+
+    // ---- exponential fallback formula ----
+
+    #[test]
+    fn exponential_fallback_doubles_and_caps_at_eight_seconds() {
+        // min(0.5 * 2^i, 8) * 1000, jitter fraction 0 => no reduction.
+        assert_eq!(exponential_delay_ms(0, 0.0), 500);
+        assert_eq!(exponential_delay_ms(1, 0.0), 1000);
+        assert_eq!(exponential_delay_ms(2, 0.0), 2000);
+        assert_eq!(exponential_delay_ms(3, 0.0), 4000);
+        assert_eq!(exponential_delay_ms(4, 0.0), 8000);
+        assert_eq!(exponential_delay_ms(9, 0.0), 8000);
+        // Full jitter reduces by 25%.
+        assert_eq!(exponential_delay_ms(0, 1.0), 375);
+    }
+
+    #[test]
+    fn pseudo_random_fraction_is_in_the_unit_interval() {
+        for _ in 0..32 {
+            let fraction = pseudo_random_fraction();
+            assert!((0.0..1.0).contains(&fraction), "fraction {fraction}");
+        }
+    }
+
+    // ---- retry.test.ts ports: classification ----
+
+    const OPENAI_EXPLICIT_RETRY_MESSAGE: &str = "An error occurred while processing your request. You can retry your request, or contact us through our help center at help.openai.com if the error persists. Please include the request ID req_******** in your message.";
+    const BEDROCK_EXPLICIT_RETRY_MESSAGE: &str = "{\"message\":\"The system encountered an unexpected error during processing. Try your request again.\"}";
+    const NVIDIA_NIM_RESOURCE_EXHAUSTED_MESSAGE: &str =
+        "ResourceExhausted: Worker local total request limit reached (288/48)";
+    const BUN_FETCH_SOCKET_CLOSED_MESSAGE: &str = "The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()";
+    const OPENAI_RESPONSES_EARLY_EOF_MESSAGE: &str =
+        "OpenAI Responses stream ended before a terminal response event";
+    const WRAPPED_DNS_LOOKUP_ERROR: &str = "The pending stream has been canceled (caused by: getaddrinfo ENOTFOUND bedrock-runtime.us-east-1.amazonaws.com)";
+    const AZURE_PEAK_LOAD_ERROR: &str = "The system is currently experiencing high demand and cannot process your request. Your request exceeds the maximum usage size allowed during peak load. For improved capacity reliability, consider switching to Provisioned Throughput.";
+
+    #[test]
+    fn matches_explicit_provider_retry_guidance() {
+        assert!(is_retryable_assistant_error(&error_msg(
+            OPENAI_EXPLICIT_RETRY_MESSAGE
+        )));
+        assert!(is_retryable_assistant_error(&error_msg(
+            BEDROCK_EXPLICIT_RETRY_MESSAGE
+        )));
+        assert!(is_retryable_assistant_error(&error_msg(
+            NVIDIA_NIM_RESOURCE_EXHAUSTED_MESSAGE
+        )));
+    }
+
+    #[test]
+    fn matches_bun_fetch_socket_drop_wording() {
+        assert!(is_retryable_assistant_error(&error_msg(
+            BUN_FETCH_SOCKET_CLOSED_MESSAGE
+        )));
+    }
+
+    #[test]
+    fn matches_upstream_request_buffer_exhaustion_wording() {
+        assert!(is_retryable_assistant_error(&error_msg(
+            "Error: exceeded request buffer limit while retrying upstream"
+        )));
+    }
+
+    #[test]
+    fn matches_dns_transport_failure_wording() {
+        for text in [
+            WRAPPED_DNS_LOOKUP_ERROR,
+            "connect ENOTFOUND api.example.com",
+            "EAI_AGAIN api.example.com",
+            "getaddrinfo failed for api.example.com",
+        ] {
+            assert!(is_retryable_assistant_error(&error_msg(text)), "{text}");
+        }
+    }
+
+    #[test]
+    fn matches_openai_responses_streams_that_end_before_terminal_events() {
+        assert!(is_retryable_assistant_error(&error_msg(
+            OPENAI_RESPONSES_EARLY_EOF_MESSAGE
+        )));
+    }
+
+    #[test]
+    fn matches_azure_peak_load_capacity_errors() {
+        assert!(is_retryable_assistant_error(&error_msg(
+            AZURE_PEAK_LOAD_ERROR
+        )));
+    }
+
+    #[test]
+    fn keeps_provider_limit_errors_non_retryable() {
+        assert!(!is_retryable_assistant_error(&error_msg(
+            "429 quota exceeded"
+        )));
+        assert!(!is_retryable_assistant_error(&error_msg(
+            "insufficient_quota: billing cycle exhausted"
+        )));
+    }
+
+    #[test]
+    fn classifies_assistant_error_messages() {
+        assert!(is_retryable_assistant_error(&error_msg("overloaded_error")));
+        assert!(is_retryable_assistant_error(&error_msg(
+            "520 status code (no body)"
+        )));
+        assert!(is_retryable_assistant_error(&error_msg(
+            "524 status code (no body)"
+        )));
+        assert!(!is_retryable_assistant_error(&message(
+            StopReason::Stop,
+            None
+        )));
+    }
+
+    #[test]
+    fn pattern_subset_handles_optional_character_gaps() {
+        assert!(pattern_matches("rate.?limit", "rate-limit"));
+        assert!(pattern_matches("rate.?limit", "ratelimit"));
+        assert!(pattern_matches("rate.?limit", "rate limit hit"));
+        assert!(!pattern_matches("rate.?limit", "rate  limit"));
+        // Upstream `timed? out`: optional literal `d`.
+        assert!(pattern_matches("timed? out", "request timed out"));
+        assert!(pattern_matches("timed? out", "request time out"));
+        assert!(pattern_matches("TIMED? OUT", "timed out"));
+        assert!(!pattern_matches("timed? out", "timeed out"));
+    }
+
+    // ---- retry.test.ts ports: retryDelayMs ----
+
+    fn base_policy(base_delay_ms: u64, max_agent_delay_ms: Option<u64>) -> RetryPolicy {
+        RetryPolicy {
+            enabled: true,
+            max_retries: 3,
+            base_delay_ms,
+            max_agent_delay_ms,
+        }
+    }
+
+    #[test]
+    fn caps_agent_retry_delay() {
+        assert_eq!(retry_delay_ms(&base_policy(2000, None), 6), 60000);
+        assert_eq!(retry_delay_ms(&base_policy(2000, Some(5000)), 5), 5000);
+        assert_eq!(retry_delay_ms(&base_policy(2000, Some(0)), 5), 0);
+    }
+
+    // ---- retry.test.ts ports: retryAssistantCall ----
+
+    fn policy(enabled: bool) -> RetryPolicy {
+        RetryPolicy {
+            enabled,
+            max_retries: 3,
+            base_delay_ms: 0,
+            max_agent_delay_ms: None,
+        }
+    }
+
+    #[tokio::test]
+    async fn returns_a_successful_response_immediately_without_retrying() {
+        let (result, attempts) = call(
+            Some(policy(true)),
+            vec![message(StopReason::Stop, None)],
+            &mut RetryCallbacks::default(),
+        )
+        .await;
+        assert_eq!(result.stop_reason, StopReason::Stop);
+        assert_eq!(attempts, 1);
+    }
+
+    #[tokio::test]
+    async fn does_not_retry_an_aborted_message() {
+        let scheduled = Arc::new(AtomicU32::new(0));
+        let (result, attempts) = call(
+            Some(policy(true)),
+            vec![message(StopReason::Aborted, None)],
+            &mut scheduled_callback(scheduled.clone()),
+        )
+        .await;
+        assert_eq!(result.stop_reason, StopReason::Aborted);
+        assert_eq!(attempts, 1);
+        assert_eq!(scheduled.load(Ordering::SeqCst), 0);
+    }
+
+    #[tokio::test]
+    async fn does_not_retry_a_non_retryable_error() {
+        let scheduled = Arc::new(AtomicU32::new(0));
+        let scheduled_closure = scheduled.clone();
+        let finished: FinishedLog = Arc::new(Mutex::new(Vec::new()));
+        let finished_callback = finished.clone();
+        let (result, attempts) = call(
+            Some(policy(true)),
+            vec![error_msg("insufficient_quota")],
+            &mut RetryCallbacks {
+                on_retry_scheduled: Some(Box::new(move |_, _, _, _| {
+                    scheduled_closure.fetch_add(1, Ordering::SeqCst);
+                })),
+                on_retry_finished: Some(Box::new(move |success, attempt, error| {
+                    finished_callback.lock().unwrap().push((
+                        success,
+                        attempt,
+                        error.map(str::to_string),
+                    ));
+                })),
+                ..Default::default()
+            },
+        )
+        .await;
+        assert_eq!(result.stop_reason, StopReason::Error);
+        assert_eq!(attempts, 1);
+        assert_eq!(scheduled.load(Ordering::SeqCst), 0);
+        assert!(finished.lock().unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn retries_a_transient_error_up_to_max_retries_then_returns_the_final_error() {
+        let scheduled: Arc<Mutex<Vec<u32>>> = Arc::new(Mutex::new(Vec::new()));
+        let finished: FinishedLog = Arc::new(Mutex::new(Vec::new()));
+        let scheduled_callback_list = scheduled.clone();
+        let finished_callback = finished.clone();
+        let (result, attempts) = call(
+            Some(policy(true)),
+            vec![error_msg("terminated"); 4],
+            &mut RetryCallbacks {
+                on_retry_scheduled: Some(Box::new(move |attempt, max_attempts, _, _| {
+                    scheduled_callback_list.lock().unwrap().push(attempt);
+                    assert_eq!(max_attempts, 3);
+                })),
+                on_retry_finished: Some(Box::new(move |success, attempt, error| {
+                    finished_callback.lock().unwrap().push((
+                        success,
+                        attempt,
+                        error.map(str::to_string),
+                    ));
+                })),
+                ..Default::default()
+            },
+        )
+        .await;
+        assert_eq!(result.stop_reason, StopReason::Error);
+        assert_eq!(attempts, 4); // 1 initial + 3 retries
+        assert_eq!(*scheduled.lock().unwrap(), [1, 2, 3]);
+        assert_eq!(
+            *finished.lock().unwrap(),
+            [(false, 3, Some("terminated".to_string()))]
+        );
+    }
+
+    #[tokio::test]
+    async fn reports_capped_retry_delays() {
+        let delays: Arc<Mutex<Vec<u64>>> = Arc::new(Mutex::new(Vec::new()));
+        let delays_callback = delays.clone();
+        let capped = RetryPolicy {
+            enabled: true,
+            max_retries: 4,
+            base_delay_ms: 10,
+            max_agent_delay_ms: Some(15),
+        };
+        let (_, attempts) = call(
+            Some(capped),
+            vec![
+                error_msg("terminated"),
+                error_msg("terminated"),
+                error_msg("terminated"),
+                error_msg("terminated"),
+                message(StopReason::Stop, None),
+            ],
+            &mut RetryCallbacks {
+                on_retry_scheduled: Some(Box::new(move |_, _, delay, _| {
+                    delays_callback.lock().unwrap().push(delay);
+                })),
+                ..Default::default()
+            },
+        )
+        .await;
+        assert_eq!(attempts, 5);
+        assert_eq!(*delays.lock().unwrap(), [10, 15, 15, 15]);
+    }
+
+    #[tokio::test]
+    async fn stops_retrying_once_a_call_succeeds() {
+        let finished: Arc<Mutex<Vec<(bool, u32)>>> = Arc::new(Mutex::new(Vec::new()));
+        let finished_callback = finished.clone();
+        let (result, attempts) = call(
+            Some(policy(true)),
+            vec![
+                error_msg("terminated"),
+                error_msg("terminated"),
+                message(StopReason::Stop, None),
+            ],
+            &mut RetryCallbacks {
+                on_retry_finished: Some(Box::new(move |success, attempt, _| {
+                    finished_callback.lock().unwrap().push((success, attempt));
+                })),
+                ..Default::default()
+            },
+        )
+        .await;
+        assert_eq!(result.stop_reason, StopReason::Stop);
+        assert_eq!(attempts, 3);
+        assert_eq!(*finished.lock().unwrap(), [(true, 2)]);
+    }
+
+    #[tokio::test]
+    async fn reports_an_aborted_retried_call_as_unsuccessful() {
+        let finished: Arc<Mutex<Vec<(bool, u32)>>> = Arc::new(Mutex::new(Vec::new()));
+        let finished_callback = finished.clone();
+        let (result, attempts) = call(
+            Some(policy(true)),
+            vec![error_msg("terminated"), message(StopReason::Aborted, None)],
+            &mut RetryCallbacks {
+                on_retry_finished: Some(Box::new(move |success, attempt, _| {
+                    finished_callback.lock().unwrap().push((success, attempt));
+                })),
+                ..Default::default()
+            },
+        )
+        .await;
+        assert_eq!(result.stop_reason, StopReason::Aborted);
+        assert_eq!(attempts, 2);
+        assert_eq!(*finished.lock().unwrap(), [(false, 1)]);
+    }
+
+    #[tokio::test]
+    async fn does_not_retry_when_policy_is_disabled() {
+        let scheduled = Arc::new(AtomicU32::new(0));
+        let (result, attempts) = call(
+            Some(policy(false)),
+            vec![error_msg("terminated")],
+            &mut scheduled_callback(scheduled.clone()),
+        )
+        .await;
+        assert_eq!(result.stop_reason, StopReason::Error);
+        assert_eq!(attempts, 1);
+        assert_eq!(scheduled.load(Ordering::SeqCst), 0);
+    }
+
+    #[tokio::test]
+    async fn does_not_retry_when_policy_is_absent() {
+        let (result, attempts) = call(
+            None,
+            vec![error_msg("terminated")],
+            &mut RetryCallbacks::default(),
+        )
+        .await;
+        assert_eq!(result.stop_reason, StopReason::Error);
+        assert_eq!(attempts, 1);
+    }
+
+    #[tokio::test]
+    async fn emits_on_retry_attempt_start_after_backoff_before_each_retried_call() {
+        let events: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
+        let scheduled_events = events.clone();
+        let attempt_start_events = events.clone();
+        let (result, attempts) = call(
+            Some(policy(true)),
+            vec![
+                error_msg("terminated"),
+                error_msg("terminated"),
+                message(StopReason::Stop, None),
+            ],
+            &mut RetryCallbacks {
+                on_retry_scheduled: Some(Box::new(move |attempt, _, _, _| {
+                    scheduled_events
+                        .lock()
+                        .unwrap()
+                        .push(format!("retry:{attempt}"));
+                })),
+                on_retry_attempt_start: Some(Box::new(move || {
+                    attempt_start_events
+                        .lock()
+                        .unwrap()
+                        .push("attempt-start".to_string());
+                })),
+                ..Default::default()
+            },
+        )
+        .await;
+        assert_eq!(result.stop_reason, StopReason::Stop);
+        assert_eq!(attempts, 3);
+        // Produce call markers interleave via the outcome script: two retries
+        // means two scheduled/attempt-start pairs before the third produce.
+        let log = events.lock().unwrap();
+        assert_eq!(
+            *log,
+            [
+                "retry:1".to_string(),
+                "attempt-start".to_string(),
+                "retry:2".to_string(),
+                "attempt-start".to_string(),
+            ]
+        );
+    }
+}
