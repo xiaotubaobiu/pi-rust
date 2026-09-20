@@ -1,11 +1,12 @@
 //! OAuth login flows ported from upstream `packages/ai/src/auth/oauth/`:
 //! PKCE utilities (`pkce`), the local redirect landing page (`oauth_page`),
-//! the Anthropic (Claude Pro/Max) flow (`anthropic`, exposing
-//! [`AnthropicOAuth`]), the OpenAI Codex (ChatGPT Plus/Pro) flow
-//! (`openai_codex`, exposing [`OpenAICodexOAuth`]), and the GitHub Copilot
-//! flow (`github_copilot`, exposing [`GitHubCopilotOAuth`]). The remaining
-//! upstream flows (device-code, openrouter, xai, ...) land with their
-//! provider wiring.
+//! the generic device-code poll engine (`device_code`), the Anthropic
+//! (Claude Pro/Max) flow (`anthropic`, exposing [`AnthropicOAuth`]), the
+//! OpenAI Codex (ChatGPT Plus/Pro) flow (`openai_codex`, exposing
+//! [`OpenAICodexOAuth`]), the GitHub Copilot flow (`github_copilot`, exposing
+//! [`GitHubCopilotOAuth`]), the OpenRouter flow (`openrouter`, exposing
+//! [`OpenRouterOAuth`]) and the xAI flow (`xai`, exposing [`XaiOAuth`]).
+//! The remaining upstream flows land with their provider wiring.
 //!
 //! Flows are interactive through [`crate::ai::auth::types::AuthInteraction`]
 //! only: the browser gets the authorize URL via the `auth_url` event, the
@@ -19,14 +20,19 @@
 //! them here once.
 
 pub mod anthropic;
+pub mod device_code;
 pub mod github_copilot;
 pub mod oauth_page;
 pub mod openai_codex;
+pub mod openrouter;
 pub mod pkce;
+pub mod xai;
 
 pub use anthropic::AnthropicOAuth;
 pub use github_copilot::GitHubCopilotOAuth;
 pub use openai_codex::OpenAICodexOAuth;
+pub use openrouter::OpenRouterOAuth;
+pub use xai::XaiOAuth;
 
 use std::sync::Arc;
 

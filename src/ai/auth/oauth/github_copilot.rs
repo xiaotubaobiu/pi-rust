@@ -32,11 +32,12 @@
 //!   and login never enables models — exactly upstream's behavior for models
 //!   outside its bundled catalog. The picker/policy-fallback logic of
 //!   `availableModelIds` carries no catalog dependency and is fully ported.
-//! - Upstream `pollOAuthDeviceCodeFlow` (device-code.ts) is ported as the
-//!   private [`poll_device_code_flow`] timing engine, with the
-//!   `waitBeforeFirstPoll` option the GitHub device flow uses (the codex
-//!   flow does not). Like T4's copy, it should migrate onto the shared
-//!   `device_code.rs` engine when the plan's generic device-code task lands.
+//! - Upstream `pollOAuthDeviceCodeFlow` (device-code.ts) is the shared
+//!   [`super::device_code::poll_device_code_flow`] engine (the private copy
+//!   this module initially carried was absorbed into it); the Copilot flow
+//!   waits before the first poll and adopts the server-provided `slow_down`
+//!   interval. [`super::device_code::abortable_sleep`] also backs this
+//!   module's rate-limit retry backoff.
 //! - Poll deadlines and schedules are measured on tokio's clock
 //!   ([`tokio::time::Instant`]): wall-clock in production, pause-able in
 //!   tests. Upstream uses `Date.now()`.
@@ -87,6 +88,8 @@ use crate::ai::auth::types::{
 };
 use crate::ai::now_ms;
 
+use super::device_code::{abortable_sleep, poll_device_code_flow, PollOutcome};
+
 /// Upstream `CLIENT_ID` (github-copilot.ts:11, the `atob`-decoded literal).
 const CLIENT_ID: &str = "Iv1.b507a08c87ecfe98";
 
@@ -105,23 +108,6 @@ const INDIVIDUAL_API_BASE: &str = "https://api.individual.githubcopilot.com";
 
 /// Upstream `getBaseUrlFromToken` marker (github-copilot.ts:70).
 const PROXY_EP_MARKER: &str = "proxy-ep=";
-
-/// device-code.ts `MINIMUM_INTERVAL_MS`.
-const MINIMUM_INTERVAL_MS: u64 = 1000;
-
-/// device-code.ts `DEFAULT_POLL_INTERVAL_SECONDS` (RFC 8628 section 3.2).
-const DEFAULT_POLL_INTERVAL_SECONDS: f64 = 5.0;
-
-/// device-code.ts `SLOW_DOWN_INTERVAL_INCREMENT_MS` (RFC 8628 section 3.5).
-const SLOW_DOWN_INTERVAL_INCREMENT_MS: u64 = 5000;
-
-/// device-code.ts `TIMEOUT_MESSAGE`.
-const TIMEOUT_MESSAGE: &str = "Device flow timed out";
-
-/// device-code.ts `SLOW_DOWN_TIMEOUT_MESSAGE`.
-const SLOW_DOWN_TIMEOUT_MESSAGE: &str = "Device flow timed out after one or more slow_down \
-     responses. This is often caused by clock drift in WSL or VM environments. Please sync or \
-     restart the VM clock and try again.";
 
 /// Upstream per-attempt `AbortSignal.timeout(5000)` created inside the
 /// `fetchWithRateLimitRetry` loop (github-copilot.ts:150) — the rate-limit
@@ -478,18 +464,8 @@ async fn send_once(
     })
 }
 
-/// device-code.ts `abortableSleep`: resolves after `duration`, or
-/// `Err(Cancelled)` when the signal fires first (or already has).
-async fn abortable_sleep(duration: Duration, signal: &CancellationToken) -> Result<(), AuthError> {
-    if signal.is_cancelled() {
-        return Err(AuthError::Cancelled);
-    }
-    tokio::select! {
-        biased;
-        _ = signal.cancelled() => Err(AuthError::Cancelled),
-        _ = tokio::time::sleep(duration) => Ok(()),
-    }
-}
+// device-code.ts `abortableSleep` lives in `super::device_code`; this module
+// reuses it for the rate-limit retry backoff below.
 
 /// Upstream `fetchWithRateLimitRetry` (github-copilot.ts:135-166): 429
 /// responses retry up to `max_retries` times honoring `Retry-After`
@@ -562,97 +538,6 @@ async fn fetch_json(spec: &RequestSpec, signal: &CancellationToken) -> Result<Va
         )));
     }
     serde_json::from_str(&response.body).map_err(|error| AuthError::Operation(error.to_string()))
-}
-
-/// Incomplete poll results (device-code.ts
-/// `OAuthDeviceCodeIncompletePollResult`); `Complete` carries the value.
-enum PollOutcome<T> {
-    Complete(T),
-    Pending,
-    /// RFC 8628 section 3.5; the server may supply its own new interval.
-    SlowDown(Option<f64>),
-    Failed(String),
-}
-
-/// device-code.ts `pollOAuthDeviceCodeFlow`: optionally wait before the
-/// first poll, then poll every `interval_seconds` (default 5, minimum 1s);
-/// `slow_down` bumps the interval by 5s or adopts a finite positive
-/// server-provided interval, until the deadline expires (`Device flow timed
-/// out`, or the slow-down clock-drift message after any slow_down) or the
-/// signal fires.
-async fn poll_device_code_flow<T, F, Fut>(
-    interval_seconds: Option<f64>,
-    expires_in_seconds: f64,
-    wait_before_first_poll: bool,
-    signal: &CancellationToken,
-    mut poll: F,
-) -> Result<T, AuthError>
-where
-    F: FnMut() -> Fut,
-    Fut: std::future::Future<Output = Result<PollOutcome<T>, AuthError>>,
-{
-    let deadline =
-        tokio::time::Instant::now() + Duration::from_millis((expires_in_seconds * 1000.0) as u64);
-    // `Math.max(1000, Math.floor((intervalSeconds ?? 5) * 1000))`.
-    let mut interval_ms = Duration::from_millis(
-        ((interval_seconds.unwrap_or(DEFAULT_POLL_INTERVAL_SECONDS) * 1000.0).floor() as u64)
-            .max(MINIMUM_INTERVAL_MS),
-    );
-    let mut slow_down_responses = 0u32;
-
-    if wait_before_first_poll {
-        let remaining = deadline.saturating_duration_since(tokio::time::Instant::now());
-        if !remaining.is_zero() {
-            abortable_sleep(interval_ms.min(remaining), signal).await?;
-        }
-    }
-
-    loop {
-        if tokio::time::Instant::now() >= deadline {
-            break;
-        }
-        if signal.is_cancelled() {
-            return Err(AuthError::Cancelled);
-        }
-
-        match poll().await? {
-            PollOutcome::Complete(value) => return Ok(value),
-            PollOutcome::Failed(message) => return Err(AuthError::Operation(message)),
-            PollOutcome::SlowDown(server_interval) => {
-                slow_down_responses += 1;
-                // Use the server-provided interval when given (GitHub reports
-                // the new required minimum in `interval`); trusting only a
-                // client-tracked value risks polling early forever under
-                // WSL/VM clock drift. Otherwise apply RFC 8628 section 3.5:
-                // increase by 5 seconds.
-                interval_ms = match server_interval {
-                    Some(seconds) if seconds.is_finite() && seconds > 0.0 => Duration::from_millis(
-                        ((seconds * 1000.0).floor() as u64).max(MINIMUM_INTERVAL_MS),
-                    ),
-                    _ => Duration::from_millis(
-                        (interval_ms.as_millis() as u64 + SLOW_DOWN_INTERVAL_INCREMENT_MS)
-                            .max(MINIMUM_INTERVAL_MS),
-                    ),
-                };
-            }
-            PollOutcome::Pending => {}
-        }
-
-        let remaining = deadline.saturating_duration_since(tokio::time::Instant::now());
-        if remaining.is_zero() {
-            break;
-        }
-        abortable_sleep(interval_ms.min(remaining), signal).await?;
-    }
-
-    Err(AuthError::Operation(
-        if slow_down_responses > 0 {
-            SLOW_DOWN_TIMEOUT_MESSAGE
-        } else {
-            TIMEOUT_MESSAGE
-        }
-        .to_string(),
-    ))
 }
 
 /// Upstream `DeviceCodeResponse` (github-copilot.ts:21-27). `interval` is
@@ -816,7 +701,7 @@ async fn poll_for_github_access_token(
     let spec = &spec;
     poll_device_code_flow(
         device.interval,
-        device.expires_in,
+        Some(device.expires_in),
         true,
         signal,
         || async move {
@@ -1281,6 +1166,7 @@ mod tests {
 
     use super::super::{read_request_head, write_response};
     use super::*;
+    use crate::ai::auth::oauth::device_code::SLOW_DOWN_TIMEOUT_MESSAGE;
     use crate::ai::auth::types::{AuthInteraction, AuthOperationOptions};
     use crate::ai::now_ms;
 
@@ -2160,7 +2046,7 @@ mod tests {
             }
         };
 
-        poll_device_code_flow(Some(5.0), 900.0, true, &signal, poll)
+        poll_device_code_flow(Some(5.0), Some(900.0), true, &signal, poll)
             .await
             .unwrap();
 
@@ -2203,7 +2089,7 @@ mod tests {
             }
         };
 
-        let error = poll_device_code_flow(Some(5.0), 25.0, true, &signal, poll)
+        let error = poll_device_code_flow(Some(5.0), Some(25.0), true, &signal, poll)
             .await
             .unwrap_err();
 
@@ -2249,7 +2135,7 @@ mod tests {
             }
         };
 
-        poll_device_code_flow(Some(5.0), 900.0, false, &signal, poll)
+        poll_device_code_flow(Some(5.0), Some(900.0), false, &signal, poll)
             .await
             .unwrap();
 
@@ -2265,7 +2151,7 @@ mod tests {
         let signal = CancellationToken::new();
         signal.cancel();
         let times = Arc::new(Mutex::new(Vec::new()));
-        let error = poll_device_code_flow(Some(5.0), 900.0, true, &signal, {
+        let error = poll_device_code_flow(Some(5.0), Some(900.0), true, &signal, {
             let times = Arc::clone(&times);
             move || {
                 let times = Arc::clone(&times);
@@ -2287,7 +2173,7 @@ mod tests {
             tokio::time::sleep(Duration::from_secs(1)).await;
             driver_signal.cancel();
         });
-        let error = poll_device_code_flow(Some(5.0), 900.0, true, &signal, {
+        let error = poll_device_code_flow(Some(5.0), Some(900.0), true, &signal, {
             let times = Arc::clone(&times);
             move || {
                 let times = Arc::clone(&times);

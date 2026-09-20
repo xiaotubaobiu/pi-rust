@@ -20,10 +20,11 @@
 //!   `localhost:1455` form everywhere (the authorize `redirect_uri` and the
 //!   exchange `redirect_uri` must match server-side, which they do in both
 //!   upstream and the port).
-//! - Upstream `pollOAuthDeviceCodeFlow` (device-code.ts) is ported as the
-//!   private [`poll_device_code_flow`] timing engine. The shared
-//!   `device_code.rs` engine lands with the generic device-code flow task;
-//!   this module carries the codex-shaped subset until then.
+//! - Upstream `pollOAuthDeviceCodeFlow` (device-code.ts) is the shared
+//!   [`super::device_code::poll_device_code_flow`] engine (the private copy
+//!   this module initially carried was absorbed into it); the codex flow
+//!   polls immediately (`wait_before_first_poll: false`) with the response's
+//!   `interval` and the fixed device-code timeout as the deadline.
 //! - Poll deadlines and schedules are measured on tokio's clock
 //!   ([`tokio::time::Instant`]): wall-clock in production, pause-able in
 //!   tests. Upstream uses `Date.now()`.
@@ -57,7 +58,6 @@
 //!   server interval reports truncated (intervals are integral in practice).
 
 use std::collections::BTreeMap;
-use std::time::Duration;
 
 use futures::future::BoxFuture;
 use tokio::net::TcpStream;
@@ -72,6 +72,7 @@ use crate::ai::auth::types::{
 };
 use crate::ai::now_ms;
 
+use super::device_code::{poll_device_code_flow, PollOutcome};
 use super::oauth_page::{oauth_error_html, oauth_success_html};
 use super::pkce::{generate_pkce, Pkce};
 use super::{
@@ -132,20 +133,6 @@ const CALLBACK_PATH: &str = "/auth/callback";
 
 /// Upstream `originator` parameter default (openai-codex.ts:293).
 const ORIGINATOR: &str = "pi";
-
-/// device-code.ts `MINIMUM_INTERVAL_MS`.
-const MINIMUM_INTERVAL_MS: u64 = 1000;
-
-/// device-code.ts `SLOW_DOWN_INTERVAL_INCREMENT_MS` (RFC 8628 section 3.5).
-const SLOW_DOWN_INTERVAL_INCREMENT_MS: u64 = 5000;
-
-/// device-code.ts `TIMEOUT_MESSAGE`.
-const TIMEOUT_MESSAGE: &str = "Device flow timed out";
-
-/// device-code.ts `SLOW_DOWN_TIMEOUT_MESSAGE`.
-const SLOW_DOWN_TIMEOUT_MESSAGE: &str = "Device flow timed out after one or more slow_down \
-     responses. This is often caused by clock drift in WSL or VM environments. Please sync or \
-     restart the VM clock and try again.";
 
 /// The OpenAI Codex OAuth auth surface (upstream `openaiCodexOAuth`,
 /// openai-codex.ts:515-544). [`OpenAICodexOAuth::new`] pins the upstream
@@ -364,23 +351,11 @@ impl CodexCallbackServer {
     }
 }
 
-/// device-code.ts `abortableSleep`: resolves after `duration`, or
-/// `Err(Cancelled)` when the signal fires first (or already has).
-async fn abortable_sleep(duration: Duration, signal: &CancellationToken) -> Result<(), AuthError> {
-    if signal.is_cancelled() {
-        return Err(AuthError::Cancelled);
-    }
-    tokio::select! {
-        biased;
-        _ = signal.cancelled() => Err(AuthError::Cancelled),
-        _ = tokio::time::sleep(duration) => Ok(()),
-    }
-}
-
 /// One poll of the device-token endpoint (the `poll` closure passed to
-/// [`poll_device_code_flow`] by [`login_device_code`]).
+/// [`super::device_code::poll_device_code_flow`] by [`login_device_code`]).
 ///
-/// - 2xx with `authorization_code` + `code_verifier` → [`PollOutcome::Complete`]
+/// - 2xx with `authorization_code` + `code_verifier` →
+///   [`PollOutcome::Complete`]
 /// - 2xx missing either field → [`PollOutcome::Failed`] (invalid response)
 /// - 403/404 → [`PollOutcome::Pending`] regardless of body
 /// - error-code `deviceauth_authorization_pending` → pending
@@ -466,94 +441,6 @@ async fn poll_device_auth(
         "OpenAI Codex device auth failed with status {}{detail}",
         response.status
     )))
-}
-
-/// device-code.ts `pollOAuthDeviceCodeFlow`: poll immediately, then every
-/// `interval_seconds` (minimum 1s), `slow_down` bumps the interval by 5s (or
-/// adopts the server-provided interval), until the deadline expires
-/// (`Device flow timed out`) or the signal fires.
-async fn poll_device_code_flow<T, F, Fut>(
-    interval_seconds: f64,
-    expires_in_seconds: Option<u64>,
-    signal: &CancellationToken,
-    mut poll: F,
-) -> Result<T, AuthError>
-where
-    F: FnMut() -> Fut,
-    Fut: std::future::Future<Output = Result<PollOutcome<T>, AuthError>>,
-{
-    let deadline = expires_in_seconds
-        .map(|seconds| tokio::time::Instant::now() + Duration::from_secs(seconds));
-    // `Math.max(1000, Math.floor(intervalSeconds * 1000))`.
-    let mut interval_ms = Duration::from_millis(
-        ((interval_seconds * 1000.0).floor() as u64).max(MINIMUM_INTERVAL_MS),
-    );
-    let mut slow_down_responses = 0u32;
-
-    loop {
-        if let Some(deadline) = deadline {
-            if tokio::time::Instant::now() >= deadline {
-                break;
-            }
-        }
-        if signal.is_cancelled() {
-            return Err(AuthError::Cancelled);
-        }
-
-        match poll().await? {
-            PollOutcome::Complete(value) => return Ok(value),
-            PollOutcome::Failed(message) => return Err(AuthError::Operation(message)),
-            PollOutcome::SlowDown(server_interval) => {
-                slow_down_responses += 1;
-                // Use the server-provided interval when given (GitHub reports
-                // the new required minimum in `interval`); trusting only a
-                // client-tracked value risks polling early forever under
-                // WSL/VM clock drift. Otherwise apply RFC 8628 section 3.5:
-                // increase by 5 seconds.
-                interval_ms = match server_interval {
-                    Some(seconds) if seconds.is_finite() && seconds > 0.0 => Duration::from_millis(
-                        ((seconds * 1000.0).floor() as u64).max(MINIMUM_INTERVAL_MS),
-                    ),
-                    _ => Duration::from_millis(
-                        (interval_ms.as_millis() as u64 + SLOW_DOWN_INTERVAL_INCREMENT_MS)
-                            .max(MINIMUM_INTERVAL_MS),
-                    ),
-                };
-            }
-            PollOutcome::Pending => {}
-        }
-
-        let sleep_for = match deadline {
-            Some(deadline) => {
-                let remaining = deadline.saturating_duration_since(tokio::time::Instant::now());
-                if remaining.is_zero() {
-                    break;
-                }
-                interval_ms.min(remaining)
-            }
-            None => interval_ms,
-        };
-        abortable_sleep(sleep_for, signal).await?;
-    }
-
-    Err(AuthError::Operation(
-        if slow_down_responses > 0 {
-            SLOW_DOWN_TIMEOUT_MESSAGE
-        } else {
-            TIMEOUT_MESSAGE
-        }
-        .to_string(),
-    ))
-}
-
-/// Incomplete poll results (device-code.ts
-/// `OAuthDeviceCodeIncompletePollResult`); `Complete` carries the value.
-enum PollOutcome<T> {
-    Complete(T),
-    Pending,
-    /// RFC 8628 section 3.5; the server may supply its own new interval.
-    SlowDown(Option<f64>),
-    Failed(String),
 }
 
 /// Upstream `startOpenAICodexDeviceAuth` (openai-codex.ts:191-233): request a
@@ -870,8 +757,9 @@ async fn login_device_code(
         expires_in_seconds: Some(DEVICE_CODE_TIMEOUT_SECONDS),
     });
     let code = poll_device_code_flow(
-        device.interval_seconds,
-        Some(DEVICE_CODE_TIMEOUT_SECONDS),
+        Some(device.interval_seconds),
+        Some(DEVICE_CODE_TIMEOUT_SECONDS as f64),
+        false,
         &interaction.signal,
         || {
             poll_device_auth(
@@ -1129,6 +1017,7 @@ mod tests {
     use wiremock::{Mock, MockServer, ResponseTemplate};
 
     use super::*;
+    use crate::ai::auth::oauth::device_code::{SLOW_DOWN_TIMEOUT_MESSAGE, TIMEOUT_MESSAGE};
     use crate::ai::auth::oauth::pkce::base64url_encode;
     use crate::ai::auth::types::{AuthInteraction, AuthOperationOptions};
 
@@ -2315,7 +2204,8 @@ mod tests {
         assert!(rebound.is_ok(), "port {port} must be released after close");
     }
 
-    // ---- Poll timing engine (device-code.ts pollOAuthDeviceCodeFlow) ----
+    // ---- Poll timing engine (device-code.ts pollOAuthDeviceCodeFlow, via
+    // ---- the shared device_code engine; the T4 private copy's pins) ----
 
     type EngineOutcome = PollOutcome<()>;
 
@@ -2363,8 +2253,9 @@ mod tests {
         let start = instant();
 
         poll_device_code_flow(
-            5.0,
+            Some(5.0),
             None,
+            false,
             &token,
             engine_polls(Arc::clone(&times), outcomes, None),
         )
@@ -2389,8 +2280,9 @@ mod tests {
         let outcomes = Arc::new(Mutex::new(VecDeque::<EngineOutcome>::new()));
 
         let error = poll_device_code_flow(
-            60.0,
-            Some(15 * 60),
+            Some(60.0),
+            Some(15.0 * 60.0),
+            false,
             &token,
             engine_polls(Arc::clone(&times), outcomes, None),
         )
@@ -2413,8 +2305,9 @@ mod tests {
         let start = instant();
 
         let error = poll_device_code_flow(
-            5.0,
-            Some(30),
+            Some(5.0),
+            Some(30.0),
+            false,
             &token,
             engine_polls(Arc::clone(&times), outcomes, None),
         )
@@ -2447,8 +2340,9 @@ mod tests {
         let start = instant();
 
         poll_device_code_flow(
-            5.0,
+            Some(5.0),
             None,
+            false,
             &token,
             engine_polls(Arc::clone(&times), outcomes, None),
         )
@@ -2472,8 +2366,9 @@ mod tests {
         let start = instant();
 
         poll_device_code_flow(
-            0.0,
+            Some(0.0),
             None,
+            false,
             &token,
             engine_polls(Arc::clone(&times), outcomes, None),
         )
@@ -2494,8 +2389,9 @@ mod tests {
         let times = Arc::new(Mutex::new(Vec::new()));
         let outcomes = Arc::new(Mutex::new(VecDeque::<EngineOutcome>::new()));
         let error = poll_device_code_flow(
-            5.0,
-            Some(900),
+            Some(5.0),
+            Some(900.0),
+            false,
             &token,
             engine_polls(Arc::clone(&times), outcomes, None),
         )
@@ -2510,8 +2406,9 @@ mod tests {
         let signal_for_poll = token.clone();
         let on_poll: Arc<dyn Fn() + Send + Sync> = Arc::new(move || signal_for_poll.cancel());
         let error = poll_device_code_flow(
-            5.0,
-            Some(900),
+            Some(5.0),
+            Some(900.0),
+            false,
             &token,
             engine_polls(
                 Arc::clone(&times),
@@ -2534,8 +2431,9 @@ mod tests {
         )])));
 
         let error = poll_device_code_flow(
-            5.0,
+            Some(5.0),
             None,
+            false,
             &token,
             engine_polls(Arc::clone(&times), outcomes, None),
         )
@@ -2577,8 +2475,6 @@ mod tests {
         assert_eq!(CALLBACK_PORT, 1455);
         assert_eq!(CALLBACK_PATH, "/auth/callback");
         assert_eq!(ORIGINATOR, "pi");
-        assert_eq!(MINIMUM_INTERVAL_MS, 1000);
-        assert_eq!(SLOW_DOWN_INTERVAL_INCREMENT_MS, 5000);
     }
 
     #[test]
