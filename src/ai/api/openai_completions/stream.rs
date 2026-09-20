@@ -2580,7 +2580,8 @@ mod tests {
 
         assert_eq!(
             event_types(&events),
-            ["start", "text_start", "text_delta", "text_end", "done"]
+            ["start", "text_start", "text_delta", "text_end", "done"],
+            "unexpected events: {events:?}"
         );
         apply_all(&events);
     }
