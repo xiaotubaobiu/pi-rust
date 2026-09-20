@@ -60,8 +60,9 @@ use tokio::sync::mpsc;
 /// The API id stamped on every emitted message.
 const API: &str = "openai-completions";
 
-/// Upstream `MAX_PROVIDER_ERROR_BODY_CHARS` (`utils/error-body.ts`).
-const MAX_PROVIDER_ERROR_BODY_CHARS: usize = 4000;
+/// Upstream `MAX_PROVIDER_ERROR_BODY_CHARS` (`utils/error-body.ts`); shared
+/// with the azure-openai-responses error composer.
+pub(crate) const MAX_PROVIDER_ERROR_BODY_CHARS: usize = 4000;
 
 pub struct OpenAiCompletions;
 
@@ -225,8 +226,9 @@ fn has_header(headers: Option<&ProviderHeaders>, name: &str) -> bool {
     })
 }
 
-/// Upstream `truncateErrorText` (`utils/error-body.ts`), char-count based.
-fn truncate_error_text(text: &str, max_chars: usize) -> String {
+/// Upstream `truncateErrorText` (`utils/error-body.ts`), char-count based;
+/// shared with the azure-openai-responses error composer.
+pub(crate) fn truncate_error_text(text: &str, max_chars: usize) -> String {
     let length = text.chars().count();
     if length <= max_chars {
         return text.to_string();
