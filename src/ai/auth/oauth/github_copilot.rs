@@ -44,12 +44,18 @@
 //!   throws `Error("Login cancelled")` or propagates an abort (port
 //!   contract: interaction-signal aborts are never wrapped). Login also
 //!   short-circuits when the signal is already cancelled after the prompt.
-//! - Transport failures, the 5s per-request timeout (upstream
-//!   `AbortSignal.timeout(5000)` raced into every fetch) and the retry-budget
-//!   deadline carry port-invented error texts where upstream surfaces raw
-//!   `fetch` rejections / DOMExceptions. Raw response bodies in failure
-//!   messages are preserved byte-for-byte; JSON parse failures surface the
-//!   raw serde error text where upstream surfaces the `SyntaxError`.
+//! - Transport failures, the rate-limit-retry path's per-attempt timeout and
+//!   its retry-budget deadline carry port-invented error texts where upstream
+//!   surfaces raw `fetch` rejections / DOMExceptions. Timeout scoping is
+//!   faithful: upstream's `AbortSignal.timeout(5000)` is created inside the
+//!   `fetchWithRateLimitRetry` loop (github-copilot.ts:150), so only the
+//!   `/models` and `/policy` requests carry a per-attempt cap — the
+//!   `fetchJson` endpoints (device-code start, access-token poll, Copilot
+//!   token exchange) are plain fetches that wait on the caller's signal
+//!   alone, and the port keeps exactly that split. Raw response bodies in
+//!   failure messages are preserved byte-for-byte; JSON parse failures
+//!   surface the raw serde error text where upstream surfaces the
+//!   `SyntaxError`.
 //! - Failure-message JSON re-serialization order and stricter non-string
 //!   field handling follow the T4 conventions (see `openai_codex.rs`).
 //! - `AuthEvent::DeviceCode.interval_seconds` is `u64`: a fractional server
@@ -117,7 +123,10 @@ const SLOW_DOWN_TIMEOUT_MESSAGE: &str = "Device flow timed out after one or more
      responses. This is often caused by clock drift in WSL or VM environments. Please sync or \
      restart the VM clock and try again.";
 
-/// Upstream per-request `AbortSignal.timeout(5000)` (github-copilot.ts:150).
+/// Upstream per-attempt `AbortSignal.timeout(5000)` created inside the
+/// `fetchWithRateLimitRetry` loop (github-copilot.ts:150) — the rate-limit
+/// retry path only. The `fetchJson` endpoints have no per-request timeout
+/// upstream and none here.
 const REQUEST_TIMEOUT_MS: u64 = 5000;
 
 /// Port-invented text for the retry-budget deadline firing mid-request
@@ -141,6 +150,10 @@ pub struct GitHubCopilotOAuth {
     /// unconfigured account models the login may enable. Defaults to
     /// "nothing is known" until the provider catalog lands (see module docs).
     known_model_ids: Arc<dyn Fn(&str) -> bool + Send + Sync>,
+    /// The rate-limit-retry path's per-attempt timeout (upstream 5000ms).
+    /// Never applied to the `fetchJson` endpoints. Test-overridable via
+    /// [`GitHubCopilotOAuth::with_request_timeout`].
+    request_timeout: Duration,
 }
 
 impl Default for GitHubCopilotOAuth {
@@ -158,6 +171,7 @@ impl GitHubCopilotOAuth {
             copilot_token_url_override: None,
             api_base_override: None,
             known_model_ids: Arc::new(|_| false),
+            request_timeout: Duration::from_millis(REQUEST_TIMEOUT_MS),
         }
     }
 
@@ -176,7 +190,17 @@ impl GitHubCopilotOAuth {
             copilot_token_url_override,
             api_base_override,
             known_model_ids,
+            request_timeout: Duration::from_millis(REQUEST_TIMEOUT_MS),
         }
+    }
+
+    /// Test-only: shorten the rate-limit-retry path's per-attempt timeout so
+    /// delayed-response tests can discriminate capped endpoints from
+    /// uncapped ones without waiting out the production 5s.
+    #[cfg(test)]
+    fn with_request_timeout(mut self, request_timeout: Duration) -> Self {
+        self.request_timeout = request_timeout;
+        self
     }
 
     /// Upstream `getUrls` device-host base: `https://{domain}`.
@@ -370,23 +394,28 @@ enum SendError {
     Transport(String),
 }
 
-/// Races one send+body-read against the interaction signal, the retry-budget
-/// deadline and the 5s per-request timeout (upstream
-/// `AbortSignal.any([requestSignal, AbortSignal.timeout(5000)])`).
-async fn budget_sleep(budget_deadline: Option<tokio::time::Instant>) {
-    match budget_deadline {
+/// Resolves when an optional deadline passes; never when it is `None` (the
+/// select arm then stays out of the way, like an uncapped request).
+async fn deadline_sleep(deadline: Option<tokio::time::Instant>) {
+    match deadline {
         Some(deadline) => tokio::time::sleep_until(deadline).await,
         None => std::future::pending().await,
     }
 }
 
+/// One HTTP request attempt. The retry-budget and per-request deadlines are
+/// `None` on the `fetchJson` endpoints, which wait on the interaction signal
+/// alone (upstream: plain `fetch` without `AbortSignal.timeout`); the
+/// rate-limit-retry path passes both, where upstream races
+/// `AbortSignal.any([signal, budgetSignal, AbortSignal.timeout(5000)])` and
+/// recreates the per-attempt timeout inside its loop.
 async fn send_once(
     spec: &RequestSpec,
     budget_deadline: Option<tokio::time::Instant>,
+    request_timeout: Option<Duration>,
     signal: &CancellationToken,
 ) -> Result<WireResponse, SendError> {
-    let per_request_deadline =
-        tokio::time::Instant::now() + Duration::from_millis(REQUEST_TIMEOUT_MS);
+    let request_deadline = request_timeout.map(|timeout| tokio::time::Instant::now() + timeout);
     let mut request = match spec.method {
         "GET" => http_client().get(&spec.url),
         _ => http_client().post(&spec.url),
@@ -401,12 +430,13 @@ async fn send_once(
     let response = tokio::select! {
         biased;
         _ = signal.cancelled() => return Err(SendError::Cancelled),
-        _ = budget_sleep(budget_deadline) => {
+        _ = deadline_sleep(budget_deadline) => {
             return Err(SendError::Transport(RETRY_BUDGET_EXHAUSTED.to_string()));
         }
-        _ = tokio::time::sleep_until(per_request_deadline) => {
+        _ = deadline_sleep(request_deadline) => {
+            let timeout_ms = request_timeout.map_or(0, |timeout| timeout.as_millis());
             return Err(SendError::Transport(format!(
-                "request timed out after {REQUEST_TIMEOUT_MS}ms: {}",
+                "request timed out after {timeout_ms}ms: {}",
                 spec.url
             )));
         }
@@ -424,12 +454,13 @@ async fn send_once(
     let body = tokio::select! {
         biased;
         _ = signal.cancelled() => return Err(SendError::Cancelled),
-        _ = budget_sleep(budget_deadline) => {
+        _ = deadline_sleep(budget_deadline) => {
             return Err(SendError::Transport(RETRY_BUDGET_EXHAUSTED.to_string()));
         }
-        _ = tokio::time::sleep_until(per_request_deadline) => {
+        _ = deadline_sleep(request_deadline) => {
+            let timeout_ms = request_timeout.map_or(0, |timeout| timeout.as_millis());
             return Err(SendError::Transport(format!(
-                "request timed out after {REQUEST_TIMEOUT_MS}ms: {}",
+                "request timed out after {timeout_ms}ms: {}",
                 spec.url
             )));
         }
@@ -463,24 +494,26 @@ async fn abortable_sleep(duration: Duration, signal: &CancellationToken) -> Resu
 /// Upstream `fetchWithRateLimitRetry` (github-copilot.ts:135-166): 429
 /// responses retry up to `max_retries` times honoring `Retry-After`
 /// (default backoff 500 * 2^retry), but a delay that would outlast the
-/// `max_elapsed_ms` budget (when both are positive) returns the 429.
+/// `max_elapsed_ms` budget (when both are positive) returns the 429. Every
+/// attempt carries the `request_timeout` cap (upstream recreates
+/// `AbortSignal.timeout(5000)` inside the loop).
 async fn fetch_with_rate_limit_retry(
     spec: &RequestSpec,
     max_retries: u32,
     max_elapsed_ms: u64,
+    request_timeout: Duration,
     signal: &CancellationToken,
 ) -> Result<WireResponse, AuthError> {
     let budget_deadline = (max_retries > 0 && max_elapsed_ms > 0)
         .then(|| tokio::time::Instant::now() + Duration::from_millis(max_elapsed_ms));
     let mut retry: u32 = 0;
     loop {
-        let response =
-            send_once(spec, budget_deadline, signal)
-                .await
-                .map_err(|error| match error {
-                    SendError::Cancelled => AuthError::Cancelled,
-                    SendError::Transport(text) => AuthError::Operation(text),
-                })?;
+        let response = send_once(spec, budget_deadline, Some(request_timeout), signal)
+            .await
+            .map_err(|error| match error {
+                SendError::Cancelled => AuthError::Cancelled,
+                SendError::Transport(text) => AuthError::Operation(text),
+            })?;
         if response.status != 429 || retry == max_retries {
             return Ok(response);
         }
@@ -514,8 +547,9 @@ async fn fetch_with_rate_limit_retry(
 /// Upstream `fetchJson` (github-copilot.ts:197-204): non-2xx →
 /// `{status} {statusText}: {body}`; 2xx → the parsed JSON (parse failures
 /// propagate with the raw serde text where upstream surfaces SyntaxError).
+/// A plain fetch upstream: no per-request timeout, only the caller's signal.
 async fn fetch_json(spec: &RequestSpec, signal: &CancellationToken) -> Result<Value, AuthError> {
-    let response = send_once(spec, None, signal)
+    let response = send_once(spec, None, None, signal)
         .await
         .map_err(|error| match error {
             SendError::Cancelled => AuthError::Cancelled,
@@ -955,7 +989,14 @@ async fn fetch_models(
         headers,
         body: None,
     };
-    let response = fetch_with_rate_limit_retry(&spec, max_retries, max_elapsed_ms, signal).await?;
+    let response = fetch_with_rate_limit_retry(
+        &spec,
+        max_retries,
+        max_elapsed_ms,
+        oauth.request_timeout,
+        signal,
+    )
+    .await?;
     if !response.ok {
         return Err(AuthError::Operation(format!(
             "{} {}: {}",
@@ -994,12 +1035,13 @@ async fn enable_github_copilot_model(
         headers,
         body: Some(r#"{"state":"enabled"}"#.to_string()),
     };
-    let response = match fetch_with_rate_limit_retry(&spec, 2, 5000, signal).await {
-        Ok(response) => response,
-        Err(AuthError::Cancelled) => return Err(AuthError::Cancelled),
-        // Upstream catch: `if (signal.aborted) throw error; return false`.
-        Err(_) => return Ok(false),
-    };
+    let response =
+        match fetch_with_rate_limit_retry(&spec, 2, 5000, oauth.request_timeout, signal).await {
+            Ok(response) => response,
+            Err(AuthError::Cancelled) => return Err(AuthError::Cancelled),
+            // Upstream catch: `if (signal.aborted) throw error; return false`.
+            Err(_) => return Ok(false),
+        };
     if response.status == 429 {
         return Err(AuthError::Operation(format!(
             "{} {}: {}",
@@ -1846,7 +1888,10 @@ mod tests {
             elapsed >= Duration::from_millis(990),
             "the retry honors Retry-After (got {elapsed:?})"
         );
-        assert!(elapsed < Duration::from_secs(5), "{elapsed:?}");
+        // The lower bound pins the Retry-After honor; the loose upper bound
+        // only rules out pathological waits (upstream pins this with fake
+        // timers, which real-time integration tests cannot use).
+        assert!(elapsed < Duration::from_secs(30), "{elapsed:?}");
         assert_eq!(
             credential.extra.get("availableModelIds"),
             Some(&serde_json::json!(["model-a"]))
@@ -2710,6 +2755,103 @@ mod tests {
         assert_eq!(
             error,
             AuthError::Operation("403 Forbidden: denied".to_string())
+        );
+    }
+
+    /// The `fetchJson` endpoints (device-code start, access-token poll,
+    /// Copilot token exchange) have no per-request timeout — upstream's
+    /// `AbortSignal.timeout(5000)` lives only inside `fetchWithRateLimitRetry`
+    /// (github-copilot.ts:150) — so a slow enterprise server waits on the
+    /// interaction signal alone. Approach: shorten the retry-path cap to
+    /// 100ms (test seam) and delay the device-code response past it; login
+    /// must still succeed, proving the cap does not reach the fetchJson path
+    /// (under the pre-fix wiring this test fails with the timeout text).
+    #[tokio::test]
+    async fn device_code_start_is_not_subject_to_the_rate_limit_request_timeout() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/login/device/code"))
+            .respond_with(
+                ResponseTemplate::new(200)
+                    .set_body_raw(device_code_ok(), "application/json")
+                    .set_delay(Duration::from_millis(400)),
+            )
+            .mount(&server)
+            .await;
+        mount_json(
+            &server,
+            "POST",
+            "/login/oauth/access_token",
+            r#"{"access_token":"ghu_refresh_token"}"#,
+            200,
+        )
+        .await;
+        mount_json(
+            &server,
+            "GET",
+            "/copilot_internal/v2/token",
+            &copilot_token_ok(TEST_COPILOT_ACCESS_TOKEN),
+            200,
+        )
+        .await;
+        mount_json(&server, "GET", "/models", r#"{"data":[]}"#, 200).await;
+        let oauth = enterprise_flow(&server, default_known())
+            .with_request_timeout(Duration::from_millis(100));
+        let (_fake, interaction) = login_interaction("");
+
+        let started = std::time::Instant::now();
+        let credential = oauth.login(interaction).await.unwrap();
+
+        assert!(started.elapsed() >= Duration::from_millis(400));
+        assert_eq!(credential.refresh, "ghu_refresh_token");
+    }
+
+    /// Companion to the uncapped-fetchJson test: the rate-limit-retry path
+    /// (`/models`, `/policy`) enforces the per-attempt timeout — the same
+    /// shortened cap fails a delayed models response with the timeout text,
+    /// and a transport failure is not retried (one catalog request).
+    #[tokio::test]
+    async fn rate_limit_retry_path_enforces_the_per_request_timeout() {
+        let server = MockServer::start().await;
+        mount_json(
+            &server,
+            "GET",
+            "/copilot_internal/v2/token",
+            &copilot_token_ok(TEST_COPILOT_ACCESS_TOKEN),
+            200,
+        )
+        .await;
+        Mock::given(method("GET"))
+            .and(path("/models"))
+            .respond_with(
+                ResponseTemplate::new(200)
+                    .set_body_raw(r#"{"data":[]}"#.to_string(), "application/json")
+                    .set_delay(Duration::from_millis(400)),
+            )
+            .mount(&server)
+            .await;
+        let oauth = enterprise_flow(&server, default_known())
+            .with_request_timeout(Duration::from_millis(100));
+
+        let error = oauth
+            .refresh(
+                oauth_credential("old-access-token", "ghu_refresh_token"),
+                &AuthOperationOptions::default(),
+            )
+            .await
+            .unwrap_err();
+
+        assert!(
+            error.to_string().contains("request timed out after 100ms"),
+            "{error}"
+        );
+        let requests = server.received_requests().await.unwrap();
+        assert_eq!(
+            requests
+                .iter()
+                .filter(|request| request.url.path() == "/models")
+                .count(),
+            1
         );
     }
 
