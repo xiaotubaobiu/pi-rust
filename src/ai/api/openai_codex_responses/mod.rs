@@ -336,7 +336,7 @@ impl ApiImpl for OpenAiCodexResponses {
         ));
         shaped.reasoning = options
             .reasoning
-            .and_then(|level| clamp_thinking_level(model, level));
+            .and_then(|level| clamp_thinking_level(model, Some(level)));
         // Upstream lines 514-515: the clamped reasoning becomes the
         // string effort; a clamped "off" drops it entirely (the port's
         // clamp returns None for "off").

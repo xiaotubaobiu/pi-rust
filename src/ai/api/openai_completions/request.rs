@@ -225,7 +225,7 @@ fn build_params(
         .unwrap_or(model.max_tokens);
     let effort = options
         .reasoning
-        .and_then(|level| clamp_thinking_level(model, level));
+        .and_then(|level| clamp_thinking_level(model, Some(level)));
     let thinking_budget: Option<u64> = match effort {
         Some(level) if model.reasoning => {
             let budget = thinking_budget_for_level(level, options.thinking_budgets.as_ref());
@@ -308,10 +308,12 @@ fn supported_thinking_level(model: &Model, level: Option<ThinkingLevel>) -> bool
     }
 }
 
-/// Upstream `clampThinkingLevel` (`models.ts:935-955`); `None` is `"off"`.
+/// Upstream `clampThinkingLevel` (`models.ts:935-955`), which takes the full
+/// `ModelThinkingLevel`: `None` is `"off"` on both the requested and returned
+/// side.
 pub(crate) fn clamp_thinking_level(
     model: &Model,
-    requested: ThinkingLevel,
+    requested: Option<ThinkingLevel>,
 ) -> Option<ThinkingLevel> {
     const EXTENDED: [Option<ThinkingLevel>; 7] = [
         None,
@@ -331,10 +333,14 @@ pub(crate) fn clamp_thinking_level(
             .filter(|level| supported_thinking_level(model, *level))
             .collect()
     };
-    if available.contains(&Some(requested)) {
-        return Some(requested);
+    if available.contains(&requested) {
+        return requested;
     }
-    let Some(requested_index) = EXTENDED.iter().position(|level| *level == Some(requested)) else {
+    let requested_index = match requested {
+        Some(requested) => EXTENDED.iter().position(|level| *level == Some(requested)),
+        None => Some(0),
+    };
+    let Some(requested_index) = requested_index else {
         return available.first().copied().flatten();
     };
     for candidate in EXTENDED[requested_index..].iter() {

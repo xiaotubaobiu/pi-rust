@@ -113,7 +113,7 @@ impl ApiImpl for OpenAiResponses {
         ));
         shaped.reasoning = options
             .reasoning
-            .and_then(|level| clamp_thinking_level(model, level));
+            .and_then(|level| clamp_thinking_level(model, Some(level)));
         run_stream(cfg.clone(), model.clone(), ctx.clone(), shaped)
     }
 }
