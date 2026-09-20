@@ -172,10 +172,12 @@ fn parse_headers(mut bytes: &[u8]) -> Result<Vec<(String, String)>, String> {
             3 => {
                 take(&mut bytes, 2)?;
             }
-            4 | 8 => {
+            4 => {
                 take(&mut bytes, 4)?;
             }
-            5 => {
+            5 | 8 => {
+                // 5 = long, 8 = timestamp (i64 epoch millis) — both 8 bytes
+                // per the AWS event-stream spec.
                 take(&mut bytes, 8)?;
             }
             6 | 7 => {
@@ -314,6 +316,7 @@ mod tests {
         String(&'a str),
         True,
         Integer(i32),
+        Timestamp(i64),
     }
 
     impl HeaderValue<'_> {
@@ -322,6 +325,7 @@ mod tests {
                 HeaderValue::String(_) => 7,
                 HeaderValue::True => 0,
                 HeaderValue::Integer(_) => 4,
+                HeaderValue::Timestamp(_) => 8,
             }
         }
 
@@ -334,6 +338,7 @@ mod tests {
                 }
                 HeaderValue::True => Vec::new(),
                 HeaderValue::Integer(value) => value.to_be_bytes().to_vec(),
+                HeaderValue::Timestamp(value) => value.to_be_bytes().to_vec(),
             }
         }
     }
@@ -436,6 +441,45 @@ mod tests {
         let frames = decoder.decode(&frame).unwrap();
         assert_eq!(frames.len(), 1);
         assert_eq!(frames[0].event_type.as_deref(), Some("metadata"));
+    }
+
+    #[test]
+    fn timestamp_header_consumes_eight_bytes_per_spec() {
+        // Spec vector (AWS event-stream encoding + @smithy/eventstream-codec):
+        // header value type 8 (TIMESTAMP) is 8 bytes (i64 epoch millis). A
+        // 4-byte read would desynchronize header parsing and fail the stream.
+        let frame = encode_frame(
+            &[
+                (":message-type", HeaderValue::String("event")),
+                (":event-type", HeaderValue::String("metadata")),
+                (":x-ts", HeaderValue::Timestamp(1_758_240_000_000)),
+                // Headers after the timestamp must still parse.
+                (":content-type", HeaderValue::String("application/json")),
+                (":final", HeaderValue::True),
+                (":x-long", HeaderValue::Timestamp(i64::MAX)),
+            ],
+            b"{\"usage\":{}}",
+        );
+        let mut decoder = FrameDecoder::new();
+        let frames = decoder.decode(&frame).unwrap();
+        assert_eq!(frames.len(), 1);
+        assert_eq!(frames[0].message_type, "event");
+        assert_eq!(frames[0].event_type.as_deref(), Some("metadata"));
+        // The 8 timestamp bytes were skipped exactly: the headers after it
+        // (`:content-type`, `:final`, `:x-long`) are intact and the payload is
+        // untouched. A 4-byte read would desynchronize the block and drop or
+        // corrupt every header after `:x-ts`.
+        assert_eq!(frames[0].payload, b"{\"usage\":{}}".to_vec());
+        // And the decoder advances past the whole frame: the next frame in the
+        // same byte stream still parses.
+        let next = encode_frame(&[(":message-type", HeaderValue::String("event"))], b"{}");
+        let mut stream = frame.clone();
+        stream.extend_from_slice(&next);
+        let mut decoder = FrameDecoder::new();
+        let frames = decoder.decode(&stream).unwrap();
+        assert_eq!(frames.len(), 2);
+        assert_eq!(frames[1].message_type, "event");
+        decoder.finish().unwrap();
     }
 
     #[test]

@@ -463,10 +463,28 @@ pub(crate) fn should_use_explicit_bedrock_endpoint(
 }
 
 /// Upstream line 194:
-/// `model.id.match(/^arn:aws(?:-[a-z0-9-]+)?:bedrock:([a-z0-9-]+):/)[1]`.
+/// `model.id.match(/^arn:aws(?:-[a-z0-9-]+)?:bedrock:([a-z0-9-]+):/)[1]`:
+/// the optional partition suffix accepts any `arn:aws-<partition>` (us-gov,
+/// cn, iso, ...), not just `-us-gov`.
 fn extract_arn_region(model_id: &str) -> Option<String> {
     let rest = model_id.strip_prefix("arn:aws")?;
-    let rest = rest.strip_prefix("-us-gov").unwrap_or(rest);
+    let rest = match rest.strip_prefix('-') {
+        // `-<partition>:...`: skip to the colon, keeping it (upstream's
+        // `(?:-[a-z0-9-]+)?` requires a non-empty lowercase/digit/dash
+        // partition).
+        Some(partition) => {
+            let index = partition.find(':')?;
+            if index == 0
+                || !partition[..index]
+                    .bytes()
+                    .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'-')
+            {
+                return None;
+            }
+            &partition[index..]
+        }
+        None => rest,
+    };
     let rest = rest.strip_prefix(":bedrock:")?;
     let region = rest.split(':').next()?;
     if region.is_empty()
@@ -506,6 +524,10 @@ pub(crate) fn build_stream_url(
     })?;
     let base = match &resolved.endpoint {
         Some(endpoint) => endpoint.trim_end_matches('/').to_string(),
+        // SDK endpoint resolver: cn-* regions live under the .cn domain.
+        None if region.starts_with("cn-") => {
+            format!("https://bedrock-runtime.{region}.amazonaws.com.cn")
+        }
         None => format!("https://bedrock-runtime.{region}.amazonaws.com"),
     };
     let encoded: Vec<String> = model_id
@@ -2644,7 +2666,28 @@ mod tests {
             ),
             Some("us-gov-west-1".to_string())
         );
+        // Any `arn:aws-<partition>` matches the upstream regex, not just
+        // `-us-gov`.
+        assert_eq!(
+            extract_arn_region(
+                "arn:aws-cn:bedrock:cn-north-1:123456789012:application-inference-profile/abc123"
+            ),
+            Some("cn-north-1".to_string())
+        );
+        assert_eq!(
+            extract_arn_region(
+                "arn:aws-iso-b:bedrock:us-iso-east-1:123456789012:application-inference-profile/abc"
+            ),
+            Some("us-iso-east-1".to_string())
+        );
+        // Non-ARN ids and malformed partitions do not match (upstream regex
+        // requires a non-empty `[a-z0-9-]+` partition; unknown-but-well-formed
+        // partitions like `usgov` do match, by design). Only `:bedrock:` is a
+        // Bedrock ARN.
         assert_eq!(extract_arn_region("us.anthropic.claude-sonnet-4-5"), None);
+        assert_eq!(extract_arn_region("arn:aws-:bedrock:us-east-1:1:x"), None);
+        assert_eq!(extract_arn_region("arn:aws-US_GOV:bedrock:x:1:x"), None);
+        assert_eq!(extract_arn_region("arn:aws:ec2:us-east-1:1:x"), None);
     }
 
     #[test]
@@ -2775,6 +2818,15 @@ mod tests {
         assert_eq!(
             build_stream_url(&resolved, "my.model").unwrap(),
             "https://bedrock-vpc.example.com/model/my.model/stream"
+        );
+        // SDK resolver behavior: cn-* regions resolve under the .cn domain.
+        let resolved = ResolvedEndpointConfig {
+            region: Some("cn-north-1".to_string()),
+            ..ResolvedEndpointConfig::default()
+        };
+        assert_eq!(
+            build_stream_url(&resolved, "my.model").unwrap(),
+            "https://bedrock-runtime.cn-north-1.amazonaws.com.cn/model/my.model/stream"
         );
         // No region anywhere: the profile chain would own it (M2d).
         assert!(build_stream_url(&ResolvedEndpointConfig::default(), "m").is_err());
