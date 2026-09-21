@@ -21,12 +21,16 @@
 //!   The oracle assertions against those fields are covered on the fields the
 //!   port does set (max_tokens, prompt_mode, reasoning_effort, prompt_cache_key,
 //!   tools, messages).
-//! - Ambient auth lands in M2d (controller ruling): the key resolves from
+//! - Ambient auth: gcloud CLI variant is a named error (bedrock/vertex env chains landed in M2d): the key resolves from
 //!   `options.apiKey` then `ProviderConfig.api_key`, and a missing key is the
 //!   async error event (upstream `streamSimple` throws synchronously; port
-//!   contract). `options.signal` aborts have no port input, so the post-stream
-//!   abort check and the catch block's `"aborted"` branch are unreachable —
-//!   error events always carry reason `"error"`.
+//!   contract). `options.signal` is the port's non-serialized
+//!   [`CancellationToken`](tokio_util::sync::CancellationToken): a
+//!   pre-cancelled token or cancellation during the initial request fails
+//!   before `Start` with the retry seam's `"Request aborted"` abort error; a
+//!   cancellation after `Start` breaks the body read (the
+//!   `readMistralEvents` abort check) and the catch block's `"aborted"`
+//!   branch settles the reason.
 //! - Upstream applies `AbortSignal.timeout(options?.timeoutMs ?? 60_000)` — a
 //!   60-second default even when unset. Per controller ruling the port behaves
 //!   like its siblings: `timeout_ms` is applied only when provided (the shared
@@ -64,6 +68,12 @@
 //!   `content[].thinking` degrades to empty where upstream threw a TypeError —
 //!   both only reachable with malformed provider payloads. `delta.content`
 //!   scalars other than string/array error like upstream's non-iterable throw.
+//!   Two more choices the serde layer makes on malformed payloads: a choice
+//!   without `delta` deserializes to the default empty delta and is processed
+//!   as a no-op (upstream's bare `choice.delta` access would TypeError into
+//!   its catch block), and a `tool_calls[]` entry missing `function` fails the
+//!   chunk's deserialization with serde's `missing field \`function\``
+//!   message (upstream: the same TypeError-into-catch shape, different text).
 //! - JSON object key order follows `serde_json` (sorted), not JS insertion
 //!   order — same documented deviation as the request-builder ports.
 
@@ -81,7 +91,7 @@ use crate::ai::api::openai_completions::request::{
     short_hash, transform_messages, MappedLevel,
 };
 use crate::ai::api::openai_completions::stream::{parse_streaming_json, truncate_error_text};
-use crate::ai::api::{http_client, pi_user_agent, ApiImpl};
+use crate::ai::api::{http_client, pi_user_agent, request_signal, ApiImpl, REQUEST_WAS_ABORTED};
 use crate::ai::cost::calculate_cost;
 use crate::ai::retry::{retry_provider_request, ProviderError};
 use crate::ai::transcript::{
@@ -98,6 +108,7 @@ use crate::ai::types::tool::Tool;
 use crate::ai::types::{Model, ModelInput};
 use crate::ai::{now_ms, ProviderConfig};
 use tokio::sync::mpsc;
+use tokio_util::sync::CancellationToken;
 
 /// The API id stamped on every emitted message.
 const API: &str = "mistral-conversations";
@@ -355,6 +366,7 @@ async fn run_stream_task(
     tx: mpsc::Sender<AssistantMessageEvent>,
 ) {
     let mut state = StreamState::new(&model);
+    let signal = request_signal(&options.stream.signal);
     let outcome: Result<(), String> = async {
         // Upstream lines 136-139 (inside the async body): the missing-key
         // error throws first — the provider-config fallback is the port
@@ -370,7 +382,8 @@ async fn run_stream_task(
         let url = resolve_endpoint(&model.base_url)?;
         let headers = build_headers(&model, &api_key, &options.stream);
 
-        let response = send_stream_request(&url, headers, &payload, &options.stream).await?;
+        let response =
+            send_stream_request(&url, headers, &payload, &options.stream, &signal).await?;
 
         // Upstream line 152: `start` after the response arrives.
         let _ = tx
@@ -379,10 +392,13 @@ async fn run_stream_task(
             })
             .await;
 
-        consume_chat_stream(&mut state, response, &model, &tx).await?;
+        consume_chat_stream(&mut state, response, &model, &signal, &tx).await?;
 
-        // Upstream lines 155-164 (the signal-aborted check has no port input):
-        // the pending / aborted / error guards throw into the catch block.
+        // Upstream lines 155-164: the post-stream abort check precedes the
+        // pending / error guards.
+        if signal.is_cancelled() {
+            return Err(REQUEST_WAS_ABORTED.to_string());
+        }
         if state.output.stop_reason == StopReason::Pending {
             return Err("Mistral stream ended without a finish reason".to_string());
         }
@@ -416,15 +432,24 @@ async fn run_stream_task(
         Err(message) => {
             // Upstream catch block (lines 168-177): the partialArgs deletion
             // is the port's finalize-without-emitting (arguments keep the
-            // parsed-so-far value like upstream's live parse), the
-            // signal-aborted branch is unreachable, so stopReason settles to
-            // "error" and the thrown value becomes the errorMessage.
+            // parsed-so-far value like upstream's live parse); stopReason
+            // settles to "aborted" when the request signal fired, else
+            // "error", and the thrown value becomes the errorMessage.
             finalize_tool_blocks(&mut state, None).await;
-            state.output.stop_reason = StopReason::Error;
+            let aborted = signal.is_cancelled();
+            state.output.stop_reason = if aborted {
+                StopReason::Aborted
+            } else {
+                StopReason::Error
+            };
             state.output.error_message = Some(message);
             let _ = tx
                 .send(AssistantMessageEvent::Error {
-                    reason: ErrorReason::Error,
+                    reason: if aborted {
+                        ErrorReason::Aborted
+                    } else {
+                        ErrorReason::Error
+                    },
                     error: state.output,
                 })
                 .await;
@@ -803,10 +828,21 @@ async fn consume_chat_stream(
     state: &mut StreamState,
     response: reqwest::Response,
     model: &Model,
+    signal: &CancellationToken,
     tx: &mpsc::Sender<AssistantMessageEvent>,
 ) -> Result<(), String> {
     let mut events = response.bytes_stream().eventsource();
-    while let Some(item) = events.next().await {
+    // Upstream `readMistralEvents` checks `signal.aborted` on every read; the
+    // select breaks the read the moment the token cancels.
+    loop {
+        let item = tokio::select! {
+            biased;
+            _ = signal.cancelled() => return Err(REQUEST_WAS_ABORTED.to_string()),
+            next = events.next() => match next {
+                Some(item) => item,
+                None => break,
+            },
+        };
         let event = item.map_err(|error| match error {
             eventsource_stream::EventStreamError::Transport(error) => {
                 format_transport_error(&error)
@@ -1197,14 +1233,14 @@ fn build_headers(
     set_header(&mut headers, "authorization", &format!("Bearer {api_key}"));
     set_header(&mut headers, "content-type", "application/json");
     for (name, value) in model.headers.iter().flatten() {
-        apply_header_override(&mut headers, name, Some(value));
+        apply_header_override(&mut headers, name, value.as_deref());
     }
     if let Some(option_headers) = &stream_options.headers {
         for (name, value) in option_headers {
             apply_header_override(&mut headers, name, value.as_deref());
         }
     }
-    let has_explicit_affinity = has_model_header_override(model.headers.as_ref(), "x-affinity")
+    let has_explicit_affinity = has_header_override(model.headers.as_ref(), "x-affinity")
         || has_header_override(stream_options.headers.as_ref(), "x-affinity");
     if should_use_prompt_caching(
         stream_options.cache_retention,
@@ -1249,18 +1285,6 @@ fn has_header_override(
         .any(|(name, _)| name.eq_ignore_ascii_case(target))
 }
 
-/// The `Model.headers` flavor of [`has_header_override`]: plain string values
-/// (upstream `Record<string, string>`), same case-insensitive presence rule.
-fn has_model_header_override(
-    headers: Option<&std::collections::BTreeMap<String, String>>,
-    target: &str,
-) -> bool {
-    headers
-        .into_iter()
-        .flatten()
-        .any(|(name, _)| name.eq_ignore_ascii_case(target))
-}
-
 /// Send the assembled request (upstream `requestMistralStream`), wrapped in
 /// the provider-request retry seam with `options.maxRetries` /
 /// `maxRetryDelayMs` (upstream plain `fetch` performs no retries; the seam
@@ -1271,6 +1295,7 @@ async fn send_stream_request(
     headers: Vec<(String, String)>,
     payload: &Value,
     stream_options: &StreamOptions,
+    signal: &CancellationToken,
 ) -> Result<reqwest::Response, String> {
     let mut header_map = reqwest::header::HeaderMap::new();
     for (name, value) in &headers {
@@ -1286,7 +1311,7 @@ async fn send_stream_request(
     }
     let max_retries = stream_options.max_retries.unwrap_or(0);
     let max_retry_delay_ms = stream_options.max_retry_delay_ms;
-    retry_provider_request(max_retries, max_retry_delay_ms, || async {
+    retry_provider_request(max_retries, max_retry_delay_ms, Some(signal), || async {
         let response = request
             .try_clone()
             .expect("JSON request body is buffered and clonable")
@@ -1458,6 +1483,7 @@ struct MistralStreamFunction {
 mod tests {
     use super::*;
     use crate::ai::api::pi_user_agent;
+    use crate::ai::api::{abort_test_support::stalled_sse_server, REQUEST_ABORTED};
     use crate::ai::transcript::{normalize_context, Context};
     use crate::ai::types::content::{ImageContent, TextContent};
     use crate::ai::types::events::PartialAssistant;
@@ -2080,8 +2106,11 @@ mod tests {
         mount(&server, &[terminal_event("stop")]).await;
         let mut model = model(&server.uri());
         let mut model_headers = std::collections::BTreeMap::new();
-        model_headers.insert("Authorization".to_string(), "Bearer model-key".to_string());
-        model_headers.insert("X-Affinity".to_string(), "model-affinity".to_string());
+        model_headers.insert(
+            "Authorization".to_string(),
+            Some("Bearer model-key".to_string()),
+        );
+        model_headers.insert("X-Affinity".to_string(), Some("model-affinity".to_string()));
         model.headers = Some(model_headers);
         let ctx = ctx_with(vec![user_msg("hello")]);
         let mut option_headers = ProviderHeaders::new();
@@ -2333,6 +2362,37 @@ mod tests {
         assert_eq!(body["reasoning_effort"], json!("high"));
     }
 
+    /// The provider-neutral toolChoice passthrough reaches the wire as the
+    /// mistral `tool_choice` string (upstream lines 196-209 + 966-968); the
+    /// key is omitted when no choice is requested.
+    #[tokio::test]
+    async fn tool_choice_reaches_the_wire() {
+        let server = wiremock::MockServer::start().await;
+        let ctx = ctx_with(vec![user_msg("hello")]);
+        let model = model(&server.uri());
+
+        mount(&server, &[terminal_event("stop")]).await;
+        let options = SimpleStreamOptions {
+            tool_choice: Some(ToolChoice::None),
+            ..SimpleStreamOptions::default()
+        };
+        let (_, _, body, _) = capture_simple(&server, &model, &ctx, &options).await;
+        assert_eq!(body["tool_choice"], json!("none"));
+
+        mount(&server, &[terminal_event("stop")]).await;
+        let options = SimpleStreamOptions {
+            tool_choice: Some(ToolChoice::Auto),
+            ..SimpleStreamOptions::default()
+        };
+        let (_, _, body, _) = capture_simple(&server, &model, &ctx, &options).await;
+        assert_eq!(body["tool_choice"], json!("auto"));
+
+        mount(&server, &[terminal_event("stop")]).await;
+        let (_, _, body, _) =
+            capture_simple(&server, &model, &ctx, &SimpleStreamOptions::default()).await;
+        assert!(body.get("tool_choice").is_none(), "{body}");
+    }
+
     #[tokio::test]
     async fn prompt_cache_key_follows_cache_retention() {
         let server = wiremock::MockServer::start().await;
@@ -2495,7 +2555,7 @@ mod tests {
         assert_eq!(error.content.len(), 1);
     }
 
-    // ---- 12. auth resolution (ambient auth lands in M2d; the provider
+    // ---- 12. auth resolution (ambient auth is a named error (gcloud CLI out of scope); the provider
     //          config is the port wiring per the M2c ruling) ----
 
     #[tokio::test]
@@ -2722,5 +2782,68 @@ mod tests {
             cached_prompt_tokens(&json!({"num_cached_tokens": 99}), 10),
             10
         );
+    }
+
+    // ---- abort surface ----
+
+    fn signal_options(signal: Option<CancellationToken>) -> StreamOptions {
+        StreamOptions {
+            signal,
+            ..StreamOptions::default()
+        }
+    }
+
+    /// A pre-cancelled signal fails the request setup (the retry seam's
+    /// `"Request aborted"` abort error) before `Start`, and the catch block
+    /// settles `stopReason: "aborted"`.
+    #[tokio::test]
+    async fn pre_aborted_request_settles_aborted_before_start() {
+        let server = wiremock::MockServer::start().await;
+        let token = CancellationToken::new();
+        token.cancel();
+        let api = MistralConversations;
+        let mut rx = api.stream(
+            &cfg(),
+            &model(&server.uri()),
+            &ctx_with(vec![user_msg("hi")]),
+            &signal_options(Some(token)),
+        );
+        let first = rx.recv().await.expect("terminal event");
+        match first {
+            AssistantMessageEvent::Error { reason, error } => {
+                assert_eq!(reason, ErrorReason::Aborted);
+                assert_eq!(error.stop_reason, StopReason::Aborted);
+                assert_eq!(error.error_message.as_deref(), Some(REQUEST_ABORTED));
+            }
+            other => panic!("expected terminal error event, got {other:?}"),
+        }
+        assert!(server.received_requests().await.unwrap().is_empty());
+    }
+
+    /// A cancellation after `start` breaks the body wait and settles the
+    /// stream aborted with `"Request was aborted"` (upstream `readMistralEvents`
+    /// abort check + catch block).
+    #[tokio::test]
+    async fn mid_stream_cancellation_settles_the_stream_aborted() {
+        let base_url = stalled_sse_server().await;
+        let token = CancellationToken::new();
+        let api = MistralConversations;
+        let mut rx = api.stream(
+            &cfg(),
+            &model(&base_url),
+            &ctx_with(vec![user_msg("hi")]),
+            &signal_options(Some(token.clone())),
+        );
+        let first = rx.recv().await.expect("start event");
+        assert!(matches!(first, AssistantMessageEvent::Start { .. }));
+        token.cancel();
+        match rx.recv().await.expect("terminal event") {
+            AssistantMessageEvent::Error { reason, error } => {
+                assert_eq!(reason, ErrorReason::Aborted);
+                assert_eq!(error.stop_reason, StopReason::Aborted);
+                assert_eq!(error.error_message.as_deref(), Some(REQUEST_WAS_ABORTED));
+            }
+            other => panic!("expected terminal error event, got {other:?}"),
+        }
     }
 }

@@ -22,6 +22,10 @@ pub mod context;
 pub mod credential_store;
 pub mod env_api_keys;
 pub mod file_store;
+/// Port-only module (no upstream `auth/` counterpart): the Vertex ADC
+/// service-account token minting behind `google_vertex`'s ADC branch
+/// (google-auth-library JWT/gtoken semantics). Internal surface.
+pub(crate) mod google_adc;
 pub mod helpers;
 pub mod oauth;
 pub mod resolve;

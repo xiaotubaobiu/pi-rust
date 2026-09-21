@@ -464,7 +464,7 @@ fn get_beta_features(
     let mut configured: Option<Option<String>> = None;
     for (name, value) in model.headers.iter().flatten() {
         if name.eq_ignore_ascii_case("anthropic-beta") {
-            configured = Some(Some(value.clone()));
+            configured = Some(value.clone());
         }
     }
     for (name, value) in options.stream.headers.iter().flatten() {
@@ -1262,8 +1262,13 @@ fn build_headers(
             }
         }
     }
+    // Model headers; a None value (upstream null) suppresses a default,
+    // like the options-level merge below.
     for (name, value) in model.headers.iter().flatten() {
-        set_header(&mut headers, name, value);
+        match value {
+            Some(value) => set_header(&mut headers, name, value),
+            None => remove_header(&mut headers, name),
+        }
     }
     // Caller headers last; a None value (upstream null) suppresses a default.
     if let Some(option_headers) = &options.stream.headers {
@@ -1411,6 +1416,7 @@ pub fn options_from_simple(
     );
     let mut result = AnthropicOptions {
         stream: StreamOptions {
+            signal: options.stream.signal.clone(),
             temperature: options.stream.temperature,
             sampling_params,
             max_tokens: Some(base_max_tokens),
@@ -1500,7 +1506,7 @@ mod tests {
             "supportsMidConvoEffort": true
         }));
         model.id = "claude-fable-5-1".to_string();
-        model.thinking_level_map = Some(HashMap::from([
+        model.thinking_level_map = Some(BTreeMap::from([
             ("off".to_string(), None),
             ("minimal".to_string(), Some("low".to_string())),
             ("low".to_string(), Some("low".to_string())),
@@ -2340,7 +2346,7 @@ mod tests {
 
         // thinkingLevelMap.off === null (Fable-style): param omitted.
         let mut model = make_model(json!({}));
-        model.thinking_level_map = Some(HashMap::from([("off".to_string(), None)]));
+        model.thinking_level_map = Some(BTreeMap::from([("off".to_string(), None)]));
         let assembly = build(&model, &ctx, &options);
         assert!(assembly.body.get("thinking").is_none());
 
@@ -2391,13 +2397,13 @@ mod tests {
 
         // Fable-style off: null mapping omits the disabled param.
         let mut model = make_model(json!({"forceAdaptiveThinking": true}));
-        model.thinking_level_map = Some(HashMap::from([("off".to_string(), None)]));
+        model.thinking_level_map = Some(BTreeMap::from([("off".to_string(), None)]));
         let assembly = simple(&model, None, None);
         assert!(assembly.body.get("thinking").is_none());
 
         // xhigh maps through thinkingLevelMap (Opus 4.8-style).
         let mut model = make_model(json!({"forceAdaptiveThinking": true}));
-        model.thinking_level_map = Some(HashMap::from([(
+        model.thinking_level_map = Some(BTreeMap::from([(
             "xhigh".to_string(),
             Some("xhigh".to_string()),
         )]));
@@ -2455,6 +2461,15 @@ mod tests {
                 "display": "summarized",
                 "block_binding": {"prefix_mismatch_behavior": "drop_block"}
             })
+        );
+        // The managed-effort compat also carries both beta features (upstream
+        // getBetaFeatures, lines 1024-1028), in order.
+        assert_eq!(
+            betas(&first),
+            [
+                "mid-conversation-output-config-2026-07-01".to_string(),
+                "thinking-binding-controls-2026-08-01".to_string(),
+            ]
         );
 
         // Capture 2: historical marker prefix reconstructed, current marker appended.
@@ -2538,7 +2553,8 @@ mod tests {
             vec![&json!({"role": "system", "content": [], "output_config": {"effort": "medium"}})]
         );
 
-        // Non-managed model: top-level effort, no markers, no block_binding.
+        // Non-managed model: top-level effort, no markers, no block_binding —
+        // and neither mid-conversation beta.
         let model = make_model(json!({"forceAdaptiveThinking": true}));
         let ctx = ctx_of(vec![user("one")]);
         let options = AnthropicOptions {
@@ -2556,6 +2572,41 @@ mod tests {
         assert_eq!(
             assembly.body["thinking"],
             json!({"type": "adaptive", "display": "summarized"})
+        );
+        assert_eq!(betas(&assembly), Vec::<String>::new());
+    }
+
+    /// Unsigned thinking replayed from another provider's assistant message
+    /// converts to plain text (upstream lines 1332-1347: the signature check
+    /// is provider-independent — a cross-model thinking block has no
+    /// anthropic signature to replay).
+    #[test]
+    fn cross_model_unsigned_thinking_converts_to_text() {
+        let model = make_model(json!({}));
+        let ctx = ctx_of(vec![
+            user("first"),
+            assistant_msg(
+                "openai",
+                "openai-completions",
+                "gpt-test",
+                vec![
+                    thinking("cross-model reasoning", None),
+                    AssistantBlock::Text(TextContent {
+                        text: "answer".to_string(),
+                        text_signature: None,
+                    }),
+                ],
+                None,
+            ),
+            user("second"),
+        ]);
+        let assembly = build(&model, &ctx, &opts());
+        assert_eq!(
+            assembly.body["messages"][1]["content"],
+            json!([
+                {"type": "text", "text": "cross-model reasoning"},
+                {"type": "text", "text": "answer"}
+            ])
         );
     }
 
@@ -2746,7 +2797,7 @@ mod tests {
         let mut model = make_model(json!({}));
         model.headers = Some(BTreeMap::from([(
             "anthropic-beta".to_string(),
-            "model-beta-a, model-beta-b".to_string(),
+            Some("model-beta-a, model-beta-b".to_string()),
         )]));
         let assembly = build(&model, &ctx, &opts());
         assert_eq!(

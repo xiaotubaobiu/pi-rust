@@ -11,9 +11,6 @@
 //!
 //! Upstream options intentionally absent in M2a (all land with the M2b stream
 //! signatures):
-//! - `signal` (upstream `AbortSignal`, types.ts:125): cancellation becomes a
-//!   tokio cancellation token carried by the M2b event-stream call
-//!   signatures; a plain options struct cannot hold one.
 //! - `telemetryContext` (types.ts:127): telemetry is not ported in M2a.
 //! - `fetch` (types.ts:134): Rust uses `reqwest` as the HTTP client; there is
 //!   no injectable fetch function. Revisit only if an adapter needs one.
@@ -27,6 +24,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+use tokio_util::sync::CancellationToken;
 
 use super::primitives::{CacheRetention, ThinkingBudgets, ThinkingLevel, ToolChoice, Transport};
 
@@ -42,12 +40,18 @@ pub type ProviderHeaders = BTreeMap<String, Option<String>>;
 
 /// Upstream `ProviderRequestOptions` (types.ts:124-177): authentication, HTTP
 /// transport tuning, and provider-scoped overrides shared by all provider
-/// requests. The five upstream fields absent here (`signal`,
-/// `telemetryContext`, `fetch`, `onPayload`, `onResponse`) are documented on
-/// the module — all land with the M2b stream signatures.
+/// requests. The four upstream fields absent here (`telemetryContext`,
+/// `fetch`, `onPayload`, `onResponse`) are documented on the module — all
+/// land with the M2b stream signatures.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProviderRequestOptions {
+    /// Request cancellation (types.ts:125, upstream `AbortSignal`). The port
+    /// carries a [`CancellationToken`]; `None` (upstream `undefined`) runs
+    /// unabortable. Transport-only: never serialized or deserialized, so no
+    /// wire format carries it.
+    #[serde(skip)]
+    pub signal: Option<CancellationToken>,
     /// Explicit credential override (types.ts:128).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub api_key: Option<String>,
@@ -83,6 +87,12 @@ pub struct ProviderRequestOptions {
 #[serde(rename_all = "camelCase")]
 pub struct StreamOptions {
     // ---- Upstream `ProviderRequestOptions` (types.ts:124-177). ----
+    /// Request cancellation (types.ts:125, upstream `AbortSignal`): aborts
+    /// the request setup (before `Start`, not retried) and the mid-stream
+    /// body reads, settling the message with `stopReason: "aborted"`.
+    /// Transport-only: `#[serde(skip)]`, never part of any wire format.
+    #[serde(skip)]
+    pub signal: Option<CancellationToken>,
     /// Explicit credential override (types.ts:128).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub api_key: Option<String>,
@@ -143,7 +153,7 @@ pub struct StreamOptions {
 /// Upstream `SimpleStreamOptions` (types.ts:317-326): unified options for
 /// `streamSimple()`/`completeSimple()`. Upstream extends `StreamOptions`;
 /// here the base is embedded and `#[serde(flatten)]`-ed so the wire stays one
-/// flat object with the upstream camelCase keys while the fourteen base
+/// flat object with the upstream camelCase keys while the fifteen base
 /// fields are defined once on [`StreamOptions`]. Upstream names the
 /// thinking-level field `reasoning` (not `thinkingLevel`).
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -410,5 +420,21 @@ mod tests {
         assert_eq!(minimal.reasoning, None);
         assert_eq!(minimal.thinking_budgets, None);
         assert_eq!(minimal.stream, StreamOptions::default());
+    }
+
+    /// The signal is transport-only (`#[serde(skip)]`): a set token never
+    /// reaches the wire, and an incoming `signal` key is ignored rather than
+    /// rejected, exactly like upstream where `AbortSignal` is a runtime
+    /// object no JSON payload carries.
+    #[test]
+    fn signal_is_transport_only_and_never_serializes() {
+        let mut options = StreamOptions::default();
+        assert_eq!(options.signal, None);
+        options.signal = Some(tokio_util::sync::CancellationToken::new());
+        assert_eq!(serde_json::to_string(&options).unwrap(), "{}");
+        // Unknown `signal` keys on the wire do not reject deserialization.
+        let parsed: StreamOptions = serde_json::from_str(r#"{"signal":{}}"#).unwrap();
+        assert_eq!(parsed.signal, None);
+        assert_eq!(parsed, StreamOptions::default());
     }
 }

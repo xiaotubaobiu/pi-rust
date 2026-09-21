@@ -533,10 +533,14 @@ async fn handle_connection(mut stream: TcpStream, shared: Arc<CallbackShared>) {
             shared.finish(Finish::Credential(credential));
         }
         Err(error) => {
-            // Upstream catch: the error message reaches the 502 page and the
+            // Upstream catch: `error.message` reaches the 502 page and the
             // rejected wait (cancellation keeps its port-level distinction).
+            // The Operation message is rendered bare — not through
+            // [`AuthError`]'s Display, which adds the port-level
+            // "auth operation failed: " prefix upstream has no counterpart for.
             let detail = match &error {
                 AuthError::Cancelled => "Login cancelled".to_string(),
+                AuthError::Operation(message) => message.clone(),
                 other => other.to_string(),
             };
             write_response(
@@ -1037,6 +1041,9 @@ mod tests {
         assert!(response.starts_with("HTTP/1.1 502 Bad Gateway\r\n"));
         assert!(response.contains("OpenRouter key exchange failed."));
         assert!(response.contains("invalid code"));
+        // Upstream `error.message`: the bare message reaches the page, never
+        // the port's AuthError Display prefix.
+        assert!(!response.contains("auth operation failed:"));
     }
 
     /// Oracle: "allows only one token exchange for a callback" — a second

@@ -352,10 +352,19 @@ fn copilot_headers() -> Vec<(&'static str, String)> {
     ]
 }
 
+/// The two HTTP methods the GitHub Copilot OAuth flow uses. Upstream builds
+/// `init.method` strings; the enum makes [`send_once`]'s request-builder
+/// match exhaustive instead of a `_ => post` catch-all that would silently
+/// send POST on an unknown method.
+enum Method {
+    Get,
+    Post,
+}
+
 /// One HTTP request description; rebuilt per retry attempt (upstream passes
 /// `init` to every `fetch`).
 struct RequestSpec {
-    method: &'static str,
+    method: Method,
     url: String,
     headers: Vec<(&'static str, String)>,
     body: Option<String>,
@@ -403,8 +412,8 @@ async fn send_once(
 ) -> Result<WireResponse, SendError> {
     let request_deadline = request_timeout.map(|timeout| tokio::time::Instant::now() + timeout);
     let mut request = match spec.method {
-        "GET" => http_client().get(&spec.url),
-        _ => http_client().post(&spec.url),
+        Method::Get => http_client().get(&spec.url),
+        Method::Post => http_client().post(&spec.url),
     };
     for (name, value) in &spec.headers {
         request = request.header(*name, value);
@@ -569,7 +578,7 @@ async fn start_device_flow(
         query.finish()
     };
     let spec = RequestSpec {
-        method: "POST",
+        method: Method::Post,
         url: oauth.device_code_url(domain),
         headers: vec![
             ("Accept", "application/json".to_string()),
@@ -686,7 +695,7 @@ async fn poll_for_github_access_token(
         query.finish()
     };
     let spec = RequestSpec {
-        method: "POST",
+        method: Method::Post,
         url: oauth.access_token_url(domain),
         headers: vec![
             ("Accept", "application/json".to_string()),
@@ -736,7 +745,7 @@ async fn refresh_copilot_access_token(
     ];
     headers.extend(copilot_headers());
     let spec = RequestSpec {
-        method: "GET",
+        method: Method::Get,
         url: oauth.copilot_token_url(domain),
         headers,
         body: None,
@@ -866,7 +875,7 @@ async fn fetch_models(
     headers.extend(copilot_headers());
     headers.push(("X-GitHub-Api-Version", COPILOT_API_VERSION.to_string()));
     let spec = RequestSpec {
-        method: "GET",
+        method: Method::Get,
         url: format!(
             "{}/models",
             oauth.api_base_override.as_deref().unwrap_or(&derived_base)
@@ -912,7 +921,7 @@ async fn enable_github_copilot_model(
     headers.push(("openai-intent", "chat-policy".to_string()));
     headers.push(("x-interaction-type", "chat-policy".to_string()));
     let spec = RequestSpec {
-        method: "POST",
+        method: Method::Post,
         url: format!(
             "{}/models/{model_id}/policy",
             oauth.api_base_override.as_deref().unwrap_or(&derived_base)

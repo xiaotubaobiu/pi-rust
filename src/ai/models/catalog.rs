@@ -21,9 +21,10 @@
 //! # Ordering and dedup
 //!
 //! Upstream `flattenModelCatalog` returns a record:
-//! `Object.assign({}, ...Object.values(groups))` — all API groups merged, a
-//! duplicate model id across groups resolved last-wins (the later group's
-//! value overwrites, keeping the first-insertion position). The Rust port
+//! `Object.assign({}, ...Object.values(groups))` — all API groups merged by
+//! copying own enumerable string-keyed properties in group order; a
+//! duplicate model id across groups resolves last-wins (the later group's
+//! value overwrites) while the key keeps its first-insertion position. The Rust port
 //! returns `Vec<Model>` sorted by model id: serde_json objects are sorted
 //! maps, so upstream's first-appearance record order is not representable, and
 //! the collection layer (Task 2) wants a deterministic list. The model set and
@@ -155,8 +156,12 @@ pub fn embedded_provider_catalog(provider: &str) -> Vec<Model> {
 ///
 /// `_provider` mirrors the upstream parameter — it is a type-level input only
 /// (`flattenModelCatalog<const TProvider ...>`) and takes no part in the
-/// runtime merge. Group values that are not JSON objects are skipped, matching
-/// `Object.assign` runtime semantics. Duplicate model ids across groups are
+/// runtime merge. Group values that are not JSON objects are skipped — a
+/// port-side defensive choice, not `Object.assign` runtime behavior (upstream
+/// would throw on non-iterable primitives and spread strings/arrays into
+/// index keys; only null/undefined are ignored — and the `ModelGroups` type
+/// plus the structure validator make non-object groups unreachable for
+/// generated data). Duplicate model ids across groups are
 /// resolved last-wins like `Object.assign`; the returned list is sorted by
 /// model id (see the module docs). Model JSON that fails to deserialize panics
 /// with the offending provider/model: upstream catches malformed generated
@@ -363,55 +368,15 @@ fn validate_provider_models(
 
 /// Narrow port of the manifest timestamp check
 /// (`Number.isNaN(Date.parse(generatedAt))`): the generator emits exactly one
-/// shape, ISO-8601 UTC `YYYY-MM-DDTHH:MM:SS[.fff…]Z`, so the port validates
-/// that shape and component ranges instead of shipping a date parser.
+/// shape, ISO-8601 UTC `YYYY-MM-DDTHH:MM:SS[.fff…]Z`. Documented divergence:
+/// upstream `Date.parse` returns `NaN` for impossible calendar dates (day 30
+/// of February), while the parser here accepts any `01`-`31` day shape
+/// regardless of month length — deliberate, since the only input is the
+/// generated manifest stamp, whose components always cohere. Delegates to the
+/// shared generator-shape parser ([`crate::ai::models::providers::parse_iso_utc_ms`])
+/// so the acceptance set and the epoch conversion live in one place.
 fn generated_at_parses(value: &str) -> bool {
-    let bytes = value.as_bytes();
-    if bytes.len() < 20
-        || bytes[4] != b'-'
-        || bytes[7] != b'-'
-        || bytes[10] != b'T'
-        || bytes[13] != b':'
-        || bytes[16] != b':'
-        || *bytes.last().expect("len checked above") != b'Z'
-    {
-        return false;
-    }
-    let digits = |slice: &[u8]| slice.iter().all(u8::is_ascii_digit);
-    if !(digits(&bytes[0..4])
-        && digits(&bytes[5..7])
-        && digits(&bytes[8..10])
-        && digits(&bytes[11..13])
-        && digits(&bytes[14..16])
-        && digits(&bytes[17..19]))
-    {
-        return false;
-    }
-    // `seconds` ends at index 19; an optional `.fraction` must hold at least
-    // one digit before the trailing `Z`.
-    let tail = bytes.len() - 1;
-    if tail != 19 && (bytes[19] != b'.' || tail <= 20 || !digits(&bytes[20..tail])) {
-        return false;
-    }
-    let num = |slice: &[u8]| -> Option<u32> {
-        slice.iter().try_fold(0u32, |acc, byte| {
-            acc.checked_mul(10)?.checked_add(u32::from(byte - b'0'))
-        })
-    };
-    let (Some(month), Some(day), Some(hour), Some(minute), Some(second)) = (
-        num(&bytes[5..7]),
-        num(&bytes[8..10]),
-        num(&bytes[11..13]),
-        num(&bytes[14..16]),
-        num(&bytes[17..19]),
-    ) else {
-        return false;
-    };
-    (1..=12).contains(&month)
-        && (1..=31).contains(&day)
-        && hour <= 23
-        && minute <= 59
-        && second <= 59
+    crate::ai::models::providers::parse_iso_utc_ms(value).is_some()
 }
 
 fn sha256_hex(bytes: &[u8]) -> String {
@@ -485,7 +450,7 @@ mod tests {
     }
 
     #[test]
-    fn flatten_skips_non_object_group_values_like_object_assign() {
+    fn flatten_skips_non_object_group_values_defensively() {
         let groups = json!({
             "openai-completions": {"a": model_json("a", "openai-completions", 1000)},
             "bogus": 3,

@@ -78,7 +78,7 @@ use crate::ai::api::openai_responses_shared::{
     ConvertResponsesToolsOptions, ResponsesStreamEvent, ResponsesStreamOptions,
     ResponsesStreamProcessor,
 };
-use crate::ai::api::{http_client, pi_user_agent, ApiImpl};
+use crate::ai::api::{http_client, pi_user_agent, request_signal, ApiImpl, REQUEST_WAS_ABORTED};
 use crate::ai::retry::{retry_provider_request, ProviderError};
 use crate::ai::transcript::{get_declared_tools, resolve_transcript, TranscriptContext};
 use crate::ai::types::events::{AssistantMessageEvent, ErrorReason, SuccessReason};
@@ -87,6 +87,7 @@ use crate::ai::types::primitives::StopReason;
 use crate::ai::types::Model;
 use crate::ai::ProviderConfig;
 use tokio::sync::mpsc;
+use tokio_util::sync::CancellationToken;
 
 /// Upstream `DEFAULT_AZURE_API_VERSION` (azure-openai-responses.ts:25).
 const DEFAULT_AZURE_API_VERSION: &str = "v1";
@@ -189,6 +190,7 @@ async fn run_stream_task(
         ..Default::default()
     };
     let mut processor = ResponsesStreamProcessor::new(&model, processor_options);
+    let signal = request_signal(&options.stream.signal);
     let outcome = async {
         // Upstream line 103: the API key, from the options or the provider
         // credential (the port's wiring, per the M2c ruling), checked first.
@@ -215,6 +217,7 @@ async fn run_stream_task(
             &body,
             &headers,
             &options,
+            &signal,
         )
         .await?;
 
@@ -227,7 +230,15 @@ async fn run_stream_task(
             .await;
 
         let mut events = response.bytes_stream().eventsource();
-        while let Some(item) = events.next().await {
+        loop {
+            let item = tokio::select! {
+                biased;
+                _ = signal.cancelled() => return Err(REQUEST_WAS_ABORTED.to_string()),
+                next = events.next() => match next {
+                    Some(item) => item,
+                    None => break,
+                },
+            };
             let event = item.map_err(|error| error.to_string())?;
             let payload: Value = serde_json::from_str(&event.data)
                 .map_err(|error| format!("Could not parse Responses SSE event: {error}"))?;
@@ -239,8 +250,11 @@ async fn run_stream_task(
         // Upstream post-loop guard inside processResponsesStream.
         processor.finish()?;
         let output = processor.output();
-        // Upstream lines 135-137 (the signal-aborted check has no port input)
-        // and 139-141.
+        // Upstream lines 135-137: the post-loop abort check precedes the
+        // pending / error guards.
+        if signal.is_cancelled() {
+            return Err(REQUEST_WAS_ABORTED.to_string());
+        }
         if output.stop_reason == StopReason::Pending {
             return Err("Azure OpenAI Responses stream ended without a stop reason".to_string());
         }
@@ -267,15 +281,23 @@ async fn run_stream_task(
         Ok(()) => {}
         Err(message) => {
             // Upstream catch block (lines 148-159): the partial message keeps
-            // its content; stopReason settles to "error" (the `signal`
-            // aborted branch is unreachable in the port) and the thrown value
-            // becomes the errorMessage.
+            // its content; stopReason settles to "aborted" when the request
+            // signal fired, else "error", and the thrown value becomes the
+            // errorMessage.
             let mut output = processor.into_output();
-            output.stop_reason = StopReason::Error;
+            output.stop_reason = if signal.is_cancelled() {
+                StopReason::Aborted
+            } else {
+                StopReason::Error
+            };
             output.error_message = Some(message);
             let _ = tx
                 .send(AssistantMessageEvent::Error {
-                    reason: ErrorReason::Error,
+                    reason: if signal.is_cancelled() {
+                        ErrorReason::Aborted
+                    } else {
+                        ErrorReason::Error
+                    },
                     error: output,
                 })
                 .await;
@@ -472,7 +494,10 @@ pub(crate) fn resolve_azure_config(
 fn build_headers(model: &Model, options: &SimpleStreamOptions) -> Vec<(String, String)> {
     let mut headers: Vec<(String, String)> = vec![("User-Agent".to_string(), pi_user_agent())];
     for (name, value) in model.headers.iter().flatten() {
-        set_header(&mut headers, name, value);
+        match value {
+            Some(value) => set_header(&mut headers, name, value),
+            None => remove_header(&mut headers, name),
+        }
     }
     if let Some(option_headers) = &options.stream.headers {
         for (name, value) in option_headers {
@@ -623,6 +648,7 @@ async fn send_stream_request(
     body: &Value,
     headers: &[(String, String)],
     options: &SimpleStreamOptions,
+    signal: &CancellationToken,
 ) -> Result<reqwest::Response, String> {
     let url = format!(
         "{}/responses?api-version={api_version}",
@@ -645,7 +671,7 @@ async fn send_stream_request(
     }
     let max_retries = options.stream.max_retries.unwrap_or(0);
     let max_retry_delay_ms = options.stream.max_retry_delay_ms;
-    retry_provider_request(max_retries, max_retry_delay_ms, || async {
+    retry_provider_request(max_retries, max_retry_delay_ms, Some(signal), || async {
         let response = request
             .try_clone()
             .expect("JSON request body is buffered and clonable")
@@ -693,6 +719,7 @@ fn format_azure_http_error(status: u16, body_text: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ai::api::{abort_test_support::stalled_sse_server, REQUEST_ABORTED};
     use crate::ai::transcript::{normalize_context, Context};
     use crate::ai::types::content::ThinkingContent;
     use crate::ai::types::events::PartialAssistant;
@@ -1784,5 +1811,74 @@ mod tests {
             .unwrap()
             .iter()
             .find(|item| item.get("type").and_then(Value::as_str) == Some("reasoning"))
+    }
+
+    // ---- abort surface ----
+
+    /// A pre-cancelled signal fails the request setup (the retry seam's
+    /// `"Request aborted"` abort error) before `Start`, and the catch block
+    /// settles `stopReason: "aborted"`.
+    #[tokio::test]
+    async fn pre_aborted_request_settles_aborted_before_start() {
+        let server = wiremock::MockServer::start().await;
+        let token = CancellationToken::new();
+        token.cancel();
+        let options = SimpleStreamOptions {
+            stream: StreamOptions {
+                signal: Some(token),
+                ..StreamOptions::default()
+            },
+            ..SimpleStreamOptions::default()
+        };
+        let api = AzureOpenAiResponses;
+        let mut rx = api.stream_simple(
+            &cfg(&server),
+            &model("https://unused.example.com"),
+            &ctx_with(vec![user_msg("hi")], None),
+            &options,
+        );
+        let first = rx.recv().await.expect("terminal event");
+        match first {
+            AssistantMessageEvent::Error { reason, error } => {
+                assert_eq!(reason, ErrorReason::Aborted);
+                assert_eq!(error.stop_reason, StopReason::Aborted);
+                assert_eq!(error.error_message.as_deref(), Some(REQUEST_ABORTED));
+            }
+            other => panic!("expected terminal error event, got {other:?}"),
+        }
+        assert!(server.received_requests().await.unwrap().is_empty());
+    }
+
+    /// A cancellation after `start` breaks the body wait and settles the
+    /// stream aborted with `"Request was aborted"` (upstream line 135).
+    #[tokio::test]
+    async fn mid_stream_cancellation_settles_the_stream_aborted() {
+        let base_url = stalled_sse_server().await;
+        let token = CancellationToken::new();
+        let options = SimpleStreamOptions {
+            stream: StreamOptions {
+                signal: Some(token.clone()),
+                ..StreamOptions::default()
+            },
+            ..SimpleStreamOptions::default()
+        };
+        let api = AzureOpenAiResponses;
+        let mut rx = api.stream_simple(
+            &cfg(&wiremock::MockServer::start().await),
+            &model(&base_url),
+            &ctx_with(vec![user_msg("hi")], None),
+            &options,
+        );
+        let first = rx.recv().await.expect("start event");
+        assert!(matches!(first, AssistantMessageEvent::Start { .. }));
+        token.cancel();
+        match rx.recv().await.expect("terminal event") {
+            AssistantMessageEvent::Error { reason, error } => {
+                assert_eq!(reason, ErrorReason::Aborted);
+                assert_eq!(error.stop_reason, StopReason::Aborted);
+                assert_eq!(error.error_message.as_deref(), Some(REQUEST_WAS_ABORTED));
+            }
+            other => panic!("expected terminal error event, got {other:?}"),
+        }
     }
 }

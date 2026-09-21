@@ -86,7 +86,7 @@ use crate::ai::api::openai_completions::request::{
     set_header, thinking_budget_for_level, transform_messages, MIN_ANSWER_TOKENS,
 };
 use crate::ai::api::openai_completions::stream::{parse_streaming_json, truncate_error_text};
-use crate::ai::api::{http_client, ApiImpl};
+use crate::ai::api::{http_client, request_signal, ApiImpl, REQUEST_WAS_ABORTED};
 use crate::ai::cost::calculate_cost;
 use crate::ai::retry::{retry_provider_request, ProviderError};
 use crate::ai::transcript::{
@@ -105,6 +105,7 @@ use crate::ai::types::tool::Tool;
 use crate::ai::types::Model;
 use crate::ai::{now_ms, ProviderConfig};
 use tokio::sync::mpsc;
+use tokio_util::sync::CancellationToken;
 
 /// The API id stamped on every emitted message.
 const API: &str = "bedrock-converse-stream";
@@ -1473,6 +1474,7 @@ async fn run_stream_task(
     tx: mpsc::Sender<AssistantMessageEvent>,
 ) {
     let mut state = StreamState::new(&model);
+    let signal = request_signal(&options.stream.signal);
     let outcome: Result<(), BedrockFailure> = async {
         let env = options.stream.env.clone();
         // Upstream lines 180-187: bearer token = options.bearerToken (no port
@@ -1534,7 +1536,7 @@ async fn run_stream_task(
         };
         headers.extend(auth_headers);
 
-        let response = send_stream_request(&url, headers, body, &options.stream).await?;
+        let response = send_stream_request(&url, headers, body, &options.stream, &signal).await?;
         state.response_request_id = normalize_diagnostic_value(
             response
                 .headers()
@@ -1542,10 +1544,13 @@ async fn run_stream_task(
                 .and_then(|value| value.to_str().ok()),
         );
 
-        consume_event_stream(&mut state, response, &model, &tx).await?;
+        consume_event_stream(&mut state, response, &model, &signal, &tx).await?;
 
-        // Upstream lines 330-339: the signal-aborted check has no port input;
-        // the pending / error guards throw into the catch block.
+        // Upstream line 330: the post-stream abort check precedes the
+        // pending / error guards.
+        if signal.is_cancelled() {
+            return Err(BedrockFailure::plain(REQUEST_WAS_ABORTED));
+        }
         if state.output.stop_reason == StopReason::Pending {
             return Err(BedrockFailure::plain(
                 "Bedrock stream ended without a stop reason",
@@ -1585,19 +1590,31 @@ async fn run_stream_task(
         Ok(()) => {}
         Err(failure) => {
             // Upstream catch block (lines 345-356): finalize, settle the stop
-            // reason (the aborted branch is unreachable), format the error,
-            // and attach the failure diagnostic for error stops.
+            // reason ("aborted" when the request signal fired, else "error"),
+            // format the error, and attach the failure diagnostic for error
+            // stops.
+            let aborted = signal.is_cancelled();
             finalize_blocks(&mut state);
-            state.output.stop_reason = StopReason::Error;
+            state.output.stop_reason = if aborted {
+                StopReason::Aborted
+            } else {
+                StopReason::Error
+            };
             state.output.error_message = Some(format_bedrock_error(&failure));
-            append_bedrock_failure_diagnostic(
-                &mut state.output,
-                &failure,
-                state.response_request_id.as_deref(),
-            );
+            if !aborted {
+                append_bedrock_failure_diagnostic(
+                    &mut state.output,
+                    &failure,
+                    state.response_request_id.as_deref(),
+                );
+            }
             let _ = tx
                 .send(AssistantMessageEvent::Error {
-                    reason: ErrorReason::Error,
+                    reason: if aborted {
+                        ErrorReason::Aborted
+                    } else {
+                        ErrorReason::Error
+                    },
                     error: state.output,
                 })
                 .await;
@@ -1618,6 +1635,7 @@ async fn send_stream_request(
     headers: Vec<(String, String)>,
     body: Vec<u8>,
     stream_options: &StreamOptions,
+    signal: &CancellationToken,
 ) -> Result<reqwest::Response, BedrockFailure> {
     let mut header_map = reqwest::header::HeaderMap::new();
     for (name, value) in &headers {
@@ -1642,7 +1660,7 @@ async fn send_stream_request(
     // retryability); the structured failure is stashed alongside so the
     // caller can surface it verbatim when the seam gives up.
     let failure_slot: std::sync::Mutex<Option<BedrockFailure>> = std::sync::Mutex::new(None);
-    let outcome = retry_provider_request(max_retries, max_retry_delay_ms, || {
+    let outcome = retry_provider_request(max_retries, max_retry_delay_ms, Some(signal), || {
         let request = request
             .try_clone()
             .expect("JSON request body is buffered and clonable");
@@ -1691,20 +1709,36 @@ fn format_transport_error(error: &reqwest::Error) -> String {
 }
 
 /// The event-stream consume loop (upstream lines 296-328): decode frames,
-/// then dispatch each by `:event-type` / `:message-type`.
+/// then dispatch each by `:event-type` / `:message-type`. The SDK's
+/// `abortSignal` breaks body reads on abort; the select breaks the read the
+/// moment the token cancels.
 async fn consume_event_stream(
     state: &mut StreamState,
     response: reqwest::Response,
     model: &Model,
+    signal: &CancellationToken,
     tx: &mpsc::Sender<AssistantMessageEvent>,
 ) -> Result<(), BedrockFailure> {
     let mut decoder = FrameDecoder::new();
     let mut chunks = response.bytes_stream();
-    while let Some(chunk) = chunks.next().await {
+    loop {
+        let chunk = tokio::select! {
+            biased;
+            _ = signal.cancelled() => {
+                return Err(BedrockFailure::plain(REQUEST_WAS_ABORTED));
+            }
+            next = chunks.next() => match next {
+                Some(chunk) => chunk,
+                None => break,
+            },
+        };
         let chunk = chunk.map_err(|error| BedrockFailure::plain(error.to_string()))?;
         for frame in decoder.decode(&chunk).map_err(BedrockFailure::plain)? {
             dispatch_frame(state, frame, model, tx).await?;
         }
+    }
+    if signal.is_cancelled() {
+        return Err(BedrockFailure::plain(REQUEST_WAS_ABORTED));
     }
     decoder.finish().map_err(BedrockFailure::plain)
 }
@@ -2259,6 +2293,7 @@ fn handle_message_stop(state: &mut StreamState, payload: &Value) {
 mod tests {
     use super::*;
     use crate::ai::api::bedrock::event_stream::crc32;
+    use crate::ai::api::REQUEST_ABORTED;
     use crate::ai::transcript::{normalize_context, Context};
     use crate::ai::types::events::PartialAssistant;
     use crate::ai::types::message::UserMessage;
@@ -2759,46 +2794,13 @@ mod tests {
         assert_eq!(resolved.region, None);
     }
 
-    /// Process env is process-global; serialize env-mutating tests and
-    /// restore the saved values on drop (the oracle's `stubEnv`/`afterEach`).
-    static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    /// Process env is process-global; the shared
+    /// [`test_support::TestEnv`](crate::ai::api::test_support::TestEnv)
+    /// serializes env-mutating tests and restores the saved values on drop
+    /// (the oracle's `stubEnv`/`afterEach`).
+    use crate::ai::api::test_support::TestEnv;
 
-    struct TestEnv {
-        _lock: std::sync::MutexGuard<'static, ()>,
-        saved: Vec<(&'static str, Option<String>)>,
-    }
-
-    impl TestEnv {
-        /// Sets `settings`, removes `cleared`, restoring everything on drop.
-        fn apply(settings: &[(&'static str, String)], cleared: &[&'static str]) -> Self {
-            let lock = ENV_LOCK
-                .lock()
-                .unwrap_or_else(|poisoned| poisoned.into_inner());
-            let mut saved = Vec::new();
-            for (name, value) in settings {
-                saved.push((*name, std::env::var(name).ok()));
-                std::env::set_var(name, value);
-            }
-            for name in cleared {
-                saved.push((*name, std::env::var(name).ok()));
-                std::env::remove_var(name);
-            }
-            TestEnv { _lock: lock, saved }
-        }
-    }
-
-    impl Drop for TestEnv {
-        fn drop(&mut self) {
-            for (name, value) in &self.saved {
-                match value {
-                    Some(value) => std::env::set_var(name, value),
-                    None => std::env::remove_var(name),
-                }
-            }
-        }
-    }
-
-    /// Holds [`ENV_LOCK`] with the AWS ambient vars cleared: the baseline for
+    /// Holds the env lock with the AWS ambient vars cleared: the baseline for
     /// resolution tests whose `env=None` inputs read the process env (the
     /// oracle's env-mutating tests run in parallel).
     fn cleared_aws_env() -> TestEnv {
@@ -2817,10 +2819,10 @@ mod tests {
         )
     }
 
-    fn ambient_keys() -> Vec<(&'static str, String)> {
+    fn ambient_keys() -> Vec<(&'static str, &'static str)> {
         vec![
-            ("AWS_ACCESS_KEY_ID", "AKIAEXAMPLE".to_string()),
-            ("AWS_SECRET_ACCESS_KEY", "secretexample".to_string()),
+            ("AWS_ACCESS_KEY_ID", "AKIAEXAMPLE"),
+            ("AWS_SECRET_ACCESS_KEY", "secretexample"),
         ]
     }
 
@@ -2865,7 +2867,7 @@ mod tests {
     #[test]
     fn ambient_profile_keeps_the_ambient_aws_access_keys() {
         let mut settings = ambient_keys();
-        settings.push(("AWS_PROFILE", "ambient-profile".to_string()));
+        settings.push(("AWS_PROFILE", "ambient-profile"));
         let _env = TestEnv::apply(&settings, &["AWS_REGION", "AWS_DEFAULT_REGION"]);
         let resolved = resolve_endpoint_config(&claude_sonnet_4_5(), None, true, None);
         assert_eq!(resolved.profile.as_deref(), Some("ambient-profile"));
@@ -2883,7 +2885,7 @@ mod tests {
     #[test]
     fn ambient_session_token_rides_the_static_keys() {
         let mut settings = ambient_keys();
-        settings.push(("AWS_SESSION_TOKEN", "token".to_string()));
+        settings.push(("AWS_SESSION_TOKEN", "token"));
         let _env = TestEnv::apply(
             &settings,
             &["AWS_PROFILE", "AWS_REGION", "AWS_DEFAULT_REGION"],
@@ -4402,7 +4404,7 @@ mod tests {
     #[tokio::test]
     async fn thinking_level_map_overrides_effort() {
         let mut model = model("global.anthropic.claude-opus-4-8-v1", "Claude Opus 4.8");
-        let mut map = std::collections::HashMap::new();
+        let mut map = std::collections::BTreeMap::new();
         map.insert("high".to_string(), Some("max".to_string()));
         model.thinking_level_map = Some(map);
         let (additional, _) =
@@ -5301,5 +5303,91 @@ mod tests {
             &claude_sonnet_4_5(),
         );
         assert_eq!(state.output.usage.cache_write_1h, Some(0));
+    }
+
+    // ---- abort surface ----
+
+    fn aborted_options() -> StreamOptions {
+        let token = CancellationToken::new();
+        token.cancel();
+        StreamOptions {
+            signal: Some(token),
+            env: signing_env("us-east-1"),
+            ..StreamOptions::default()
+        }
+    }
+
+    /// A pre-cancelled signal fails the request setup (the retry seam's
+    /// `"Request aborted"` abort error) before `Start`, and the catch block
+    /// settles `stopReason: "aborted"`.
+    #[tokio::test]
+    async fn pre_aborted_request_settles_aborted_before_start() {
+        let server = wiremock::MockServer::start().await;
+        let model = model("anthropic.claude-sonnet-4-5", "Claude Sonnet 4.5");
+        let api = BedrockConverseStream;
+        let mut rx = api.stream(&cfg(), &model, &user_context("hi"), &aborted_options());
+        let first = rx.recv().await.expect("terminal event");
+        match first {
+            AssistantMessageEvent::Error { reason, error } => {
+                assert_eq!(reason, ErrorReason::Aborted);
+                assert_eq!(error.stop_reason, StopReason::Aborted);
+                assert_eq!(error.error_message.as_deref(), Some(REQUEST_ABORTED));
+            }
+            other => panic!("expected terminal error event, got {other:?}"),
+        }
+        assert!(server.received_requests().await.unwrap().is_empty());
+    }
+
+    /// A cancellation after `start` breaks the frame-read loop and settles
+    /// the stream aborted with `"Request was aborted"` (upstream line 330;
+    /// the SDK's `abortSignal` breaks body reads). The raw TCP server writes
+    /// the response head plus one `messageStart` frame and then stalls, so
+    /// only the abort path can end the stream.
+    #[tokio::test]
+    async fn mid_stream_cancellation_settles_the_stream_aborted() {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        tokio::spawn(async move {
+            use tokio::io::{AsyncReadExt, AsyncWriteExt};
+            let Ok((mut socket, _)) = listener.accept().await else {
+                return;
+            };
+            let mut buf = vec![0u8; 16384];
+            let _ = socket.read(&mut buf).await;
+            let head = "HTTP/1.1 200 OK\r\ncontent-type: application/vnd.amazon.eventstream\r\nconnection: close\r\n\r\n";
+            let _ = socket.write_all(head.as_bytes()).await;
+            let _ = socket
+                .write_all(&event_frame(
+                    "messageStart",
+                    &json!({ "role": "assistant" }),
+                ))
+                .await;
+            // Hold the socket open (no further bytes) until the runtime
+            // drops the task.
+            loop {
+                tokio::time::sleep(std::time::Duration::from_secs(3600)).await;
+            }
+        });
+        let mut model = model("anthropic.claude-sonnet-4-5", "Claude Sonnet 4.5");
+        model.base_url = format!("http://{addr}");
+        let token = CancellationToken::new();
+        let options = StreamOptions {
+            signal: Some(token.clone()),
+            env: signing_env("us-east-1"),
+            ..StreamOptions::default()
+        };
+        let api = BedrockConverseStream;
+        let mut rx = api.stream(&cfg(), &model, &user_context("hi"), &options);
+        let first = rx.recv().await.expect("start event");
+        assert!(matches!(first, AssistantMessageEvent::Start { .. }));
+        token.cancel();
+        match rx.recv().await.expect("terminal event") {
+            AssistantMessageEvent::Error { reason, error } => {
+                assert_eq!(reason, ErrorReason::Aborted);
+                assert_eq!(error.stop_reason, StopReason::Aborted);
+                assert_eq!(error.error_message.as_deref(), Some(REQUEST_WAS_ABORTED));
+            }
+            other => panic!("expected terminal error event, got {other:?}"),
+        }
     }
 }

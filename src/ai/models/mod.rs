@@ -860,17 +860,14 @@ pub(crate) fn merge_headers(
 }
 
 /// Upstream `getAuth(model)`'s header fold (models.ts:567-574): the model's
-/// static headers merge over the resolved auth headers. The port's
-/// [`Model::headers`] carries plain string values (M2a type), so they merge
-/// as set-operations over the `Option`-valued [`ProviderHeaders`] without
-/// the suppression form.
+/// static headers merge over the resolved auth headers. [`Model::headers`]
+/// carries the same `Option`-valued [`ProviderHeaders`] shape, so a `None`
+/// model value suppresses (deletes) an auth default of the same name, like
+/// upstream `mergeHeaders`.
 fn merge_model_headers(mut resolution: AuthResult, model: &Model) -> AuthResult {
     if let Some(model_headers) = model.headers.as_ref().filter(|headers| !headers.is_empty()) {
-        let overrides: ProviderHeaders = model_headers
-            .iter()
-            .map(|(name, value)| (name.clone(), Some(value.clone())))
-            .collect();
-        resolution.auth.headers = merge_headers(resolution.auth.headers.as_ref(), Some(&overrides));
+        resolution.auth.headers =
+            merge_headers(resolution.auth.headers.as_ref(), Some(model_headers));
     }
     resolution
 }
@@ -943,31 +940,36 @@ async fn route_stream(
     })?;
 
     // applyAuth (models.ts:648-677) — getAuth(model) with the explicit
-    // per-field overrides. The port's request options carry no signal
-    // (dropped with the M2b stream signatures).
-    let (options_api_key, options_env, options_headers, transform_headers) = match &options {
-        RoutedOptions::Api {
-            stream,
-            transform_headers,
-        } => (
-            stream.api_key.clone(),
-            stream.env.clone(),
-            stream.headers.clone(),
-            transform_headers.clone(),
-        ),
-        RoutedOptions::Simple {
-            simple,
-            transform_headers,
-        } => (
-            simple.stream.api_key.clone(),
-            simple.stream.env.clone(),
-            simple.stream.headers.clone(),
-            transform_headers.clone(),
-        ),
-    };
+    // per-field overrides, including the request signal (the M2d
+    // cancellation surface: an abort during auth resolution rejects the
+    // setup, surfacing as the routing error event).
+    let (options_api_key, options_env, options_headers, routed_signal, transform_headers) =
+        match &options {
+            RoutedOptions::Api {
+                stream,
+                transform_headers,
+            } => (
+                stream.api_key.clone(),
+                stream.env.clone(),
+                stream.headers.clone(),
+                stream.signal.clone(),
+                transform_headers.clone(),
+            ),
+            RoutedOptions::Simple {
+                simple,
+                transform_headers,
+            } => (
+                simple.stream.api_key.clone(),
+                simple.stream.env.clone(),
+                simple.stream.headers.clone(),
+                simple.stream.signal.clone(),
+                transform_headers.clone(),
+            ),
+        };
     let overrides = AuthResolutionOverrides {
         api_key: options_api_key.clone(),
         env: options_env.clone(),
+        signal: routed_signal,
         ..AuthResolutionOverrides::default()
     };
     let resolution = resolve_provider_auth(
@@ -1085,25 +1087,16 @@ fn auth_refresh_error(error: AuthError) -> RefreshModelsError {
 }
 
 /// Upstream `readCredential` (models.ts:489-495) as the refresh path sees it:
-/// store read failures wrapped in a code-`"auth"` `ModelsError`, raced
-/// against the refresh token. Shared with `get_available`, which surfaces the
+/// the shared [`read_credential`](crate::ai::auth::resolve::read_credential)
+/// wrap (store-read failures become code-`"auth"` `ModelsError`s) with the
+/// operation-less option set. Shared with `get_available`, which surfaces the
 /// same wrapping through its `AuthError` channel (upstream resolve.ts:195-205).
 async fn read_refresh_credential(
     credentials: &dyn CredentialStore,
     provider_id: &str,
 ) -> Result<Option<Credential>, AuthError> {
-    match credentials
-        .read(provider_id, &AuthOperationOptions::NONE)
+    crate::ai::auth::resolve::read_credential(credentials, provider_id, &AuthOperationOptions::NONE)
         .await
-    {
-        Ok(credential) => Ok(credential),
-        Err(AuthError::Cancelled) => Err(AuthError::Cancelled),
-        Err(error) => Err(AuthError::Models(ModelsError::with_cause(
-            ModelsErrorCode::Auth,
-            format!("Credential store read failed for {provider_id}"),
-            error,
-        ))),
-    }
 }
 
 /// Per-refresh operation inputs, bundled once per provider slot (upstream
@@ -1124,19 +1117,17 @@ struct RefreshRun<'a> {
 /// network is allowed and a credential resolved — the network fetch phase.
 async fn run_provider_refresh(run: RefreshRun<'_>) -> Result<(), RefreshModelsError> {
     // Best-effort credential read (models.ts:414-420): the failure is held
-    // and thrown only after the restore phase ran.
+    // and thrown only after the restore phase ran. The read goes through the
+    // shared `read_credential` wrap, so the held error is already a
+    // code-`"auth"` `ModelsError` (or `Cancelled`).
     let (stored_credential, credential_error) = {
         let options = AuthOperationOptions::new(run.token.clone());
         let read = tokio::select! {
-            result = run.credentials.read(run.provider.id(), &options) => match result {
-                Ok(credential) => Ok(credential),
-                Err(AuthError::Cancelled) => Err(RefreshModelsError::Cancelled),
-                Err(error) => Err(RefreshModelsError::Failed(ModelsError::with_cause(
-                    ModelsErrorCode::Auth,
-                    format!("Credential store read failed for {}", run.provider.id()),
-                    error,
-                ))),
-            },
+            result = crate::ai::auth::resolve::read_credential(
+                run.credentials,
+                run.provider.id(),
+                &options,
+            ) => result.map_err(auth_refresh_error),
             _ = run.token.cancelled() => Err(RefreshModelsError::Cancelled),
         };
         match read {
@@ -1652,12 +1643,12 @@ mod tests {
             .collect()
     }
 
-    /// Plain-string header map for [`Model::headers`] (the M2a model-level
-    /// type carries no suppression form).
-    fn string_header_map(pairs: &[(&str, &str)]) -> BTreeMap<String, String> {
+    /// Header map for [`Model::headers`]: the same `Option`-valued shape as
+    /// options-level [`ProviderHeaders`].
+    fn string_header_map(pairs: &[(&str, &str)]) -> BTreeMap<String, Option<String>> {
         pairs
             .iter()
-            .map(|(name, value)| ((*name).to_string(), (*value).to_string()))
+            .map(|(name, value)| ((*name).to_string(), Some((*value).to_string())))
             .collect()
     }
 
@@ -2309,6 +2300,77 @@ mod tests {
                 .as_deref(),
             Some("resolved-key")
         );
+    }
+
+    /// The request signal rides the routing: a token set on the caller's
+    /// options reaches the owning provider's ApiImpl on both option shapes
+    /// (upstream threads `options.signal` through `applyAuth` into the API
+    /// call), and it also scopes the auth resolution itself.
+    #[tokio::test]
+    async fn stream_threads_the_request_signal_to_the_api_impl() {
+        let api = RecordingApi::new();
+        let mut models = create_models(CreateModelsOptions::default());
+        models.set_provider(test_provider_with_auth_and_api(
+            "p1",
+            vec![test_model("p1", "model-a")],
+            auth_with(EnvKeyAuthFixture::env("env-key")),
+            ApiImpls::Single(Arc::clone(&api) as Arc<dyn ApiImpl>),
+        ));
+        let model = test_model("p1", "model-a");
+        let context = user_context();
+
+        let token = CancellationToken::new();
+        let message = models
+            .complete(
+                &model,
+                &context,
+                Some(ModelsApiStreamOptions {
+                    stream: StreamOptions {
+                        signal: Some(token.clone()),
+                        ..StreamOptions::default()
+                    },
+                    transform_headers: None,
+                }),
+            )
+            .await;
+        assert_eq!(message.stop_reason, StopReason::Stop);
+        // A clone of the recorded token shares the cancellation state with
+        // the caller's token (tokio-util token equality is pointer identity).
+        let recorded = api.recorded();
+        let routed = recorded[0]
+            .stream
+            .as_ref()
+            .and_then(|options| options.signal.clone())
+            .expect("api signal recorded");
+        assert!(routed.is_cancelled() == token.is_cancelled());
+        token.cancel();
+        assert!(routed.is_cancelled());
+
+        let simple_token = CancellationToken::new();
+        let _ = models
+            .complete_simple(
+                &model,
+                &context,
+                Some(ModelsSimpleStreamOptions {
+                    simple: SimpleStreamOptions {
+                        stream: StreamOptions {
+                            signal: Some(simple_token.clone()),
+                            ..StreamOptions::default()
+                        },
+                        ..SimpleStreamOptions::default()
+                    },
+                    transform_headers: None,
+                }),
+            )
+            .await;
+        let recorded = api.recorded();
+        let routed = recorded[1]
+            .simple
+            .as_ref()
+            .and_then(|options| options.stream.signal.clone())
+            .expect("api signal recorded");
+        simple_token.cancel();
+        assert!(routed.is_cancelled());
     }
 
     /// Oracle "adds model headers only for model auth and transforms

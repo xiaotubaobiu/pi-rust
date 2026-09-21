@@ -181,20 +181,24 @@ async fn post_form(
 }
 
 /// Upstream `readJson` (kimi-coding.ts:49-56): a body that fails to parse or
-/// is not a JSON object reads as `None` (`null`), never an error.
-fn parse_json_object(text: &str) -> Option<serde_json::Map<String, Value>> {
+/// is not a JSON object reads as `None` (`null`), never an error. Upstream
+/// `typeof json === "object"` accepts arrays too (a JS array is an object), so
+/// the port keeps the raw [`Value`]: field access on an array misses like
+/// upstream's `undefined` property reads, and [`stringify_json`] renders `[]`
+/// like upstream's `JSON.stringify`.
+fn parse_json_object(text: &str) -> Option<Value> {
     match serde_json::from_str::<Value>(text) {
-        Ok(Value::Object(map)) => Some(map),
+        Ok(json @ Value::Object(_)) | Ok(json @ Value::Array(_)) => Some(json),
         _ => None,
     }
 }
 
 /// Upstream `JSON.stringify(json)` over a [`parse_json_object`] result:
-/// `null` for a missing body, otherwise the object re-serialized (serde map
-/// ordering; see the module port notes).
-fn stringify_json(json: Option<&serde_json::Map<String, Value>>) -> String {
+/// `null` for a missing body, otherwise re-serialized (serde map ordering;
+/// see the module port notes).
+fn stringify_json(json: Option<&Value>) -> String {
     match json {
-        Some(map) => Value::Object(map.clone()).to_string(),
+        Some(json) => json.to_string(),
         None => "null".to_string(),
     }
 }
@@ -316,10 +320,7 @@ struct TokenResponse {
 /// are required (non-empty strings, finite positive `expires_in`); the raw
 /// upstream message is returned so the poll can turn it into a `failed`
 /// poll result.
-fn parse_token_response(
-    json: Option<&serde_json::Map<String, Value>>,
-    operation: &str,
-) -> Result<TokenResponse, String> {
+fn parse_token_response(json: Option<&Value>, operation: &str) -> Result<TokenResponse, String> {
     let invalid = || {
         format!(
             "Kimi Code token {operation} response missing fields: {}",
@@ -875,6 +876,27 @@ grant_type=refresh_token&refresh_token=old-refresh";
     }
 
     // ---- Poll-branch port coverage beyond the oracle ----
+
+    /// Upstream `readJson` accepts arrays (`typeof [] === "object"`): a JSON
+    /// array body reads as `Some`, field access on it misses like upstream's
+    /// `undefined` property reads, and `JSON.stringify` renders `[]` — not
+    /// `null` like the pre-parity port.
+    #[test]
+    fn parse_json_object_accepts_arrays_and_stringify_renders_them() {
+        assert_eq!(stringify_json(parse_json_object("[]").as_ref()), "[]");
+        assert_eq!(
+            stringify_json(parse_json_object(r#"["a",1]"#).as_ref()),
+            r#"["a",1]"#
+        );
+        // Field access on an array misses, like upstream property reads.
+        assert_eq!(parse_json_object("[]").unwrap().get("device_code"), None);
+        // Non-object scalars, `null` and unparseable bodies still read as None
+        // (upstream `json && typeof json === "object"` falsy/typed out).
+        for body in ["null", "\"text\"", "42", "true", "not json"] {
+            assert_eq!(parse_json_object(body), None, "{body}");
+            assert_eq!(stringify_json(parse_json_object(body).as_ref()), "null");
+        }
+    }
 
     /// A 5xx poll status fails the flow with the status and body text
     /// (upstream `response.status >= 500` branch).

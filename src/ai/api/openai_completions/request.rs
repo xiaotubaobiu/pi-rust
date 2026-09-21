@@ -1170,7 +1170,10 @@ fn build_headers(
 ) -> Vec<(String, String)> {
     let mut headers: Vec<(String, String)> = vec![("User-Agent".to_string(), pi_user_agent())];
     for (name, value) in model.headers.iter().flatten() {
-        set_header(&mut headers, name, value);
+        match value {
+            Some(value) => set_header(&mut headers, name, value),
+            None => remove_header(&mut headers, name),
+        }
     }
     if let Some(session_id) = session_id {
         if compat.send_session_affinity_headers == Some(true) {
@@ -2895,6 +2898,48 @@ mod tests {
         assert_eq!(assistant_value["content"], Value::Null);
     }
 
+    /// The tool-call `thoughtSignature` replay: a tool call carrying the
+    /// legacy encrypted reasoning detail (upstream
+    /// `parseLegacyEncryptedReasoningDetail` over `call.thoughtSignature`)
+    /// re-emits `reasoning_details` on the assistant wire message.
+    #[test]
+    fn legacy_thought_signature_replays_as_reasoning_details() {
+        let model = make_model(
+            "openai",
+            "https://api.openai.com/v1",
+            "gpt-4o-mini",
+            true,
+            json!({}),
+        );
+        let mut call = tool_call("call_1", "read", json!({"path":"README.md"}));
+        match &mut call {
+            AssistantBlock::ToolCall(call) => {
+                call.thought_signature =
+                    Some(r#"{"type":"reasoning.encrypted","id":"call_1","data":"enc"}"#.into());
+            }
+            other => panic!("expected a tool call, got {other:?}"),
+        }
+        let messages = vec![assistant(
+            "openai",
+            "openai-completions",
+            "gpt-4o-mini",
+            vec![call],
+            StopReason::ToolUse,
+        )];
+        let body = build(&model, &ctx_of(messages), &opts()).unwrap();
+        let assistant_value = &body["messages"][0];
+        assert_eq!(
+            assistant_value["reasoning_details"],
+            json!([{"type":"reasoning.encrypted","id":"call_1","data":"enc"}])
+        );
+        // The replayed details also suppress the reasoning-field fallback.
+        assert!(assistant_value
+            .as_object()
+            .unwrap()
+            .get("reasoning_content")
+            .is_none());
+    }
+
     // ---- 5. thinking as text ----
 
     #[test]
@@ -3484,6 +3529,86 @@ mod tests {
         );
     }
 
+    /// Grammar error paths: a grammar tool with no usable variant (both
+    /// encodings missing or whitespace-only) fails request assembly, and a
+    /// replayed grammar tool call whose input property is not a string fails
+    /// with the upstream message.
+    #[test]
+    fn grammar_tool_without_a_usable_variant_errors() {
+        let model = make_model(
+            "openai",
+            "https://api.openai.com/v1",
+            "gpt-4o-mini",
+            false,
+            json!({"supportsOpenAIGrammarTools": true}),
+        );
+        for variants in [
+            BTreeMap::new(),
+            BTreeMap::from([
+                (GrammarFormat::Lark, "   ".to_string()),
+                (GrammarFormat::Regex, String::new()),
+            ]),
+        ] {
+            let tool = Tool {
+                name: "exec".to_string(),
+                description: "Run code".to_string(),
+                parameters: json!({"type":"object","required":["input"],"properties":{"input":{"type":"string"}}}),
+                constrained_sampling: Some(ConstrainedSampling::Grammar(GrammarSampling {
+                    variants,
+                })),
+            };
+            let error = build(
+                &model,
+                &prompt_ctx("sys", vec![user("hi")], Some(vec![tool])),
+                &opts(),
+            )
+            .unwrap_err();
+            assert_eq!(
+                error,
+                "Tool \"exec\" cannot use grammar constrained sampling: no supported grammar variant was provided."
+            );
+        }
+    }
+
+    #[test]
+    fn grammar_tool_call_with_a_non_string_input_errors() {
+        let model = make_model(
+            "openai",
+            "https://api.openai.com/v1",
+            "gpt-4o-mini",
+            false,
+            json!({"supportsOpenAIGrammarTools": true}),
+        );
+        let mut variants = BTreeMap::new();
+        variants.insert(GrammarFormat::Lark, "start: WORD".to_string());
+        let tool = Tool {
+            name: "exec".to_string(),
+            description: "Run code".to_string(),
+            parameters: json!({"type":"object","required":["input"],"properties":{"input":{"type":"string"}}}),
+            constrained_sampling: Some(ConstrainedSampling::Grammar(GrammarSampling { variants })),
+        };
+        let messages = vec![
+            user("Run?"),
+            assistant(
+                "openai",
+                "openai-completions",
+                "gpt-4o-mini",
+                vec![tool_call("call_1", "exec", json!({"input": 42}))],
+                StopReason::ToolUse,
+            ),
+        ];
+        let error = build(
+            &model,
+            &prompt_ctx("sys", messages, Some(vec![tool])),
+            &opts(),
+        )
+        .unwrap_err();
+        assert_eq!(
+            error,
+            "Grammar tool call \"exec\" requires argument \"input\" to be a string."
+        );
+    }
+
     // ---- 9. sampling params / temperature ----
 
     #[test]
@@ -3732,7 +3857,7 @@ mod tests {
             true,
             json!({"supportsReasoningEffort": true}),
         );
-        let mut map = HashMap::new();
+        let mut map = BTreeMap::new();
         map.insert("off".to_string(), Some("none".to_string()));
         map.insert("minimal".to_string(), None);
         map.insert("low".to_string(), None);
@@ -3901,7 +4026,7 @@ mod tests {
                 }
             }),
         );
-        let mut map = HashMap::new();
+        let mut map = BTreeMap::new();
         map.insert("xhigh".to_string(), Some("max".to_string()));
         model.thinking_level_map = Some(map);
         let mut options = opts();
@@ -3946,7 +4071,7 @@ mod tests {
             true,
             json!({"thinkingFormat":"string-thinking"}),
         );
-        let mut map = HashMap::new();
+        let mut map = BTreeMap::new();
         map.insert("off".to_string(), None);
         model.thinking_level_map = Some(map);
         let body = build(&model, &ctx_of(vec![user("Hi")]), &opts()).unwrap();
@@ -3962,7 +4087,7 @@ mod tests {
             true,
             json!({}),
         );
-        let mut map = HashMap::new();
+        let mut map = BTreeMap::new();
         map.insert("high".to_string(), Some("high".to_string()));
         model.thinking_level_map = Some(map);
         let mut options = opts();
@@ -4013,7 +4138,7 @@ mod tests {
             true,
             json!({}),
         );
-        let mut map = HashMap::new();
+        let mut map = BTreeMap::new();
         map.insert("medium".to_string(), Some("default".to_string()));
         groq.thinking_level_map = Some(map);
         let mut options = opts();
@@ -4042,7 +4167,7 @@ mod tests {
             true,
             json!({"supportsReasoningEffort": false}),
         );
-        let mut map = HashMap::new();
+        let mut map = BTreeMap::new();
         map.insert("off".to_string(), Some("low".to_string()));
         model.thinking_level_map = Some(map);
         let body = build(&model, &ctx_of(vec![user("Hi")]), &opts()).unwrap();
@@ -4050,7 +4175,7 @@ mod tests {
 
         // supportsReasoningEffort true + off + map.off string: effort from map.
         let mut model = make_model("openai", "https://api.openai.com/v1", "m", true, json!({}));
-        let mut map = HashMap::new();
+        let mut map = BTreeMap::new();
         map.insert("off".to_string(), Some("low".to_string()));
         model.thinking_level_map = Some(map);
         let body = build(&model, &ctx_of(vec![user("Hi")]), &opts()).unwrap();
@@ -4348,7 +4473,7 @@ mod tests {
     fn model_headers_merge_and_options_headers_override() {
         let mut model = make_model("p", "https://proxy.example.com/v1", "m", false, json!({}));
         let mut headers = BTreeMap::new();
-        headers.insert("x-model".to_string(), "from-model".to_string());
+        headers.insert("x-model".to_string(), Some("from-model".to_string()));
         model.headers = Some(headers);
         let mut options = opts();
         let mut option_headers = BTreeMap::new();
@@ -4372,6 +4497,36 @@ mod tests {
         };
         assert_eq!(get("x-model").as_deref(), Some("from-options"));
         assert_eq!(get("x-drop"), None);
+    }
+
+    /// A model-level `None` header value (upstream `null`) suppresses the
+    /// default header of the same name, matching the options-level merge
+    /// semantics and upstream `mergeHeaders`/`providerHeadersToRecord`.
+    #[test]
+    fn model_null_header_value_suppresses_default() {
+        let mut model = make_model("p", "https://proxy.example.com/v1", "m", false, json!({}));
+        let mut headers = BTreeMap::new();
+        headers.insert("user-agent".to_string(), None);
+        headers.insert("x-model".to_string(), Some("from-model".to_string()));
+        model.headers = Some(headers);
+        let assembly = build_request(
+            &model,
+            &cfg(&model.base_url),
+            &prompt_ctx("sys", vec![user("hi")], None),
+            &opts(),
+            &resolved(&model),
+        )
+        .unwrap();
+        let get = |name: &str| {
+            assembly
+                .headers
+                .iter()
+                .find(|(k, _)| k == name)
+                .map(|(_, v)| v.clone())
+        };
+        // The pi default User-Agent is suppressed; the plain model header stays.
+        assert!(assembly.headers.iter().all(|(k, _)| k != "user-agent"));
+        assert_eq!(get("x-model").as_deref(), Some("from-model"));
     }
 
     // ---- 13. anthropic cache-control markers ----
@@ -4499,6 +4654,30 @@ mod tests {
         assert_eq!(body["tools"][0]["cache_control"], ttl);
         let last = body["messages"].as_array().unwrap().last().unwrap();
         assert_eq!(last["content"][0]["cache_control"], ttl);
+    }
+
+    /// The backward scan's empty-content case (upstream
+    /// `addCacheControlToTextContent`: `content.length === 0` returns false):
+    /// a wire message whose `content` is the empty string is left untouched
+    /// and the scan keeps moving to an earlier message with text.
+    #[test]
+    fn anthropic_cache_marker_scan_skips_empty_string_content() {
+        let marker = json!({"type":"ephemeral"});
+        let mut messages = vec![
+            json!({"role":"user","content":"earlier"}),
+            json!({"role":"assistant","content":""}),
+        ];
+        add_cache_control_to_last_conversation_message(&mut messages, &marker);
+        assert_eq!(
+            messages[0]["content"],
+            json!([{"type":"text","text":"earlier","cache_control":{"type":"ephemeral"}}])
+        );
+        assert_eq!(messages[1]["content"], json!(""));
+
+        // Only empty-content messages: nothing is marked.
+        let mut messages = vec![json!({"role":"assistant","content":""})];
+        add_cache_control_to_last_conversation_message(&mut messages, &marker);
+        assert_eq!(messages[0]["content"], json!(""));
     }
 
     // ---- 14. routing fields ----

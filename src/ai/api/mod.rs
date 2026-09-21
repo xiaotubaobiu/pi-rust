@@ -23,6 +23,26 @@ use crate::ai::types::Model;
 use crate::ai::ProviderConfig;
 use std::sync::OnceLock;
 use tokio::sync::mpsc;
+use tokio_util::sync::CancellationToken;
+
+/// Upstream `createAbortError()` (provider-retry.ts:81-85): the abort thrown
+/// when the request signal fires during request setup or a retry backoff
+/// sleep (`name: "AbortError"`, message `"Request aborted"`). Request-setup
+/// aborts surface this message through the API catch blocks.
+pub const REQUEST_ABORTED: &str = "Request aborted";
+
+/// Upstream's per-API mid-stream abort (`new Error("Request was aborted")`,
+/// thrown by the SSE readers and the post-loop `signal?.aborted` checks in
+/// every HTTP API): a cancellation after `Start` settles the message with
+/// this errorMessage.
+pub const REQUEST_WAS_ABORTED: &str = "Request was aborted";
+
+/// The effective per-request signal: a set token is cloned; `None` (upstream
+/// `options.signal === undefined`) becomes a fresh token that never cancels,
+/// so use sites need no `Option` branching.
+pub(crate) fn request_signal(signal: &Option<CancellationToken>) -> CancellationToken {
+    signal.clone().unwrap_or_default()
+}
 
 /// Upstream `ProviderStreams` (types.ts:272-285) without the optional
 /// deferred-response methods: the two entry points every API implementation
@@ -205,6 +225,90 @@ fn os_release() -> String {
 #[cfg(not(any(windows, target_os = "macos", target_os = "linux")))]
 fn os_release() -> String {
     "unknown".to_string()
+}
+
+#[cfg(test)]
+pub(crate) mod abort_test_support {
+    //! Shared test server for the abort-surface plumbing tests: a raw TCP
+    //! listener that answers one request with SSE response headers and then
+    //! holds the socket open without body bytes, so a cancellation during the
+    //! body wait can only exit through the per-API abort path (no event ever
+    //! arrives and the stream never ends on its own).
+
+    /// Spawns the server and resolves with its base URL.
+    pub(crate) async fn stalled_sse_server() -> String {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        tokio::spawn(async move {
+            use tokio::io::{AsyncReadExt, AsyncWriteExt};
+            let Ok((mut socket, _)) = listener.accept().await else {
+                return;
+            };
+            let mut buf = vec![0u8; 8192];
+            let _ = socket.read(&mut buf).await;
+            let _ = socket
+                .write_all(
+                    b"HTTP/1.1 200 OK\r\ncontent-type: text/event-stream\r\nconnection: close\r\n\r\n",
+                )
+                .await;
+            // Hold the socket open (no body bytes) until the test runtime
+            // drops the task.
+            loop {
+                tokio::time::sleep(std::time::Duration::from_secs(3600)).await;
+            }
+        });
+        format!("http://{addr}")
+    }
+}
+
+#[cfg(test)]
+pub(crate) mod test_support {
+    //! Shared env-mutating test support: process env is process-global, so
+    //! one lock serializes every env-mutating provider test and the saved
+    //! values restore on drop (the oracle suites' `stubEnv`/`afterEach`).
+    //!
+    //! One shared `TestEnv` replaces the per-module copies (bedrock's AWS
+    //! surfaces, google_vertex's GCP surfaces); the single lock only orders
+    //! them — the var sets are disjoint, so outcomes are unchanged.
+
+    use std::sync::{Mutex, MutexGuard};
+
+    static ENV_LOCK: Mutex<()> = Mutex::new(());
+
+    pub(crate) struct TestEnv {
+        _lock: MutexGuard<'static, ()>,
+        saved: Vec<(&'static str, Option<String>)>,
+    }
+
+    impl TestEnv {
+        /// Sets `settings`, removes `cleared`, restoring everything on drop.
+        pub(crate) fn apply(settings: &[(&'static str, &str)], cleared: &[&'static str]) -> Self {
+            let lock = ENV_LOCK
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner());
+            let mut saved = Vec::new();
+            for (name, value) in settings {
+                saved.push((*name, std::env::var(name).ok()));
+                std::env::set_var(name, value);
+            }
+            for name in cleared {
+                saved.push((*name, std::env::var(name).ok()));
+                std::env::remove_var(name);
+            }
+            TestEnv { _lock: lock, saved }
+        }
+    }
+
+    impl Drop for TestEnv {
+        fn drop(&mut self) {
+            for (name, value) in &self.saved {
+                match value {
+                    Some(value) => std::env::set_var(name, value),
+                    None => std::env::remove_var(name),
+                }
+            }
+        }
+    }
 }
 
 #[cfg(test)]

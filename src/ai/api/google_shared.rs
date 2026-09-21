@@ -33,6 +33,7 @@
 
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
+use tokio_util::sync::CancellationToken;
 
 use crate::ai::api::openai_completions::request::{
     clamp_thinking_level, level_key, make_strict_json_schema, map_level,
@@ -915,17 +916,20 @@ pub fn map_stop_reason_string(reason: &str) -> StopReason {
 /// by attaching a missing `headers` property; the port's [`ProviderError`]
 /// already carries `headers` as an `Option` and the shared policy treats a
 /// missing header map exactly like the normalized upstream error, so this is
-/// a straight delegation to [`retry_provider_request`].
+/// a straight delegation to [`retry_provider_request`]. The request signal
+/// threads through: cancellation fails the request with the abort error and
+/// aborts backoff sleeps.
 pub async fn retry_google_request<T, F, Fut>(
     max_retries: u32,
     max_retry_delay_ms: Option<u64>,
+    signal: Option<&CancellationToken>,
     request: F,
 ) -> Result<T, ProviderError>
 where
     F: FnMut() -> Fut,
     Fut: std::future::Future<Output = Result<T, ProviderError>>,
 {
-    retry_provider_request(max_retries, max_retry_delay_ms, request).await
+    retry_provider_request(max_retries, max_retry_delay_ms, signal, request).await
 }
 
 #[cfg(test)]
@@ -1985,7 +1989,7 @@ mod tests {
     async fn retries_a_headers_less_sdk_error_with_a_retryable_status() {
         let attempts = Arc::new(AtomicU32::new(0));
         let attempts_closure = attempts.clone();
-        let result = retry_google_request(1, None, move || {
+        let result = retry_google_request(1, None, None, move || {
             let attempts = attempts_closure.clone();
             async move {
                 if attempts.fetch_add(1, Ordering::SeqCst) == 0 {
@@ -2005,7 +2009,7 @@ mod tests {
         let error = google_api_error(429);
         let attempts = Arc::new(AtomicU32::new(0));
         let attempts_closure = attempts.clone();
-        let result: Result<&str, ProviderError> = retry_google_request(0, None, move || {
+        let result: Result<&str, ProviderError> = retry_google_request(0, None, None, move || {
             let error = error.clone();
             let attempts = attempts_closure.clone();
             async move {
@@ -2023,7 +2027,7 @@ mod tests {
         let error = google_api_error(400);
         let attempts = Arc::new(AtomicU32::new(0));
         let attempts_closure = attempts.clone();
-        let result: Result<&str, ProviderError> = retry_google_request(2, None, move || {
+        let result: Result<&str, ProviderError> = retry_google_request(2, None, None, move || {
             let error = error.clone();
             let attempts = attempts_closure.clone();
             async move {

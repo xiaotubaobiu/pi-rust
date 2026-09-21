@@ -776,6 +776,12 @@ mod tests {
             serde_json::to_string(&events[8]).unwrap(),
             r#"{"type":"toolcall_delta","contentIndex":2,"delta":"{\"a\":1}"}"#
         );
+        // Byte-pinned toolcall_end wire shape: the embedded tool call is the
+        // plain ToolCall object (no block tag), camelCase `toolCall` field.
+        assert_eq!(
+            serde_json::to_string(&events[9]).unwrap(),
+            r#"{"type":"toolcall_end","contentIndex":2,"toolCall":{"id":"call_1","name":"bash","arguments":{"a":1}}}"#
+        );
         assert_eq!(
             serde_json::to_string(&events[10]).unwrap(),
             r#"{"type":"done","reason":"toolUse","message":"#.to_string()

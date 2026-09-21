@@ -30,11 +30,20 @@
 //!   tests. Upstream uses `Date.now()`.
 //! - Cancellation maps to [`AuthError::Cancelled`] everywhere upstream throws
 //!   `Error("Login cancelled")` (port contract: interaction-signal aborts are
-//!   never wrapped).
+//!   never wrapped); the token-refresh request threads
+//!   `AuthOperationOptions.signal` the same way — upstream passes the
+//!   interaction `AbortSignal` into its `fetch` — so cancellation surfaces as
+//!   [`AuthError::Cancelled`] rather than the "token refresh error" wrap.
 //! - A callback-server bind failure errors as "Failed to start the OAuth
 //!   callback server on host:port: …". Upstream codex instead resolves the
 //!   server promise with a dead server and degrades to manual-paste-only
 //!   login (divergence, matching the anthropic port's simpler failure).
+//! - Upstream's second `await manualPromise` (openai-codex.ts:489-497)
+//!   re-checks the manual answer when the server wait settled empty without
+//!   one; that state is unreachable in the port's race loop — the wait
+//!   settles empty only after a prompt settle (handled) or via the
+//!   interaction signal / a bind failure, which exit earlier — so the
+//!   re-check reduces to the same end state in every reachable case.
 //! - A malformed callback request line answers 500
 //!   "Internal error while processing OAuth callback." (the upstream handler
 //!   catch-all; Node itself answers 400 for malformed request lines before

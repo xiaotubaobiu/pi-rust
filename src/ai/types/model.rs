@@ -14,6 +14,12 @@
 //! `OpenAIResponsesCompat` and `BedrockCompat`. Typed access is on demand via
 //! the `*_compat` methods, which deserialize the stored object into the
 //! struct for one API (all compat fields are optional, so every key defaults).
+//!
+//! Port-safer difference, kept deliberately: a type-invalid compat field
+//! (e.g. a string where upstream declares boolean) makes the typed read fail
+//! and callers fall back to the default struct (`unwrap_or_default`), while
+//! upstream JS — with no runtime validation — reads the raw object with
+//! truthiness and keeps the rest of the overrides.
 
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -22,6 +28,7 @@ use super::compat::{
     AnthropicMessagesCompat, BedrockCompat, MistralConversationsCompat, OpenAiCompletionsCompat,
     OpenAiResponsesCompat,
 };
+use super::options::ProviderHeaders;
 use super::primitives::{KnownApi, ModelCost, ThinkingLevelMap};
 
 /// Upstream `Model["input"]` element (types.ts:963): input modalities the
@@ -76,8 +83,13 @@ pub struct Model {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub sampling_params: Option<BTreeMap<String, serde_json::Value>>,
     /// Custom HTTP headers merged over provider defaults (types.ts:968).
+    /// Upstream declares `Record<string, string>` but every merge path treats
+    /// it as [`ProviderHeaders`]: a `null` value (here `None`) suppresses the
+    /// default header with the same name (delete-then-set-null in
+    /// `mergeHeaders`, models.ts:250-262), and `providerHeadersToRecord`
+    /// drops nulls from the final record.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub headers: Option<BTreeMap<String, String>>,
+    pub headers: Option<ProviderHeaders>,
     /// Compatibility overrides for the model's API (types.ts:969-982), stored
     /// untagged — see the module docs for why this is a raw value and how to
     /// get typed access. Upstream: "If not set, auto-detected from baseUrl."
@@ -147,10 +159,12 @@ mod tests {
 
     /// Anthropic-style catalog entry exercising every field, including cost
     /// tiers. `thinkingLevelMap` has a single key so the byte-pinned round-trip
-    /// is deterministic (HashMap key order), and compat/sampling/headers keys
+    /// is deterministic (BTreeMap key order), and compat/sampling/headers keys
     /// are pre-sorted because `serde_json::Value` objects reserialize in
-    /// BTreeMap (sorted) order without the `preserve_order` feature.
-    const ANTHROPIC_MODEL_FIXTURE: &str = r#"{"id":"claude-sonnet-4-5","name":"Claude Sonnet 4.5","api":"anthropic-messages","provider":"anthropic","baseUrl":"https://api.anthropic.com","reasoning":true,"thinkingLevelMap":{"off":null},"input":["text","image"],"cost":{"input":3,"output":15,"cacheRead":0.3,"cacheWrite":3.75,"tiers":[{"input":1.5,"output":7.5,"cacheRead":0.15,"cacheWrite":1.875,"inputTokensAbove":200000}]},"contextWindow":200000,"maxTokens":64000,"samplingParams":{"custom_flag":true,"top_p":0.95},"headers":{"x-custom":"value"},"compat":{"forceAdaptiveThinking":true,"supportsCacheControlOnTools":false}}"#;
+    /// BTreeMap (sorted) order without the `preserve_order` feature. The
+    /// `headers` entry includes a `null` value: upstream treats model headers
+    /// as `ProviderHeaders`, where null suppresses.
+    const ANTHROPIC_MODEL_FIXTURE: &str = r#"{"id":"claude-sonnet-4-5","name":"Claude Sonnet 4.5","api":"anthropic-messages","provider":"anthropic","baseUrl":"https://api.anthropic.com","reasoning":true,"thinkingLevelMap":{"off":null},"input":["text","image"],"cost":{"input":3,"output":15,"cacheRead":0.3,"cacheWrite":3.75,"tiers":[{"input":1.5,"output":7.5,"cacheRead":0.15,"cacheWrite":1.875,"inputTokensAbove":200000}]},"contextWindow":200000,"maxTokens":64000,"samplingParams":{"custom_flag":true,"top_p":0.95},"headers":{"x-custom":"value","x-drop":null},"compat":{"forceAdaptiveThinking":true,"supportsCacheControlOnTools":false}}"#;
 
     /// OpenAI-completions-style catalog entry with a completions compat object.
     const OPENAI_COMPLETIONS_MODEL_FIXTURE: &str = r#"{"id":"gpt-test","name":"GPT Test","api":"openai-completions","provider":"openai","baseUrl":"https://api.openai.com/v1","reasoning":false,"input":["text"],"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0},"contextWindow":128000,"maxTokens":16384,"compat":{"maxTokensField":"max_tokens","supportsStore":false,"thinkingFormat":"zai"}}"#;
@@ -225,8 +239,11 @@ mod tests {
         assert_eq!(sampling.get("custom_flag"), Some(&json!(true)));
         assert_eq!(
             model.headers.as_ref().unwrap().get("x-custom"),
-            Some(&"value".to_string())
+            Some(&Some("value".to_string()))
         );
+        // A null header value parses as the suppression form (None) and
+        // round-trips back to null on the wire.
+        assert_eq!(model.headers.as_ref().unwrap().get("x-drop"), Some(&None));
         assert_eq!(
             model.compat,
             Some(json!({

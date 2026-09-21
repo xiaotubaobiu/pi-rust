@@ -690,7 +690,9 @@ pub fn zai_coding_cn_provider() -> Arc<dyn Provider> {
 /// `Date.parse` reduced to the generator's UTC ISO-8601 shape
 /// (`YYYY-MM-DDTHH:MM:SS[.fff]Z`, the `Date.toISOString()` form): epoch
 /// milliseconds, `None` on anything else. Same narrowing as the embedded
-/// catalog's `generatedAt` validation.
+/// catalog's `generatedAt` validation, including its documented divergence:
+/// day values `01`-`31` are accepted without month-length checks, where
+/// upstream `Date.parse` returns `NaN` for impossible dates.
 pub(crate) fn parse_iso_utc_ms(value: &str) -> Option<i64> {
     let bytes = value.as_bytes();
     let fraction_ms = match bytes.len() {
@@ -767,7 +769,7 @@ mod tests {
     use super::*;
     use crate::ai::models::get_supported_thinking_levels;
     use crate::ai::types::primitives::ModelCost;
-    use std::collections::HashMap;
+    use std::collections::BTreeMap;
 
     fn provider_ids(providers: &[Arc<dyn Provider>]) -> Vec<&str> {
         providers.iter().map(|provider| provider.id()).collect()
@@ -1264,7 +1266,7 @@ mod tests {
             ["off", "minimal", "low", "medium", "high"]
         );
 
-        model.thinking_level_map = Some(HashMap::from([
+        model.thinking_level_map = Some(BTreeMap::from([
             ("off".to_string(), None),
             ("minimal".to_string(), Some("low".to_string())),
             ("xhigh".to_string(), Some("xhigh".to_string())),
