@@ -14,15 +14,10 @@
 //!
 //! - Stream behavior rides on the held `ApiImpl` handles
 //!   ([`Provider::api_for`], the upstream `apiFor` dispatch, models.ts:801)
-//!   and is routed by the `Models` collection with auth resolution in
-//!   Task 3. `filterModels` (models.ts:136/773) rides with Task 4: its only
-//!   consumer is `Models.getAvailable` (models.ts:551), which is Task 4
-//!   scope alongside refresh.
-//! - `refreshModels` (models.ts:129) and the dynamic-catalog publication join
-//!   with Task 4; the overlay storage ([`StandardProvider::dynamic`]) and the
-//!   baseline merge ([`merge_catalog`], upstream `currentModels`,
-//!   models.ts:788-796) are already in place — the overlay starts empty, so a
-//!   freshly built provider serves exactly its baseline.
+//!   and is routed by the `Models` collection with auth resolution (Task 3).
+//!   [`Provider::filter_models`] (models.ts:136/773) is consumed by
+//!   `Models.get_available` (models.ts:534-554), alongside refresh in the
+//!   same task.
 //! - Upstream `fetchDeferred`/`cancelDeferred` (models.ts:150-155, attached
 //!   conditionally at models.ts:856-881) are not ported: the M2b `ApiImpl`
 //!   port dropped the deferred-response surface.
@@ -30,10 +25,15 @@
 use std::collections::BTreeMap;
 use std::sync::{Arc, RwLock};
 
+use futures::future::BoxFuture;
+
 use crate::ai::api::ApiImpl;
 use crate::ai::auth::resolve::ModelsError;
-use crate::ai::auth::types::ProviderAuth;
+use crate::ai::auth::types::{Credential, ProviderAuth};
+use crate::ai::now_ms;
 use crate::ai::types::{Model, ProviderHeaders};
+
+use super::{ModelsPublication, RefreshModelsContext, RefreshModelsError};
 
 /// Upstream `Provider` (models.ts:99-156): the concrete runtime unit owning
 /// id/name/base metadata, auth methods, and model listing. The upstream
@@ -65,12 +65,48 @@ pub trait Provider: Send + Sync {
 
     /// Current known models, sync (upstream `getModels`, models.ts:121).
     /// Static providers return their catalog; dynamic providers the list as
-    /// of the last refresh (empty before the first — Task 4). Upstream
+    /// of the last refresh (empty before the first). Upstream
     /// requires implementations not to throw and defends anyway ("`Models`
     /// treats a throwing implementation as having no models"): the port makes
     /// that failure channel explicit as `Err` — surfaced precisely by the
     /// provider itself, swallowed to no models by the collection.
     fn get_models(&self) -> Result<Vec<Model>, ModelsError>;
+
+    /// Upstream `refreshModels?` (models.ts:124-129): dynamic providers only.
+    /// Invoked once per refresh phase — first offline to restore
+    /// `context.stored`, then (when network is allowed and auth resolved) to
+    /// fetch a newer list. Implementations retain their previous list on
+    /// failure and publish persistence and synchronous state changes through
+    /// [`RefreshModelsContext::publish`]. `None` = static provider (upstream
+    /// `refreshModels === undefined`); must agree with [`Provider::is_dynamic`].
+    fn refresh_models(
+        &self,
+        context: RefreshModelsContext,
+    ) -> Option<BoxFuture<'static, Result<(), RefreshModelsError>>> {
+        let _ = context;
+        None
+    }
+
+    /// Upstream `provider.refreshModels !== undefined` (models.ts:404-406):
+    /// whether [`Models::refresh`](super::Models::refresh) includes this
+    /// provider. Pair with [`Provider::refresh_models`].
+    fn is_dynamic(&self) -> bool {
+        false
+    }
+
+    /// Upstream `filterModels?` (models.ts:132-136): optional provider policy
+    /// for credential-specific model availability. [`Models::get_available`]
+    /// applies it after confirming the provider's auth is configured, over
+    /// the provider's complete sync catalog. `None` = no filter (upstream
+    /// optional method); a filter returns the kept subset.
+    fn filter_models(
+        &self,
+        models: &[Model],
+        credential: Option<&Credential>,
+    ) -> Option<Vec<Model>> {
+        let _ = (models, credential);
+        None
+    }
 
     /// The API implementation serving one model (upstream
     /// `Provider.stream`/`streamSimple`, models.ts:139-149: the port's
@@ -95,6 +131,20 @@ pub enum ApiImpls {
     PerApi(BTreeMap<String, Arc<dyn ApiImpl>>),
 }
 
+/// Upstream `CreateProviderOptions.fetchModels` (models.ts:772): fetch a
+/// dynamic model overlay; [`create_provider`] restores and publishes it
+/// transactionally. The closure receives the owned phase context (upstream
+/// `context` object; [`RefreshModelsContext`] is a cheap handle).
+pub type FetchModelsFn = Arc<
+    dyn Fn(RefreshModelsContext) -> BoxFuture<'static, Result<Vec<Model>, ModelsError>>
+        + Send
+        + Sync,
+>;
+
+/// Upstream `CreateProviderOptions.filterModels` (models.ts:773):
+/// credential-specific availability filter over the provider's catalog.
+pub type FilterModelsFn = Arc<dyn Fn(&[Model], Option<&Credential>) -> Vec<Model> + Send + Sync>;
+
 /// Upstream `CreateProviderOptions` (models.ts:761-776).
 pub struct CreateProviderOptions {
     pub id: String,
@@ -108,14 +158,19 @@ pub struct CreateProviderOptions {
     /// Static baseline model list (upstream `models`; empty for purely
     /// dynamic providers).
     pub models: Vec<Model>,
+    /// Fetch a dynamic model overlay (upstream `fetchModels?`).
+    pub fetch_models: Option<FetchModelsFn>,
+    /// Credential-specific availability filter (upstream `filterModels?`).
+    pub filter_models: Option<FilterModelsFn>,
     /// Single implementation, or map keyed by `model.api` (upstream `api`).
     pub api: ApiImpls,
 }
 
 /// The provider [`create_provider`] builds — upstream's object literal
 /// (models.ts:816-854). The dynamic overlay (`dynamicModels`) starts empty
-/// and is published into by the Task 4 refresh; until then
-/// [`Provider::get_models`] serves exactly the baseline.
+/// and is published into by refresh ([`StandardProvider::refresh_models`],
+/// models.ts:823-849); until then [`Provider::get_models`] serves exactly the
+/// baseline.
 pub struct StandardProvider {
     id: String,
     name: String,
@@ -123,7 +178,9 @@ pub struct StandardProvider {
     headers: Option<ProviderHeaders>,
     auth: ProviderAuth,
     baseline: Vec<Model>,
-    dynamic: RwLock<Vec<Model>>,
+    dynamic: Arc<RwLock<Vec<Model>>>,
+    fetch: Option<FetchModelsFn>,
+    filter: Option<FilterModelsFn>,
     api: ApiImpls,
 }
 
@@ -136,7 +193,9 @@ pub fn create_provider(options: CreateProviderOptions) -> Arc<StandardProvider> 
         headers: options.headers,
         auth: options.auth,
         baseline: options.models,
-        dynamic: RwLock::new(Vec::new()),
+        dynamic: Arc::new(RwLock::new(Vec::new())),
+        fetch: options.fetch_models,
+        filter: options.filter_models,
         api: options.api,
     })
 }
@@ -194,6 +253,92 @@ impl Provider for StandardProvider {
             ApiImpls::PerApi(map) => map.get(&model.api).cloned(),
         }
     }
+
+    fn is_dynamic(&self) -> bool {
+        self.fetch.is_some()
+    }
+
+    fn filter_models(
+        &self,
+        models: &[Model],
+        credential: Option<&Credential>,
+    ) -> Option<Vec<Model>> {
+        self.filter
+            .as_ref()
+            .map(|filter| filter(models, credential))
+    }
+
+    /// Upstream `createProvider`'s built-in `refreshModels` (models.ts:823-849),
+    /// present only when `fetchModels` was given. Per phase: restore the
+    /// provider's slice of `context.stored` through a generation-checked
+    /// publication (bailing when superseded/aborted), then — network phase
+    /// only — fetch and publish the refreshed overlay together with its
+    /// persisted `{ models, checkedAt }` entry.
+    fn refresh_models(
+        &self,
+        context: RefreshModelsContext,
+    ) -> Option<BoxFuture<'static, Result<(), RefreshModelsError>>> {
+        let fetch = Arc::clone(self.fetch.as_ref()?);
+        let id = self.id.clone();
+        let dynamic = Arc::clone(&self.dynamic);
+        Some(Box::pin(async move {
+            // Restore `context.stored` first (models.ts:825-838): only this
+            // provider's entries, overlaying whatever a previous refresh
+            // published.
+            if let Some(stored) = context.stored.clone() {
+                let restored: Vec<Model> = stored
+                    .models
+                    .into_iter()
+                    .filter(|model| model.provider == id)
+                    .collect();
+                let dynamic_for_update = Arc::clone(&dynamic);
+                let applied = context
+                    .publish(ModelsPublication {
+                        persist: None,
+                        update: Some(Box::new(move || {
+                            *write_lock(&dynamic_for_update) = restored;
+                        })),
+                    })
+                    .await?;
+                if !applied {
+                    return Ok(());
+                }
+            }
+            if !context.allow_network || context.signal.is_cancelled() {
+                return Ok(());
+            }
+            let refreshed = fetch(context.clone())
+                .await
+                .map_err(RefreshModelsError::Failed)?;
+            if context.signal.is_cancelled() {
+                return Ok(());
+            }
+            let dynamic_for_update = Arc::clone(&dynamic);
+            let overlay = refreshed.clone();
+            context
+                .publish(ModelsPublication {
+                    persist: Some(Some(super::ModelsStoreEntry {
+                        models: refreshed,
+                        last_modified: None,
+                        checked_at: Some(now_ms()),
+                        etag: None,
+                    })),
+                    update: Some(Box::new(move || {
+                        *write_lock(&dynamic_for_update) = overlay;
+                    })),
+                })
+                .await?;
+            Ok(())
+        }))
+    }
+}
+
+/// std RwLock write access, poison-recovering (no await while held — the
+/// publication update runs synchronously by contract).
+fn write_lock(dynamic: &RwLock<Vec<Model>>) -> std::sync::RwLockWriteGuard<'_, Vec<Model>> {
+    dynamic
+        .write()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
 }
 
 #[cfg(test)]
@@ -297,6 +442,8 @@ mod tests {
             headers: None,
             auth: ambient_auth(),
             models,
+            fetch_models: None,
+            filter_models: None,
             api,
         }
     }
@@ -332,7 +479,8 @@ mod tests {
             ApiImpls::Single(Arc::new(StubApi)),
         ));
         // Freshly built providers serve exactly the baseline: the dynamic
-        // overlay starts empty (models.ts:786) until Task 4 publishes into it.
+        // overlay starts empty (models.ts:786) until a refresh publishes
+        // into it.
         assert_eq!(provider.get_models().unwrap(), baseline);
 
         // Purely dynamic providers ship an empty baseline (upstream radius).
