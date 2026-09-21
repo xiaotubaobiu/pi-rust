@@ -193,6 +193,7 @@ async fn resolve_with_signal(
         let credential = ApiKeyCredential {
             key: Some(api_key_override),
             env: overrides.and_then(|overrides| overrides.env.clone()),
+            extra: Default::default(),
         };
         return resolve_api_key(
             request_auth_context,
@@ -619,6 +620,7 @@ mod tests {
         Credential::ApiKey(ApiKeyCredential {
             key: Some(key.to_string()),
             env: None,
+            extra: Default::default(),
         })
     }
 
@@ -814,6 +816,7 @@ mod tests {
             Credential::ApiKey(ApiKeyCredential {
                 key: Some("stored-key".to_string()),
                 env: Some(env),
+                extra: Default::default(),
             }),
         )
         .await;

@@ -6,10 +6,12 @@
 //! the standard provider auth helpers (`helpers`).
 //!
 //! auth.json wire-compat is a hard goal: [`types::Credential`] round-trips
-//! upstream-written files byte-for-byte, including unknown OAuth extension
-//! fields. Interactive auth goes through [`types::AuthInteraction`] — flows
-//! never touch stdio or a browser directly (M2d controller ruling) — and
-//! Models-collection integration lands in M2e.
+//! upstream-written files byte-for-byte, including unknown extension fields,
+//! and [`file_store::FileCredentialStore`] persists `{providerId: credential}`
+//! documents pretty-printed like upstream `saveAuth`. Interactive auth goes
+//! through [`types::AuthInteraction`] — flows never touch stdio or a browser
+//! directly (M2d controller ruling) — and Models-collection integration
+//! lands in M2e.
 //!
 //! Environment variables here are the process env plus the scoped
 //! [`crate::ai::types::ProviderEnv`] overrides, resolved by
@@ -19,6 +21,7 @@
 pub mod context;
 pub mod credential_store;
 pub mod env_api_keys;
+pub mod file_store;
 pub mod helpers;
 pub mod oauth;
 pub mod resolve;
@@ -30,6 +33,7 @@ pub use env_api_keys::{
     find_env_keys, get_api_key_env_vars, get_env_api_key, ANTHROPIC_API_KEY_ENV,
     ANTHROPIC_AUTH_TOKEN_ENV, ANTHROPIC_OAUTH_TOKEN_ENV,
 };
+pub use file_store::FileCredentialStore;
 pub use helpers::{env_api_key_auth, lazy_oauth, EnvApiKeyAuth, LazyOAuth, OAuthLoader};
 pub use oauth::{AnthropicOAuth, GitHubCopilotOAuth, OpenAICodexOAuth};
 pub use resolve::{

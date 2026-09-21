@@ -62,6 +62,7 @@ impl ApiKeyAuth for EnvApiKeyAuth {
             Ok(ApiKeyCredential {
                 key: Some(key),
                 env: None,
+                extra: Default::default(),
             })
         }))
     }
@@ -280,6 +281,7 @@ mod tests {
         let credential = ApiKeyCredential {
             key: Some("stored-key".to_string()),
             env: None,
+            extra: Default::default(),
         };
         let result = auth
             .resolve(input(&ctx, Some(&credential), &options))
@@ -303,6 +305,7 @@ mod tests {
         let credential = ApiKeyCredential {
             key: Some(String::new()),
             env: None,
+            extra: Default::default(),
         };
         let result = auth
             .resolve(input(&ctx, Some(&credential), &options))

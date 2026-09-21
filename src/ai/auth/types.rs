@@ -7,8 +7,9 @@
 //! Wire format (serde JSON) matches upstream byte-for-byte: tags
 //! (`"api_key"`/`"oauth"`) and field names (`key`, `env`, `refresh`,
 //! `access`, `expires`) round-trip a file written by upstream pi, and
-//! unknown `OAuthCredential` fields are preserved like the upstream index
-//! signature.
+//! unknown fields are preserved — through the declared `OAuthCredential`
+//! index signature, and through the api-key entry's runtime-preserved
+//! extras (`extra` maps on both, the T1 ruling).
 
 use std::collections::BTreeMap;
 use std::fmt;
@@ -44,12 +45,23 @@ pub enum AuthType {
 /// Upstream `ApiKeyCredential` (types.ts:17-21): stored api-key credential.
 /// `env` holds provider-scoped environment/config values such as Cloudflare
 /// account/gateway ids. The `"type": "api_key"` tag is applied by [`Credential`].
+///
+/// Unlike `OAuthCredential` the upstream interface declares no index
+/// signature — but upstream JS still preserves unknown fields on api_key
+/// entries through a `loadAuth`/`saveAuth` cycle (`JSON.parse` keeps them in
+/// the object). The T1 review carried the ruling into T8: `extra` mirrors
+/// that runtime behavior so an auth.json rewrite never drops fields.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct ApiKeyCredential {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub key: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub env: Option<ProviderEnv>,
+    /// Upstream's runtime-preserved unknown fields (no declared index
+    /// signature, but `JSON.parse`/`saveAuth` keep them); extension fields
+    /// survive the round trip verbatim.
+    #[serde(flatten)]
+    pub extra: BTreeMap<String, serde_json::Value>,
 }
 
 /// Upstream `OAuthCredential` (types.ts:24-36): stored canonical OAuth
@@ -485,6 +497,35 @@ mod tests {
             r#"{"type":"api_key"}"#
         );
         assert_eq!(minimal.auth_type(), AuthType::ApiKey);
+    }
+
+    #[test]
+    fn api_key_credential_preserves_unknown_fields_like_upstream_json_parse() {
+        // Upstream ApiKeyCredential declares no index signature, but the JS
+        // runtime keeps unknown fields through loadAuth/saveAuth (T1 ruling
+        // carried into T8): the rewrite must not drop them. Serde's flattened
+        // map re-serializes extras in sorted key order (the port-wide JSON
+        // key-ordering divergence), so the round trip is asserted per value.
+        let fixture = r#"{"type":"api_key","key":"k","note":"kept","attempts":2}"#;
+        let credential: Credential = serde_json::from_str(fixture).unwrap();
+        let Credential::ApiKey(ref api_key) = credential else {
+            panic!("expected api_key variant");
+        };
+        assert_eq!(
+            api_key.extra.get("note").and_then(|v| v.as_str()),
+            Some("kept")
+        );
+        assert_eq!(
+            api_key
+                .extra
+                .get("attempts")
+                .and_then(serde_json::Value::as_i64),
+            Some(2)
+        );
+        assert_eq!(
+            serde_json::to_string(&credential).unwrap(),
+            r#"{"type":"api_key","key":"k","attempts":2,"note":"kept"}"#
+        );
     }
 
     #[test]

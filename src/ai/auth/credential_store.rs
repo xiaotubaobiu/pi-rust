@@ -211,6 +211,7 @@ mod tests {
         Credential::ApiKey(super::super::types::ApiKeyCredential {
             key: Some(key.to_string()),
             env: None,
+            extra: Default::default(),
         })
     }
 

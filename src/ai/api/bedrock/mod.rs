@@ -328,8 +328,9 @@ fn clamp_reasoning(level: ThinkingLevel) -> ThinkingLevel {
 /// and the auth inputs.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub(crate) struct ResolvedEndpointConfig {
-    /// Upstream `config.profile`: the explicit option (no port surface) or
-    /// the scoped `AWS_PROFILE`.
+    /// Upstream `config.profile`: the explicit option or scoped `AWS_PROFILE`
+    /// (upstream `optionsProfile`), else the ambient process-env
+    /// `AWS_PROFILE`.
     pub profile: Option<String>,
     /// Upstream `config.endpoint`: pinned when the model base URL is a custom
     /// (non-standard) endpoint, or a standard endpoint with no region and no
@@ -337,7 +338,9 @@ pub(crate) struct ResolvedEndpointConfig {
     pub endpoint: Option<String>,
     /// Upstream `config.region`: ARN-embedded > explicit option/env >
     /// endpoint-derived > us-east-1 default; `None` only when an ambient
-    /// profile would resolve it (profile loading lands with M2d).
+    /// profile would resolve it (profile-file loading is SDK behavior the
+    /// port does not reproduce — a profile-only configuration then fails at
+    /// the signing-input check).
     pub region: Option<String>,
     /// Upstream `AWS_BEDROCK_SKIP_AUTH=1`: sign with dummy credentials.
     pub skip_auth: bool,
@@ -364,7 +367,19 @@ pub(crate) fn resolve_endpoint_config(
     ambient_profile: bool,
     config_api_key: Option<&str>,
 ) -> ResolvedEndpointConfig {
-    let profile = get_provider_env_value("AWS_PROFILE", env);
+    // Upstream `optionsProfile` (line 160): `options.profile` (no port
+    // surface) or the SCOPED `AWS_PROFILE` only — an ambient process-env
+    // profile does not count. It gates the static-key suppression below.
+    let options_profile = env
+        .and_then(|env| env.get("AWS_PROFILE"))
+        .filter(|value| !value.is_empty())
+        .cloned();
+    // Upstream `config.profile` (line 163): `optionsProfile ||`
+    // `getProviderEnvValue("AWS_PROFILE", options.env)` — the scoped value
+    // when present, else the ambient process env.
+    let profile = options_profile
+        .clone()
+        .or_else(|| get_provider_env_value("AWS_PROFILE", env));
     let configured_region = get_provider_env_value("AWS_REGION", env)
         .or_else(|| get_provider_env_value("AWS_DEFAULT_REGION", env));
     let use_explicit_endpoint = should_use_explicit_bedrock_endpoint(
@@ -398,9 +413,11 @@ pub(crate) fn resolve_endpoint_config(
     let credentials = if skip_auth {
         Some(dummy_credentials())
     } else {
-        // Upstream lines 213-216: env credentials apply only when no profile
-        // is configured (`!optionsProfile`).
-        configured_bedrock_credentials(env).filter(|_| profile.is_none())
+        // Upstream line 215: `!skipAuth && credentials && !optionsProfile` —
+        // an ambient-only AWS_PROFILE keeps the static keys (the SDK chain
+        // resolves the profile but the ambient keys still win there; see the
+        // bedrock-credentials.test.ts oracle).
+        configured_bedrock_credentials(env).filter(|_| options_profile.is_none())
     };
 
     ResolvedEndpointConfig {
@@ -2692,6 +2709,7 @@ mod tests {
 
     #[test]
     fn resolution_assigns_eu_region_from_endpoint_without_env() {
+        let _env = cleared_aws_env();
         let mut model = model(
             "eu.anthropic.claude-sonnet-4-5-20250929-v1:0",
             "Claude Sonnet 4.5 (EU)",
@@ -2713,6 +2731,7 @@ mod tests {
 
     #[test]
     fn resolution_profile_handling_matches_upstream() {
+        let _env = cleared_aws_env();
         let mut model = model(
             "eu.anthropic.claude-sonnet-4-5-20250929-v1:0",
             "Claude Sonnet 4.5 (EU)",
@@ -2733,10 +2752,151 @@ mod tests {
         assert_eq!(resolved.credentials, None);
 
         // Ambient AWS_PROFILE (process env, injected flag): no endpoint and no
-        // region — the profile chain owns both (credential loading is M2d).
+        // region — the profile chain owns both (profile-file loading is SDK
+        // behavior the port does not reproduce).
         let resolved = resolve_endpoint_config(&model, None, true, None);
         assert_eq!(resolved.endpoint, None);
         assert_eq!(resolved.region, None);
+    }
+
+    /// Process env is process-global; serialize env-mutating tests and
+    /// restore the saved values on drop (the oracle's `stubEnv`/`afterEach`).
+    static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+    struct TestEnv {
+        _lock: std::sync::MutexGuard<'static, ()>,
+        saved: Vec<(&'static str, Option<String>)>,
+    }
+
+    impl TestEnv {
+        /// Sets `settings`, removes `cleared`, restoring everything on drop.
+        fn apply(settings: &[(&'static str, String)], cleared: &[&'static str]) -> Self {
+            let lock = ENV_LOCK
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner());
+            let mut saved = Vec::new();
+            for (name, value) in settings {
+                saved.push((*name, std::env::var(name).ok()));
+                std::env::set_var(name, value);
+            }
+            for name in cleared {
+                saved.push((*name, std::env::var(name).ok()));
+                std::env::remove_var(name);
+            }
+            TestEnv { _lock: lock, saved }
+        }
+    }
+
+    impl Drop for TestEnv {
+        fn drop(&mut self) {
+            for (name, value) in &self.saved {
+                match value {
+                    Some(value) => std::env::set_var(name, value),
+                    None => std::env::remove_var(name),
+                }
+            }
+        }
+    }
+
+    /// Holds [`ENV_LOCK`] with the AWS ambient vars cleared: the baseline for
+    /// resolution tests whose `env=None` inputs read the process env (the
+    /// oracle's env-mutating tests run in parallel).
+    fn cleared_aws_env() -> TestEnv {
+        TestEnv::apply(
+            &[],
+            &[
+                "AWS_PROFILE",
+                "AWS_REGION",
+                "AWS_DEFAULT_REGION",
+                "AWS_ACCESS_KEY_ID",
+                "AWS_SECRET_ACCESS_KEY",
+                "AWS_SESSION_TOKEN",
+                "AWS_BEARER_TOKEN_BEDROCK",
+                "AWS_BEDROCK_SKIP_AUTH",
+            ],
+        )
+    }
+
+    fn ambient_keys() -> Vec<(&'static str, String)> {
+        vec![
+            ("AWS_ACCESS_KEY_ID", "AKIAEXAMPLE".to_string()),
+            ("AWS_SECRET_ACCESS_KEY", "secretexample".to_string()),
+        ]
+    }
+
+    /// Oracle: "prefers explicit and scoped profiles over ambient AWS access
+    /// keys" — a scoped `AWS_PROFILE` (the port's `options.profile` surface)
+    /// records the profile and suppresses the ambient static keys.
+    #[test]
+    fn scoped_profile_suppresses_ambient_aws_access_keys() {
+        let _env = TestEnv::apply(
+            &ambient_keys(),
+            &["AWS_PROFILE", "AWS_REGION", "AWS_DEFAULT_REGION"],
+        );
+        let scoped = env_map(&[("AWS_PROFILE", "scoped-profile")]);
+        let resolved = resolve_endpoint_config(&claude_sonnet_4_5(), Some(&scoped), false, None);
+        assert_eq!(resolved.profile.as_deref(), Some("scoped-profile"));
+        assert_eq!(resolved.credentials, None);
+    }
+
+    /// Oracle: "uses ambient AWS access keys when no profile is configured".
+    #[test]
+    fn ambient_aws_access_keys_sign_without_a_profile() {
+        let _env = TestEnv::apply(
+            &ambient_keys(),
+            &["AWS_PROFILE", "AWS_REGION", "AWS_DEFAULT_REGION"],
+        );
+        let resolved = resolve_endpoint_config(&claude_sonnet_4_5(), None, false, None);
+        assert_eq!(resolved.profile, None);
+        assert_eq!(
+            resolved.credentials,
+            Some(AwsCredentials {
+                access_key_id: "AKIAEXAMPLE".to_string(),
+                secret_access_key: "secretexample".to_string(),
+                session_token: None,
+            })
+        );
+    }
+
+    /// Oracle: "uses ambient AWS access keys when only an ambient profile is
+    /// set" — the ambient profile names `config.profile` but does NOT
+    /// suppress the ambient static keys (upstream's `!optionsProfile` guard
+    /// is scoped-env only).
+    #[test]
+    fn ambient_profile_keeps_the_ambient_aws_access_keys() {
+        let mut settings = ambient_keys();
+        settings.push(("AWS_PROFILE", "ambient-profile".to_string()));
+        let _env = TestEnv::apply(&settings, &["AWS_REGION", "AWS_DEFAULT_REGION"]);
+        let resolved = resolve_endpoint_config(&claude_sonnet_4_5(), None, true, None);
+        assert_eq!(resolved.profile.as_deref(), Some("ambient-profile"));
+        assert_eq!(
+            resolved.credentials,
+            Some(AwsCredentials {
+                access_key_id: "AKIAEXAMPLE".to_string(),
+                secret_access_key: "secretexample".to_string(),
+                session_token: None,
+            })
+        );
+    }
+
+    /// Oracle: ambient `AWS_SESSION_TOKEN` rides the static-key chain.
+    #[test]
+    fn ambient_session_token_rides_the_static_keys() {
+        let mut settings = ambient_keys();
+        settings.push(("AWS_SESSION_TOKEN", "token".to_string()));
+        let _env = TestEnv::apply(
+            &settings,
+            &["AWS_PROFILE", "AWS_REGION", "AWS_DEFAULT_REGION"],
+        );
+        let resolved = resolve_endpoint_config(&claude_sonnet_4_5(), None, false, None);
+        assert_eq!(
+            resolved.credentials,
+            Some(AwsCredentials {
+                access_key_id: "AKIAEXAMPLE".to_string(),
+                secret_access_key: "secretexample".to_string(),
+                session_token: Some("token".to_string()),
+            })
+        );
     }
 
     #[test]
@@ -2757,6 +2917,7 @@ mod tests {
 
     #[test]
     fn resolution_skip_auth_dummy_credentials_and_bearer() {
+        let _env = cleared_aws_env();
         let env = env_map(&[("AWS_BEDROCK_SKIP_AUTH", "1")]);
         let resolved = resolve_endpoint_config(&claude_sonnet_4_5(), Some(&env), false, None);
         assert!(resolved.skip_auth);
