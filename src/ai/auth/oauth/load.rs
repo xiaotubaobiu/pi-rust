@@ -57,6 +57,42 @@ pub fn load_radius_oauth(options: RadiusOAuthOptions) -> Arc<dyn OAuthAuth> {
     Arc::new(create_radius_oauth(options))
 }
 
+/// Provider ids with an OAuth login flow, in the upstream `builtinProviders()`
+/// filter order (providers/*.ts `auth.oauth` presence): upstream cli.ts
+/// derives its login surface from the same filter.
+pub const OAUTH_LOGIN_PROVIDERS: &[&str] = &[
+    "anthropic",
+    "openai-codex",
+    "github-copilot",
+    "openrouter",
+    "xai",
+    "kimi-coding",
+    "radius",
+];
+
+/// Build the OAuth login flow for a provider id (upstream cli.ts resolves
+/// `provider.auth.oauth` off the builtin provider record; the port's
+/// providers are not first-class values yet, so the registry dispatches by
+/// id). Radius uses the upstream default gateway
+/// (`radius-config.ts` `DEFAULT_RADIUS_GATEWAY`). `None` = no OAuth flow
+/// for the id.
+pub fn oauth_flow_for(provider_id: &str) -> Option<Arc<dyn OAuthAuth>> {
+    match provider_id {
+        "anthropic" => Some(load_anthropic_oauth()),
+        "openai-codex" => Some(load_openai_codex_oauth()),
+        "github-copilot" => Some(load_github_copilot_oauth()),
+        "openrouter" => Some(load_openrouter_oauth()),
+        "xai" => Some(load_xai_oauth()),
+        "kimi-coding" => Some(load_kimi_coding_oauth()),
+        "radius" => Some(load_radius_oauth(RadiusOAuthOptions {
+            name: "Radius".to_string(),
+            // providers/radius-config.ts:4 DEFAULT_RADIUS_GATEWAY.
+            gateway: "https://radius.pi.dev".to_string(),
+        })),
+        _ => None,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -82,5 +118,20 @@ mod tests {
             .name(),
             "Radius"
         );
+    }
+
+    /// The login registry covers exactly the advertised ids and rejects
+    /// everything else (upstream cli.ts `PROVIDERS.some(...) == providerId`).
+    #[test]
+    fn oauth_flow_registry_matches_the_advertised_providers() {
+        for provider in OAUTH_LOGIN_PROVIDERS {
+            assert!(
+                oauth_flow_for(provider).is_some(),
+                "{provider} should dispatch"
+            );
+        }
+        for absent in ["openai-compat", "google", "amazon-bedrock", "nope", ""] {
+            assert!(oauth_flow_for(absent).is_none(), "{absent}");
+        }
     }
 }
