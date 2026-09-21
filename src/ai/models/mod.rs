@@ -12,6 +12,7 @@
 
 pub mod catalog;
 pub mod provider;
+pub mod providers;
 pub mod store;
 
 pub use catalog::{
@@ -23,6 +24,10 @@ pub use catalog::{
 pub use provider::{
     create_provider, ApiImpls, CreateProviderOptions, FetchModelsFn, FilterModelsFn, Provider,
     StandardProvider,
+};
+pub use providers::{
+    builtin_model, builtin_model_data_generated_at, builtin_models, builtin_models_with,
+    builtin_provider_ids, builtin_providers,
 };
 pub use store::{
     InMemoryModelsStore, ModelsStore, ModelsStoreEntry, ModelsStoreError,
@@ -385,6 +390,37 @@ pub fn create_models(options: CreateModelsOptions) -> Models {
             .unwrap_or_else(|| Arc::new(InMemoryModelsStore::default()) as Arc<dyn ModelsStore>),
         refresh: Arc::new(RefreshShared::new()),
     }
+}
+
+/// Upstream `EXTENDED_THINKING_LEVELS` (models.ts:922).
+const EXTENDED_THINKING_LEVELS: &[&str] =
+    &["off", "minimal", "low", "medium", "high", "xhigh", "max"];
+
+/// Upstream `getSupportedThinkingLevels` (models.ts:924-933): the thinking
+/// levels a model accepts. Non-reasoning models accept only `"off"`;
+/// `"xhigh"`/`"max"` need an explicit mapping in `thinkingLevelMap`, and a
+/// `null` mapping disables its level.
+pub fn get_supported_thinking_levels(model: &Model) -> Vec<&'static str> {
+    if !model.reasoning {
+        return vec!["off"];
+    }
+    EXTENDED_THINKING_LEVELS
+        .iter()
+        .copied()
+        .filter(|level| {
+            let mapped = model
+                .thinking_level_map
+                .as_ref()
+                .and_then(|map| map.get(*level));
+            if mapped == Some(&None) {
+                return false;
+            }
+            if *level == "xhigh" || *level == "max" {
+                return mapped.is_some();
+            }
+            true
+        })
+        .collect()
 }
 
 impl Models {
