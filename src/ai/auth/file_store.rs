@@ -147,6 +147,7 @@ impl FileCredentialStore {
 fn create_dir_private(dir: &Path) -> std::io::Result<()> {
     #[cfg(unix)]
     {
+        use std::os::unix::fs::DirBuilderExt;
         std::fs::DirBuilder::new()
             .recursive(true)
             .mode(0o700)
