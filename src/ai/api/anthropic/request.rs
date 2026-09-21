@@ -1411,6 +1411,7 @@ pub fn options_from_simple(
     );
     let mut result = AnthropicOptions {
         stream: StreamOptions {
+            signal: options.stream.signal.clone(),
             temperature: options.stream.temperature,
             sampling_params,
             max_tokens: Some(base_max_tokens),

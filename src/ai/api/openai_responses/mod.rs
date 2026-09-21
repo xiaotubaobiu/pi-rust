@@ -55,7 +55,7 @@ use crate::ai::api::openai_responses_shared::{
     session_affinity_headers, ConvertResponsesMessagesOptions, ConvertResponsesToolsOptions,
     ResponsesStreamEvent, ResponsesStreamOptions, ResponsesStreamProcessor,
 };
-use crate::ai::api::{http_client, pi_user_agent, ApiImpl};
+use crate::ai::api::{http_client, pi_user_agent, request_signal, ApiImpl, REQUEST_WAS_ABORTED};
 use crate::ai::retry::{retry_provider_request, ProviderError};
 use crate::ai::transcript::{get_declared_tools, resolve_transcript, TranscriptContext};
 use crate::ai::types::events::{AssistantMessageEvent, ErrorReason, SuccessReason};
@@ -64,6 +64,7 @@ use crate::ai::types::primitives::{CacheRetention, SessionAffinityFormat, StopRe
 use crate::ai::types::Model;
 use crate::ai::ProviderConfig;
 use tokio::sync::mpsc;
+use tokio_util::sync::CancellationToken;
 
 /// Upstream `OPENAI_TOOL_CALL_PROVIDERS` (openai-responses.ts:31): providers
 /// whose tool calls keep their `call_id|item_id` wire ids on replay.
@@ -405,6 +406,7 @@ async fn send_stream_request(
     api_key: &str,
     assembly: &RequestAssembly,
     options: &SimpleStreamOptions,
+    signal: &CancellationToken,
 ) -> Result<reqwest::Response, String> {
     let url = format!("{}/responses", cfg.base_url.trim_end_matches('/'));
     // Bearer auth first: assembly headers (model.headers then the caller's
@@ -431,7 +433,7 @@ async fn send_stream_request(
     }
     let max_retries = options.stream.max_retries.unwrap_or(0);
     let max_retry_delay_ms = options.stream.max_retry_delay_ms;
-    retry_provider_request(max_retries, max_retry_delay_ms, || async {
+    retry_provider_request(max_retries, max_retry_delay_ms, Some(signal), || async {
         let response = request
             .try_clone()
             .expect("JSON request body is buffered and clonable")
@@ -483,6 +485,7 @@ async fn run_stream_task(
         ..Default::default()
     };
     let mut processor = ResponsesStreamProcessor::new(&model, processor_options);
+    let signal = request_signal(&options.stream.signal);
     let outcome = async {
         // Upstream line 143 (apiKey) precedes line 147 (grammar properties).
         let api_key = get_client_api_key(
@@ -499,7 +502,7 @@ async fn run_stream_task(
             &grammar_tool_input_properties,
         )?;
 
-        let response = send_stream_request(&cfg, &api_key, &assembly, &options).await?;
+        let response = send_stream_request(&cfg, &api_key, &assembly, &options, &signal).await?;
 
         // Upstream line 178: `start` after the response arrives, before any
         // event.
@@ -510,7 +513,17 @@ async fn run_stream_task(
             .await;
 
         let mut events = response.bytes_stream().eventsource();
-        while let Some(item) = events.next().await {
+        // Upstream line 186 checks `signal?.aborted` after the stream; the
+        // select additionally breaks the read the moment the token cancels.
+        loop {
+            let item = tokio::select! {
+                biased;
+                _ = signal.cancelled() => return Err(REQUEST_WAS_ABORTED.to_string()),
+                next = events.next() => match next {
+                    Some(item) => item,
+                    None => break,
+                },
+            };
             let event = item.map_err(|error| error.to_string())?;
             let payload: Value = serde_json::from_str(&event.data)
                 .map_err(|error| format!("Could not parse Responses SSE event: {error}"))?;
@@ -523,7 +536,11 @@ async fn run_stream_task(
         // (lines 758-760).
         processor.finish()?;
         let output = processor.output();
-        // Upstream lines 190-195 (the signal-aborted check has no port input).
+        // Upstream line 186: the post-loop abort check precedes the pending /
+        // error guards.
+        if signal.is_cancelled() {
+            return Err(REQUEST_WAS_ABORTED.to_string());
+        }
         if output.stop_reason == StopReason::Pending {
             return Err("OpenAI Responses stream ended without a stop reason".to_string());
         }
@@ -550,15 +567,23 @@ async fn run_stream_task(
         Ok(()) => {}
         Err(message) => {
             // Upstream catch block (lines 199-213): the partial message keeps
-            // its content; stopReason settles to "error" (the `signal`
-            // aborted branch is unreachable in the port) and the thrown value
-            // becomes errorMessage.
+            // its content; stopReason settles to "aborted" when the request
+            // signal fired, else "error", and the thrown value becomes
+            // errorMessage.
             let mut output = processor.into_output();
-            output.stop_reason = StopReason::Error;
+            output.stop_reason = if signal.is_cancelled() {
+                StopReason::Aborted
+            } else {
+                StopReason::Error
+            };
             output.error_message = Some(message);
             let _ = tx
                 .send(AssistantMessageEvent::Error {
-                    reason: ErrorReason::Error,
+                    reason: if signal.is_cancelled() {
+                        ErrorReason::Aborted
+                    } else {
+                        ErrorReason::Error
+                    },
                     error: output,
                 })
                 .await;
@@ -569,6 +594,7 @@ async fn run_stream_task(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ai::api::{abort_test_support::stalled_sse_server, REQUEST_ABORTED};
     use crate::ai::transcript::{normalize_context, Context};
     use crate::ai::types::events::PartialAssistant;
     use crate::ai::types::message::{
@@ -1817,5 +1843,75 @@ mod tests {
             Some(AssistantMessageEvent::Error { .. })
         ));
         assert_eq!(server.received_requests().await.unwrap().len(), 1);
+    }
+
+    // ---- abort surface ----
+
+    fn signal_options(signal: Option<CancellationToken>) -> SimpleStreamOptions {
+        SimpleStreamOptions {
+            stream: StreamOptions {
+                signal,
+                ..StreamOptions::default()
+            },
+            ..SimpleStreamOptions::default()
+        }
+    }
+
+    /// A pre-cancelled signal fails the request setup (the retry seam's
+    /// `"Request aborted"` abort error) before `Start`, and the catch block
+    /// settles `stopReason: "aborted"`.
+    #[tokio::test]
+    async fn pre_aborted_request_settles_aborted_before_start() {
+        let server = wiremock::MockServer::start().await;
+        let token = CancellationToken::new();
+        token.cancel();
+        let api = OpenAiResponses;
+        let mut rx = api.stream_simple(
+            &cfg(&server),
+            &model(),
+            &ctx_with(None, vec![user_msg("hi")], None),
+            &signal_options(Some(token)),
+        );
+        let first = rx.recv().await.expect("terminal event");
+        match first {
+            AssistantMessageEvent::Error { reason, error } => {
+                assert_eq!(reason, ErrorReason::Aborted);
+                assert_eq!(error.stop_reason, StopReason::Aborted);
+                assert_eq!(error.error_message.as_deref(), Some(REQUEST_ABORTED));
+            }
+            other => panic!("expected terminal error event, got {other:?}"),
+        }
+        assert!(server.received_requests().await.unwrap().is_empty());
+    }
+
+    /// A cancellation after `start` breaks the body wait and settles the
+    /// stream aborted with `"Request was aborted"` (upstream line 186).
+    #[tokio::test]
+    async fn mid_stream_cancellation_settles_the_stream_aborted() {
+        let base_url = stalled_sse_server().await;
+        let cfg = ProviderConfig {
+            base_url,
+            api_key: "test-key".to_string(),
+            max_tokens: 8192,
+        };
+        let token = CancellationToken::new();
+        let api = OpenAiResponses;
+        let mut rx = api.stream_simple(
+            &cfg,
+            &model(),
+            &ctx_with(None, vec![user_msg("hi")], None),
+            &signal_options(Some(token.clone())),
+        );
+        let first = rx.recv().await.expect("start event");
+        assert!(matches!(first, AssistantMessageEvent::Start { .. }));
+        token.cancel();
+        match rx.recv().await.expect("terminal event") {
+            AssistantMessageEvent::Error { reason, error } => {
+                assert_eq!(reason, ErrorReason::Aborted);
+                assert_eq!(error.stop_reason, StopReason::Aborted);
+                assert_eq!(error.error_message.as_deref(), Some(REQUEST_WAS_ABORTED));
+            }
+            other => panic!("expected terminal error event, got {other:?}"),
+        }
     }
 }

@@ -24,9 +24,13 @@
 //! - Ambient auth lands in M2d (controller ruling): the key resolves from
 //!   `options.apiKey` then `ProviderConfig.api_key`, and a missing key is the
 //!   async error event (upstream `streamSimple` throws synchronously; port
-//!   contract). `options.signal` aborts have no port input, so the post-stream
-//!   abort check and the catch block's `"aborted"` branch are unreachable —
-//!   error events always carry reason `"error"`.
+//!   contract). `options.signal` is the port's non-serialized
+//!   [`CancellationToken`](tokio_util::sync::CancellationToken): a
+//!   pre-cancelled token or cancellation during the initial request fails
+//!   before `Start` with the retry seam's `"Request aborted"` abort error; a
+//!   cancellation after `Start` breaks the body read (the
+//!   `readMistralEvents` abort check) and the catch block's `"aborted"`
+//!   branch settles the reason.
 //! - Upstream applies `AbortSignal.timeout(options?.timeoutMs ?? 60_000)` — a
 //!   60-second default even when unset. Per controller ruling the port behaves
 //!   like its siblings: `timeout_ms` is applied only when provided (the shared
@@ -81,7 +85,7 @@ use crate::ai::api::openai_completions::request::{
     short_hash, transform_messages, MappedLevel,
 };
 use crate::ai::api::openai_completions::stream::{parse_streaming_json, truncate_error_text};
-use crate::ai::api::{http_client, pi_user_agent, ApiImpl};
+use crate::ai::api::{http_client, pi_user_agent, request_signal, ApiImpl, REQUEST_WAS_ABORTED};
 use crate::ai::cost::calculate_cost;
 use crate::ai::retry::{retry_provider_request, ProviderError};
 use crate::ai::transcript::{
@@ -98,6 +102,7 @@ use crate::ai::types::tool::Tool;
 use crate::ai::types::{Model, ModelInput};
 use crate::ai::{now_ms, ProviderConfig};
 use tokio::sync::mpsc;
+use tokio_util::sync::CancellationToken;
 
 /// The API id stamped on every emitted message.
 const API: &str = "mistral-conversations";
@@ -355,6 +360,7 @@ async fn run_stream_task(
     tx: mpsc::Sender<AssistantMessageEvent>,
 ) {
     let mut state = StreamState::new(&model);
+    let signal = request_signal(&options.stream.signal);
     let outcome: Result<(), String> = async {
         // Upstream lines 136-139 (inside the async body): the missing-key
         // error throws first — the provider-config fallback is the port
@@ -370,7 +376,8 @@ async fn run_stream_task(
         let url = resolve_endpoint(&model.base_url)?;
         let headers = build_headers(&model, &api_key, &options.stream);
 
-        let response = send_stream_request(&url, headers, &payload, &options.stream).await?;
+        let response =
+            send_stream_request(&url, headers, &payload, &options.stream, &signal).await?;
 
         // Upstream line 152: `start` after the response arrives.
         let _ = tx
@@ -379,10 +386,13 @@ async fn run_stream_task(
             })
             .await;
 
-        consume_chat_stream(&mut state, response, &model, &tx).await?;
+        consume_chat_stream(&mut state, response, &model, &signal, &tx).await?;
 
-        // Upstream lines 155-164 (the signal-aborted check has no port input):
-        // the pending / aborted / error guards throw into the catch block.
+        // Upstream lines 155-164: the post-stream abort check precedes the
+        // pending / error guards.
+        if signal.is_cancelled() {
+            return Err(REQUEST_WAS_ABORTED.to_string());
+        }
         if state.output.stop_reason == StopReason::Pending {
             return Err("Mistral stream ended without a finish reason".to_string());
         }
@@ -416,15 +426,24 @@ async fn run_stream_task(
         Err(message) => {
             // Upstream catch block (lines 168-177): the partialArgs deletion
             // is the port's finalize-without-emitting (arguments keep the
-            // parsed-so-far value like upstream's live parse), the
-            // signal-aborted branch is unreachable, so stopReason settles to
-            // "error" and the thrown value becomes the errorMessage.
+            // parsed-so-far value like upstream's live parse); stopReason
+            // settles to "aborted" when the request signal fired, else
+            // "error", and the thrown value becomes the errorMessage.
             finalize_tool_blocks(&mut state, None).await;
-            state.output.stop_reason = StopReason::Error;
+            let aborted = signal.is_cancelled();
+            state.output.stop_reason = if aborted {
+                StopReason::Aborted
+            } else {
+                StopReason::Error
+            };
             state.output.error_message = Some(message);
             let _ = tx
                 .send(AssistantMessageEvent::Error {
-                    reason: ErrorReason::Error,
+                    reason: if aborted {
+                        ErrorReason::Aborted
+                    } else {
+                        ErrorReason::Error
+                    },
                     error: state.output,
                 })
                 .await;
@@ -803,10 +822,21 @@ async fn consume_chat_stream(
     state: &mut StreamState,
     response: reqwest::Response,
     model: &Model,
+    signal: &CancellationToken,
     tx: &mpsc::Sender<AssistantMessageEvent>,
 ) -> Result<(), String> {
     let mut events = response.bytes_stream().eventsource();
-    while let Some(item) = events.next().await {
+    // Upstream `readMistralEvents` checks `signal.aborted` on every read; the
+    // select breaks the read the moment the token cancels.
+    loop {
+        let item = tokio::select! {
+            biased;
+            _ = signal.cancelled() => return Err(REQUEST_WAS_ABORTED.to_string()),
+            next = events.next() => match next {
+                Some(item) => item,
+                None => break,
+            },
+        };
         let event = item.map_err(|error| match error {
             eventsource_stream::EventStreamError::Transport(error) => {
                 format_transport_error(&error)
@@ -1271,6 +1301,7 @@ async fn send_stream_request(
     headers: Vec<(String, String)>,
     payload: &Value,
     stream_options: &StreamOptions,
+    signal: &CancellationToken,
 ) -> Result<reqwest::Response, String> {
     let mut header_map = reqwest::header::HeaderMap::new();
     for (name, value) in &headers {
@@ -1286,7 +1317,7 @@ async fn send_stream_request(
     }
     let max_retries = stream_options.max_retries.unwrap_or(0);
     let max_retry_delay_ms = stream_options.max_retry_delay_ms;
-    retry_provider_request(max_retries, max_retry_delay_ms, || async {
+    retry_provider_request(max_retries, max_retry_delay_ms, Some(signal), || async {
         let response = request
             .try_clone()
             .expect("JSON request body is buffered and clonable")
@@ -1458,6 +1489,7 @@ struct MistralStreamFunction {
 mod tests {
     use super::*;
     use crate::ai::api::pi_user_agent;
+    use crate::ai::api::{abort_test_support::stalled_sse_server, REQUEST_ABORTED};
     use crate::ai::transcript::{normalize_context, Context};
     use crate::ai::types::content::{ImageContent, TextContent};
     use crate::ai::types::events::PartialAssistant;
@@ -2722,5 +2754,68 @@ mod tests {
             cached_prompt_tokens(&json!({"num_cached_tokens": 99}), 10),
             10
         );
+    }
+
+    // ---- abort surface ----
+
+    fn signal_options(signal: Option<CancellationToken>) -> StreamOptions {
+        StreamOptions {
+            signal,
+            ..StreamOptions::default()
+        }
+    }
+
+    /// A pre-cancelled signal fails the request setup (the retry seam's
+    /// `"Request aborted"` abort error) before `Start`, and the catch block
+    /// settles `stopReason: "aborted"`.
+    #[tokio::test]
+    async fn pre_aborted_request_settles_aborted_before_start() {
+        let server = wiremock::MockServer::start().await;
+        let token = CancellationToken::new();
+        token.cancel();
+        let api = MistralConversations;
+        let mut rx = api.stream(
+            &cfg(),
+            &model(&server.uri()),
+            &ctx_with(vec![user_msg("hi")]),
+            &signal_options(Some(token)),
+        );
+        let first = rx.recv().await.expect("terminal event");
+        match first {
+            AssistantMessageEvent::Error { reason, error } => {
+                assert_eq!(reason, ErrorReason::Aborted);
+                assert_eq!(error.stop_reason, StopReason::Aborted);
+                assert_eq!(error.error_message.as_deref(), Some(REQUEST_ABORTED));
+            }
+            other => panic!("expected terminal error event, got {other:?}"),
+        }
+        assert!(server.received_requests().await.unwrap().is_empty());
+    }
+
+    /// A cancellation after `start` breaks the body wait and settles the
+    /// stream aborted with `"Request was aborted"` (upstream `readMistralEvents`
+    /// abort check + catch block).
+    #[tokio::test]
+    async fn mid_stream_cancellation_settles_the_stream_aborted() {
+        let base_url = stalled_sse_server().await;
+        let token = CancellationToken::new();
+        let api = MistralConversations;
+        let mut rx = api.stream(
+            &cfg(),
+            &model(&base_url),
+            &ctx_with(vec![user_msg("hi")]),
+            &signal_options(Some(token.clone())),
+        );
+        let first = rx.recv().await.expect("start event");
+        assert!(matches!(first, AssistantMessageEvent::Start { .. }));
+        token.cancel();
+        match rx.recv().await.expect("terminal event") {
+            AssistantMessageEvent::Error { reason, error } => {
+                assert_eq!(reason, ErrorReason::Aborted);
+                assert_eq!(error.stop_reason, StopReason::Aborted);
+                assert_eq!(error.error_message.as_deref(), Some(REQUEST_WAS_ABORTED));
+            }
+            other => panic!("expected terminal error event, got {other:?}"),
+        }
     }
 }

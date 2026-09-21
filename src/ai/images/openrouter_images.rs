@@ -84,18 +84,19 @@ pub async fn generate_images(
         // Upstream wraps the SDK call in retryProviderRequest with
         // maxRetries: 0 on the client and options.maxRetries on the retry
         // helper (api/openrouter-images.ts:65-80).
-        let response = retry_provider_request(max_retries, max_retry_delay_ms, || {
-            send_request(
-                url.as_str(),
-                &api_key,
-                default_headers.as_ref(),
-                &params,
-                timeout,
-                signal.as_ref(),
-            )
-        })
-        .await
-        .map_err(|error| error.to_string())?;
+        let response =
+            retry_provider_request(max_retries, max_retry_delay_ms, signal.as_ref(), || {
+                send_request(
+                    url.as_str(),
+                    &api_key,
+                    default_headers.as_ref(),
+                    &params,
+                    timeout,
+                    signal.as_ref(),
+                )
+            })
+            .await
+            .map_err(|error| error.to_string())?;
 
         let image_response: Value =
             serde_json::from_str(&response).map_err(|error| error.to_string())?;

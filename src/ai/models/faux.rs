@@ -15,15 +15,20 @@
 //! collection. The two serve different layers and do not share code.
 //!
 //! Port deviations (each mirrors an existing M2b ruling):
-//! - `options.signal`/`fetch`/`onResponse` are not ported; there is no
-//!   mid-stream abort path, so `createAbortedMessage` has no reachable
-//!   caller and is not ported.
+//! - `options.signal` is the port's non-serialized
+//!   [`CancellationToken`](tokio_util::sync::CancellationToken) (upstream
+//!   `AbortSignal`): a pre-aborted stream settles with the
+//!   `createAbortedMessage` error event before `start`, and a cancellation
+//!   between paced chunks (or before a block starts) settles the same way
+//!   (upstream `streamWithDeltas`'s `signal?.aborted` checks). `fetch`/
+//!   `onResponse` are not ported.
 //! - `fetchDeferred`/`cancelDeferred` live on the [`FauxCore`] handle (and
 //!   the [`FauxProviderHandle`]), not on the [`ApiImpl`] trait — the M2b
 //!   trait dropped the deferred-response surface. The bookkeeping
 //!   (`pendingFetches`, cancellation flags, final-message memoization) is
 //!   ported faithfully and joins the routing surface when the deferred
-//!   surface does.
+//!   surface does; upstream's `fetchOptions.signal` has no port input there
+//!   yet, so deferred fetches run unabortable.
 
 use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, Mutex};
@@ -44,6 +49,7 @@ use crate::ai::types::primitives::CacheRetention;
 use crate::ai::types::primitives::{ModelCost, StopReason, Usage, UsageCost};
 use crate::ai::types::{Model, ModelInput};
 use crate::ai::{now_ms, ProviderConfig};
+use tokio_util::sync::CancellationToken;
 
 use super::provider::{create_provider, ApiImpls, CreateProviderOptions};
 use super::Provider;
@@ -454,6 +460,9 @@ impl FauxCore {
         let model = model.clone();
         let context = context.clone();
         tokio::spawn(async move {
+            let signal = options
+                .as_ref()
+                .and_then(|options| options.stream.signal.clone());
             let Some(step) = step else {
                 // Upstream faux.ts:511-521: exhausted queue settles the
                 // stream with an error message (usage-estimated).
@@ -511,6 +520,7 @@ impl FauxCore {
                     core.0.min_token_size,
                     core.0.max_token_size,
                     core.0.tokens_per_second,
+                    signal.as_ref(),
                 )
                 .await;
                 report_stream_failure(&tx, result, &core, &model).await;
@@ -527,6 +537,7 @@ impl FauxCore {
                         core.0.min_token_size,
                         core.0.max_token_size,
                         core.0.tokens_per_second,
+                        signal.as_ref(),
                     )
                     .await;
                     report_stream_failure(&tx, result, &core, &model).await;
@@ -646,6 +657,9 @@ impl FauxCore {
                         core.0.min_token_size,
                         core.0.max_token_size,
                         core.0.tokens_per_second,
+                        // Upstream `fetchOptions?.signal`; the deferred fetch
+                        // surface has no options input yet (module docs).
+                        None,
                     )
                     .await;
                     report_stream_failure(&tx, result, &core, &model).await;
@@ -657,6 +671,7 @@ impl FauxCore {
                         core.0.min_token_size,
                         core.0.max_token_size,
                         core.0.tokens_per_second,
+                        None,
                     )
                     .await;
                     report_stream_failure(&tx, result, &core, &model).await;
@@ -763,15 +778,41 @@ async fn stream_with_deltas(
     min_token_size: usize,
     max_token_size: usize,
     tokens_per_second: Option<f64>,
+    signal: Option<&CancellationToken>,
 ) -> Result<(), AssistantMessage> {
+    // Upstream `createAbortedMessage` (faux.ts:321-328): the partial keeps
+    // its state and settles aborted with the canonical message.
+    async fn abort_stream(
+        tx: &tokio::sync::mpsc::Sender<AssistantMessageEvent>,
+        partial: &AssistantMessage,
+    ) {
+        let mut aborted = partial.clone();
+        aborted.stop_reason = StopReason::Aborted;
+        aborted.error_message = Some("Request was aborted".to_string());
+        aborted.timestamp = now_ms();
+        let _ = tx
+            .send(AssistantMessageEvent::Error {
+                reason: ErrorReason::Aborted,
+                error: aborted,
+            })
+            .await;
+    }
+
     // The start event carries the initial message structure: the scripted
     // metadata with empty content and a pending stop reason
-    // (faux.ts:346, 354).
+    // (faux.ts:346, 354). A pre-aborted signal settles before `start`
+    // (faux.ts:347-353).
     let mut partial = message.clone();
     partial.content = Vec::new();
     partial.stop_reason = StopReason::Pending;
+    if signal.is_some_and(CancellationToken::is_cancelled) {
+        abort_stream(tx, &partial).await;
+        return Ok(());
+    }
     if tx
-        .send(AssistantMessageEvent::Start { message: partial })
+        .send(AssistantMessageEvent::Start {
+            message: partial.clone(),
+        })
         .await
         .is_err()
     {
@@ -779,6 +820,11 @@ async fn stream_with_deltas(
     }
 
     for (index, block) in message.content.iter().enumerate() {
+        // faux.ts:358-365: the per-block abort check.
+        if signal.is_some_and(CancellationToken::is_cancelled) {
+            abort_stream(tx, &partial).await;
+            return Ok(());
+        }
         match block {
             AssistantBlock::Thinking(thinking) => {
                 if tx
@@ -794,6 +840,11 @@ async fn stream_with_deltas(
                     split_string_by_token_size(&thinking.thinking, min_token_size, max_token_size)
                 {
                     schedule_chunk(&chunk, tokens_per_second).await;
+                    // faux.ts:370-378: the post-schedule abort check.
+                    if signal.is_some_and(CancellationToken::is_cancelled) {
+                        abort_stream(tx, &partial).await;
+                        return Ok(());
+                    }
                     if tx
                         .send(AssistantMessageEvent::ThinkingDelta {
                             content_index: index,
@@ -829,6 +880,11 @@ async fn stream_with_deltas(
                 for chunk in split_string_by_token_size(&text.text, min_token_size, max_token_size)
                 {
                     schedule_chunk(&chunk, tokens_per_second).await;
+                    // faux.ts:392-400: the post-schedule abort check.
+                    if signal.is_some_and(CancellationToken::is_cancelled) {
+                        abort_stream(tx, &partial).await;
+                        return Ok(());
+                    }
                     if tx
                         .send(AssistantMessageEvent::TextDelta {
                             content_index: index,
@@ -865,6 +921,11 @@ async fn stream_with_deltas(
                 for chunk in split_string_by_token_size(&arguments, min_token_size, max_token_size)
                 {
                     schedule_chunk(&chunk, tokens_per_second).await;
+                    // faux.ts:408-416: the post-schedule abort check.
+                    if signal.is_some_and(CancellationToken::is_cancelled) {
+                        abort_stream(tx, &partial).await;
+                        return Ok(());
+                    }
                     if tx
                         .send(AssistantMessageEvent::ToolcallDelta {
                             content_index: index,
@@ -1483,6 +1544,192 @@ mod tests {
         // No session id: no cache write either.
         assert_eq!(message.usage.cache_write, 0);
         assert_eq!(message.usage.total_tokens, 4);
+    }
+
+    // ---- abort oracles (faux-provider.test.ts "aborting" block) ----
+
+    fn paced_handle(tokens_per_second: f64) -> FauxProviderHandle {
+        faux_provider(FauxProviderOptions {
+            tokens_per_second: Some(tokens_per_second),
+            token_size: Some(FauxTokenSize {
+                min: Some(3),
+                max: Some(3),
+            }),
+            ..FauxProviderOptions::default()
+        })
+    }
+
+    fn options_with_signal(token: CancellationToken) -> Option<SimpleStreamOptions> {
+        Some(SimpleStreamOptions {
+            stream: StreamOptions {
+                signal: Some(token),
+                ..StreamOptions::default()
+            },
+            ..SimpleStreamOptions::default()
+        })
+    }
+
+    /// Collects events, cancelling the token after the first delta of
+    /// `delta_type` (matched by event type name).
+    async fn collect_aborting_on(
+        rx: tokio::sync::mpsc::Receiver<AssistantMessageEvent>,
+        token: CancellationToken,
+        delta_type: &str,
+    ) -> Vec<AssistantMessageEvent> {
+        let mut rx = rx;
+        let mut events = Vec::new();
+        while let Some(event) = rx.recv().await {
+            let cancelled = event.event_type() == delta_type;
+            events.push(event);
+            if cancelled {
+                token.cancel();
+            }
+        }
+        events
+    }
+
+    /// Oracle "supports aborting before the first chunk": a pre-cancelled
+    /// signal settles the stream with the single aborted error event before
+    /// any choreography (faux.ts:347-353).
+    #[tokio::test]
+    async fn aborting_before_the_first_chunk_yields_one_error_event() {
+        let handle = paced_handle(50.0);
+        handle.set_responses(vec![faux_assistant_message(
+            "abcdefghijklmnopqrstuvwxyz",
+            FauxMessageOptions::default(),
+        )
+        .into()]);
+        let token = CancellationToken::new();
+        token.cancel();
+        let options = SimpleStreamOptions {
+            stream: StreamOptions {
+                signal: Some(token),
+                ..StreamOptions::default()
+            },
+            ..SimpleStreamOptions::default()
+        };
+        let events = drain(stream_simple(&handle, &transcript("hi"), Some(options))).await;
+
+        assert_eq!(events.len(), 1);
+        match events.first().expect("one event") {
+            AssistantMessageEvent::Error { reason, error } => {
+                assert_eq!(*reason, ErrorReason::Aborted);
+                assert_eq!(error.stop_reason, StopReason::Aborted);
+            }
+            other => panic!("expected error event, got {other:?}"),
+        }
+    }
+
+    /// Oracle "supports aborting mid-text stream when paced": cancellation
+    /// between paced chunks stops the text block before its end event.
+    #[tokio::test]
+    async fn aborting_mid_text_stream_stops_before_the_text_end() {
+        let handle = paced_handle(100.0);
+        handle.set_responses(vec![faux_assistant_message(
+            "abcdefghijklmnopqrstuvwxyz",
+            FauxMessageOptions::default(),
+        )
+        .into()]);
+        let token = CancellationToken::new();
+        let events = collect_aborting_on(
+            stream_simple(
+                &handle,
+                &transcript("hi"),
+                options_with_signal(token.clone()),
+            ),
+            token,
+            "text_delta",
+        )
+        .await;
+
+        let names = event_names(&events);
+        assert_eq!(
+            names.iter().filter(|name| **name == "text_delta").count(),
+            1
+        );
+        assert!(names.contains(&"text_start"));
+        assert!(names.contains(&"text_delta"));
+        assert!(names.contains(&"error"));
+        assert!(!names.contains(&"text_end"));
+    }
+
+    /// Oracle "supports aborting mid-thinking stream when paced".
+    #[tokio::test]
+    async fn aborting_mid_thinking_stream_stops_before_the_thinking_end() {
+        let handle = paced_handle(100.0);
+        handle.set_responses(vec![faux_assistant_message(
+            vec![faux_thinking("abcdefghijklmnopqrstuvwxyz")],
+            FauxMessageOptions::default(),
+        )
+        .into()]);
+        let token = CancellationToken::new();
+        let events = collect_aborting_on(
+            stream_simple(
+                &handle,
+                &transcript("hi"),
+                options_with_signal(token.clone()),
+            ),
+            token,
+            "thinking_delta",
+        )
+        .await;
+
+        let names = event_names(&events);
+        assert_eq!(
+            names
+                .iter()
+                .filter(|name| **name == "thinking_delta")
+                .count(),
+            1
+        );
+        assert!(names.contains(&"thinking_start"));
+        assert!(names.contains(&"thinking_delta"));
+        assert!(names.contains(&"error"));
+        assert!(!names.contains(&"thinking_end"));
+    }
+
+    /// Oracle "supports aborting mid-toolcall stream when paced".
+    #[tokio::test]
+    async fn aborting_mid_toolcall_stream_stops_before_the_toolcall_end() {
+        let handle = paced_handle(100.0);
+        handle.set_responses(vec![faux_assistant_message(
+            vec![faux_tool_call(
+                "echo",
+                serde_json::json!({"text": "abcdefghijklmnopqrstuvwxyz", "count": 123456789}),
+                FauxToolCallOptions {
+                    id: Some("tool-1".to_string()),
+                },
+            )],
+            FauxMessageOptions {
+                stop_reason: Some(StopReason::ToolUse),
+                ..FauxMessageOptions::default()
+            },
+        )
+        .into()]);
+        let token = CancellationToken::new();
+        let events = collect_aborting_on(
+            stream_simple(
+                &handle,
+                &transcript("hi"),
+                options_with_signal(token.clone()),
+            ),
+            token,
+            "toolcall_delta",
+        )
+        .await;
+
+        let names = event_names(&events);
+        assert_eq!(
+            names
+                .iter()
+                .filter(|name| **name == "toolcall_delta")
+                .count(),
+            1
+        );
+        assert!(names.contains(&"toolcall_start"));
+        assert!(names.contains(&"toolcall_delta"));
+        assert!(names.contains(&"error"));
+        assert!(!names.contains(&"toolcall_end"));
     }
 
     /// Thinking and tool-call blocks produce their own choreography, and a

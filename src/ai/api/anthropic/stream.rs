@@ -20,10 +20,13 @@
 //!   (`text`/`thinking`/`signature`, tool `input`) is not observable in the
 //!   reconstructed partial until the authoritative `*_end` event — the gap the
 //!   M2a event protocol already documents for tool-call arguments.
-//! - Upstream `options.signal` aborts have no equivalent here: `StreamOptions`
-//!   carries no signal in the port, so the abort checks (lines 682-688, 791)
-//!   have no input to act on and the catch block's `"aborted"` branch is
-//!   unreachable.
+//! - `options.signal` is the port's non-serialized
+//!   [`CancellationToken`](tokio_util::sync::CancellationToken): a
+//!   pre-cancelled token or cancellation during the initial request fails
+//!   before `Start` with the retry seam's `"Request aborted"` abort error and
+//!   is never retried; a cancellation after `Start` breaks the SSE read (the
+//!   `iterateSseMessages` abort check) and the catch block settles
+//!   `stopReason: "aborted"` with `"Request was aborted"`.
 //! - `onPayload` and `onResponse` hooks land with a later task. The send seam
 //!   is [`send_stream_request`], which applies the T8 provider-request retry
 //!   port (`crate::ai::retry::retry_provider_request`) to the initial HTTP
@@ -54,7 +57,7 @@ use crate::ai::api::anthropic::request::{
 use crate::ai::api::openai_completions::stream::{
     format_http_error, parse_json_with_repair, parse_streaming_json,
 };
-use crate::ai::api::{http_client, ApiImpl};
+use crate::ai::api::{http_client, request_signal, ApiImpl, REQUEST_WAS_ABORTED};
 use crate::ai::cost::calculate_cost;
 use crate::ai::retry::{retry_provider_request, ProviderError};
 use crate::ai::transcript::{get_current_tools, resolve_transcript, TranscriptContext};
@@ -67,6 +70,7 @@ use crate::ai::types::tool::Tool;
 use crate::ai::types::Model;
 use crate::ai::{now_ms, ProviderConfig};
 use tokio::sync::mpsc;
+use tokio_util::sync::CancellationToken;
 
 /// The API id stamped on every emitted message.
 const API: &str = "anthropic-messages";
@@ -213,11 +217,14 @@ fn token_count(value: Option<&Value>) -> u64 {
 /// (upstream invokes the SDK with `maxRetries: 0` and wraps
 /// `retryProviderRequest` around the call). Retries cover transport failures
 /// and retryable statuses only — the SDK throws before the response stream is
-/// returned, so once stream bytes flow an error is never retried.
+/// returned, so once stream bytes flow an error is never retried. A
+/// cancelled signal fails the request with the abort error (upstream
+/// `createAbortError`), never retried.
 async fn send_stream_request(
     cfg: &ProviderConfig,
     assembly: &RequestAssembly,
     options: &AnthropicOptions,
+    signal: &CancellationToken,
 ) -> Result<reqwest::Response, String> {
     let url = format!("{}/v1/messages", cfg.base_url.trim_end_matches('/'));
     // The assembly headers carry the full SDK header set including the
@@ -240,7 +247,7 @@ async fn send_stream_request(
     }
     let max_retries = options.stream.max_retries.unwrap_or(0);
     let max_retry_delay_ms = options.stream.max_retry_delay_ms;
-    retry_provider_request(max_retries, max_retry_delay_ms, || async {
+    retry_provider_request(max_retries, max_retry_delay_ms, Some(signal), || async {
         let response = request
             .try_clone()
             .expect("JSON request body is buffered and clonable")
@@ -273,18 +280,28 @@ async fn run_stream_task(
 ) {
     let compat = get_anthropic_compat(&model);
     let mut state = StreamState::new(&model, &compat, &options);
-    match drive_stream(&cfg, &model, &ctx, &options, &mut state, &tx).await {
+    let signal = request_signal(&options.stream.signal);
+    match drive_stream(&cfg, &model, &ctx, &options, &signal, &mut state, &tx).await {
         Ok(()) => {}
         Err(message) => {
             // Upstream catch block (lines 817-827): the partial message keeps
-            // its content; `stopReason` settles to "error" (the `signal`
-            // aborted branch is unreachable in the port) and the thrown value
-            // becomes `errorMessage`.
-            state.output.stop_reason = StopReason::Error;
+            // its content; `stopReason` settles to "aborted" when the request
+            // signal fired, else "error", and the thrown value becomes
+            // `errorMessage`.
+            let aborted = signal.is_cancelled();
+            state.output.stop_reason = if aborted {
+                StopReason::Aborted
+            } else {
+                StopReason::Error
+            };
             state.output.error_message = Some(message);
             let _ = tx
                 .send(AssistantMessageEvent::Error {
-                    reason: ErrorReason::Error,
+                    reason: if aborted {
+                        ErrorReason::Aborted
+                    } else {
+                        ErrorReason::Error
+                    },
                     error: state.output.clone(),
                 })
                 .await;
@@ -297,6 +314,7 @@ async fn drive_stream(
     model: &Model,
     ctx: &TranscriptContext,
     options: &AnthropicOptions,
+    signal: &CancellationToken,
     state: &mut StreamState,
     tx: &mpsc::Sender<AssistantMessageEvent>,
 ) -> Result<(), String> {
@@ -313,7 +331,7 @@ async fn drive_stream(
     let is_oauth = !copilot && api_key.as_deref().is_some_and(is_oauth_token);
     let assembly = build_request(model, cfg, &normalized, options)?;
 
-    let response = send_stream_request(cfg, &assembly, options).await?;
+    let response = send_stream_request(cfg, &assembly, options, signal).await?;
 
     // Upstream line 596: `start` after the response arrives, before any event.
     let _ = tx
@@ -326,8 +344,18 @@ async fn drive_stream(
     let mut saw_message_start = false;
     let mut saw_message_stop = false;
     let mut events = response.bytes_stream().eventsource();
-    while let Some(item) = events.next().await {
-        let event = item.map_err(|error| error.to_string())?;
+    // Upstream `iterateAnthropicEvents`/`iterateSseMessages` check
+    // `signal?.aborted` on every read ("Request was aborted"); the select
+    // breaks the read the moment the token cancels.
+    loop {
+        let event = tokio::select! {
+            biased;
+            _ = signal.cancelled() => return Err(REQUEST_WAS_ABORTED.to_string()),
+            item = events.next() => match item {
+                Some(item) => item.map_err(|error| error.to_string())?,
+                None => break,
+            },
+        };
         // Upstream lines 482-484: an `error` SSE event throws with the raw
         // data payload as the message.
         if event.event == "error" {
@@ -361,13 +389,17 @@ async fn drive_stream(
         .await?;
     }
 
+    // Upstream line 791: the post-loop abort check precedes every other
+    // terminal guard.
+    if signal.is_cancelled() {
+        return Err(REQUEST_WAS_ABORTED.to_string());
+    }
     // Upstream lines 506-508: the iterator throws when the stream ends after
     // message_start without message_stop.
     if saw_message_start && !saw_message_stop {
         return Err("Anthropic stream ended before message_stop".to_string());
     }
-    // Upstream lines 795-800 (the abort branch at line 791 is unreachable in
-    // the port).
+    // Upstream lines 795-800.
     if state.output.stop_reason == StopReason::Pending {
         return Err("Anthropic stream ended without a stop reason".to_string());
     }
@@ -975,6 +1007,7 @@ mod tests {
     use super::*;
     use std::collections::BTreeMap;
 
+    use crate::ai::api::{abort_test_support::stalled_sse_server, REQUEST_ABORTED};
     use serde_json::json;
 
     use crate::ai::api::anthropic::request::options_from_simple;
@@ -1157,6 +1190,78 @@ mod tests {
             .respond_with(sse(&body))
             .mount(server)
             .await;
+    }
+
+    // ---- abort surface ----
+
+    /// A pre-cancelled signal fails the request setup (the retry seam's
+    /// `"Request aborted"` abort error) before `Start`, and the catch block
+    /// settles `stopReason: "aborted"` — upstream's pre-stream abort path.
+    #[tokio::test]
+    async fn pre_aborted_request_settles_aborted_before_start() {
+        let server = wiremock::MockServer::start().await;
+        let token = CancellationToken::new();
+        token.cancel();
+        let options = StreamOptions {
+            signal: Some(token),
+            ..StreamOptions::default()
+        };
+        let api = AnthropicMessages;
+        let mut rx = api.stream(
+            &cfg(&server),
+            &make_model(Value::Null),
+            &user_ctx(vec![user_msg("hi")]),
+            &options,
+        );
+        let first = rx.recv().await.expect("terminal event");
+        match first {
+            AssistantMessageEvent::Error { reason, error } => {
+                assert_eq!(reason, ErrorReason::Aborted);
+                assert_eq!(error.stop_reason, StopReason::Aborted);
+                assert_eq!(error.error_message.as_deref(), Some(REQUEST_ABORTED));
+            }
+            other => panic!("expected terminal error event, got {other:?}"),
+        }
+        assert!(server.received_requests().await.unwrap().is_empty());
+    }
+
+    /// A cancellation after `start` breaks the body wait and settles the
+    /// stream aborted with `"Request was aborted"` (upstream
+    /// `iterateSseMessages` abort check + catch block). The stalled server
+    /// holds the response headers back from producing any event, so only the
+    /// abort path can end the stream.
+    #[tokio::test]
+    async fn mid_stream_cancellation_settles_the_stream_aborted() {
+        let base_url = stalled_sse_server().await;
+        let cfg = ProviderConfig {
+            base_url,
+            api_key: "test-key".to_string(),
+            max_tokens: 32000,
+        };
+        let token = CancellationToken::new();
+        let options = StreamOptions {
+            signal: Some(token.clone()),
+            ..StreamOptions::default()
+        };
+        let api = AnthropicMessages;
+        let mut rx = api.stream(
+            &cfg,
+            &make_model(Value::Null),
+            &user_ctx(vec![user_msg("hi")]),
+            &options,
+        );
+        // Start arrives once the (stalled) response headers do.
+        let first = rx.recv().await.expect("start event");
+        assert!(matches!(first, AssistantMessageEvent::Start { .. }));
+        token.cancel();
+        match rx.recv().await.expect("terminal event") {
+            AssistantMessageEvent::Error { reason, error } => {
+                assert_eq!(reason, ErrorReason::Aborted);
+                assert_eq!(error.stop_reason, StopReason::Aborted);
+                assert_eq!(error.error_message.as_deref(), Some(REQUEST_WAS_ABORTED));
+            }
+            other => panic!("expected terminal error event, got {other:?}"),
+        }
     }
 
     async fn collect_stream(

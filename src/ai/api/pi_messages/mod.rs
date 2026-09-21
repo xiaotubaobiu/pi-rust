@@ -24,9 +24,12 @@
 //!   accumulator, so the final message is upstream-faithful (id/tool name and
 //!   parsed arguments included) even though the port's `start`/delta events
 //!   carry fewer fields.
-//! - Upstream `options.signal` aborts have no equivalent here: the catch
-//!   block's `"aborted"` branch (line 424) is unreachable and the failure
-//!   reason is always `"error"`.
+//! - Upstream `options.signal` is the port's non-serialized
+//!   [`CancellationToken`](tokio_util::sync::CancellationToken): a
+//!   pre-cancelled token or cancellation during the initial request fails
+//!   before `Start` with the retry seam's `"Request aborted"` abort error; a
+//!   cancellation after `Start` breaks the body read and the catch block
+//!   (line 424) settles the `"aborted"` reason.
 //! - `onPayload`/`onResponse` hooks (lines 387, 404) land with the callback
 //!   plumbing (the same deferral as the other API ports; the port's
 //!   `StreamOptions` carries no callbacks).
@@ -70,7 +73,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
 
 use crate::ai::api::openai_completions::stream::parse_streaming_json;
-use crate::ai::api::{http_client, ApiImpl};
+use crate::ai::api::{http_client, request_signal, ApiImpl, REQUEST_WAS_ABORTED};
 use crate::ai::retry::{retry_provider_request, ProviderError};
 use crate::ai::transcript::TranscriptContext;
 use crate::ai::types::content::{TextContent, ThinkingContent, ToolCall};
@@ -84,6 +87,7 @@ use crate::ai::types::primitives::{CacheRetention, StopReason, ThinkingLevel, To
 use crate::ai::types::Model;
 use crate::ai::{now_ms, ProviderConfig};
 use tokio::sync::mpsc;
+use tokio_util::sync::CancellationToken;
 
 /// The API id stamped on every emitted message.
 const API: &str = "pi-messages";
@@ -407,6 +411,7 @@ async fn send_stream_request(
     url: &str,
     payload: &Value,
     options: &PiMessagesOptions,
+    signal: &CancellationToken,
 ) -> Result<reqwest::Response, StreamFailure> {
     let api_key = resolve_api_key(model, cfg, options)?;
     let mut headers = reqwest::header::HeaderMap::new();
@@ -441,7 +446,7 @@ async fn send_stream_request(
     let last_failure: Arc<Mutex<Option<ResponseFailure>>> = Arc::new(Mutex::new(None));
     let max_retries = options.stream.max_retries.unwrap_or(0);
     let max_retry_delay_ms = options.stream.max_retry_delay_ms;
-    let result = retry_provider_request(max_retries, max_retry_delay_ms, || async {
+    let result = retry_provider_request(max_retries, max_retry_delay_ms, Some(signal), || async {
         let response = request
             .try_clone()
             .expect("JSON request body is buffered and clonable")
@@ -842,8 +847,13 @@ fn append_rewrite_diagnostic(message: &mut AssistantMessage, rewrite: Option<Val
 /// Upstream `createErrorEvent`: a fresh assistant message (the accumulated
 /// partial is discarded, matching upstream) carrying the thrown error's
 /// message, plus the `pi_messages_response_failure` diagnostic for response
-/// errors. The `aborted` reason is unreachable in the port (module docs).
-fn create_error_event(model: &Model, failure: &StreamFailure) -> AssistantMessageEvent {
+/// errors. A cancelled request signal selects the `aborted` reason
+/// (`options?.signal?.aborted ?? false`).
+fn create_error_event(
+    model: &Model,
+    failure: &StreamFailure,
+    aborted: bool,
+) -> AssistantMessageEvent {
     let mut message = AssistantMessage {
         content: Vec::new(),
         api: API.to_string(),
@@ -854,7 +864,11 @@ fn create_error_event(model: &Model, failure: &StreamFailure) -> AssistantMessag
         provider_thinking_level: None,
         diagnostics: None,
         usage: Usage::default(),
-        stop_reason: StopReason::Error,
+        stop_reason: if aborted {
+            StopReason::Aborted
+        } else {
+            StopReason::Error
+        },
         deferred: None,
         error_message: Some(failure.message.clone()),
         raw_stop_reason: None,
@@ -875,7 +889,11 @@ fn create_error_event(model: &Model, failure: &StreamFailure) -> AssistantMessag
         }]);
     }
     AssistantMessageEvent::Error {
-        reason: ErrorReason::Error,
+        reason: if aborted {
+            ErrorReason::Aborted
+        } else {
+            ErrorReason::Error
+        },
         error: message,
     }
 }
@@ -950,6 +968,7 @@ async fn drive_stream(
     model: &Model,
     ctx: &TranscriptContext,
     options: &PiMessagesOptions,
+    signal: &CancellationToken,
     tx: &mpsc::Sender<AssistantMessageEvent>,
 ) -> Result<(), StreamFailure> {
     let mut url = format!("{}/messages", cfg.base_url.trim_end_matches('/'));
@@ -957,12 +976,24 @@ async fn drive_stream(
         url = format!("{url}?debug=1");
     }
     let payload = build_payload(model, ctx, options);
-    let response = send_stream_request(cfg, model, &url, &payload, options).await?;
+    let response = send_stream_request(cfg, model, &url, &payload, options, signal).await?;
 
     let mut converter = EventConverter::new(model);
     let mut buffer: Vec<u8> = Vec::new();
     let mut events = response.bytes_stream();
-    while let Some(chunk) = events.next().await {
+    // Upstream reads the body with the request signal attached; the select
+    // breaks the read the moment the token cancels.
+    loop {
+        let chunk = tokio::select! {
+            biased;
+            _ = signal.cancelled() => {
+                return Err(StreamFailure::plain(REQUEST_WAS_ABORTED.to_string()));
+            }
+            next = events.next() => match next {
+                Some(chunk) => chunk,
+                None => break,
+            },
+        };
         let chunk = chunk.map_err(|error| StreamFailure::plain(error.to_string()))?;
         buffer.extend_from_slice(&chunk);
         normalize_crlf(&mut buffer);
@@ -974,6 +1005,9 @@ async fn drive_stream(
                 }
             }
         }
+    }
+    if signal.is_cancelled() {
+        return Err(StreamFailure::plain(REQUEST_WAS_ABORTED.to_string()));
     }
 
     // Upstream lines 302-307: a non-whitespace trailing buffer without its
@@ -1001,10 +1035,13 @@ async fn run_stream_task(
     options: PiMessagesOptions,
     tx: mpsc::Sender<AssistantMessageEvent>,
 ) {
-    match drive_stream(&cfg, &model, &ctx, &options, &tx).await {
+    let signal = request_signal(&options.stream.signal);
+    match drive_stream(&cfg, &model, &ctx, &options, &signal, &tx).await {
         Ok(()) => {}
         Err(failure) => {
-            let _ = tx.send(create_error_event(&model, &failure)).await;
+            let _ = tx
+                .send(create_error_event(&model, &failure, signal.is_cancelled()))
+                .await;
         }
     }
 }
@@ -1068,6 +1105,7 @@ impl ApiImpl for PiMessages {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ai::api::REQUEST_ABORTED;
     use crate::ai::transcript::{normalize_context, Context};
     use crate::ai::types::content::{TextContent, ThinkingContent, ToolCall};
     use crate::ai::types::events::{ErrorReason, PartialAssistant, SuccessReason};
@@ -1882,5 +1920,89 @@ mod tests {
         assert_eq!(truncated.chars().count(), 8193);
         assert!(truncated.ends_with('\u{2026}'));
         assert!(!truncated.contains("tail"));
+    }
+
+    // ---- abort surface ----
+
+    /// A pre-cancelled signal fails the request setup (the retry seam's
+    /// `"Request aborted"` abort error) before `Start`, and the catch block
+    /// settles the `aborted` reason (pi-messages.ts:424).
+    #[tokio::test]
+    async fn pre_aborted_request_settles_aborted_before_start() {
+        let server = wiremock::MockServer::start().await;
+        let token = CancellationToken::new();
+        token.cancel();
+        let cfg = keyed_cfg(&server);
+        let options = PiMessagesOptions::from_stream(StreamOptions {
+            signal: Some(token),
+            ..StreamOptions::default()
+        });
+        let api = PiMessages;
+        let model = make_model(&cfg.base_url);
+        let mut rx = api.stream_with_options(&cfg, &model, &user_ctx(), &options);
+        let first = rx.recv().await.expect("terminal event");
+        match first {
+            AssistantMessageEvent::Error { reason, error } => {
+                assert_eq!(reason, ErrorReason::Aborted);
+                assert_eq!(error.stop_reason, StopReason::Aborted);
+                assert_eq!(error.error_message.as_deref(), Some(REQUEST_ABORTED));
+            }
+            other => panic!("expected terminal error event, got {other:?}"),
+        }
+        assert!(server.received_requests().await.unwrap().is_empty());
+    }
+
+    /// A cancellation after `start` breaks the body read and settles the
+    /// `aborted` reason (upstream `readPiMessagesEvents` reads with the
+    /// request signal attached). The raw TCP server writes the response head
+    /// plus the wire `start` event and then stalls, so only the abort path
+    /// can end the stream.
+    #[tokio::test]
+    async fn mid_stream_cancellation_settles_the_stream_aborted() {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        tokio::spawn(async move {
+            use tokio::io::{AsyncReadExt, AsyncWriteExt};
+            let Ok((mut socket, _)) = listener.accept().await else {
+                return;
+            };
+            let mut buf = vec![0u8; 8192];
+            let _ = socket.read(&mut buf).await;
+            let _ = socket
+                .write_all(
+                    b"HTTP/1.1 200 OK\r\ncontent-type: text/event-stream\r\nconnection: close\r\n\r\n",
+                )
+                .await;
+            let _ = socket.write_all(b"data: {\"type\":\"start\"}\n\n").await;
+            // Hold the socket open (no further bytes) until the runtime
+            // drops the task.
+            loop {
+                tokio::time::sleep(std::time::Duration::from_secs(3600)).await;
+            }
+        });
+        let cfg = ProviderConfig {
+            base_url: format!("http://{addr}"),
+            api_key: "cfg-key".to_string(),
+            max_tokens: 16384,
+        };
+        let token = CancellationToken::new();
+        let options = PiMessagesOptions::from_stream(StreamOptions {
+            signal: Some(token.clone()),
+            ..StreamOptions::default()
+        });
+        let api = PiMessages;
+        let model = make_model(&cfg.base_url);
+        let mut rx = api.stream_with_options(&cfg, &model, &user_ctx(), &options);
+        let first = rx.recv().await.expect("start event");
+        assert!(matches!(first, AssistantMessageEvent::Start { .. }));
+        token.cancel();
+        match rx.recv().await.expect("terminal event") {
+            AssistantMessageEvent::Error { reason, error } => {
+                assert_eq!(reason, ErrorReason::Aborted);
+                assert_eq!(error.stop_reason, StopReason::Aborted);
+                assert_eq!(error.error_message.as_deref(), Some(REQUEST_WAS_ABORTED));
+            }
+            other => panic!("expected terminal error event, got {other:?}"),
+        }
     }
 }

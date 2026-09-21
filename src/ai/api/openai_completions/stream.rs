@@ -11,9 +11,13 @@
 //! Deviations from upstream, all structural:
 //! - Upstream events carry the live `partial`; the port emits events without
 //!   it and consumers reconstruct via `PartialAssistant` (the M2a contract).
-//! - Upstream `options.signal` aborts have no equivalent here: `StreamOptions`
-//!   carries no signal in the port (deferred with the other M2a omissions), so
-//!   the two abort checks (lines 682-688) have no input to act on.
+//! - Upstream `options.signal` is the port's non-serialized
+//!   [`CancellationToken`](tokio_util::sync::CancellationToken): a
+//!   pre-cancelled token or cancellation during the initial request fails
+//!   before `Start` with the retry seam's `"Request aborted"` abort error and
+//!   is never retried; a cancellation after `Start` breaks the chunk read and
+//!   the catch block settles `stopReason: "aborted"` with
+//!   `"Request was aborted"` (upstream lines 682-688).
 //! - `parseStreamingJson` (`utils/json-parse.ts`) falls back to the
 //!   `partial-json` package; no equivalent crate is a dependency, so the
 //!   partial-parse step is approximated by closing open strings/brackets and
@@ -43,7 +47,7 @@ use crate::ai::api::openai_completions::request::{
     build_request, create_grammar_tool_input_properties, is_openai_reasoning_detail,
     RequestAssembly,
 };
-use crate::ai::api::{http_client, ApiImpl};
+use crate::ai::api::{http_client, request_signal, ApiImpl, REQUEST_WAS_ABORTED};
 use crate::ai::cost::calculate_cost;
 use crate::ai::retry::{retry_provider_request, ProviderError};
 use crate::ai::transcript::{get_declared_tools, resolve_transcript, TranscriptContext};
@@ -56,6 +60,7 @@ use crate::ai::types::primitives::{StopReason, Usage, UsageCost};
 use crate::ai::types::Model;
 use crate::ai::{now_ms, ProviderConfig};
 use tokio::sync::mpsc;
+use tokio_util::sync::CancellationToken;
 
 /// The API id stamped on every emitted message.
 const API: &str = "openai-completions";
@@ -287,6 +292,7 @@ async fn send_stream_request(
     api_key: &str,
     assembly: &RequestAssembly,
     options: &SimpleStreamOptions,
+    signal: &CancellationToken,
 ) -> Result<reqwest::Response, String> {
     let url = format!("{}/chat/completions", cfg.base_url.trim_end_matches('/'));
     // Bearer auth first: assembly headers (model.headers then the caller's
@@ -313,7 +319,7 @@ async fn send_stream_request(
     }
     let max_retries = options.stream.max_retries.unwrap_or(0);
     let max_retry_delay_ms = options.stream.max_retry_delay_ms;
-    retry_provider_request(max_retries, max_retry_delay_ms, || async {
+    retry_provider_request(max_retries, max_retry_delay_ms, Some(signal), || async {
         let response = request
             .try_clone()
             .expect("JSON request body is buffered and clonable")
@@ -345,12 +351,14 @@ async fn run_stream_task(
     tx: mpsc::Sender<AssistantMessageEvent>,
 ) {
     let mut state = StreamState::new(&model);
-    match drive_stream(&cfg, &model, &ctx, &options, &mut state, &tx).await {
+    let signal = request_signal(&options.stream.signal);
+    match drive_stream(&cfg, &model, &ctx, &options, &signal, &mut state, &tx).await {
         Ok(()) => {}
         Err(message) => {
             // Upstream catch block (lines 701-724): thinking signatures get
-            // the streamed reasoning details; stopReason/errorMessage settle;
-            // the error event carries the partial message.
+            // the streamed reasoning details; stopReason settles to "aborted"
+            // when the request signal fired, else "error"; the thrown value
+            // becomes the errorMessage carried by the error event.
             if let Some(details) = &state.streamed_reasoning_details {
                 if let Ok(signature) = serde_json::to_string(details) {
                     for block in &mut state.output.content {
@@ -360,11 +368,20 @@ async fn run_stream_task(
                     }
                 }
             }
-            state.output.stop_reason = StopReason::Error;
+            let aborted = signal.is_cancelled();
+            state.output.stop_reason = if aborted {
+                StopReason::Aborted
+            } else {
+                StopReason::Error
+            };
             state.output.error_message = Some(message);
             let _ = tx
                 .send(AssistantMessageEvent::Error {
-                    reason: ErrorReason::Error,
+                    reason: if aborted {
+                        ErrorReason::Aborted
+                    } else {
+                        ErrorReason::Error
+                    },
                     error: state.output.clone(),
                 })
                 .await;
@@ -377,6 +394,7 @@ async fn drive_stream(
     model: &Model,
     ctx: &TranscriptContext,
     options: &SimpleStreamOptions,
+    signal: &CancellationToken,
     state: &mut StreamState,
     tx: &mpsc::Sender<AssistantMessageEvent>,
 ) -> Result<(), String> {
@@ -396,7 +414,7 @@ async fn drive_stream(
     )?;
     let assembly = build_request(model, cfg, &normalized, options, &compat)?;
 
-    let response = send_stream_request(cfg, &api_key, &assembly, options).await?;
+    let response = send_stream_request(cfg, &api_key, &assembly, options, signal).await?;
 
     // Upstream line 379: `start` after the response arrives, before any chunk.
     let _ = tx
@@ -406,7 +424,17 @@ async fn drive_stream(
         .await;
 
     let mut events = response.bytes_stream().eventsource();
-    while let Some(item) = events.next().await {
+    // Upstream line 682 checks `signal?.aborted` around the chunk loop; the
+    // select breaks the read the moment the token cancels.
+    loop {
+        let item = tokio::select! {
+            biased;
+            _ = signal.cancelled() => return Err(REQUEST_WAS_ABORTED.to_string()),
+            next = events.next() => match next {
+                Some(item) => item,
+                None => break,
+            },
+        };
         let event = item.map_err(|error| error.to_string())?;
         if event.data.trim() == "[DONE]" {
             break;
@@ -421,8 +449,13 @@ async fn drive_stream(
         finish_block(state, content_index, tx).await?;
     }
 
+    // Upstream line 682: the post-loop abort check precedes every other
+    // terminal guard.
+    if signal.is_cancelled() {
+        return Err(REQUEST_WAS_ABORTED.to_string());
+    }
+
     // Upstream lines 689-697: stop-reason inference and terminal checks.
-    // (The abort checks at lines 682-688 have no signal input in the port.)
     let supports_finish_reason = compat.supports_finish_reason != Some(false);
     if !state.has_finish_reason && !supports_finish_reason {
         state.output.stop_reason = if state
@@ -1471,6 +1504,7 @@ mod tests {
     use std::collections::BTreeMap;
 
     use crate::ai::api::openai_completions::request::RequestAssembly;
+    use crate::ai::api::{abort_test_support::stalled_sse_server, REQUEST_ABORTED};
     use crate::ai::transcript::{normalize_context, Context};
     use crate::ai::types::content::TextContent;
     use crate::ai::types::events::{ErrorReason, PartialAssistant, SuccessReason};
@@ -3153,5 +3187,79 @@ mod tests {
         assert_eq!(events.len(), 1, "lone error event: {events:?}");
         assert!(matches!(events[0], AssistantMessageEvent::Error { .. }));
         assert_eq!(server.received_requests().await.unwrap().len(), 1);
+    }
+
+    // ---- abort surface ----
+
+    /// A pre-cancelled signal fails the request setup (the retry seam's
+    /// `"Request aborted"` abort error) before `Start`, and the catch block
+    /// settles `stopReason: "aborted"`.
+    #[tokio::test]
+    async fn pre_aborted_request_settles_aborted_before_start() {
+        let server = wiremock::MockServer::start().await;
+        let token = CancellationToken::new();
+        token.cancel();
+        let options = SimpleStreamOptions {
+            stream: StreamOptions {
+                signal: Some(token),
+                ..StreamOptions::default()
+            },
+            ..SimpleStreamOptions::default()
+        };
+        let api = OpenAiCompletions;
+        let mut rx = api.stream_simple(
+            &cfg(&server),
+            &base_model(),
+            &user_ctx(vec![user_msg("hi")]),
+            &options,
+        );
+        let first = rx.recv().await.expect("terminal event");
+        match first {
+            AssistantMessageEvent::Error { reason, error } => {
+                assert_eq!(reason, ErrorReason::Aborted);
+                assert_eq!(error.stop_reason, StopReason::Aborted);
+                assert_eq!(error.error_message.as_deref(), Some(REQUEST_ABORTED));
+            }
+            other => panic!("expected terminal error event, got {other:?}"),
+        }
+        assert!(server.received_requests().await.unwrap().is_empty());
+    }
+
+    /// A cancellation after `start` breaks the body wait and settles the
+    /// stream aborted with `"Request was aborted"` (upstream lines 682-688).
+    #[tokio::test]
+    async fn mid_stream_cancellation_settles_the_stream_aborted() {
+        let base_url = stalled_sse_server().await;
+        let cfg = ProviderConfig {
+            base_url,
+            api_key: "k".to_string(),
+            max_tokens: 8192,
+        };
+        let token = CancellationToken::new();
+        let options = SimpleStreamOptions {
+            stream: StreamOptions {
+                signal: Some(token.clone()),
+                ..StreamOptions::default()
+            },
+            ..SimpleStreamOptions::default()
+        };
+        let api = OpenAiCompletions;
+        let mut rx = api.stream_simple(
+            &cfg,
+            &base_model(),
+            &user_ctx(vec![user_msg("hi")]),
+            &options,
+        );
+        let first = rx.recv().await.expect("start event");
+        assert!(matches!(first, AssistantMessageEvent::Start { .. }));
+        token.cancel();
+        match rx.recv().await.expect("terminal event") {
+            AssistantMessageEvent::Error { reason, error } => {
+                assert_eq!(reason, ErrorReason::Aborted);
+                assert_eq!(error.stop_reason, StopReason::Aborted);
+                assert_eq!(error.error_message.as_deref(), Some(REQUEST_WAS_ABORTED));
+            }
+            other => panic!("expected terminal error event, got {other:?}"),
+        }
     }
 }

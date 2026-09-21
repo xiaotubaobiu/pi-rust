@@ -34,9 +34,14 @@
 //!   global becomes an injectable connector; production uses
 //!   tokio-tungstenite (rustls, matching reqwest's TLS stack). The bun proxy
 //!   constructor branch (lines 971-994) has no equivalent.
-//! - `options.signal` aborts, `onPayload`/`onResponse` hooks, and `fetch`
-//!   injection have no port surface (M2a options omission): the abort
-//!   branches are unreachable, and `streamSimple`'s synchronous missing-key
+//! - `options.signal` is the port's non-serialized
+//!   [`CancellationToken`](tokio_util::sync::CancellationToken) (upstream
+//!   `AbortSignal`): it aborts the websocket dial and message reads, the SSE
+//!   header wait and body reads, the retry backoff sleeps, and settles the
+//!   catch block's `"aborted"` branch with `"Request was aborted"`
+//!   (upstream lines 330-340, 385-461, 773-833, 484-494). `onPayload`/
+//!   `onResponse` hooks and `fetch` injection have no port surface: they land
+//!   with the callback plumbing, and `streamSimple`'s synchronous missing-key
 //!   throw surfaces as the async error event (port contract, same as the
 //!   sibling ports).
 //! - The `OpenAICodexResponsesOptions` extensions have no public option
@@ -96,7 +101,7 @@ use crate::ai::api::openai_responses_shared::{
     ConvertResponsesToolsOptions, ResponsesResponse, ResponsesStreamEvent, ResponsesStreamOptions,
     ResponsesStreamProcessor,
 };
-use crate::ai::api::{http_client, pi_user_agent, ApiImpl};
+use crate::ai::api::{http_client, pi_user_agent, request_signal, ApiImpl, REQUEST_WAS_ABORTED};
 use crate::ai::retry::pattern_matches;
 use crate::ai::transcript::{
     get_declared_tools, get_initial_system_message, get_system_message_text, resolve_transcript,
@@ -111,6 +116,7 @@ use crate::ai::types::primitives::{CacheRetention, StopReason, ToolChoice, Trans
 use crate::ai::types::Model;
 use crate::ai::{now_ms, ProviderConfig};
 use tokio::sync::mpsc;
+use tokio_util::sync::CancellationToken;
 
 /// Upstream `DEFAULT_CODEX_BASE_URL` (line 52).
 const DEFAULT_CODEX_BASE_URL: &str = "https://chatgpt.com/backend-api";
@@ -426,6 +432,7 @@ async fn run_stream_task(
         },
     );
 
+    let signal = request_signal(&options.stream.signal);
     let outcome: Result<(), CodexStreamError> = async {
         // Upstream lines 265-268: `options?.apiKey` (the port adds the
         // provider-config fallback per the M2c controller ruling).
@@ -518,13 +525,21 @@ async fn run_stream_task(
                         Transport::WebsocketCached | Transport::Auto
                     ),
                     grammar_tool_input_properties: &grammar_tool_input_properties,
+                    signal: signal.clone(),
                 })
                 .await;
 
+                // Upstream reads `options?.signal?.aborted` in the catch and
+                // after success: an aborted request skips both retry arms and
+                // the post-success guard throws the abort error.
+                let aborted = signal.is_cancelled();
                 match outcome {
                     Ok(end_turn) => {
                         if let Some(end_turn) = end_turn {
                             processor.output_mut().end_turn = Some(end_turn);
+                        }
+                        if aborted {
+                            return Err(CodexStreamError::plain(REQUEST_WAS_ABORTED));
                         }
                         // Upstream lines 330-340: post-success guard, done,
                         // end.
@@ -542,15 +557,15 @@ async fn run_stream_task(
                         let connection_limit_before_start =
                             !websocket_started && error.is_connection_limit();
                         let previous_not_found = error.is_previous_response_not_found();
-                        if previous_not_found && !retried_missing_continuation {
+                        if !aborted && previous_not_found && !retried_missing_continuation {
                             retried_missing_continuation = true;
                             continue;
                         }
-                        if connection_limit_before_start && !retried_connection_limit {
+                        if !aborted && connection_limit_before_start && !retried_connection_limit {
                             retried_connection_limit = true;
                             continue;
                         }
-                        if error.is_non_transport() && !connection_limit_before_start {
+                        if aborted || (error.is_non_transport() && !connection_limit_before_start) {
                             return Err(error);
                         }
                         append_transport_failure_diagnostic(
@@ -586,11 +601,17 @@ async fn run_stream_task(
         let max_retries = options.stream.max_retries.unwrap_or(0);
         let mut response: Option<reqwest::Response> = None;
         for attempt in 0..=max_retries {
+            // Upstream line 397: a signal aborted before the attempt throws
+            // before the fetch.
+            if signal.is_cancelled() {
+                return Err(CodexStreamError::plain(REQUEST_WAS_ABORTED));
+            }
             let thrown: CodexStreamError = match send_sse_request(
                 &resolve_codex_url(Some(&model.base_url)),
                 &sse_headers,
                 &sse_body,
                 http_timeout_ms,
+                &signal,
             )
             .await
             {
@@ -611,7 +632,7 @@ async fn run_stream_task(
                                 )?,
                                 None => base_delay_ms(attempt),
                             };
-                        tokio::time::sleep(Duration::from_millis(delay)).await;
+                        sleep_or_abort(delay, &signal).await;
                         continue;
                     }
                     // Final attempt or non-retryable: the friendly/message
@@ -622,17 +643,21 @@ async fn run_stream_task(
                 Err(error) => error,
             };
 
-            // Upstream catch block (lines 442-459): the abort branch has no
-            // port input; RetryDelayExceeded rethrows, network-flavored and
-            // non-"usage limit" errors retry with the plain exponential
-            // backoff (this path also retries non-retryable statuses while
-            // attempts remain — upstream behavior).
+            // Upstream catch block (lines 442-459): an abort thrown by the
+            // fetch ("Request was aborted") rethrows without retry;
+            // RetryDelayExceeded rethrows; network-flavored and non-"usage
+            // limit" errors retry with the plain exponential backoff (this
+            // path also retries non-retryable statuses while attempts remain
+            // — upstream behavior). The backoff sleeps abort with the signal.
+            if thrown.message == REQUEST_WAS_ABORTED {
+                return Err(thrown);
+            }
             if matches!(thrown.kind, CodexStreamErrorKind::RetryDelayExceeded) {
                 return Err(thrown);
             }
             if attempt < max_retries && !thrown.message.contains("usage limit") {
                 let delay = base_delay_ms(attempt);
-                tokio::time::sleep(Duration::from_millis(delay)).await;
+                sleep_or_abort(delay, &signal).await;
                 continue;
             }
             return Err(thrown);
@@ -653,7 +678,7 @@ async fn run_stream_task(
                 })
                 .await;
         }
-        let end_turn = process_sse_stream(response, &mut processor, &tx).await?;
+        let end_turn = process_sse_stream(response, &mut processor, &tx, &signal).await?;
         if let Some(end_turn) = end_turn {
             processor.output_mut().end_turn = Some(end_turn);
         }
@@ -661,6 +686,11 @@ async fn run_stream_task(
         // Upstream post-loop guard inside processResponsesStream, then the
         // success guard (lines 481) and done (line 482).
         processor.finish().map_err(CodexStreamError::plain)?;
+        // Upstream line 481's caller: `signal?.aborted` settles the abort
+        // error before the success guard.
+        if signal.is_cancelled() {
+            return Err(CodexStreamError::plain(REQUEST_WAS_ABORTED));
+        }
         assert_successful_output(processor.output()).map_err(CodexStreamError::plain)?;
         let _ = tx
             .send(AssistantMessageEvent::Done {
@@ -676,15 +706,23 @@ async fn run_stream_task(
         Ok(()) => {}
         Err(error) => {
             // Upstream catch block (lines 484-494): the scratch cleanup is a
-            // no-op in the port (module docs), stopReason settles to "error"
-            // (the signal-aborted branch is unreachable), and the thrown
-            // value's message becomes errorMessage.
+            // no-op in the port (module docs); stopReason settles to
+            // "aborted" when the request signal fired, else "error", and the
+            // thrown value's message becomes errorMessage.
             let mut output = processor.into_output();
-            output.stop_reason = StopReason::Error;
+            output.stop_reason = if signal.is_cancelled() {
+                StopReason::Aborted
+            } else {
+                StopReason::Error
+            };
             output.error_message = Some(error.message);
             let _ = tx
                 .send(AssistantMessageEvent::Error {
-                    reason: ErrorReason::Error,
+                    reason: if signal.is_cancelled() {
+                        ErrorReason::Aborted
+                    } else {
+                        ErrorReason::Error
+                    },
                     error: output,
                 })
                 .await;
@@ -778,12 +816,15 @@ enum SseBody {
 
 /// Sends one SSE attempt (upstream lines 396-418 minus the onResponse hook).
 /// A timeout during the response-head phase reproduces the upstream message;
-/// transport failures carry reqwest's text (module docs).
+/// transport failures carry reqwest's text (module docs). The request signal
+/// (`combineAbortSignals([options?.signal, headerTimeoutSignal])` upstream)
+/// aborts the wait with the abort error message.
 async fn send_sse_request(
     url: &str,
     headers: &[(String, String)],
     body: &SseBody,
     timeout_ms: Option<u64>,
+    signal: &CancellationToken,
 ) -> Result<reqwest::Response, CodexStreamError> {
     let mut header_map = reqwest::header::HeaderMap::new();
     for (name, value) in headers {
@@ -803,24 +844,46 @@ async fn send_sse_request(
     if let Some(ms) = timeout_ms.filter(|ms| *ms > 0) {
         request = request.timeout(Duration::from_millis(ms));
     }
-    match request.send().await {
-        Ok(response) => Ok(response),
-        Err(error) if error.is_timeout() => Err(CodexStreamError::plain(format!(
-            "Codex SSE response headers timed out after {}ms",
-            timeout_ms.unwrap_or(0)
-        ))),
-        Err(error) => Err(CodexStreamError::plain(error.to_string())),
+    let future = request.send();
+    let result = tokio::select! {
+        biased;
+        _ = signal.cancelled() => Err(CodexStreamError::plain(REQUEST_WAS_ABORTED)),
+        result = future => result.map_err(|error| {
+            if error.is_timeout() {
+                CodexStreamError::plain(format!(
+                    "Codex SSE response headers timed out after {}ms",
+                    timeout_ms.unwrap_or(0)
+                ))
+            } else {
+                CodexStreamError::plain(error.to_string())
+            }
+        }),
+    };
+    result
+}
+
+/// Upstream `sleep(delayMs, options?.signal)` (lines 178-196): the backoff
+/// sleep aborts when the signal fires. Cancellation here is picked up by the
+/// loop's top-of-attempt check (or the catch's abort rethrow), so this only
+/// shortens the wait.
+async fn sleep_or_abort(delay_ms: u64, signal: &CancellationToken) {
+    tokio::select! {
+        biased;
+        _ = signal.cancelled() => {}
+        _ = tokio::time::sleep(Duration::from_millis(delay_ms)) => {}
     }
 }
 
 /// Upstream `processStream` + `parseSSE` (lines 660-674, 773-833): frame the
 /// body on blank lines, join `data:` lines, skip `[DONE]`, map codex events
 /// onto the shared processor, and stop at the terminal event. Returns the
-/// terminal event's `end_turn` value when present.
+/// terminal event's `end_turn` value when present. The signal breaks body
+/// reads on abort (`parseSSE`'s `signal?.aborted` checks).
 async fn process_sse_stream(
     response: reqwest::Response,
     processor: &mut ResponsesStreamProcessor,
     tx: &mpsc::Sender<AssistantMessageEvent>,
+    signal: &CancellationToken,
 ) -> Result<Option<bool>, CodexStreamError> {
     let mut stream = response.bytes_stream();
     let mut buffer: Vec<u8> = Vec::new();
@@ -833,18 +896,26 @@ async fn process_sse_stream(
             }
             continue;
         }
-        match stream.next().await {
-            Some(Ok(chunk)) => buffer.extend_from_slice(&chunk),
-            Some(Err(error)) => return Err(CodexStreamError::plain(error.to_string())),
-            None => {
-                // Upstream lines 794-795: EOF terminates the residual frame.
-                if buffer.iter().any(|byte| !byte.is_ascii_whitespace()) {
-                    buffer.extend_from_slice(b"\n\n");
-                    continue;
-                }
-                return Ok(end_turn);
+        let chunk = tokio::select! {
+            biased;
+            _ = signal.cancelled() => {
+                return Err(CodexStreamError::plain(REQUEST_WAS_ABORTED));
             }
-        }
+            next = stream.next() => match next {
+                Some(Ok(chunk)) => chunk,
+                Some(Err(error)) => return Err(CodexStreamError::plain(error.to_string())),
+                None => {
+                    // Upstream lines 794-795: EOF terminates the residual
+                    // frame.
+                    if buffer.iter().any(|byte| !byte.is_ascii_whitespace()) {
+                        buffer.extend_from_slice(b"\n\n");
+                        continue;
+                    }
+                    return Ok(end_turn);
+                }
+            },
+        };
+        buffer.extend_from_slice(&chunk);
     }
 }
 
@@ -1911,6 +1982,133 @@ mod tests {
         (body, request.headers.clone(), events)
     }
 
+    // ---- abort surface (openai-codex-stream.test.ts abort oracles) ----
+
+    /// Oracle "aborts SSE body reads after response headers arrive"
+    /// (openai-codex-stream.test.ts:424-527): a paced raw-TCP SSE stream
+    /// delivers one text delta; cancelling then settles the stream aborted
+    /// and no further event reaches the consumer. The raw listener stands in
+    /// for the server so the second batch stays buffered until after the
+    /// cancellation (wiremock cannot pace a body).
+    #[tokio::test]
+    async fn aborts_sse_body_reads_after_response_headers_arrive() {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let batch_two = tokio::sync::oneshot::channel::<()>();
+        let (batch_two_tx, batch_two_rx) = batch_two;
+        tokio::spawn(async move {
+            use tokio::io::{AsyncReadExt, AsyncWriteExt};
+            let Ok((mut socket, _)) = listener.accept().await else {
+                return;
+            };
+            let mut buf = vec![0u8; 8192];
+            let _ = socket.read(&mut buf).await;
+            let mut body = String::new();
+            for event in [
+                json!({
+                    "type": "response.output_item.added",
+                    "item": {"type": "message", "id": "msg_1", "role": "assistant", "status": "in_progress", "content": []},
+                }),
+                json!({"type": "response.content_part.added", "part": {"type": "output_text", "text": ""}}),
+                json!({"type": "response.output_text.delta", "delta": "one"}),
+            ] {
+                body.push_str(&format!("data: {event}\n\n"));
+            }
+            let _ = socket
+                .write_all(b"HTTP/1.1 200 OK\r\ncontent-type: text/event-stream\r\nconnection: close\r\n\r\n")
+                .await;
+            let _ = socket.write_all(body.as_bytes()).await;
+            let _ = socket.flush().await;
+            // Wait for the test to release the second batch, then stream the
+            // remaining events the cancelled client must never see.
+            let _ = batch_two_rx.await;
+            let mut rest = String::new();
+            for event in [
+                json!({"type": "response.output_text.delta", "delta": "two"}),
+                json!({
+                    "type": "response.completed",
+                    "response": {
+                        "status": "completed",
+                        "usage": {"input_tokens": 5, "output_tokens": 3, "total_tokens": 8, "input_tokens_details": {"cached_tokens": 0}},
+                    },
+                }),
+            ] {
+                rest.push_str(&format!("data: {event}\n\n"));
+            }
+            let _ = socket.write_all(rest.as_bytes()).await;
+            let _ = socket.shutdown().await;
+        });
+
+        let mut model = model();
+        model.base_url = format!("http://{addr}");
+        let ctx = ctx_with(None, vec![user_msg("Say hello")]);
+        let token = CancellationToken::new();
+        let options = sse_options(|options| {
+            options.stream.signal = Some(token.clone());
+        });
+
+        let api = OpenAiCodexResponses;
+        let mut rx = api.stream_simple(&cfg(), &model, &ctx, &options);
+        let mut deltas: Vec<String> = Vec::new();
+        let mut terminal: Option<AssistantMessageEvent> = None;
+        while terminal.is_none() {
+            match rx.recv().await {
+                Some(AssistantMessageEvent::TextDelta { delta, .. }) => {
+                    deltas.push(delta);
+                    if deltas.last().map(String::as_str) == Some("one") {
+                        token.cancel();
+                    }
+                }
+                Some(event @ AssistantMessageEvent::Done { .. })
+                | Some(event @ AssistantMessageEvent::Error { .. }) => terminal = Some(event),
+                Some(_) => {}
+                None => panic!("stream ended without a terminal event"),
+            }
+        }
+        let terminal = terminal.expect("terminal event");
+        // Release the second batch, then give the (already dropped) client
+        // connection a moment to prove no further deltas arrive.
+        let _ = batch_two_tx.send(());
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+
+        assert_eq!(deltas, vec!["one".to_string()]);
+        match terminal {
+            AssistantMessageEvent::Error { reason, error } => {
+                assert_eq!(reason, ErrorReason::Aborted);
+                assert_eq!(error.stop_reason, StopReason::Aborted);
+                assert_eq!(error.error_message.as_deref(), Some("Request was aborted"));
+            }
+            other => panic!("expected terminal error event, got {other:?}"),
+        }
+    }
+
+    /// A pre-cancelled signal fails the SSE attempt before the fetch
+    /// (upstream line 397) and settles the catch block's aborted branch.
+    #[tokio::test]
+    async fn pre_aborted_codex_stream_settles_aborted_without_a_request() {
+        let server = wiremock::MockServer::start().await;
+        let model = model_on(&server);
+        let ctx = ctx_with(None, vec![user_msg("Say hello")]);
+        let token = CancellationToken::new();
+        token.cancel();
+        let options = sse_options(|options| {
+            options.stream.signal = Some(token);
+        });
+
+        let api = OpenAiCodexResponses;
+        let mut rx = api.stream_simple(&cfg(), &model, &ctx, &options);
+        let first = rx.recv().await.expect("terminal event");
+        match first {
+            AssistantMessageEvent::Error { reason, error } => {
+                assert_eq!(reason, ErrorReason::Aborted);
+                assert_eq!(error.stop_reason, StopReason::Aborted);
+                assert_eq!(error.error_message.as_deref(), Some("Request was aborted"));
+            }
+            other => panic!("expected terminal error event, got {other:?}"),
+        }
+        assert!(server.received_requests().await.unwrap().is_empty());
+    }
+
     /// Decodes the request body (zstd when `content-encoding` says so).
     fn decode_request_body(request: &wiremock::Request) -> Value {
         if request
@@ -2942,6 +3140,86 @@ mod tests {
         assert_eq!(stats.connections_reused, 0);
         assert_eq!(stats.cached_context_requests, 1);
         assert_eq!(stats.full_context_requests, 1);
+        drop(guard);
+    }
+
+    /// A cancellation mid websocket stream settles the catch block's
+    /// `"aborted"` branch with `"Request was aborted"` (upstream lines
+    /// 330-340 + 484-494): the abort skips both retry arms, breaks the
+    /// message read, and never falls back to SSE.
+    #[tokio::test]
+    async fn websocket_mid_stream_cancellation_settles_the_stream_aborted() {
+        let guard = WsGuard::acquire().await;
+        let server = wiremock::MockServer::start().await;
+        let log = Arc::new(WsLog::default());
+        websocket::set_connector_for_tests(Some(mock_connector(
+            log.clone(),
+            Arc::new(MockConfig {
+                // The protocol prefix plus one delta, then silence: only the
+                // abort path can end the stream.
+                per_send: Box::new(|_, send_index| {
+                    if send_index == 1 {
+                        vec![
+                            ws_frame(
+                                json!({"type": "response.created", "response": {"id": "resp_1"}}),
+                            ),
+                            ws_frame(json!({
+                                "type": "response.output_item.added",
+                                "item": {"type": "message", "id": "msg_1", "role": "assistant", "status": "in_progress", "content": []},
+                            })),
+                            ws_frame(
+                                json!({"type": "response.content_part.added", "part": {"type": "output_text", "text": ""}}),
+                            ),
+                            ws_frame(json!({
+                                "type": "response.output_text.delta",
+                                "delta": "Hello",
+                            })),
+                        ]
+                    } else {
+                        Vec::new()
+                    }
+                }),
+                connect_hangs: false,
+            }),
+        )));
+        let model = model_on(&server);
+        let ctx = ctx_with(Some("You are helpful."), vec![user_msg("Say hello")]);
+        let token = CancellationToken::new();
+        let options = sse_options(|options| {
+            options.stream.transport = Some(Transport::Websocket);
+            options.stream.signal = Some(token.clone());
+        });
+
+        let api = OpenAiCodexResponses;
+        let mut rx = api.stream_simple(&cfg(), &model, &ctx, &options);
+        let mut deltas: Vec<String> = Vec::new();
+        while deltas.is_empty() {
+            let next = tokio::time::timeout(std::time::Duration::from_secs(3), rx.recv())
+                .await
+                .expect("timed out waiting for first delta");
+            match next {
+                Some(AssistantMessageEvent::Start { .. })
+                | Some(AssistantMessageEvent::TextStart { .. }) => {}
+                Some(AssistantMessageEvent::TextDelta { delta, .. }) => deltas.push(delta),
+                Some(other) => panic!("unexpected event before delta: {other:?}"),
+                None => panic!("stream ended before any delta"),
+            }
+        }
+        token.cancel();
+        let terminal = tokio::time::timeout(std::time::Duration::from_secs(3), rx.recv())
+            .await
+            .expect("timed out waiting for terminal event after abort")
+            .expect("terminal event");
+        match terminal {
+            AssistantMessageEvent::Error { reason, error } => {
+                assert_eq!(reason, ErrorReason::Aborted);
+                assert_eq!(error.stop_reason, StopReason::Aborted);
+                assert_eq!(error.error_message.as_deref(), Some("Request was aborted"));
+            }
+            other => panic!("expected terminal error event, got {other:?}"),
+        }
+        // No SSE fallback request was issued.
+        assert!(server.received_requests().await.unwrap().is_empty());
         drop(guard);
     }
 

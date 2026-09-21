@@ -28,10 +28,15 @@
 //!   pattern subset upstream uses (literals, `.` = any single character, `?` =
 //!   optional previous character) is matched by a small interpreter
 //!   ([`pattern_matches`]). Case folding is ASCII; every pattern is ASCII.
-//! - `abortableSleep`/`signal` have no port equivalent (the M2a options
-//!   omission applies to the retry loops too), so abort-during-backoff is
-//!   unreachable; the abort branches of both upstream loops are documented
-//!   rather than ported.
+//! - The abort signal is the port's [`CancellationToken`] (upstream
+//!   `AbortSignal`, `Option` because upstream signals are optional):
+//!   `retry_provider_request` fails fast with the `"Request aborted"` abort
+//!   error when the token is already cancelled (upstream's SDK rejects
+//!   inside the attempt instead — the observable outcome is identical), and
+//!   both loops' backoff sleeps race the token (`abortableSleep`). The
+//!   assistant-call retry normalizes a backoff abort to the final error
+//!   message with `stopReason: "aborted"` and the errorMessage stripped,
+//!   exactly like upstream's `RetrySleepAbortError` handling.
 //! - `retry-after` in HTTP-date form (upstream's `Date.parse` branch) is not
 //!   supported: the port parses the numeric seconds form only and falls
 //!   through to the exponential fallback otherwise.
@@ -45,6 +50,9 @@
 
 use std::time::Duration;
 
+use tokio_util::sync::CancellationToken;
+
+use crate::ai::api::REQUEST_ABORTED;
 use crate::ai::types::message::AssistantMessage;
 use crate::ai::types::primitives::StopReason;
 
@@ -215,25 +223,39 @@ fn pseudo_random_fraction() -> f64 {
 /// request-producing closure with bounded retries over
 /// [`is_retryable_provider_error`] failures. Each retry is a fresh request
 /// (the closure re-sends), so upstream's `X-Stainless-Retry-Count: 0`
-/// invariant holds trivially. The abort-signal branches have no port
-/// equivalent (module docs).
+/// invariant holds trivially. The signal (upstream
+/// `options.signal`, [`REQUEST_ABORTED`] is the abort error) wins over any
+/// outcome: a token already cancelled rejects with the abort error before the
+/// first dial (upstream rejects inside the attempt via the SDK's signal
+/// check), a failure with the token cancelled rejects with the abort error
+/// instead of the attempt's error (upstream's catch-top check), and the
+/// backoff sleep races the token (`abortableSleep`).
 ///
 /// `max_retries` is upstream `options.maxRetries ?? 0` — the initial call
 /// never counts as a retry, and `0` disables retrying.
 pub async fn retry_provider_request<T, F, Fut>(
     max_retries: u32,
     max_retry_delay_ms: Option<u64>,
+    signal: Option<&CancellationToken>,
     mut request: F,
 ) -> Result<T, ProviderError>
 where
     F: FnMut() -> Fut,
     Fut: std::future::Future<Output = Result<T, ProviderError>>,
 {
+    // Upstream checks `options.signal?.aborted` at the top of the catch; a
+    // token already cancelled when the call starts rejects identically.
+    if signal.is_some_and(CancellationToken::is_cancelled) {
+        return Err(ProviderError::transport(REQUEST_ABORTED));
+    }
     let mut retries_remaining = max_retries;
     loop {
         match request().await {
             Ok(value) => return Ok(value),
             Err(error) => {
+                if signal.is_some_and(CancellationToken::is_cancelled) {
+                    return Err(ProviderError::transport(REQUEST_ABORTED));
+                }
                 if retries_remaining == 0 || !is_retryable_provider_error(&error) {
                     return Err(error);
                 }
@@ -241,7 +263,16 @@ where
                 retries_remaining -= 1;
                 let delay = get_retry_delay_ms(&error, retry_index, max_retry_delay_ms)
                     .map_err(ProviderError::transport)?;
-                tokio::time::sleep(Duration::from_millis(delay)).await;
+                match signal {
+                    Some(signal) => tokio::select! {
+                        biased;
+                        _ = signal.cancelled() => {
+                            return Err(ProviderError::transport(REQUEST_ABORTED));
+                        }
+                        _ = tokio::time::sleep(Duration::from_millis(delay)) => {}
+                    },
+                    None => tokio::time::sleep(Duration::from_millis(delay)).await,
+                }
             }
         }
     }
@@ -445,11 +476,14 @@ fn char_matches(pattern_char: char, text_char: char) -> bool {
 ///   backoff, emitting the callbacks in upstream order.
 ///
 /// `policy: None` or `enabled: false` returns the first response unchanged.
-/// The abort-signal branches have no port equivalent (module docs): the
-/// backoff sleep is a plain [`tokio::time::sleep`].
+/// The signal (upstream `signal?: AbortSignal`) aborts the backoff sleep:
+/// the final error message normalizes to `stopReason: "aborted"` with the
+/// errorMessage stripped (upstream's `RetrySleepAbortError` arm), so callers
+/// see the same message shape as a provider stream abort.
 pub async fn retry_assistant_call<P, Fut>(
     mut produce: P,
     policy: Option<&RetryPolicy>,
+    signal: Option<&CancellationToken>,
     callbacks: &mut RetryCallbacks,
 ) -> AssistantMessage
 where
@@ -505,7 +539,34 @@ where
         if let Some(callback) = callbacks.on_retry_scheduled.as_mut() {
             callback(attempt, max_attempts, delay_ms, &error_message);
         }
-        tokio::time::sleep(Duration::from_millis(delay_ms)).await;
+        // Upstream normalize: a backoff abort settles the pending retry as an
+        // aborted message carrying no errorMessage, reported through
+        // onRetryFinished(false, attempt, lastRetry.errorMessage).
+        let sleep = tokio::time::sleep(Duration::from_millis(delay_ms));
+        let aborted = match signal {
+            Some(signal) => {
+                let mut aborted = false;
+                tokio::select! {
+                    biased;
+                    _ = signal.cancelled() => aborted = true,
+                    _ = sleep => {}
+                }
+                aborted
+            }
+            None => {
+                sleep.await;
+                false
+            }
+        };
+        if aborted {
+            if let Some(callback) = callbacks.on_retry_finished.as_mut() {
+                callback(false, attempt, Some(error_message.as_str()));
+            }
+            let mut aborted_message = response;
+            aborted_message.stop_reason = StopReason::Aborted;
+            aborted_message.error_message = None;
+            return aborted_message;
+        }
         if let Some(callback) = callbacks.on_retry_attempt_start.as_mut() {
             callback();
         }
@@ -571,7 +632,7 @@ mod tests {
         let queue = Arc::new(Mutex::new(outcomes));
         let attempts_closure = attempts.clone();
         let start = std::time::Instant::now();
-        let result = retry_provider_request(max_retries, max_retry_delay_ms, move || {
+        let result = retry_provider_request(max_retries, max_retry_delay_ms, None, move || {
             let attempts = attempts_closure.clone();
             let queue = queue.clone();
             async move {
@@ -622,6 +683,7 @@ mod tests {
                 }
             },
             policy.as_ref(),
+            None,
             callbacks,
         )
         .await;
@@ -782,6 +844,93 @@ mod tests {
         .await;
         assert!(result.is_err());
         assert_eq!(attempts, 3);
+    }
+
+    // ---- provider-retry.test.ts ports: abort half ----
+
+    /// Oracle: "aborts a provider-requested retry delay" — aborting during
+    /// the backoff sleep rejects with the abort error without a second
+    /// attempt. `maxRetryDelayMs: 0` disables the cap so the 277403s
+    /// `retry-after` becomes one long sleep; a watcher cancels mid-sleep.
+    #[tokio::test]
+    async fn aborts_a_provider_requested_retry_delay() {
+        let token = CancellationToken::new();
+        let watcher_token = token.clone();
+        let attempts = Arc::new(AtomicU32::new(0));
+        let watcher_attempts = attempts.clone();
+        let attempts_closure = attempts.clone();
+        tokio::spawn(async move {
+            // Wait until the first attempt failed and the backoff sleep
+            // started, then abort it.
+            while watcher_attempts.load(Ordering::SeqCst) == 0 {
+                tokio::time::sleep(Duration::from_millis(5)).await;
+            }
+            watcher_token.cancel();
+        });
+        let result = retry_provider_request(2, Some(0), Some(&token), move || {
+            let attempts = attempts_closure.clone();
+            async move {
+                attempts.fetch_add(1, Ordering::SeqCst);
+                Err::<&'static str, _>(provider_error(429, &[("retry-after", "277403")]))
+            }
+        })
+        .await;
+        assert_eq!(result.unwrap_err().message, REQUEST_ABORTED);
+        assert_eq!(attempts.load(Ordering::SeqCst), 1);
+    }
+
+    /// A token cancelled before (or between) attempts turns any failure into
+    /// the abort error — upstream's catch-top
+    /// `if (options.signal?.aborted) throw createAbortError()` — bypassing
+    /// both the retryable classification and the remaining budget. Port
+    /// deviation: the pre-cancelled check fires BEFORE the first dial (the
+    /// upstream SDK rejects inside the attempt, so its request counter shows
+    /// one call), so the port's attempt count stays 0 — the observable
+    /// outcome (abort error, no retry) is identical.
+    #[tokio::test]
+    async fn pre_aborted_provider_request_fails_fast_without_retrying() {
+        let token = CancellationToken::new();
+        token.cancel();
+        let (result, attempts, _) = drive_with_signal(
+            Some(&token),
+            5,
+            None,
+            vec![
+                Err(provider_error(429, &[("retry-after-ms", "1")])),
+                Ok("ok"),
+            ],
+        )
+        .await;
+        assert_eq!(result.unwrap_err(), REQUEST_ABORTED);
+        assert_eq!(attempts, 0);
+    }
+
+    /// `drive` with an explicit signal.
+    async fn drive_with_signal(
+        signal: Option<&CancellationToken>,
+        max_retries: u32,
+        max_retry_delay_ms: Option<u64>,
+        outcomes: Vec<Result<&'static str, ProviderError>>,
+    ) -> (Result<&'static str, String>, u32, u128) {
+        let attempts = Arc::new(AtomicU32::new(0));
+        let queue = Arc::new(Mutex::new(outcomes));
+        let attempts_closure = attempts.clone();
+        let start = std::time::Instant::now();
+        let result = retry_provider_request(max_retries, max_retry_delay_ms, signal, move || {
+            let attempts = attempts_closure.clone();
+            let queue = queue.clone();
+            async move {
+                attempts.fetch_add(1, Ordering::SeqCst);
+                queue.lock().unwrap().remove(0)
+            }
+        })
+        .await
+        .map_err(|error| error.message);
+        (
+            result,
+            attempts.load(Ordering::SeqCst),
+            start.elapsed().as_millis(),
+        )
     }
 
     // ---- exponential fallback formula ----
@@ -1116,6 +1265,64 @@ mod tests {
         assert_eq!(result.stop_reason, StopReason::Error);
         assert_eq!(attempts, 1);
         assert_eq!(scheduled.load(Ordering::SeqCst), 0);
+    }
+
+    /// Oracle (retry.test.ts): "aborts backoff sleep via signal, returns an
+    /// aborted message, and emits onRetryFinished(false)" — the backoff
+    /// cancellation normalizes the last error message to
+    /// `stopReason: "aborted"` with the errorMessage stripped.
+    #[tokio::test]
+    async fn aborts_backoff_sleep_and_returns_an_aborted_message() {
+        let token = CancellationToken::new();
+        let watcher_token = token.clone();
+        let attempts = Arc::new(AtomicU32::new(0));
+        let watcher_attempts = attempts.clone();
+        let produce_attempts = attempts.clone();
+        let finished: FinishedLog = Arc::new(Mutex::new(Vec::new()));
+        let finished_callback = finished.clone();
+        tokio::spawn(async move {
+            // Let one error call resolve and the first backoff sleep start,
+            // then abort.
+            while watcher_attempts.load(Ordering::SeqCst) == 0 {
+                tokio::time::sleep(Duration::from_millis(5)).await;
+            }
+            watcher_token.cancel();
+        });
+        let enabled = RetryPolicy {
+            enabled: true,
+            max_retries: 5,
+            base_delay_ms: 10_000,
+            max_agent_delay_ms: None,
+        };
+        let result = retry_assistant_call(
+            move || {
+                let attempts = produce_attempts.clone();
+                async move {
+                    attempts.fetch_add(1, Ordering::SeqCst);
+                    error_msg("terminated")
+                }
+            },
+            Some(&enabled),
+            Some(&token),
+            &mut RetryCallbacks {
+                on_retry_finished: Some(Box::new(move |success, attempt, error| {
+                    finished_callback.lock().unwrap().push((
+                        success,
+                        attempt,
+                        error.map(str::to_string),
+                    ));
+                })),
+                ..Default::default()
+            },
+        )
+        .await;
+        assert_eq!(result.stop_reason, StopReason::Aborted);
+        assert_eq!(result.error_message, None);
+        assert_eq!(attempts.load(Ordering::SeqCst), 1);
+        assert_eq!(
+            *finished.lock().unwrap(),
+            [(false, 1, Some("terminated".to_string()))]
+        );
     }
 
     #[tokio::test]

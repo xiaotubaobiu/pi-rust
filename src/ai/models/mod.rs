@@ -943,31 +943,36 @@ async fn route_stream(
     })?;
 
     // applyAuth (models.ts:648-677) — getAuth(model) with the explicit
-    // per-field overrides. The port's request options carry no signal
-    // (dropped with the M2b stream signatures).
-    let (options_api_key, options_env, options_headers, transform_headers) = match &options {
-        RoutedOptions::Api {
-            stream,
-            transform_headers,
-        } => (
-            stream.api_key.clone(),
-            stream.env.clone(),
-            stream.headers.clone(),
-            transform_headers.clone(),
-        ),
-        RoutedOptions::Simple {
-            simple,
-            transform_headers,
-        } => (
-            simple.stream.api_key.clone(),
-            simple.stream.env.clone(),
-            simple.stream.headers.clone(),
-            transform_headers.clone(),
-        ),
-    };
+    // per-field overrides, including the request signal (the M2d
+    // cancellation surface: an abort during auth resolution rejects the
+    // setup, surfacing as the routing error event).
+    let (options_api_key, options_env, options_headers, routed_signal, transform_headers) =
+        match &options {
+            RoutedOptions::Api {
+                stream,
+                transform_headers,
+            } => (
+                stream.api_key.clone(),
+                stream.env.clone(),
+                stream.headers.clone(),
+                stream.signal.clone(),
+                transform_headers.clone(),
+            ),
+            RoutedOptions::Simple {
+                simple,
+                transform_headers,
+            } => (
+                simple.stream.api_key.clone(),
+                simple.stream.env.clone(),
+                simple.stream.headers.clone(),
+                simple.stream.signal.clone(),
+                transform_headers.clone(),
+            ),
+        };
     let overrides = AuthResolutionOverrides {
         api_key: options_api_key.clone(),
         env: options_env.clone(),
+        signal: routed_signal,
         ..AuthResolutionOverrides::default()
     };
     let resolution = resolve_provider_auth(
@@ -2309,6 +2314,77 @@ mod tests {
                 .as_deref(),
             Some("resolved-key")
         );
+    }
+
+    /// The request signal rides the routing: a token set on the caller's
+    /// options reaches the owning provider's ApiImpl on both option shapes
+    /// (upstream threads `options.signal` through `applyAuth` into the API
+    /// call), and it also scopes the auth resolution itself.
+    #[tokio::test]
+    async fn stream_threads_the_request_signal_to_the_api_impl() {
+        let api = RecordingApi::new();
+        let mut models = create_models(CreateModelsOptions::default());
+        models.set_provider(test_provider_with_auth_and_api(
+            "p1",
+            vec![test_model("p1", "model-a")],
+            auth_with(EnvKeyAuthFixture::env("env-key")),
+            ApiImpls::Single(Arc::clone(&api) as Arc<dyn ApiImpl>),
+        ));
+        let model = test_model("p1", "model-a");
+        let context = user_context();
+
+        let token = CancellationToken::new();
+        let message = models
+            .complete(
+                &model,
+                &context,
+                Some(ModelsApiStreamOptions {
+                    stream: StreamOptions {
+                        signal: Some(token.clone()),
+                        ..StreamOptions::default()
+                    },
+                    transform_headers: None,
+                }),
+            )
+            .await;
+        assert_eq!(message.stop_reason, StopReason::Stop);
+        // A clone of the recorded token shares the cancellation state with
+        // the caller's token (tokio-util token equality is pointer identity).
+        let recorded = api.recorded();
+        let routed = recorded[0]
+            .stream
+            .as_ref()
+            .and_then(|options| options.signal.clone())
+            .expect("api signal recorded");
+        assert!(routed.is_cancelled() == token.is_cancelled());
+        token.cancel();
+        assert!(routed.is_cancelled());
+
+        let simple_token = CancellationToken::new();
+        let _ = models
+            .complete_simple(
+                &model,
+                &context,
+                Some(ModelsSimpleStreamOptions {
+                    simple: SimpleStreamOptions {
+                        stream: StreamOptions {
+                            signal: Some(simple_token.clone()),
+                            ..StreamOptions::default()
+                        },
+                        ..SimpleStreamOptions::default()
+                    },
+                    transform_headers: None,
+                }),
+            )
+            .await;
+        let recorded = api.recorded();
+        let routed = recorded[1]
+            .simple
+            .as_ref()
+            .and_then(|options| options.stream.signal.clone())
+            .expect("api signal recorded");
+        simple_token.cancel();
+        assert!(routed.is_cancelled());
     }
 
     /// Oracle "adds model headers only for model auth and transforms

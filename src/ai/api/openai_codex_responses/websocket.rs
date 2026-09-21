@@ -33,11 +33,13 @@ use super::{map_codex_event, CodexMapped, CodexStreamError, CODEX_TOOL_CALL_PROV
 use crate::ai::api::openai_responses_shared::{
     convert_responses_messages, ConvertResponsesMessagesOptions, ResponsesStreamProcessor,
 };
+use crate::ai::api::REQUEST_WAS_ABORTED;
 use crate::ai::now_ms;
 use crate::ai::transcript::{normalize_context, Context};
 use crate::ai::types::events::AssistantMessageEvent;
 use crate::ai::types::message::Message;
 use crate::ai::types::Model;
+use tokio_util::sync::CancellationToken;
 
 /// Upstream `SESSION_WEBSOCKET_CACHE_TTL_MS` (line 840): how long an idle
 /// cached socket stays open.
@@ -307,20 +309,38 @@ pub(crate) fn set_connector_for_tests(connector: Option<Arc<dyn WsConnector>>) {
 
 /// Upstream `connectWebSocket` (lines 1049-1125) minus the bun proxy branch:
 /// dial through the connector under the connect timeout; a timeout fails
-/// with the upstream message text.
+/// with the upstream message text. A cancelled signal aborts the dial with
+/// the abort error (upstream rejects `connectWebSocket` on `signal.aborted`).
 async fn connect_websocket(
     url: &str,
     headers: &[(String, String)],
     connect_timeout_ms: Option<u64>,
+    signal: &CancellationToken,
 ) -> Result<WsConnection, String> {
+    if signal.is_cancelled() {
+        return Err(REQUEST_WAS_ABORTED.to_string());
+    }
     let future = connector().connect(url.to_string(), headers.to_vec());
     let timeout = connect_timeout_ms.filter(|ms| *ms > 0);
     match timeout {
-        Some(ms) => match tokio::time::timeout(Duration::from_millis(ms), future).await {
-            Ok(result) => result,
-            Err(_elapsed) => Err(format!("WebSocket connect timeout after {ms}ms")),
-        },
-        None => future.await,
+        Some(ms) => {
+            let dial = tokio::select! {
+                biased;
+                _ = signal.cancelled() => return Err(REQUEST_WAS_ABORTED.to_string()),
+                result = tokio::time::timeout(Duration::from_millis(ms), future) => result,
+            };
+            match dial {
+                Ok(result) => result,
+                Err(_elapsed) => Err(format!("WebSocket connect timeout after {ms}ms")),
+            }
+        }
+        None => {
+            tokio::select! {
+                biased;
+                _ = signal.cancelled() => Err(REQUEST_WAS_ABORTED.to_string()),
+                result = future => result,
+            }
+        }
     }
 }
 
@@ -589,16 +609,18 @@ enum AcquirePlan {
     FreshCached,
 }
 
-/// Upstream `acquireWebSocket` (lines 1127-1222).
+/// Upstream `acquireWebSocket` (lines 1127-1222). The request signal aborts
+/// any dial (`connectWebSocket`'s signal parameter).
 pub(crate) async fn acquire_websocket(
     url: &str,
     headers: &[(String, String)],
     session_id: Option<&str>,
     account_id: &str,
     connect_timeout_ms: Option<u64>,
+    signal: &CancellationToken,
 ) -> Result<AcquiredWebSocket, String> {
     let Some(session_id) = session_id else {
-        let socket = connect_websocket(url, headers, connect_timeout_ms).await?;
+        let socket = connect_websocket(url, headers, connect_timeout_ms, signal).await?;
         return Ok(AcquiredWebSocket {
             socket,
             cached: false,
@@ -664,7 +686,7 @@ pub(crate) async fn acquire_websocket(
             })
         }
         AcquirePlan::FreshOneShot => {
-            let socket = connect_websocket(url, headers, connect_timeout_ms).await?;
+            let socket = connect_websocket(url, headers, connect_timeout_ms, signal).await?;
             Ok(AcquiredWebSocket {
                 socket,
                 cached: false,
@@ -672,7 +694,7 @@ pub(crate) async fn acquire_websocket(
             })
         }
         AcquirePlan::FreshCached => {
-            let socket = connect_websocket(url, headers, connect_timeout_ms).await?;
+            let socket = connect_websocket(url, headers, connect_timeout_ms, signal).await?;
             let mut cache = SESSION_CACHE.lock().unwrap();
             let accounts = cache.entry(session_id.to_string()).or_default();
             let entry = accounts
@@ -894,6 +916,9 @@ pub(crate) struct WsAttempt<'a> {
     /// The request's grammar map (upstream line 1541 forwards it to the
     /// continuation conversion).
     pub grammar_tool_input_properties: &'a std::collections::HashMap<String, String>,
+    /// The request signal (upstream `options?.signal`): aborts the dial and
+    /// the message reads.
+    pub signal: CancellationToken,
 }
 
 /// One attempt over the websocket transport. Returns the `end_turn` value
@@ -916,6 +941,7 @@ pub(crate) async fn process_websocket_stream(
         account_id,
         use_cached_context,
         grammar_tool_input_properties,
+        signal,
     } = attempt;
 
     let acquired = acquire_websocket(
@@ -924,6 +950,7 @@ pub(crate) async fn process_websocket_stream(
         cache_session_id,
         account_id,
         connect_timeout_ms,
+        &signal,
     )
     .await
     .map_err(CodexStreamError::plain)?;
@@ -1005,6 +1032,7 @@ pub(crate) async fn process_websocket_stream(
         start_emitted,
         attempt_started,
         idle_timeout_ms,
+        signal: &signal,
     })
     .await;
 
@@ -1095,6 +1123,7 @@ async fn drive_websocket_stream(
         start_emitted,
         attempt_started,
         idle_timeout_ms,
+        signal,
     } = drive;
 
     let incoming = &mut socket.incoming;
@@ -1104,22 +1133,44 @@ async fn drive_websocket_stream(
     let mut first_event_seen = false;
 
     loop {
-        let event = match idle_timeout_ms {
-            Some(ms) if ms > 0 => {
-                match tokio::time::timeout(Duration::from_millis(ms), incoming.recv()).await {
-                    Ok(event) => event,
-                    Err(_elapsed) => {
-                        socket.close_silently(1000, "idle_timeout");
-                        failed = Some(CodexStreamError::plain(format!(
-                            "WebSocket idle timeout after {ms}ms"
-                        )));
-                        break;
-                    }
-                }
+        // Upstream `parseWebSocket` aborts the read when the signal fires
+        // ("Request was aborted"); the select breaks the receive the moment
+        // the token cancels, ahead of the idle timeout.
+        enum Received {
+            Event(Option<WsEvent>),
+            IdleTimeout,
+        }
+        let received = tokio::select! {
+            biased;
+            _ = signal.cancelled() => {
+                failed = Some(CodexStreamError::plain(REQUEST_WAS_ABORTED.to_string()));
+                break;
             }
-            _ => incoming.recv().await,
+            received = async {
+                match idle_timeout_ms {
+                    Some(ms) if ms > 0 => {
+                        match tokio::time::timeout(Duration::from_millis(ms), incoming.recv())
+                            .await
+                        {
+                            Ok(event) => Received::Event(event),
+                            Err(_elapsed) => Received::IdleTimeout,
+                        }
+                    }
+                    _ => Received::Event(incoming.recv().await),
+                }
+            } => received,
         };
-
+        let event = match received {
+            Received::IdleTimeout => {
+                socket.close_silently(1000, "idle_timeout");
+                let ms = idle_timeout_ms.unwrap_or(0);
+                failed = Some(CodexStreamError::plain(format!(
+                    "WebSocket idle timeout after {ms}ms"
+                )));
+                break;
+            }
+            Received::Event(event) => event,
+        };
         let Some(event) = event else {
             // The bridge ended without a close event.
             if !saw_completion {
@@ -1218,6 +1269,9 @@ struct DriveWebSocketStream<'a> {
     start_emitted: &'a mut bool,
     attempt_started: &'a mut bool,
     idle_timeout_ms: Option<u64>,
+    /// The request signal (upstream `parseWebSocket`'s `signal`): breaks the
+    /// message read on abort.
+    signal: &'a CancellationToken,
 }
 
 /// Upstream `extractWebSocketCloseError` (lines 1245-1262).

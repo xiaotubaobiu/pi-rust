@@ -102,7 +102,7 @@ use crate::ai::api::google_shared::{
 use crate::ai::api::openai_completions::request::{
     clamp_max_tokens_to_context, clamp_thinking_level, remove_header, set_header,
 };
-use crate::ai::api::{http_client, pi_user_agent, ApiImpl};
+use crate::ai::api::{http_client, pi_user_agent, request_signal, ApiImpl, REQUEST_WAS_ABORTED};
 use crate::ai::cost::calculate_cost;
 use crate::ai::retry::ProviderError;
 use crate::ai::transcript::{
@@ -117,6 +117,7 @@ use crate::ai::types::primitives::{StopReason, ThinkingBudgets, ToolChoice, Usag
 use crate::ai::types::Model;
 use crate::ai::{now_ms, ProviderConfig};
 use tokio::sync::mpsc;
+use tokio_util::sync::CancellationToken;
 
 /// The API id stamped on every emitted message.
 const API: &str = "google-vertex";
@@ -384,6 +385,7 @@ async fn run_stream_task(
         end_turn: None,
         timestamp: now_ms(),
     };
+    let signal = request_signal(&stream_options.signal);
     let outcome: Result<(), String> = async {
         // Upstream order: streamSimple's thinking-map resolution (lines
         // 316-353) throws before `stream` runs; inside `stream` the client
@@ -400,7 +402,7 @@ async fn run_stream_task(
         let params = build_params(&model, &ctx, &google)?;
         let url = resolve_endpoint(&model)?;
 
-        let response = send_stream_request(&url, &api_key, &headers, &params, &google)
+        let response = send_stream_request(&url, &api_key, &headers, &params, &google, &signal)
             .await
             .map_err(|error| error.message)?;
 
@@ -413,7 +415,17 @@ async fn run_stream_task(
 
         let mut current_block: Option<OpenBlock> = None;
         let mut events = response.bytes_stream().eventsource();
-        while let Some(item) = events.next().await {
+        // Upstream `config.abortSignal` breaks the body reads on abort; the
+        // select breaks the read the moment the token cancels.
+        loop {
+            let item = tokio::select! {
+                biased;
+                _ = signal.cancelled() => return Err(REQUEST_WAS_ABORTED.to_string()),
+                next = events.next() => match next {
+                    Some(item) => item,
+                    None => break,
+                },
+            };
             let event = item.map_err(|error| error.to_string())?;
             let payload: Value = serde_json::from_str(&event.data)
                 .map_err(|error| format!("Could not parse Google SSE chunk: {error}"))?;
@@ -438,8 +450,11 @@ async fn run_stream_task(
         // Upstream lines 261-277: flush the open block.
         close_block(&mut output, current_block.take(), &tx).await;
 
-        // Upstream lines 279-291 (the signal-aborted check has no port input)
-        // and 283-291: the pending / aborted / error guards.
+        // Upstream line 279: the post-stream abort check precedes the
+        // pending / error guards (283-291).
+        if signal.is_cancelled() {
+            return Err(REQUEST_WAS_ABORTED.to_string());
+        }
         if output.stop_reason == StopReason::Pending {
             return Err("Google Vertex stream ended without a finish reason".to_string());
         }
@@ -469,14 +484,23 @@ async fn run_stream_task(
         Ok(()) => {}
         Err(message) => {
             // Upstream catch block (lines 295-306): the `index` cleanup is a
-            // no-op here (nothing sets one) and the signal-aborted branch is
-            // unreachable, so stopReason settles to "error" and the thrown
+            // no-op here (nothing sets one); stopReason settles to "aborted"
+            // when the request signal fired, else "error", and the thrown
             // value becomes the errorMessage.
-            output.stop_reason = StopReason::Error;
+            let aborted = signal.is_cancelled();
+            output.stop_reason = if aborted {
+                StopReason::Aborted
+            } else {
+                StopReason::Error
+            };
             output.error_message = Some(message);
             let _ = tx
                 .send(AssistantMessageEvent::Error {
-                    reason: ErrorReason::Error,
+                    reason: if aborted {
+                        ErrorReason::Aborted
+                    } else {
+                        ErrorReason::Error
+                    },
                     error: output,
                 })
                 .await;
@@ -1107,12 +1131,14 @@ fn build_params(
 /// flow an error is never retried. The @google/genai SDK performs no internal
 /// retries when constructed without `retryOptions` (pi passes none), so the
 /// seam is the only retry layer. Auth is the express `x-goog-api-key` header.
+/// A cancelled signal fails the request with the abort error.
 async fn send_stream_request(
     url: &str,
     api_key: &str,
     headers: &[(String, String)],
     body: &Value,
     options: &GoogleOptions,
+    signal: &CancellationToken,
 ) -> Result<reqwest::Response, ProviderError> {
     let mut header_map = reqwest::header::HeaderMap::new();
     let auth = reqwest::header::HeaderValue::from_str(api_key).map_err(|error| {
@@ -1134,7 +1160,7 @@ async fn send_stream_request(
     }
     let max_retries = options.stream.max_retries.unwrap_or(0);
     let max_retry_delay_ms = options.stream.max_retry_delay_ms;
-    retry_google_request(max_retries, max_retry_delay_ms, || async {
+    retry_google_request(max_retries, max_retry_delay_ms, Some(signal), || async {
         let response = request
             .try_clone()
             .expect("JSON request body is buffered and clonable")
@@ -1268,6 +1294,7 @@ struct GoogleUsageMetadata {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ai::api::{abort_test_support::stalled_sse_server, REQUEST_ABORTED};
     use crate::ai::transcript::{normalize_context, Context};
     use crate::ai::types::events::PartialAssistant;
     use crate::ai::types::message::{Message, StringOrBlocks, UserMessage};
@@ -2930,5 +2957,68 @@ mod tests {
             event_types(&events),
             ["start", "text_start", "text_delta", "text_end", "done"]
         );
+    }
+
+    // ---- abort surface ----
+
+    /// A pre-cancelled signal fails the request setup (the retry seam's
+    /// `"Request aborted"` abort error) before `Start`, and the catch block
+    /// settles `stopReason: "aborted"`.
+    #[tokio::test]
+    async fn pre_aborted_request_settles_aborted_before_start() {
+        let server = wiremock::MockServer::start().await;
+        let token = CancellationToken::new();
+        token.cancel();
+        let options = StreamOptions {
+            signal: Some(token),
+            ..StreamOptions::default()
+        };
+        let api = GoogleVertex;
+        let mut rx = api.stream(
+            &cfg(),
+            &model(&server.uri()),
+            &ctx_with(vec![user_msg("hi")]),
+            &options,
+        );
+        let first = rx.recv().await.expect("terminal event");
+        match first {
+            AssistantMessageEvent::Error { reason, error } => {
+                assert_eq!(reason, ErrorReason::Aborted);
+                assert_eq!(error.stop_reason, StopReason::Aborted);
+                assert_eq!(error.error_message.as_deref(), Some(REQUEST_ABORTED));
+            }
+            other => panic!("expected terminal error event, got {other:?}"),
+        }
+        assert!(server.received_requests().await.unwrap().is_empty());
+    }
+
+    /// A cancellation after `start` breaks the body wait and settles the
+    /// stream aborted with `"Request was aborted"` (upstream line 279).
+    #[tokio::test]
+    async fn mid_stream_cancellation_settles_the_stream_aborted() {
+        let base_url = stalled_sse_server().await;
+        let token = CancellationToken::new();
+        let options = StreamOptions {
+            signal: Some(token.clone()),
+            ..StreamOptions::default()
+        };
+        let api = GoogleVertex;
+        let mut rx = api.stream(
+            &cfg(),
+            &model(&base_url),
+            &ctx_with(vec![user_msg("hi")]),
+            &options,
+        );
+        let first = rx.recv().await.expect("start event");
+        assert!(matches!(first, AssistantMessageEvent::Start { .. }));
+        token.cancel();
+        match rx.recv().await.expect("terminal event") {
+            AssistantMessageEvent::Error { reason, error } => {
+                assert_eq!(reason, ErrorReason::Aborted);
+                assert_eq!(error.stop_reason, StopReason::Aborted);
+                assert_eq!(error.error_message.as_deref(), Some(REQUEST_WAS_ABORTED));
+            }
+            other => panic!("expected terminal error event, got {other:?}"),
+        }
     }
 }
