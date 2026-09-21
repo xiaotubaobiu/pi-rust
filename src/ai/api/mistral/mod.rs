@@ -1227,14 +1227,14 @@ fn build_headers(
     set_header(&mut headers, "authorization", &format!("Bearer {api_key}"));
     set_header(&mut headers, "content-type", "application/json");
     for (name, value) in model.headers.iter().flatten() {
-        apply_header_override(&mut headers, name, Some(value));
+        apply_header_override(&mut headers, name, value.as_deref());
     }
     if let Some(option_headers) = &stream_options.headers {
         for (name, value) in option_headers {
             apply_header_override(&mut headers, name, value.as_deref());
         }
     }
-    let has_explicit_affinity = has_model_header_override(model.headers.as_ref(), "x-affinity")
+    let has_explicit_affinity = has_header_override(model.headers.as_ref(), "x-affinity")
         || has_header_override(stream_options.headers.as_ref(), "x-affinity");
     if should_use_prompt_caching(
         stream_options.cache_retention,
@@ -1271,18 +1271,6 @@ fn apply_header_override(headers: &mut Vec<(String, String)>, name: &str, value:
 /// irrelevant (a `null` override still counts as explicit).
 fn has_header_override(
     headers: Option<&crate::ai::types::options::ProviderHeaders>,
-    target: &str,
-) -> bool {
-    headers
-        .into_iter()
-        .flatten()
-        .any(|(name, _)| name.eq_ignore_ascii_case(target))
-}
-
-/// The `Model.headers` flavor of [`has_header_override`]: plain string values
-/// (upstream `Record<string, string>`), same case-insensitive presence rule.
-fn has_model_header_override(
-    headers: Option<&std::collections::BTreeMap<String, String>>,
     target: &str,
 ) -> bool {
     headers
@@ -2112,8 +2100,11 @@ mod tests {
         mount(&server, &[terminal_event("stop")]).await;
         let mut model = model(&server.uri());
         let mut model_headers = std::collections::BTreeMap::new();
-        model_headers.insert("Authorization".to_string(), "Bearer model-key".to_string());
-        model_headers.insert("X-Affinity".to_string(), "model-affinity".to_string());
+        model_headers.insert(
+            "Authorization".to_string(),
+            Some("Bearer model-key".to_string()),
+        );
+        model_headers.insert("X-Affinity".to_string(), Some("model-affinity".to_string()));
         model.headers = Some(model_headers);
         let ctx = ctx_with(vec![user_msg("hello")]);
         let mut option_headers = ProviderHeaders::new();

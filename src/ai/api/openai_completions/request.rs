@@ -1170,7 +1170,10 @@ fn build_headers(
 ) -> Vec<(String, String)> {
     let mut headers: Vec<(String, String)> = vec![("User-Agent".to_string(), pi_user_agent())];
     for (name, value) in model.headers.iter().flatten() {
-        set_header(&mut headers, name, value);
+        match value {
+            Some(value) => set_header(&mut headers, name, value),
+            None => remove_header(&mut headers, name),
+        }
     }
     if let Some(session_id) = session_id {
         if compat.send_session_affinity_headers == Some(true) {
@@ -3732,7 +3735,7 @@ mod tests {
             true,
             json!({"supportsReasoningEffort": true}),
         );
-        let mut map = HashMap::new();
+        let mut map = BTreeMap::new();
         map.insert("off".to_string(), Some("none".to_string()));
         map.insert("minimal".to_string(), None);
         map.insert("low".to_string(), None);
@@ -3901,7 +3904,7 @@ mod tests {
                 }
             }),
         );
-        let mut map = HashMap::new();
+        let mut map = BTreeMap::new();
         map.insert("xhigh".to_string(), Some("max".to_string()));
         model.thinking_level_map = Some(map);
         let mut options = opts();
@@ -3946,7 +3949,7 @@ mod tests {
             true,
             json!({"thinkingFormat":"string-thinking"}),
         );
-        let mut map = HashMap::new();
+        let mut map = BTreeMap::new();
         map.insert("off".to_string(), None);
         model.thinking_level_map = Some(map);
         let body = build(&model, &ctx_of(vec![user("Hi")]), &opts()).unwrap();
@@ -3962,7 +3965,7 @@ mod tests {
             true,
             json!({}),
         );
-        let mut map = HashMap::new();
+        let mut map = BTreeMap::new();
         map.insert("high".to_string(), Some("high".to_string()));
         model.thinking_level_map = Some(map);
         let mut options = opts();
@@ -4013,7 +4016,7 @@ mod tests {
             true,
             json!({}),
         );
-        let mut map = HashMap::new();
+        let mut map = BTreeMap::new();
         map.insert("medium".to_string(), Some("default".to_string()));
         groq.thinking_level_map = Some(map);
         let mut options = opts();
@@ -4042,7 +4045,7 @@ mod tests {
             true,
             json!({"supportsReasoningEffort": false}),
         );
-        let mut map = HashMap::new();
+        let mut map = BTreeMap::new();
         map.insert("off".to_string(), Some("low".to_string()));
         model.thinking_level_map = Some(map);
         let body = build(&model, &ctx_of(vec![user("Hi")]), &opts()).unwrap();
@@ -4050,7 +4053,7 @@ mod tests {
 
         // supportsReasoningEffort true + off + map.off string: effort from map.
         let mut model = make_model("openai", "https://api.openai.com/v1", "m", true, json!({}));
-        let mut map = HashMap::new();
+        let mut map = BTreeMap::new();
         map.insert("off".to_string(), Some("low".to_string()));
         model.thinking_level_map = Some(map);
         let body = build(&model, &ctx_of(vec![user("Hi")]), &opts()).unwrap();
@@ -4348,7 +4351,7 @@ mod tests {
     fn model_headers_merge_and_options_headers_override() {
         let mut model = make_model("p", "https://proxy.example.com/v1", "m", false, json!({}));
         let mut headers = BTreeMap::new();
-        headers.insert("x-model".to_string(), "from-model".to_string());
+        headers.insert("x-model".to_string(), Some("from-model".to_string()));
         model.headers = Some(headers);
         let mut options = opts();
         let mut option_headers = BTreeMap::new();
@@ -4372,6 +4375,36 @@ mod tests {
         };
         assert_eq!(get("x-model").as_deref(), Some("from-options"));
         assert_eq!(get("x-drop"), None);
+    }
+
+    /// A model-level `None` header value (upstream `null`) suppresses the
+    /// default header of the same name, matching the options-level merge
+    /// semantics and upstream `mergeHeaders`/`providerHeadersToRecord`.
+    #[test]
+    fn model_null_header_value_suppresses_default() {
+        let mut model = make_model("p", "https://proxy.example.com/v1", "m", false, json!({}));
+        let mut headers = BTreeMap::new();
+        headers.insert("user-agent".to_string(), None);
+        headers.insert("x-model".to_string(), Some("from-model".to_string()));
+        model.headers = Some(headers);
+        let assembly = build_request(
+            &model,
+            &cfg(&model.base_url),
+            &prompt_ctx("sys", vec![user("hi")], None),
+            &opts(),
+            &resolved(&model),
+        )
+        .unwrap();
+        let get = |name: &str| {
+            assembly
+                .headers
+                .iter()
+                .find(|(k, _)| k == name)
+                .map(|(_, v)| v.clone())
+        };
+        // The pi default User-Agent is suppressed; the plain model header stays.
+        assert!(assembly.headers.iter().all(|(k, _)| k != "user-agent"));
+        assert_eq!(get("x-model").as_deref(), Some("from-model"));
     }
 
     // ---- 13. anthropic cache-control markers ----

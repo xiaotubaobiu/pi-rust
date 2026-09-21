@@ -288,11 +288,13 @@ fn build_params(model: &ImagesModel, context: &ImagesContext) -> Value {
 }
 
 /// Upstream `image.image_url.match(/^data:([^;]+);base64,(.+)$/)`:
-/// `(mimeType, data)` from a data URL, `None` when the shape differs.
+/// `(mimeType, data)` from a data URL, `None` when the shape differs. The
+/// regex's `(.+)` requires at least one data byte, so an empty base64 payload
+/// (`data:image/png;base64,`) does not match upstream and is rejected here too.
 fn parse_data_url(url: &str) -> Option<(String, String)> {
     let rest = url.strip_prefix("data:")?;
     let (mime_type, data) = rest.split_once(";base64,")?;
-    if mime_type.is_empty() || mime_type.contains(';') {
+    if mime_type.is_empty() || mime_type.contains(';') || data.is_empty() {
         return None;
     }
     Some((mime_type.to_string(), data.to_string()))
@@ -671,7 +673,8 @@ mod tests {
         assert_eq!(output.error_message.as_deref(), Some("401: bad key"));
     }
 
-    /// Non-data image URLs are skipped (upstream `startsWith("data:")`).
+    /// Non-data image URLs are skipped (upstream `startsWith("data:")`); an
+    /// empty base64 payload fails upstream's `(.+)` and is rejected too.
     #[test]
     fn parse_data_url_matches_upstream_regex() {
         assert_eq!(
@@ -680,6 +683,7 @@ mod tests {
         );
         assert_eq!(parse_data_url("https://example.com/x.png"), None);
         assert_eq!(parse_data_url("data:image/png,raw"), None);
+        assert_eq!(parse_data_url("data:image/png;base64,"), None);
     }
 
     /// The built-in provider wires the catalog and auth (upstream

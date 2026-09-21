@@ -4437,7 +4437,7 @@ mod tests {
     #[tokio::test]
     async fn thinking_level_map_overrides_effort() {
         let mut model = model("global.anthropic.claude-opus-4-8-v1", "Claude Opus 4.8");
-        let mut map = std::collections::HashMap::new();
+        let mut map = std::collections::BTreeMap::new();
         map.insert("high".to_string(), Some("max".to_string()));
         model.thinking_level_map = Some(map);
         let (additional, _) =

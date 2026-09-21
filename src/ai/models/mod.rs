@@ -860,17 +860,14 @@ pub(crate) fn merge_headers(
 }
 
 /// Upstream `getAuth(model)`'s header fold (models.ts:567-574): the model's
-/// static headers merge over the resolved auth headers. The port's
-/// [`Model::headers`] carries plain string values (M2a type), so they merge
-/// as set-operations over the `Option`-valued [`ProviderHeaders`] without
-/// the suppression form.
+/// static headers merge over the resolved auth headers. [`Model::headers`]
+/// carries the same `Option`-valued [`ProviderHeaders`] shape, so a `None`
+/// model value suppresses (deletes) an auth default of the same name, like
+/// upstream `mergeHeaders`.
 fn merge_model_headers(mut resolution: AuthResult, model: &Model) -> AuthResult {
     if let Some(model_headers) = model.headers.as_ref().filter(|headers| !headers.is_empty()) {
-        let overrides: ProviderHeaders = model_headers
-            .iter()
-            .map(|(name, value)| (name.clone(), Some(value.clone())))
-            .collect();
-        resolution.auth.headers = merge_headers(resolution.auth.headers.as_ref(), Some(&overrides));
+        resolution.auth.headers =
+            merge_headers(resolution.auth.headers.as_ref(), Some(model_headers));
     }
     resolution
 }
@@ -1657,12 +1654,12 @@ mod tests {
             .collect()
     }
 
-    /// Plain-string header map for [`Model::headers`] (the M2a model-level
-    /// type carries no suppression form).
-    fn string_header_map(pairs: &[(&str, &str)]) -> BTreeMap<String, String> {
+    /// Header map for [`Model::headers`]: the same `Option`-valued shape as
+    /// options-level [`ProviderHeaders`].
+    fn string_header_map(pairs: &[(&str, &str)]) -> BTreeMap<String, Option<String>> {
         pairs
             .iter()
-            .map(|(name, value)| ((*name).to_string(), (*value).to_string()))
+            .map(|(name, value)| ((*name).to_string(), Some((*value).to_string())))
             .collect()
     }
 

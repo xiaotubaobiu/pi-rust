@@ -4,7 +4,7 @@
 //! string values byte-for-byte (spec section 2).
 
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 /// Upstream `KnownApi` (types.ts:17-27): the ten provider APIs pi ships adapters for.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -128,7 +128,9 @@ pub enum ModelThinkingLevel {
 
 /// Upstream `ThinkingLevelMap` (types.ts:85): `Partial<Record<ModelThinkingLevel, string | null>>`.
 /// Absent keys fall back to provider defaults; `null` marks a level as unsupported.
-pub type ThinkingLevelMap = HashMap<String, Option<String>>;
+/// A `BTreeMap` (not a `HashMap`) so iteration and serialized key order are
+/// deterministic — the wire shape is unchanged, only key ordering is pinned.
+pub type ThinkingLevelMap = BTreeMap<String, Option<String>>;
 
 /// Upstream `ChatTemplateKwargValue` (types.ts:86-94): a literal value or a
 /// `$var` reference resolved by providers that expand chat-template kwargs.
@@ -635,17 +637,17 @@ mod tests {
         assert_eq!(map.get("off"), Some(&None));
         assert_eq!(map.get("medium"), Some(&Some("enabled".to_string())));
         assert!(!map.contains_key("high"));
-        // HashMap key order is nondeterministic, so assert semantic round-trip
-        // for multi-key maps rather than byte equality.
+        // BTreeMap pins the key order: serialization is deterministic and
+        // sorted regardless of the JSON's original key order.
+        let unordered = r#"{"medium":"enabled","off":null,"high":"thinking"}"#;
+        let map: ThinkingLevelMap = serde_json::from_str(unordered).unwrap();
+        assert_eq!(
+            serde_json::to_string(&map).unwrap(),
+            r#"{"high":"thinking","medium":"enabled","off":null}"#
+        );
         let back: ThinkingLevelMap =
             serde_json::from_str(&serde_json::to_string(&map).unwrap()).unwrap();
         assert_eq!(back, map);
-        // Single-key maps round-trip byte-for-byte.
-        let single: ThinkingLevelMap = serde_json::from_str(r#"{"low":"thinking"}"#).unwrap();
-        assert_eq!(
-            serde_json::to_string(&single).unwrap(),
-            r#"{"low":"thinking"}"#
-        );
     }
 
     #[test]

@@ -230,7 +230,10 @@ fn build_headers(
 ) -> Vec<(String, String)> {
     let mut headers: Vec<(String, String)> = vec![("User-Agent".to_string(), pi_user_agent())];
     for (name, value) in model.headers.iter().flatten() {
-        set_header(&mut headers, name, value);
+        match value {
+            Some(value) => set_header(&mut headers, name, value),
+            None => remove_header(&mut headers, name),
+        }
     }
     // Upstream lines 258-267; the github-copilot dynamic block is not ported.
     if let Some(session_id) = session_id {

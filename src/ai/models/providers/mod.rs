@@ -767,7 +767,7 @@ mod tests {
     use super::*;
     use crate::ai::models::get_supported_thinking_levels;
     use crate::ai::types::primitives::ModelCost;
-    use std::collections::HashMap;
+    use std::collections::BTreeMap;
 
     fn provider_ids(providers: &[Arc<dyn Provider>]) -> Vec<&str> {
         providers.iter().map(|provider| provider.id()).collect()
@@ -1264,7 +1264,7 @@ mod tests {
             ["off", "minimal", "low", "medium", "high"]
         );
 
-        model.thinking_level_map = Some(HashMap::from([
+        model.thinking_level_map = Some(BTreeMap::from([
             ("off".to_string(), None),
             ("minimal".to_string(), Some("low".to_string())),
             ("xhigh".to_string(), Some("xhigh".to_string())),

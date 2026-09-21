@@ -37,9 +37,6 @@
 //!   assistant-call retry normalizes a backoff abort to the final error
 //!   message with `stopReason: "aborted"` and the errorMessage stripped,
 //!   exactly like upstream's `RetrySleepAbortError` handling.
-//! - `retry-after` in HTTP-date form (upstream's `Date.parse` branch) is not
-//!   supported: the port parses the numeric seconds form only and falls
-//!   through to the exponential fallback otherwise.
 //! - Jitter uses a process-random source (std `RandomState`), not
 //!   `Math.random()`; the distribution shape `1 - u * 0.25` is identical and
 //!   no oracle pins its magnitude.
@@ -53,6 +50,7 @@ use std::time::Duration;
 use tokio_util::sync::CancellationToken;
 
 use crate::ai::api::REQUEST_ABORTED;
+use crate::ai::now_ms;
 use crate::ai::types::message::AssistantMessage;
 use crate::ai::types::primitives::StopReason;
 
@@ -154,44 +152,137 @@ fn validate_server_retry_delay_ms(
 }
 
 /// Upstream `getRetryDelayMs` (provider-retry.ts:51-67): `retry-after-ms`,
-/// then `retry-after` (numeric seconds), then the SDK's exponential fallback
-/// with jitter. Unparseable header values are skipped like upstream's
-/// `Number.isNaN` guards.
+/// then `retry-after` (numeric seconds, then HTTP-date via `Date.parse`),
+/// then the SDK's exponential fallback with jitter. Header values that parse
+/// to nothing in the applicable form are skipped like upstream's
+/// `Number.isNaN` guards — except `retry-after`, where an unparseable value
+/// makes upstream's `NaN` delay reach `setTimeout` (fires immediately).
 fn get_retry_delay_ms(
     error: &ProviderError,
     retry_index: u32,
     max_retry_delay_ms: Option<u64>,
 ) -> Result<u64, String> {
     let headers = error.headers.as_ref();
-    let retry_after_ms = headers.and_then(|headers| header_str(headers, "retry-after-ms"));
+    // Upstream `if (retryAfterMs)` truthiness: an empty header value skips.
+    let retry_after_ms = headers
+        .and_then(|headers| header_str(headers, "retry-after-ms"))
+        .filter(|value| !value.is_empty());
     if let Some(value) = retry_after_ms.and_then(parse_ms_header) {
         return validate_server_retry_delay_ms(value, max_retry_delay_ms, &error.message);
     }
-    let retry_after = headers.and_then(|headers| header_str(headers, "retry-after"));
-    if let Some(seconds) = retry_after.and_then(parse_ms_header) {
-        // Upstream multiplies seconds by 1000; `parse_ms_header` is unitless,
-        // so scale here before validating.
-        return validate_server_retry_delay_ms(
-            seconds.saturating_mul(1000),
-            max_retry_delay_ms,
-            &error.message,
-        );
+    let retry_after = headers
+        .and_then(|headers| header_str(headers, "retry-after"))
+        .filter(|value| !value.is_empty());
+    if let Some(text) = retry_after {
+        if let Some(seconds) = parse_ms_header(text) {
+            // Upstream multiplies seconds by 1000; `parse_ms_header` is
+            // unitless, so scale here before validating.
+            return validate_server_retry_delay_ms(
+                seconds.saturating_mul(1000),
+                max_retry_delay_ms,
+                &error.message,
+            );
+        }
+        // Upstream `Date.parse` branch: an HTTP-date names an absolute time,
+        // so the delay is the time remaining until it. A date in the past
+        // (or an unparseable value, upstream `NaN`) sleeps ~0 — `setTimeout`
+        // fires immediately for negative/NaN delays.
+        let delay_ms = match http_date_to_ms(text) {
+            // `now_ms` is `i64` but always positive in practice; clamp a
+            // negative clock to zero rather than wrap.
+            Some(date_ms) => date_ms.saturating_sub(now_ms().max(0) as u64),
+            None => 0,
+        };
+        return validate_server_retry_delay_ms(delay_ms, max_retry_delay_ms, &error.message);
     }
     let delay = exponential_delay_ms(retry_index, pseudo_random_fraction());
     Ok(delay)
 }
 
-/// `parseFloat` + `Number.isNaN` equivalent for a delay header: parses a
-/// finite non-negative millisecond value, clamping negatives to zero like
-/// upstream's `Math.max(0, ms)` sleep input.
+/// `Number.parseFloat` prefix semantics for a delay header: skip leading
+/// whitespace, then take the longest prefix that forms a decimal number —
+/// `12abc` parses as 12, `1e3x` as 1000, `abc`/empty is `None` (upstream
+/// `NaN`). Rust's `str::parse` demands the whole string, so scan prefixes
+/// longest-first. Letters never start a parseFloat number, so `inf`/`nan`
+/// spellings are rejected up front.
 fn parse_ms_header(text: &str) -> Option<u64> {
-    let value: f64 = text.trim().parse().ok()?;
-    if value.is_nan() {
+    let trimmed = text.trim_start();
+    match trimmed.chars().next() {
+        Some(first) if first.is_ascii_alphabetic() => return None,
+        Some(_) => {}
+        None => return None,
+    }
+    let mut end = trimmed.len();
+    loop {
+        if trimmed.is_char_boundary(end) {
+            if let Ok(value) = trimmed[..end].parse::<f64>() {
+                // Float-to-int casts saturate: negatives clamp to 0 like
+                // upstream's `Math.max(0, ms)` sleep input; huge values hit
+                // the cap check afterwards.
+                return Some(value.max(0.0) as u64);
+            }
+        }
+        if end == 0 {
+            return None;
+        }
+        end -= 1;
+    }
+}
+
+/// Upstream `Date.parse` for the `retry-after` HTTP-date branch, restricted
+/// to the RFC 7231 IMF-fixdate form (`Sun, 06 Nov 1994 08:49:37 GMT`) — the
+/// only form servers emit in practice. Other inputs return `None` (upstream
+/// `NaN`). The weekday name is accepted but not checked against the date,
+/// like `Date.parse`.
+fn http_date_to_ms(text: &str) -> Option<u64> {
+    let mut parts = text.trim().split(' ');
+    parts.next()?; // weekday (ignored)
+    let day: u32 = parts.next()?.trim_end_matches(',').parse().ok()?;
+    let month = month_number(parts.next()?)?;
+    let year: i64 = parts.next()?.parse().ok()?;
+    let mut clock = parts.next()?.split(':');
+    let hour: i64 = clock.next()?.parse().ok()?;
+    let minute: i64 = clock.next()?.parse().ok()?;
+    let second: i64 = clock.next()?.parse().ok()?;
+    if parts.next()? != "GMT" || parts.next().is_some() {
         return None;
     }
-    // Float-to-int casts saturate in Rust: negatives clamp to 0, huge values
-    // clamp to u64::MAX (the cap check rejects those afterwards).
-    Some(value.max(0.0) as u64)
+    if !(1..=31).contains(&day)
+        || !(0..24).contains(&hour)
+        || !(0..60).contains(&minute)
+        || !(0..=60).contains(&second)
+    {
+        return None;
+    }
+    let days = days_from_civil(year, month, day);
+    let seconds = days * 86_400 + hour * 3_600 + minute * 60 + second;
+    u64::try_from(seconds).ok().map(|seconds| seconds * 1000)
+}
+
+/// Gregorian-calendar day number (Hinnant's `days_from_civil`), epoch
+/// 1970-01-01. `month` is 1..=12.
+fn days_from_civil(year: i64, month: u32, day: u32) -> i64 {
+    let (y, m) = if month <= 2 {
+        (year - 1, month as i64 + 9)
+    } else {
+        (year, month as i64 - 3)
+    };
+    let era = y.div_euclid(400);
+    let yoe = y - era * 400;
+    let doy = (153 * m + 2) / 5 + day as i64 - 1;
+    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+    era * 146_097 + doe - 719_468
+}
+
+fn month_number(name: &str) -> Option<u32> {
+    const MONTHS: [&str; 12] = [
+        "jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec",
+    ];
+    let lowercase = name.to_ascii_lowercase();
+    MONTHS
+        .iter()
+        .position(|month| *month == lowercase)
+        .map(|index| index as u32 + 1)
 }
 
 /// Case-insensitive single-header lookup (`HeaderMap::get` folds case; this
@@ -490,9 +581,11 @@ where
     P: FnMut() -> Fut,
     Fut: std::future::Future<Output = AssistantMessage>,
 {
-    let max_attempts = policy
-        .filter(|policy| policy.enabled)
-        .map_or(0, |policy| policy.max_retries);
+    // The active policy is `Some` exactly when `max_attempts > 0`, so the
+    // delay computation below never observes the `None` fallback (the delay
+    // line is unreachable when `attempt >= max_attempts`).
+    let active_policy = policy.filter(|policy| policy.enabled);
+    let max_attempts = active_policy.map(|policy| policy.max_retries).unwrap_or(0);
 
     let mut attempt: u32 = 0;
     let mut last_retry: Option<(u32, String)> = None;
@@ -535,7 +628,9 @@ where
             .clone()
             .unwrap_or_else(|| "Unknown error".to_string());
         last_retry = Some((attempt, error_message.clone()));
-        let delay_ms = retry_delay_ms(policy.expect("checked above"), attempt);
+        let delay_ms = active_policy
+            .map(|policy| retry_delay_ms(policy, attempt))
+            .unwrap_or(0);
         if let Some(callback) = callbacks.on_retry_scheduled.as_mut() {
             callback(attempt, max_attempts, delay_ms, &error_message);
         }
@@ -844,6 +939,84 @@ mod tests {
         .await;
         assert!(result.is_err());
         assert_eq!(attempts, 3);
+    }
+
+    // ---- retry-after prefix and HTTP-date forms (M2f hardening) ----
+
+    /// Upstream parses delay headers with `Number.parseFloat`, which consumes
+    /// the longest numeric PREFIX (`12abc` -> 12) instead of rejecting the
+    /// whole value like Rust's `str::parse`.
+    #[test]
+    fn delay_headers_parse_the_numeric_prefix_like_parse_float() {
+        assert_eq!(parse_ms_header("20"), Some(20));
+        assert_eq!(parse_ms_header("12abc"), Some(12));
+        assert_eq!(parse_ms_header("1e3x"), Some(1000));
+        assert_eq!(parse_ms_header(".5s"), Some(0));
+        assert_eq!(parse_ms_header("0x10"), Some(0));
+        assert_eq!(parse_ms_header("-3"), Some(0));
+        assert_eq!(parse_ms_header("abc"), None);
+        assert_eq!(parse_ms_header(""), None);
+    }
+
+    /// The RFC 7231 IMF-fixdate example: Date.parse gives 784111777000.
+    #[test]
+    fn http_date_parses_imf_fixdate() {
+        assert_eq!(
+            http_date_to_ms("Sun, 06 Nov 1994 08:49:37 GMT"),
+            Some(784111777000)
+        );
+        assert_eq!(
+            http_date_to_ms("Sat, 01 Jan 2000 00:00:00 GMT"),
+            Some(946684800000)
+        );
+        // Weekday/date mismatches and other shapes: Date.parse-side rejection.
+        assert_eq!(http_date_to_ms("not a date"), None);
+        assert_eq!(http_date_to_ms("Sun, 32 Nov 1994 08:49:37 GMT"), None);
+        assert_eq!(http_date_to_ms("Sun, 06 Nov 1994 08:49:37 UTC"), None);
+    }
+
+    /// A future HTTP-date names an absolute time: the delay is the remaining
+    /// time until it, so a fixed far-future date always trips the cap. The
+    /// message's second count is relative (Date.now-dependent), so only the
+    /// prefix is pinned.
+    #[tokio::test]
+    async fn retry_after_http_date_in_the_future_is_honored() {
+        let (result, attempts, _) = drive(
+            1,
+            Some(1000),
+            vec![Err(provider_error(
+                429,
+                &[("retry-after", "Tue, 19 Jan 2038 03:14:08 GMT")],
+            ))],
+        )
+        .await;
+        let message = result.unwrap_err();
+        assert!(
+            message.starts_with("Server requested ") && message.contains("(max: 1s)."),
+            "got: {message}"
+        );
+        assert_eq!(attempts, 1);
+    }
+
+    /// A past HTTP-date (and an unparseable value — upstream's NaN delay
+    /// reaches `setTimeout`, which fires immediately) retries without the
+    /// exponential fallback's >=375ms wait.
+    #[tokio::test]
+    async fn retry_after_past_date_or_garbage_retries_immediately() {
+        for header in ["Sat, 01 Jan 2000 00:00:00 GMT", "garbage"] {
+            let (result, attempts, elapsed) = drive(
+                1,
+                None,
+                vec![
+                    Err(provider_error(429, &[("retry-after", header)])),
+                    Ok("ok"),
+                ],
+            )
+            .await;
+            assert_eq!(result, Ok("ok"), "header {header}");
+            assert_eq!(attempts, 2, "header {header}");
+            assert!(elapsed < 300, "header {header} slept {elapsed}ms");
+        }
     }
 
     // ---- provider-retry.test.ts ports: abort half ----

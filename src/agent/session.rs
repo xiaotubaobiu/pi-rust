@@ -14,9 +14,11 @@ pub struct SessionWriter {
 impl SessionWriter {
     pub fn create(dir: &Path) -> anyhow::Result<Self> {
         std::fs::create_dir_all(dir)?;
+        // Unix milliseconds (upstream `session-${Date.now()}.jsonl`); seconds
+        // collide when two sessions start within the same second.
         let ts = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)?
-            .as_secs();
+            .as_millis();
         let path = dir.join(format!("session-{ts}.jsonl"));
         let file = std::fs::OpenOptions::new()
             .create(true)
@@ -76,5 +78,33 @@ mod tests {
             AgentMessage::Notification { text } => assert_eq!(text, "ui"),
             other => panic!("expected notification line, got {other:?}"),
         }
+    }
+
+    /// The filename carries Unix milliseconds (upstream `session-${Date.now()}`),
+    /// not seconds — seconds collide when two sessions start in the same second.
+    #[test]
+    fn filename_uses_unix_millis() {
+        let dir = tempfile::tempdir().unwrap();
+        let before = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_millis();
+        let s = SessionWriter::create(dir.path()).unwrap();
+        let after = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_millis();
+
+        let name = s.path().file_name().unwrap().to_string_lossy().to_string();
+        let ts: u128 = name
+            .strip_prefix("session-")
+            .and_then(|rest| rest.strip_suffix(".jsonl"))
+            .expect("session-{millis}.jsonl filename")
+            .parse()
+            .expect("millisecond timestamp");
+        assert!(
+            ts >= before && ts <= after,
+            "timestamp {ts} outside [{before}, {after}]"
+        );
     }
 }

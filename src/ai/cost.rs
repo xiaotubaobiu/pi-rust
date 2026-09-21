@@ -17,7 +17,11 @@ use crate::ai::types::{Model, ModelCostTier, Usage};
 /// buckets are summed for `total`.
 pub fn calculate_cost(model: &Model, usage: &mut Usage) {
     // Upstream: inputTokens = usage.input + usage.cacheRead + usage.cacheWrite.
-    let input_tokens = usage.input + usage.cache_read + usage.cache_write;
+    // Saturating: hostile usage payloads must not panic the debug overflow check.
+    let input_tokens = usage
+        .input
+        .saturating_add(usage.cache_read)
+        .saturating_add(usage.cache_write);
     let mut matched: Option<&ModelCostTier> = None;
     for tier in model.cost.tiers.iter().flatten() {
         if input_tokens > tier.input_tokens_above

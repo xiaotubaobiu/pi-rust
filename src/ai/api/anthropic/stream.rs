@@ -542,7 +542,12 @@ fn process_message_start(
         usage.pointer("/cache_creation/ephemeral_1h_input_tokens"),
     ));
     // Anthropic doesn't provide total_tokens; compute from components.
-    state.output.usage.total_tokens = input + output + cache_read + cache_write;
+    // Saturating: a hostile usage payload with huge component values must not
+    // trip the debug overflow check mid-stream.
+    state.output.usage.total_tokens = input
+        .saturating_add(output)
+        .saturating_add(cache_read)
+        .saturating_add(cache_write);
     calculate_cost(usage_model, &mut state.output.usage);
 }
 
@@ -921,10 +926,15 @@ fn process_message_delta(
             state.output.usage.reasoning = Some(thinking_tokens);
         }
     }
-    state.output.usage.total_tokens = state.output.usage.input
-        + state.output.usage.output
-        + state.output.usage.cache_read
-        + state.output.usage.cache_write;
+    // Saturating sum: huge component values (hostile usage payload) must not
+    // trip the debug overflow check.
+    state.output.usage.total_tokens = state
+        .output
+        .usage
+        .input
+        .saturating_add(state.output.usage.output)
+        .saturating_add(state.output.usage.cache_read)
+        .saturating_add(state.output.usage.cache_write);
     calculate_cost(usage_model, &mut state.output.usage);
     Ok(())
 }
@@ -1412,6 +1422,58 @@ mod tests {
         let partial = apply_all(&events);
         assert_eq!(partial.message(), Some(message));
         assert!(partial.is_terminal());
+    }
+
+    /// Hostile usage payloads (component values near u64::MAX) saturate the
+    /// computed `total_tokens` and the cost basis instead of tripping the
+    /// debug overflow check mid-stream.
+    #[tokio::test]
+    async fn huge_usage_components_saturate_total_tokens() {
+        let server = wiremock::MockServer::start().await;
+        let huge = u64::MAX - 7;
+        mount_sse(
+            &server,
+            sse_body(&[
+                message_start(json!({
+                    "id": "msg_huge",
+                    "usage": {"input_tokens": huge, "output_tokens": 0}
+                })),
+                ev(
+                    "content_block_start",
+                    json!({"type": "content_block_start", "index": 0, "content_block": {"type": "text", "text": ""}}),
+                ),
+                ev(
+                    "content_block_delta",
+                    json!({"type": "content_block_delta", "index": 0, "delta": {"type": "text_delta", "text": "Hi"}}),
+                ),
+                ev(
+                    "content_block_stop",
+                    json!({"type": "content_block_stop", "index": 0}),
+                ),
+                ev(
+                    "message_delta",
+                    json!({"type": "message_delta", "delta": {"stop_reason": "end_turn"}, "usage": {"input_tokens": huge, "output_tokens": 9, "cache_read_input_tokens": 3, "cache_creation_input_tokens": 4}}),
+                ),
+                ev("message_stop", json!({"type": "message_stop"})),
+            ]),
+        )
+        .await;
+
+        let model = make_model(json!({}));
+        let events = collect_stream(
+            &server,
+            &model,
+            &user_ctx(vec![user_msg("hi")]),
+            &StreamOptions::default(),
+        )
+        .await;
+
+        let (reason, message) = done_of(&events);
+        assert_eq!(*reason, SuccessReason::Stop);
+        // (u64::MAX - 7) + 9 + 3 + 4 saturates instead of overflowing.
+        assert_eq!(message.usage.input, huge);
+        assert_eq!(message.usage.output, 9);
+        assert_eq!(message.usage.total_tokens, u64::MAX);
     }
 
     // ---- 2. proxy relabels the model: signed thinking stays replayable ----

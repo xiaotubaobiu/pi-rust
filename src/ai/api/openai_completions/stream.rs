@@ -854,12 +854,30 @@ async fn ensure_thinking_block(
 
 /// Upstream `ensureToolCallBlock` (lines 494-551): index/id lookup, creation
 /// with grammar/custom input setup, and the in-place backfills.
+/// Malformed-stream guard on `tool_calls[].index`. Upstream keeps
+/// `toolCallBlocksByIndex` as a JS `Map`, so a hostile index (e.g. 1e15) is
+/// only a map key there. This port keys a `HashMap` too, so no large
+/// allocation is possible either, but an index far beyond any real parallel
+/// tool-call count signals a corrupt or hostile stream: reject it with an
+/// error event (the `Err` propagates to `run_stream_task`, which emits
+/// `AssistantMessageEvent::Error`) instead of accumulating blocks keyed by
+/// garbage.
+const MAX_TOOL_CALL_WIRE_INDEX: u64 = 1024;
+
 async fn ensure_tool_call_block(
     state: &mut StreamState,
     tool_call: &Value,
     tx: &mpsc::Sender<AssistantMessageEvent>,
 ) -> Result<usize, String> {
-    let stream_index = tool_call.get("index").and_then(Value::as_u64);
+    let raw_index = tool_call.get("index").and_then(Value::as_u64);
+    if let Some(index) = raw_index {
+        if index > MAX_TOOL_CALL_WIRE_INDEX {
+            return Err(format!(
+                "Malformed tool_calls delta: index {index} exceeds {MAX_TOOL_CALL_WIRE_INDEX}"
+            ));
+        }
+    }
+    let stream_index = raw_index;
     let name = tool_call
         .pointer("/function/name")
         .and_then(Value::as_str)
@@ -2042,6 +2060,84 @@ mod tests {
             other => panic!("expected Done, got {other:?}"),
         }
         apply_all(&events);
+    }
+
+    // ---- 3b. malformed tool_calls index guard ----
+
+    /// A `tool_calls[].index` far beyond any real parallel tool-call count is
+    /// rejected with an error event instead of accumulating a block keyed by
+    /// garbage (upstream's JS `Map` tolerates it; this port clamps — see
+    /// `MAX_TOOL_CALL_WIRE_INDEX`).
+    #[tokio::test]
+    async fn huge_tool_call_index_is_rejected_with_error_event() {
+        let server = wiremock::MockServer::start().await;
+        let body = format!(
+            "{}{}",
+            data_line(delta_chunk(json!({"tool_calls": [
+                {"index": 5_000_000_000u64, "id": "call_x", "type": "function", "function": {"name": "read", "arguments": "{}"}}
+            ]}))),
+            done_line()
+        );
+        wiremock::Mock::given(wiremock::matchers::method("POST"))
+            .respond_with(sse(&body))
+            .mount(&server)
+            .await;
+
+        let model = base_model();
+        let events = collect_simple(
+            &server,
+            &model,
+            &user_ctx(vec![user_msg("hi")]),
+            &SimpleStreamOptions::default(),
+        )
+        .await;
+
+        match events.last().unwrap() {
+            AssistantMessageEvent::Error { reason, error } => {
+                assert_eq!(*reason, ErrorReason::Error);
+                assert_eq!(error.stop_reason, StopReason::Error);
+                let message = error.error_message.as_deref().unwrap_or_default();
+                assert!(
+                    message.contains("Malformed tool_calls delta"),
+                    "unexpected error message: {message}"
+                );
+            }
+            other => panic!("expected Error, got {other:?}"),
+        }
+    }
+
+    /// An index within the guard keeps flowing normally (boundary check).
+    #[tokio::test]
+    async fn tool_call_index_at_guard_boundary_accumulates() {
+        let server = wiremock::MockServer::start().await;
+        let body = format!(
+            "{}{}{}",
+            data_line(delta_chunk(json!({"tool_calls": [
+                {"index": 1024, "id": "call_hi", "type": "function", "function": {"name": "read", "arguments": "{}"}}
+            ]}))),
+            data_line(finish_chunk("tool_calls")),
+            done_line()
+        );
+        wiremock::Mock::given(wiremock::matchers::method("POST"))
+            .respond_with(sse(&body))
+            .mount(&server)
+            .await;
+
+        let model = base_model();
+        let events = collect_simple(
+            &server,
+            &model,
+            &user_ctx(vec![user_msg("hi")]),
+            &SimpleStreamOptions::default(),
+        )
+        .await;
+
+        match events.last().unwrap() {
+            AssistantMessageEvent::Done { reason, .. } => {
+                assert_eq!(*reason, SuccessReason::ToolUse)
+            }
+            other => panic!("expected Done, got {other:?}"),
+        }
     }
 
     // ---- 4. finish reason mapping + raw stop reason ----

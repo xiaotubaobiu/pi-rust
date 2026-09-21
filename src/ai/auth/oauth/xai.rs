@@ -1035,6 +1035,31 @@ mod tests {
         );
     }
 
+    /// With no `error`/`error_description` in the body the message carries no
+    /// detail and therefore no trailing ": " separator (upstream
+    /// `requestFailure`, xai.ts:100-106).
+    #[tokio::test]
+    async fn refresh_failure_without_detail_has_no_trailing_separator() {
+        let server = MockServer::start().await;
+        mount_token_queue(&server, vec![(400, "{}".to_string())]).await;
+        let oauth = flow_with(&server);
+        let credential = OAuthCredential {
+            refresh: "old-refresh".to_string(),
+            access: "old-access".to_string(),
+            expires: 0,
+            extra: Default::default(),
+        };
+
+        let error = oauth
+            .refresh(credential, &AuthOperationOptions::default())
+            .await
+            .unwrap_err();
+        assert_eq!(
+            error,
+            AuthError::Operation("xAI OAuth token refresh failed (HTTP 400)".to_string())
+        );
+    }
+
     /// Port coverage for the device-code parse units (upstream
     /// requiredString/positiveNumber over the wire).
     #[tokio::test]

@@ -1360,7 +1360,10 @@ fn build_base_codex_headers(
 ) -> Vec<(String, String)> {
     let mut headers: Vec<(String, String)> = Vec::new();
     for (name, value) in model.headers.iter().flatten() {
-        set_header(&mut headers, name, value);
+        match value {
+            Some(value) => set_header(&mut headers, name, value),
+            None => remove_header(&mut headers, name),
+        }
     }
     if let Some(option_headers) = &options.stream.headers {
         for (name, value) in option_headers {
@@ -2291,10 +2294,16 @@ mod tests {
     #[tokio::test]
     async fn aborts_sse_after_the_configured_headers_timeout() {
         let server = wiremock::MockServer::start().await;
+        // The 5s server delay vs the 10ms client deadline makes the race
+        // deterministic: the M2c-era 500ms delay could lose on a loaded
+        // current-thread runtime if the deadline was polled >490ms late, and
+        // the response then arrived first. The connection still aborts at
+        // 10ms, so the test stays fast. (A paused tokio clock is not usable
+        // here — reqwest and the mock server run on real I/O.)
         wiremock::Mock::given(wiremock::matchers::method("POST"))
             .and(wiremock::matchers::path("/codex/responses"))
             .respond_with(
-                sse_response(completed_sse()).set_delay(std::time::Duration::from_millis(500)),
+                sse_response(completed_sse()).set_delay(std::time::Duration::from_millis(5000)),
             )
             .mount(&server)
             .await;

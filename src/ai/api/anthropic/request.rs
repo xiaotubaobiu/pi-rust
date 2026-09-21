@@ -464,7 +464,7 @@ fn get_beta_features(
     let mut configured: Option<Option<String>> = None;
     for (name, value) in model.headers.iter().flatten() {
         if name.eq_ignore_ascii_case("anthropic-beta") {
-            configured = Some(Some(value.clone()));
+            configured = Some(value.clone());
         }
     }
     for (name, value) in options.stream.headers.iter().flatten() {
@@ -1262,8 +1262,13 @@ fn build_headers(
             }
         }
     }
+    // Model headers; a None value (upstream null) suppresses a default,
+    // like the options-level merge below.
     for (name, value) in model.headers.iter().flatten() {
-        set_header(&mut headers, name, value);
+        match value {
+            Some(value) => set_header(&mut headers, name, value),
+            None => remove_header(&mut headers, name),
+        }
     }
     // Caller headers last; a None value (upstream null) suppresses a default.
     if let Some(option_headers) = &options.stream.headers {
@@ -1501,7 +1506,7 @@ mod tests {
             "supportsMidConvoEffort": true
         }));
         model.id = "claude-fable-5-1".to_string();
-        model.thinking_level_map = Some(HashMap::from([
+        model.thinking_level_map = Some(BTreeMap::from([
             ("off".to_string(), None),
             ("minimal".to_string(), Some("low".to_string())),
             ("low".to_string(), Some("low".to_string())),
@@ -2341,7 +2346,7 @@ mod tests {
 
         // thinkingLevelMap.off === null (Fable-style): param omitted.
         let mut model = make_model(json!({}));
-        model.thinking_level_map = Some(HashMap::from([("off".to_string(), None)]));
+        model.thinking_level_map = Some(BTreeMap::from([("off".to_string(), None)]));
         let assembly = build(&model, &ctx, &options);
         assert!(assembly.body.get("thinking").is_none());
 
@@ -2392,13 +2397,13 @@ mod tests {
 
         // Fable-style off: null mapping omits the disabled param.
         let mut model = make_model(json!({"forceAdaptiveThinking": true}));
-        model.thinking_level_map = Some(HashMap::from([("off".to_string(), None)]));
+        model.thinking_level_map = Some(BTreeMap::from([("off".to_string(), None)]));
         let assembly = simple(&model, None, None);
         assert!(assembly.body.get("thinking").is_none());
 
         // xhigh maps through thinkingLevelMap (Opus 4.8-style).
         let mut model = make_model(json!({"forceAdaptiveThinking": true}));
-        model.thinking_level_map = Some(HashMap::from([(
+        model.thinking_level_map = Some(BTreeMap::from([(
             "xhigh".to_string(),
             Some("xhigh".to_string()),
         )]));
@@ -2747,7 +2752,7 @@ mod tests {
         let mut model = make_model(json!({}));
         model.headers = Some(BTreeMap::from([(
             "anthropic-beta".to_string(),
-            "model-beta-a, model-beta-b".to_string(),
+            Some("model-beta-a, model-beta-b".to_string()),
         )]));
         let assembly = build(&model, &ctx, &opts());
         assert_eq!(

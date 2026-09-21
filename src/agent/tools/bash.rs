@@ -34,6 +34,12 @@ pub fn tool() -> AgentTool {
                 };
                 cmd.stdout(Stdio::piped())
                     .stderr(Stdio::piped())
+                    // Kills the direct shell child when this future is dropped
+                    // (including the timeout branch). Grandchildren spawned by
+                    // the command (`sh -c "sleep 10 &"`) are NOT in the killed
+                    // set — tokio's kill_on_drop has no process-group handle,
+                    // and a platform process-group kill (Unix setsid/pgid,
+                    // Windows Job Objects) is deliberately out of scope here.
                     .kill_on_drop(true);
 
                 let child = cmd.spawn().map_err(|e| format!("spawn failed: {e}"))?;
@@ -129,5 +135,21 @@ mod tests {
             .expect("must not panic on multi-byte truncation");
         assert!(out.contains("... (truncated)"), "got: {out}");
         assert!(out.chars().take(3333).all(|c| c == '好'), "got: {out}");
+    }
+
+    /// A nonzero exit is reported with an `exit code:` prefix and the combined
+    /// output, instead of looking like a successful empty result.
+    #[tokio::test]
+    async fn nonzero_exit_reports_exit_code() {
+        let t = tool();
+        #[cfg(windows)]
+        let cmd = "echo before-failure & exit /B 3";
+        #[cfg(not(windows))]
+        let cmd = "echo before-failure; exit 3";
+        let out = (t.execute)(serde_json::json!({"command": cmd}))
+            .await
+            .unwrap();
+        assert!(out.starts_with("exit code: 3"), "got: {out}");
+        assert!(out.contains("before-failure"), "got: {out}");
     }
 }

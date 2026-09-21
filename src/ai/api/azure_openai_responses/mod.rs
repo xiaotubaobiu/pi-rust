@@ -494,7 +494,10 @@ pub(crate) fn resolve_azure_config(
 fn build_headers(model: &Model, options: &SimpleStreamOptions) -> Vec<(String, String)> {
     let mut headers: Vec<(String, String)> = vec![("User-Agent".to_string(), pi_user_agent())];
     for (name, value) in model.headers.iter().flatten() {
-        set_header(&mut headers, name, value);
+        match value {
+            Some(value) => set_header(&mut headers, name, value),
+            None => remove_header(&mut headers, name),
+        }
     }
     if let Some(option_headers) = &options.stream.headers {
         for (name, value) in option_headers {
