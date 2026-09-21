@@ -14,6 +14,12 @@
 //! `OpenAIResponsesCompat` and `BedrockCompat`. Typed access is on demand via
 //! the `*_compat` methods, which deserialize the stored object into the
 //! struct for one API (all compat fields are optional, so every key defaults).
+//!
+//! Port-safer difference, kept deliberately: a type-invalid compat field
+//! (e.g. a string where upstream declares boolean) makes the typed read fail
+//! and callers fall back to the default struct (`unwrap_or_default`), while
+//! upstream JS — with no runtime validation — reads the raw object with
+//! truthiness and keeps the rest of the overrides.
 
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::collections::BTreeMap;

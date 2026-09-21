@@ -141,6 +141,9 @@ pub enum ChatTemplateKwargValue {
     Bool(bool),
     /// `serde_json::Number` keeps integers integer on reserialization, matching
     /// upstream JSON (an `f64` would emit `42.0` for upstream's `42`).
+    /// Port-safer difference, kept deliberately: `Number` equality is
+    /// representation-sensitive (`1` ≠ `1.0`), where JS numeric equality
+    /// treats them as one value.
     Number(serde_json::Number),
     String(String),
     Variable {

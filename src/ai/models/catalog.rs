@@ -21,9 +21,10 @@
 //! # Ordering and dedup
 //!
 //! Upstream `flattenModelCatalog` returns a record:
-//! `Object.assign({}, ...Object.values(groups))` — all API groups merged, a
-//! duplicate model id across groups resolved last-wins (the later group's
-//! value overwrites, keeping the first-insertion position). The Rust port
+//! `Object.assign({}, ...Object.values(groups))` — all API groups merged by
+//! copying own enumerable string-keyed properties in group order; a
+//! duplicate model id across groups resolves last-wins (the later group's
+//! value overwrites) while the key keeps its first-insertion position. The Rust port
 //! returns `Vec<Model>` sorted by model id: serde_json objects are sorted
 //! maps, so upstream's first-appearance record order is not representable, and
 //! the collection layer (Task 2) wants a deterministic list. The model set and
@@ -155,8 +156,12 @@ pub fn embedded_provider_catalog(provider: &str) -> Vec<Model> {
 ///
 /// `_provider` mirrors the upstream parameter — it is a type-level input only
 /// (`flattenModelCatalog<const TProvider ...>`) and takes no part in the
-/// runtime merge. Group values that are not JSON objects are skipped, matching
-/// `Object.assign` runtime semantics. Duplicate model ids across groups are
+/// runtime merge. Group values that are not JSON objects are skipped — a
+/// port-side defensive choice, not `Object.assign` runtime behavior (upstream
+/// would throw on non-iterable primitives and spread strings/arrays into
+/// index keys; only null/undefined are ignored — and the `ModelGroups` type
+/// plus the structure validator make non-object groups unreachable for
+/// generated data). Duplicate model ids across groups are
 /// resolved last-wins like `Object.assign`; the returned list is sorted by
 /// model id (see the module docs). Model JSON that fails to deserialize panics
 /// with the offending provider/model: upstream catches malformed generated
@@ -363,8 +368,12 @@ fn validate_provider_models(
 
 /// Narrow port of the manifest timestamp check
 /// (`Number.isNaN(Date.parse(generatedAt))`): the generator emits exactly one
-/// shape, ISO-8601 UTC `YYYY-MM-DDTHH:MM:SS[.fff…]Z`. Delegates to the shared
-/// generator-shape parser ([`crate::ai::models::providers::parse_iso_utc_ms`])
+/// shape, ISO-8601 UTC `YYYY-MM-DDTHH:MM:SS[.fff…]Z`. Documented divergence:
+/// upstream `Date.parse` returns `NaN` for impossible calendar dates (day 30
+/// of February), while the parser here accepts any `01`-`31` day shape
+/// regardless of month length — deliberate, since the only input is the
+/// generated manifest stamp, whose components always cohere. Delegates to the
+/// shared generator-shape parser ([`crate::ai::models::providers::parse_iso_utc_ms`])
 /// so the acceptance set and the epoch conversion live in one place.
 fn generated_at_parses(value: &str) -> bool {
     crate::ai::models::providers::parse_iso_utc_ms(value).is_some()

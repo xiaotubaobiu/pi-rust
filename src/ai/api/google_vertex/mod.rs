@@ -1703,9 +1703,9 @@ mod tests {
     #[test]
     fn location_placeholder_base_uses_the_express_default() {
         // pi generates `{location}`-templated base URLs for Vertex models;
-        // upstream `resolveCustomBaseUrl` ignores them (the SDK builds the
-        // URL from project/location instead). Without ADC (M2d) the express
-        // default is the only built-in base.
+        // upstream `resolveCustomBaseUrl` ignores them (the ADC path builds
+        // the URL from project/location instead), so the express default is
+        // the built-in fallback for the non-ADC path.
         let model = model(
             "https://{location}-aiplatform.googleapis.com/v1/projects/my-project/locations/{location}",
         );
@@ -1825,7 +1825,7 @@ mod tests {
     #[tokio::test]
     async fn bearer_token_rides_via_explicit_headers() {
         // The M2c ruling: an explicit bearer token reaches the wire through
-        // the options headers (the ADC Bearer flow itself is M2d).
+        // the options headers (the ADC Bearer flow itself landed in M2d).
         let server = wiremock::MockServer::start().await;
         mount(&server, &[text_chunk("hi"), stop_chunk()]).await;
         let model = model(&format!("{}/v1", server.uri()));

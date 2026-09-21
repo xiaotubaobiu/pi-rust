@@ -50,7 +50,11 @@ pub struct ImageContent {
 pub struct ToolCall {
     pub id: String,
     pub name: String,
-    /// Tool arguments as a JSON object (upstream `JsonObject`).
+    /// Tool arguments (upstream `JsonObject`, types.ts:383). Deliberate
+    /// widening: `serde_json::Value` admits non-object JSON where upstream's
+    /// record type admits only objects, so struct-level round-trips are a
+    /// superset of upstream's. Wire output is unaffected — every
+    /// upstream-valid `arguments` serializes byte-identically.
     pub arguments: serde_json::Value,
     /// Google-specific: opaque signature for reusing thought context.
     #[serde(skip_serializing_if = "Option::is_none")]
