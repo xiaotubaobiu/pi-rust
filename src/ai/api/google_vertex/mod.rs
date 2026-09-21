@@ -55,12 +55,19 @@
 //!   `GCLOUD_PROJECT`) and `resolveLocation` (scoped `GOOGLE_CLOUD_LOCATION`)
 //!   run with the upstream messages, and `buildGoogleAuthOptions` reads the
 //!   `GOOGLE_APPLICATION_CREDENTIALS` key file — all three consulting the
-//!   scoped env before the process env, like upstream. The SDK's credential
-//!   materialization behind it (`google-auth-library` service-account/gcloud
-//!   login minting OAuth tokens) has no port implementation: once the chain
-//!   resolves, the branch fails with a named "not supported by this port"
-//!   error instead of sending an unauthenticated request. Explicit
-//!   `Authorization` headers ride via `options.headers` and reach the wire.
+//!   scoped env before the process env, like upstream. The credential
+//!   materialization behind it is ported for service-account key files
+//!   ([`crate::ai::auth::google_adc`]: RS256 JWT assertion → token
+//!   exchange → `Authorization: Bearer`, cached until the 5-minute
+//!   eager-refresh threshold), and the ADC URL follows the SDK's
+//!   location-based base selection with the `projects/{p}/locations/{l}`
+//!   prefix. The gcloud variant stays a named error: with
+//!   `GOOGLE_APPLICATION_CREDENTIALS` unset — or pointing at an
+//!   `authorized_user` file, which IS `gcloud auth application-default
+//!   login` state — there is no port implementation (gcloud CLI invocation
+//!   is out of scope), and the branch fails with the named "not supported by
+//!   this port" message instead. Explicit `Authorization` headers ride via
+//!   `options.headers` and reach the wire.
 //! - streamSimple error precedence: upstream vertex `streamSimple` resolves
 //!   the thinking level map BEFORE `stream` runs, so a map error fires before
 //!   the express-key/ADC errors — the inverse of the generative-ai adapter,
@@ -397,12 +404,17 @@ async fn run_stream_task(
             tool_choice,
             thinking,
         };
-        let api_key = resolve_auth(&google.stream, &cfg)?;
+        let auth = resolve_auth(&google.stream, &cfg).await?;
         let headers = build_headers(&model, &google);
         let params = build_params(&model, &ctx, &google)?;
-        let url = resolve_endpoint(&model)?;
+        let url = match &auth {
+            VertexAuth::Express(_) => resolve_endpoint(&model)?,
+            VertexAuth::Adc {
+                project, location, ..
+            } => resolve_adc_endpoint(&model, project, location)?,
+        };
 
-        let response = send_stream_request(&url, &api_key, &headers, &params, &google, &signal)
+        let response = send_stream_request(&url, &auth, &headers, &params, &google, &signal)
             .await
             .map_err(|error| error.message)?;
 
@@ -853,40 +865,61 @@ fn is_placeholder_api_key(api_key: &str) -> bool {
     }
 }
 
+/// The resolved credential (upstream lines 99-103: `apiKey ?
+/// createClientWithApiKey(...) : createClient(...)` — the express client vs
+/// the ADC client).
+#[derive(Debug, Clone)]
+enum VertexAuth {
+    /// Express mode: the `x-goog-api-key` header (the SDK's
+    /// `NodeAuth.addKeyHeader`).
+    Express(String),
+    /// ADC mode: a minted access token (`Authorization: Bearer`, the SDK's
+    /// `addAuthHeaders`) plus the project/location the ADC URL needs.
+    Adc {
+        bearer: String,
+        project: String,
+        location: String,
+    },
+}
+
 /// Upstream lines 99-103: the express key, else the ADC client construction
-/// (`resolveProject` → `resolveLocation` → the SDK's ADC credential fetch via
-/// `buildGoogleAuthOptions`'s `GOOGLE_APPLICATION_CREDENTIALS`).
+/// (`resolveProject` → `resolveLocation` → the SDK's ADC credential fetch
+/// via `buildGoogleAuthOptions`'s `GOOGLE_APPLICATION_CREDENTIALS`).
 ///
-/// Deviation (disclosed): the port reproduces the ADC **resolution** chain —
-/// project/location env lookups and the credentials key file — but not the
-/// SDK's credential materialization behind it (`google-auth-library` reads
-/// the service-account key file or `gcloud` login state and mints OAuth
-/// tokens; the port has no RS256 token minting). When ADC is selected and
-/// project/location resolve, the branch fails with a named error instead of
-/// sending an unauthenticated request. Ruling (M2e): RS256 service-account
-/// minting is an M2f commitment — this named error stands until then.
-fn resolve_auth(stream_options: &StreamOptions, cfg: &ProviderConfig) -> Result<String, String> {
+/// The ADC materialization is ported for service-account key files
+/// ([`crate::ai::auth::google_adc`]: RS256 JWT assertion → token exchange →
+/// cached bearer token). The gcloud variant stays a named error: with
+/// `GOOGLE_APPLICATION_CREDENTIALS` unset the port has no `gcloud auth
+/// application-default login`/metadata-server surface (gcloud CLI
+/// invocation is out of scope), and an `authorized_user` key file IS gcloud
+/// login state — both fail with the same named message. Project/location
+/// resolution keeps running first (upstream `resolveProject`/`resolveLocation`
+/// throw before the SDK ever looks at credentials).
+async fn resolve_auth(
+    stream_options: &StreamOptions,
+    cfg: &ProviderConfig,
+) -> Result<VertexAuth, String> {
     match resolve_api_key(stream_options, cfg) {
-        Some(api_key) => Ok(api_key),
+        Some(api_key) => Ok(VertexAuth::Express(api_key)),
         None => {
             // The resolution chain runs to completion (named errors when the
-            // env surfaces are missing), then hits the disclosed
-            // materialization gap. All three resolvers read the scoped
-            // `options.env` first, like upstream.
+            // env surfaces are missing), then materializes the credential.
+            // All three resolvers read the scoped `options.env` first, like
+            // upstream.
             let env = stream_options.env.as_ref();
-            resolve_project(env)?;
-            resolve_location(env)?;
-            Err(match build_google_auth_options(env) {
-                Some(key_file) => format!(
-                    "Vertex AI ADC authentication with the GOOGLE_APPLICATION_CREDENTIALS key \
-                     file \"{key_file}\" is not supported by this port; set GOOGLE_CLOUD_API_KEY \
-                     or a provider API key instead"
-                ),
-                None => "Vertex AI ADC authentication (gcloud application-default login) is not \
-                         supported by this port; set GOOGLE_CLOUD_API_KEY or a provider API key \
-                         instead"
-                    .to_string(),
-            })
+            let project = resolve_project(env)?;
+            let location = resolve_location(env)?;
+            match build_google_auth_options(env) {
+                Some(key_file) => {
+                    let bearer = crate::ai::auth::google_adc::adc_access_token(&key_file).await?;
+                    Ok(VertexAuth::Adc {
+                        bearer,
+                        project,
+                        location,
+                    })
+                }
+                None => Err(crate::ai::auth::google_adc::GCLOUD_ADC_NAMED_ERROR.to_string()),
+            }
         }
     }
 }
@@ -1014,6 +1047,39 @@ fn resolve_endpoint(model: &Model) -> Result<String, String> {
     Ok(format!("{head}/{model_path}:streamGenerateContent?alt=sse"))
 }
 
+/// The SDK's ADC base selection (`_api_client.ts` constructor, the
+/// project+location case): `global` → `https://aiplatform.googleapis.com`,
+/// the multi-regional `us`/`eu` →
+/// `https://aiplatform.{location}.rep.googleapis.com`, else the regional
+/// `https://{location}-aiplatform.googleapis.com`.
+fn adc_base_url(location: &str) -> String {
+    match location {
+        "global" => DEFAULT_BASE_URL.to_string(),
+        "us" | "eu" => format!("https://aiplatform.{location}.rep.googleapis.com"),
+        _ => format!("https://{location}-aiplatform.googleapis.com"),
+    }
+}
+
+/// The ADC request URL (upstream `createClient` + `buildHttpOptions` + the
+/// SDK's `constructUrl`/`shouldPrependVertexProjectPath` on the ADC client):
+/// a custom base (pi always pairs one with
+/// `baseUrlResourceScope: COLLECTION`, which suppresses the
+/// `projects/{p}/locations/{l}` prefix) follows the express head rules;
+/// without one the location-selected base ALWAYS carries the prefix (the
+/// POST stream path never hits the models.get exemption).
+fn resolve_adc_endpoint(model: &Model, project: &str, location: &str) -> Result<String, String> {
+    let model_path = resolve_model_path(&model.id)?;
+    let tail = format!("{model_path}:streamGenerateContent?alt=sse");
+    match resolve_custom_base_url(&model.base_url) {
+        Some(base) if base_url_includes_api_version(&base) => Ok(format!("{base}/{tail}")),
+        Some(base) => Ok(format!("{base}/{API_VERSION}/{tail}")),
+        None => Ok(format!(
+            "{}/{API_VERSION}/projects/{project}/locations/{location}/{tail}",
+            adc_base_url(location)
+        )),
+    }
+}
+
 /// Upstream `createClient`/`createClientWithApiKey` header assembly (line 398):
 /// the pi User-Agent, model headers, and the caller's headers merged last (a
 /// `None` value — upstream `null` — suppresses a default header).
@@ -1130,21 +1196,33 @@ fn build_params(
 /// cover transport failures and retryable statuses only — once stream bytes
 /// flow an error is never retried. The @google/genai SDK performs no internal
 /// retries when constructed without `retryOptions` (pi passes none), so the
-/// seam is the only retry layer. Auth is the express `x-goog-api-key` header.
-/// A cancelled signal fails the request with the abort error.
+/// seam is the only retry layer. Auth is the express `x-goog-api-key` header,
+/// or the ADC `Authorization: Bearer` header (`addAuthHeaders`). A cancelled
+/// signal fails the request with the abort error.
 async fn send_stream_request(
     url: &str,
-    api_key: &str,
+    auth: &VertexAuth,
     headers: &[(String, String)],
     body: &Value,
     options: &GoogleOptions,
     signal: &CancellationToken,
 ) -> Result<reqwest::Response, ProviderError> {
     let mut header_map = reqwest::header::HeaderMap::new();
-    let auth = reqwest::header::HeaderValue::from_str(api_key).map_err(|error| {
-        ProviderError::transport(format!("Invalid x-goog-api-key header: {error}"))
-    })?;
-    header_map.insert("x-goog-api-key", auth);
+    match auth {
+        VertexAuth::Express(api_key) => {
+            let auth = reqwest::header::HeaderValue::from_str(api_key).map_err(|error| {
+                ProviderError::transport(format!("Invalid x-goog-api-key header: {error}"))
+            })?;
+            header_map.insert("x-goog-api-key", auth);
+        }
+        VertexAuth::Adc { bearer, .. } => {
+            let auth = reqwest::header::HeaderValue::from_str(&format!("Bearer {bearer}"))
+                .map_err(|error| {
+                    ProviderError::transport(format!("Invalid Authorization header: {error}"))
+                })?;
+            header_map.insert("authorization", auth);
+        }
+    }
     for (name, value) in headers {
         let name = reqwest::header::HeaderName::from_bytes(name.as_bytes()).map_err(|error| {
             ProviderError::transport(format!("Invalid header name \"{name}\": {error}"))
@@ -1978,8 +2056,8 @@ mod tests {
     /// resolves where an empty ambient env would error (the sibling bedrock
     /// port plumbs the same surface). Scoped values also win over ambient
     /// ones (`getProviderEnvValue`).
-    #[test]
-    fn scoped_env_resolves_the_adc_surfaces() {
+    #[tokio::test]
+    async fn scoped_env_resolves_the_adc_surfaces() {
         // Ambient ADC vars cleared for the whole test: the scoped values
         // must be what resolves.
         let _env = TestEnv::apply(&[], ADC_VARS);
@@ -2005,26 +2083,26 @@ mod tests {
         );
 
         // End to end through `resolve_auth`: the scoped env carries the ADC
-        // chain past project/location to the disclosed gap.
+        // chain past project/location; with `GOOGLE_APPLICATION_CREDENTIALS`
+        // unset the gcloud variant fails with the named error.
         let stream_options = StreamOptions {
             api_key: Some(GCP_VERTEX_CREDENTIALS_MARKER.to_string()),
             env: Some(scoped),
             ..Default::default()
         };
         assert_eq!(
-            resolve_auth(&stream_options, &cfg()).unwrap_err(),
-            "Vertex AI ADC authentication (gcloud application-default login) is not supported \
-             by this port; set GOOGLE_CLOUD_API_KEY or a provider API key instead"
-                .to_string()
+            resolve_auth(&stream_options, &cfg()).await.unwrap_err(),
+            crate::ai::auth::google_adc::GCLOUD_ADC_NAMED_ERROR
         );
     }
 
     /// The completed ADC chain: with project/location resolved, the branch
-    /// reaches the disclosed materialization gap; the
-    /// `GOOGLE_APPLICATION_CREDENTIALS` key file is named when set
-    /// (upstream `buildGoogleAuthOptions`).
-    #[test]
-    fn adc_chain_ends_at_the_disclosed_materialization_gap() {
+    /// materializes the credential. No `GOOGLE_APPLICATION_CREDENTIALS`
+    /// → the named gcloud error (no gcloud CLI surface); an unreadable key
+    /// file → the minting layer's IO message naming the path. A real express
+    /// key never reaches the ADC branch.
+    #[tokio::test]
+    async fn adc_chain_materializes_the_key_file_credential() {
         {
             let _env = TestEnv::apply(
                 &[
@@ -2038,15 +2116,14 @@ mod tests {
                 ..Default::default()
             };
             assert_eq!(
-                resolve_auth(&stream_options, &cfg()).unwrap_err(),
-                "Vertex AI ADC authentication (gcloud application-default login) is not \
-                 supported by this port; set GOOGLE_CLOUD_API_KEY or a provider API key instead"
-                    .to_string()
+                resolve_auth(&stream_options, &cfg()).await.unwrap_err(),
+                crate::ai::auth::google_adc::GCLOUD_ADC_NAMED_ERROR
             );
         }
 
-        // With the key-file env set, the resolution names the file (upstream
-        // would hand it to the SDK's ADC loader).
+        // With the key-file env set, the branch mints: a nonexistent file
+        // surfaces the minting layer's IO error (the old "not supported by
+        // this port" gap is gone).
         {
             let _env = TestEnv::apply(
                 &[
@@ -2060,12 +2137,15 @@ mod tests {
                 api_key: Some(GCP_VERTEX_CREDENTIALS_MARKER.to_string()),
                 ..Default::default()
             };
-            assert_eq!(
-                resolve_auth(&stream_options, &cfg()).unwrap_err(),
-                "Vertex AI ADC authentication with the GOOGLE_APPLICATION_CREDENTIALS key file \
-                 \"/home/u/sa.json\" is not supported by this port; set GOOGLE_CLOUD_API_KEY or \
-                 a provider API key instead"
-                    .to_string()
+            assert!(
+                resolve_auth(&stream_options, &cfg())
+                    .await
+                    .unwrap_err()
+                    .starts_with(
+                        "Could not read the GOOGLE_APPLICATION_CREDENTIALS key file \
+                         \"/home/u/sa.json\":"
+                    ),
+                "expected the minting IO error"
             );
         }
 
@@ -2074,9 +2154,197 @@ mod tests {
             api_key: Some("AIzaSyExampleRealisticLookingApiKey123456".to_string()),
             ..Default::default()
         };
+        match resolve_auth(&stream_options, &cfg()).await.unwrap() {
+            VertexAuth::Express(api_key) => {
+                assert_eq!(api_key, "AIzaSyExampleRealisticLookingApiKey123456");
+            }
+            other => panic!("expected the express credential, got {other:?}"),
+        }
+    }
+
+    // ---- ADC service-account minting ----
+
+    /// The SDK's ADC base selection (`_api_client.ts`): global, the
+    /// `us`/`eu` multi-regional rep hosts, and the regional
+    /// `{location}-aiplatform` host, always with the
+    /// `projects/{p}/locations/{l}` prefix when no custom base is set.
+    #[test]
+    fn adc_endpoints_select_the_location_base_and_project_prefix() {
+        let path = "publishers/google/models/gemini-2.5-flash:streamGenerateContent?alt=sse";
+        let model = model("");
         assert_eq!(
-            resolve_auth(&stream_options, &cfg()).unwrap(),
-            "AIzaSyExampleRealisticLookingApiKey123456".to_string()
+            resolve_adc_endpoint(&model, "test-project", "us-central1").unwrap(),
+            format!("https://us-central1-aiplatform.googleapis.com/v1/projects/test-project/locations/us-central1/{path}")
+        );
+        // global → the global endpoint (still project-scoped).
+        assert_eq!(
+            resolve_adc_endpoint(&model, "test-project", "global").unwrap(),
+            format!("https://aiplatform.googleapis.com/v1/projects/test-project/locations/global/{path}")
+        );
+        // us/eu → the multi-regional rep hosts.
+        assert_eq!(
+            resolve_adc_endpoint(&model, "test-project", "us").unwrap(),
+            format!("https://aiplatform.us.rep.googleapis.com/v1/projects/test-project/locations/us/{path}")
+        );
+        assert_eq!(
+            resolve_adc_endpoint(&model, "test-project", "eu").unwrap(),
+            format!("https://aiplatform.eu.rep.googleapis.com/v1/projects/test-project/locations/eu/{path}")
+        );
+    }
+
+    /// A custom base suppresses the project/location prefix
+    /// (`baseUrlResourceScope: COLLECTION`) and follows the express version
+    /// rules; the `{location}` placeholder base is ignored like upstream.
+    #[test]
+    fn adc_custom_bases_follow_the_express_head_rules() {
+        let path = "publishers/google/models/gemini-2.5-flash:streamGenerateContent?alt=sse";
+        // Versioned custom base: no `v1` appended, no project prefix.
+        assert_eq!(
+            resolve_adc_endpoint(
+                &model("https://proxy.example.com/v1"),
+                "test-project",
+                "us-central1"
+            )
+            .unwrap(),
+            format!("https://proxy.example.com/v1/{path}")
+        );
+        // Unversioned custom base: `v1` appended, still no project prefix.
+        assert_eq!(
+            resolve_adc_endpoint(
+                &model("https://proxy.example.com"),
+                "test-project",
+                "us-central1"
+            )
+            .unwrap(),
+            format!("https://proxy.example.com/v1/{path}")
+        );
+        // The pi `{location}` template is ignored → the regional default
+        // with the project prefix.
+        assert_eq!(
+            resolve_adc_endpoint(
+                &model("https://{location}-aiplatform.googleapis.com/v1"),
+                "test-project",
+                "europe-west4"
+            )
+            .unwrap(),
+            format!("https://europe-west4-aiplatform.googleapis.com/v1/projects/test-project/locations/europe-west4/{path}")
+        );
+    }
+
+    /// A service-account key file in `GOOGLE_APPLICATION_CREDENTIALS` mints
+    /// a bearer token (RS256 JWT exchange over the wire) and the stream
+    /// request carries `Authorization: Bearer` — never `x-goog-api-key`.
+    /// The minted token is cached: a second stream reuses it without a
+    /// second token exchange.
+    #[tokio::test]
+    async fn adc_service_account_mints_a_bearer_and_streams_with_it() {
+        let server = wiremock::MockServer::start().await;
+
+        // The service-account key file, token_uri pointed at the mock.
+        let mut rng = rand::rng();
+        let private_key = rsa::RsaPrivateKey::new(&mut rng, 2048).unwrap();
+        let private_key_pem = {
+            use rsa::pkcs8::EncodePrivateKey;
+            private_key
+                .to_pkcs8_pem(rsa::pkcs8::LineEnding::LF)
+                .unwrap()
+                .to_string()
+        };
+        let key_dir = tempfile::tempdir().unwrap();
+        let key_file = key_dir.path().join("sa.json");
+        std::fs::write(
+            &key_file,
+            json!({
+                "type": "service_account",
+                "project_id": "test-project",
+                "private_key": private_key_pem,
+                "client_email": "sa@test-project.iam.gserviceaccount.com",
+                "token_uri": format!("{}/token", server.uri()),
+            })
+            .to_string(),
+        )
+        .unwrap();
+
+        // The token endpoint and the SSE endpoint on the same server.
+        wiremock::Mock::given(wiremock::matchers::method("POST"))
+            .and(wiremock::matchers::path("/token"))
+            .respond_with(
+                wiremock::ResponseTemplate::new(200)
+                    .insert_header("content-type", "application/json")
+                    .set_body_string(
+                        json!({"access_token": "minted-adc-test-token", "expires_in": 3600, "token_type": "Bearer"})
+                            .to_string(),
+                    ),
+            )
+            .mount(&server)
+            .await;
+        mount(&server, &[text_chunk("hi"), stop_chunk()]).await;
+
+        // The whole ADC env in ONE TestEnv::apply (the guard holds ENV_LOCK
+        // for the test's lifetime; a second apply would self-deadlock): the
+        // three ADC surfaces set, the leftover `GCLOUD_PROJECT` cleared.
+        let _env = TestEnv::apply(
+            &[
+                ("GOOGLE_CLOUD_PROJECT", "test-project"),
+                ("GOOGLE_CLOUD_LOCATION", "us-central1"),
+                ("GOOGLE_APPLICATION_CREDENTIALS", key_file.to_str().unwrap()),
+            ],
+            &["GCLOUD_PROJECT"],
+        );
+        // An empty provider-config credential so the express key never
+        // resolves and the branch selects ADC.
+        let mut request_cfg = cfg();
+        request_cfg.api_key = String::new();
+
+        let api = GoogleVertex;
+        let run_stream = || {
+            let server = &server;
+            let request_cfg = &request_cfg;
+            let api = &api;
+            async move {
+                let model = model(&format!("{}/v1", server.uri()));
+                let mut rx = api.stream_simple(
+                    request_cfg,
+                    &model,
+                    &ctx_with(vec![user_msg("hello")]),
+                    &SimpleStreamOptions::default(),
+                );
+                let mut events = Vec::new();
+                while let Some(event) = rx.recv().await {
+                    events.push(event);
+                }
+                events
+            }
+        };
+
+        let events = run_stream().await;
+        assert!(
+            matches!(events.last(), Some(AssistantMessageEvent::Done { .. })),
+            "{events:?}"
+        );
+
+        let requests = server.received_requests().await.unwrap();
+        assert_eq!(requests.len(), 2, "one token exchange + one stream");
+        assert_eq!(requests[0].url.path(), "/token");
+        assert_eq!(requests[1].url.path(), generate_content_path());
+        let headers = &requests[1].headers;
+        assert_eq!(
+            body_of(headers, "authorization"),
+            Some("Bearer minted-adc-test-token")
+        );
+        assert_eq!(body_of(headers, "x-goog-api-key"), None);
+
+        // The second stream reuses the cached token (still one /token hit).
+        let events = run_stream().await;
+        assert!(matches!(
+            events.last(),
+            Some(AssistantMessageEvent::Done { .. })
+        ));
+        let requests = server.received_requests().await.unwrap();
+        assert_eq!(requests.len(), 3, "cache hit: no second token exchange");
+        assert_eq!(
+            requests.iter().filter(|r| r.url.path() == "/token").count(),
+            1
         );
     }
 

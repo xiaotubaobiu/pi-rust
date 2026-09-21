@@ -47,6 +47,12 @@ aws-smithy-runtime-api = "=1.16.2"
 sha2 = "=0.11.0"
 rand = "=0.10.2"
 url = "=2.5.8"
+# Pinned exact, disclosed in the auth/google_adc module docs: the RS256
+# signer for the Vertex ADC service-account JWT (upstream delegates to
+# google-auth-library's gtoken + jws). The 0.10 release-candidate line is
+# the only one sharing the tree's sha2 0.11 / rand 0.10 (the stable 0.9
+# line would duplicate both).
+rsa = "=0.10.0-rc.18"
 
 [dev-dependencies]
 tempfile = "3.27.0"
