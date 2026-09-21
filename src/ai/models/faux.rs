@@ -752,6 +752,11 @@ async fn report_error(
 /// Upstream `streamWithDeltas` (faux.ts:338-434): emit the delta
 /// choreography for one scripted message. `Err` carries the message whose
 /// `stopReason` was `"pending"` (faux.ts:423-425).
+// The Err payload is the scripted AssistantMessage itself; every consumer
+// only tests `is_err()` (report_stream_failure), so boxing would add
+// indirection for no functional gain (same trade as AgentMessage's
+// large_enum_variant allow).
+#[allow(clippy::result_large_err)]
 async fn stream_with_deltas(
     tx: &tokio::sync::mpsc::Sender<AssistantMessageEvent>,
     message: AssistantMessage,
