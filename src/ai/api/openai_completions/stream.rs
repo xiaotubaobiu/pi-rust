@@ -49,6 +49,7 @@ use crate::ai::api::openai_completions::request::{
 };
 use crate::ai::api::{http_client, request_signal, ApiImpl, REQUEST_WAS_ABORTED};
 use crate::ai::cost::calculate_cost;
+use crate::ai::json_parse::repair_json;
 use crate::ai::retry::{retry_provider_request, ProviderError};
 use crate::ai::transcript::{get_declared_tools, resolve_transcript, TranscriptContext};
 use crate::ai::types::compat::OpenAiCompletionsCompat;
@@ -1303,94 +1304,6 @@ async fn finish_block(
 }
 
 // ---- parseStreamingJson port (utils/json-parse.ts) ----
-
-const VALID_JSON_ESCAPES: [char; 9] = ['"', '\\', '/', 'b', 'f', 'n', 'r', 't', 'u'];
-
-/// Upstream `parseJsonWithRepair` (`utils/json-parse.ts:85-95`): direct
-/// parse, then the repaired text when the repair differs, otherwise the
-/// original error. Shared with the anthropic-messages port for SSE event
-/// payloads.
-pub(crate) fn parse_json_with_repair(json: &str) -> Result<Value, serde_json::Error> {
-    match serde_json::from_str(json) {
-        Ok(value) => Ok(value),
-        Err(error) => {
-            let repaired = repair_json(json);
-            if repaired != json {
-                serde_json::from_str(&repaired)
-            } else {
-                Err(error)
-            }
-        }
-    }
-}
-
-/// Upstream `repairJson` (`utils/json-parse.ts:39-94`): escape raw control
-/// characters inside strings and double backslashes before invalid escapes.
-pub(crate) fn repair_json(json: &str) -> String {
-    let mut repaired = String::with_capacity(json.len());
-    let mut in_string = false;
-    let mut chars = json.chars().peekable();
-    while let Some(current) = chars.next() {
-        if !in_string {
-            repaired.push(current);
-            if current == '"' {
-                in_string = true;
-            }
-            continue;
-        }
-        match current {
-            '"' => {
-                repaired.push('"');
-                in_string = false;
-            }
-            '\\' => match chars.peek().copied() {
-                None => repaired.push_str("\\\\"),
-                Some(next) => {
-                    if next == 'u' {
-                        let digits: String = chars.clone().take(4).collect();
-                        if digits.chars().count() == 4
-                            && digits.chars().all(|c| c.is_ascii_hexdigit())
-                        {
-                            repaired.push_str("\\u");
-                            repaired.push_str(&digits);
-                            for _ in 0..4 {
-                                chars.next();
-                            }
-                            continue;
-                        }
-                    }
-                    if VALID_JSON_ESCAPES.contains(&next) {
-                        repaired.push('\\');
-                        repaired.push(next);
-                        chars.next();
-                    } else {
-                        repaired.push_str("\\\\");
-                    }
-                }
-            },
-            other => {
-                if (other as u32) <= 0x1f {
-                    repaired.push_str(&escape_control_character(other));
-                } else {
-                    repaired.push(other);
-                }
-            }
-        }
-    }
-    repaired
-}
-
-/// Upstream `escapeControlCharacter` (`utils/json-parse.ts:15-27`).
-fn escape_control_character(character: char) -> String {
-    match character {
-        '\u{8}' => "\\b".to_string(),
-        '\u{c}' => "\\f".to_string(),
-        '\n' => "\\n".to_string(),
-        '\r' => "\\r".to_string(),
-        '\t' => "\\t".to_string(),
-        other => format!("\\u{:04x}", other as u32),
-    }
-}
 
 /// Approximation of the `partial-json` fallback: close an open string and any
 /// open containers, complete a truncated `true`/`false`/`null` literal, turn a

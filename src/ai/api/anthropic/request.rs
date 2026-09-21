@@ -2462,6 +2462,15 @@ mod tests {
                 "block_binding": {"prefix_mismatch_behavior": "drop_block"}
             })
         );
+        // The managed-effort compat also carries both beta features (upstream
+        // getBetaFeatures, lines 1024-1028), in order.
+        assert_eq!(
+            betas(&first),
+            [
+                "mid-conversation-output-config-2026-07-01".to_string(),
+                "thinking-binding-controls-2026-08-01".to_string(),
+            ]
+        );
 
         // Capture 2: historical marker prefix reconstructed, current marker appended.
         let ctx = ctx_of(vec![
@@ -2544,7 +2553,8 @@ mod tests {
             vec![&json!({"role": "system", "content": [], "output_config": {"effort": "medium"}})]
         );
 
-        // Non-managed model: top-level effort, no markers, no block_binding.
+        // Non-managed model: top-level effort, no markers, no block_binding —
+        // and neither mid-conversation beta.
         let model = make_model(json!({"forceAdaptiveThinking": true}));
         let ctx = ctx_of(vec![user("one")]);
         let options = AnthropicOptions {
@@ -2562,6 +2572,41 @@ mod tests {
         assert_eq!(
             assembly.body["thinking"],
             json!({"type": "adaptive", "display": "summarized"})
+        );
+        assert_eq!(betas(&assembly), Vec::<String>::new());
+    }
+
+    /// Unsigned thinking replayed from another provider's assistant message
+    /// converts to plain text (upstream lines 1332-1347: the signature check
+    /// is provider-independent — a cross-model thinking block has no
+    /// anthropic signature to replay).
+    #[test]
+    fn cross_model_unsigned_thinking_converts_to_text() {
+        let model = make_model(json!({}));
+        let ctx = ctx_of(vec![
+            user("first"),
+            assistant_msg(
+                "openai",
+                "openai-completions",
+                "gpt-test",
+                vec![
+                    thinking("cross-model reasoning", None),
+                    AssistantBlock::Text(TextContent {
+                        text: "answer".to_string(),
+                        text_signature: None,
+                    }),
+                ],
+                None,
+            ),
+            user("second"),
+        ]);
+        let assembly = build(&model, &ctx, &opts());
+        assert_eq!(
+            assembly.body["messages"][1]["content"],
+            json!([
+                {"type": "text", "text": "cross-model reasoning"},
+                {"type": "text", "text": "answer"}
+            ])
         );
     }
 

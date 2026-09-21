@@ -4,7 +4,7 @@ use std::future::Future;
 use std::pin::Pin;
 
 pub type BoxToolFuture = Pin<Box<dyn Future<Output = Result<String, String>> + Send>>;
-pub type ToolFn = Box<dyn Fn(serde_json::Value) -> BoxToolFuture + Send + Sync>;
+pub type ToolFn = dyn Fn(serde_json::Value) -> BoxToolFuture + Send + Sync;
 
 /// An executable tool: declaration (sent to the LLM) + executor.
 #[derive(Clone)]
@@ -27,11 +27,9 @@ where
         name,
         description,
         parameters: serde_json::to_value(schemars::schema_for!(T)).expect("schema serializes"),
-        execute: std::sync::Arc::new(Box::new(move |value| {
-            match serde_json::from_value::<T>(value) {
-                Ok(args) => execute(args),
-                Err(e) => Box::pin(async move { Err(format!("invalid arguments: {e}")) }),
-            }
-        })),
+        execute: std::sync::Arc::new(move |value| match serde_json::from_value::<T>(value) {
+            Ok(args) => execute(args),
+            Err(e) => Box::pin(async move { Err(format!("invalid arguments: {e}")) }),
+        }),
     }
 }

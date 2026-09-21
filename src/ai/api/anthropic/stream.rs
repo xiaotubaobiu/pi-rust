@@ -54,11 +54,10 @@ use crate::ai::api::anthropic::request::{
     build_request, get_anthropic_compat, is_oauth_token, options_from_simple, resolve_api_key,
     AnthropicCompat, AnthropicEffort, AnthropicOptions, RequestAssembly,
 };
-use crate::ai::api::openai_completions::stream::{
-    format_http_error, parse_json_with_repair, parse_streaming_json,
-};
+use crate::ai::api::openai_completions::stream::{format_http_error, parse_streaming_json};
 use crate::ai::api::{http_client, request_signal, ApiImpl, REQUEST_WAS_ABORTED};
 use crate::ai::cost::calculate_cost;
+use crate::ai::json_parse::parse_json_with_repair;
 use crate::ai::retry::{retry_provider_request, ProviderError};
 use crate::ai::transcript::{get_current_tools, resolve_transcript, TranscriptContext};
 use crate::ai::types::content::{TextContent, ThinkingContent, ToolCall};

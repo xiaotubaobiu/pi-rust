@@ -363,55 +363,11 @@ fn validate_provider_models(
 
 /// Narrow port of the manifest timestamp check
 /// (`Number.isNaN(Date.parse(generatedAt))`): the generator emits exactly one
-/// shape, ISO-8601 UTC `YYYY-MM-DDTHH:MM:SS[.fff…]Z`, so the port validates
-/// that shape and component ranges instead of shipping a date parser.
+/// shape, ISO-8601 UTC `YYYY-MM-DDTHH:MM:SS[.fff…]Z`. Delegates to the shared
+/// generator-shape parser ([`crate::ai::models::providers::parse_iso_utc_ms`])
+/// so the acceptance set and the epoch conversion live in one place.
 fn generated_at_parses(value: &str) -> bool {
-    let bytes = value.as_bytes();
-    if bytes.len() < 20
-        || bytes[4] != b'-'
-        || bytes[7] != b'-'
-        || bytes[10] != b'T'
-        || bytes[13] != b':'
-        || bytes[16] != b':'
-        || *bytes.last().expect("len checked above") != b'Z'
-    {
-        return false;
-    }
-    let digits = |slice: &[u8]| slice.iter().all(u8::is_ascii_digit);
-    if !(digits(&bytes[0..4])
-        && digits(&bytes[5..7])
-        && digits(&bytes[8..10])
-        && digits(&bytes[11..13])
-        && digits(&bytes[14..16])
-        && digits(&bytes[17..19]))
-    {
-        return false;
-    }
-    // `seconds` ends at index 19; an optional `.fraction` must hold at least
-    // one digit before the trailing `Z`.
-    let tail = bytes.len() - 1;
-    if tail != 19 && (bytes[19] != b'.' || tail <= 20 || !digits(&bytes[20..tail])) {
-        return false;
-    }
-    let num = |slice: &[u8]| -> Option<u32> {
-        slice.iter().try_fold(0u32, |acc, byte| {
-            acc.checked_mul(10)?.checked_add(u32::from(byte - b'0'))
-        })
-    };
-    let (Some(month), Some(day), Some(hour), Some(minute), Some(second)) = (
-        num(&bytes[5..7]),
-        num(&bytes[8..10]),
-        num(&bytes[11..13]),
-        num(&bytes[14..16]),
-        num(&bytes[17..19]),
-    ) else {
-        return false;
-    };
-    (1..=12).contains(&month)
-        && (1..=31).contains(&day)
-        && hour <= 23
-        && minute <= 59
-        && second <= 59
+    crate::ai::models::providers::parse_iso_utc_ms(value).is_some()
 }
 
 fn sha256_hex(bytes: &[u8]) -> String {

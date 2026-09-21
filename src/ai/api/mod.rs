@@ -262,6 +262,56 @@ pub(crate) mod abort_test_support {
 }
 
 #[cfg(test)]
+pub(crate) mod test_support {
+    //! Shared env-mutating test support: process env is process-global, so
+    //! one lock serializes every env-mutating provider test and the saved
+    //! values restore on drop (the oracle suites' `stubEnv`/`afterEach`).
+    //!
+    //! One shared `TestEnv` replaces the per-module copies (bedrock's AWS
+    //! surfaces, google_vertex's GCP surfaces); the single lock only orders
+    //! them — the var sets are disjoint, so outcomes are unchanged.
+
+    use std::sync::{Mutex, MutexGuard};
+
+    static ENV_LOCK: Mutex<()> = Mutex::new(());
+
+    pub(crate) struct TestEnv {
+        _lock: MutexGuard<'static, ()>,
+        saved: Vec<(&'static str, Option<String>)>,
+    }
+
+    impl TestEnv {
+        /// Sets `settings`, removes `cleared`, restoring everything on drop.
+        pub(crate) fn apply(settings: &[(&'static str, &str)], cleared: &[&'static str]) -> Self {
+            let lock = ENV_LOCK
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner());
+            let mut saved = Vec::new();
+            for (name, value) in settings {
+                saved.push((*name, std::env::var(name).ok()));
+                std::env::set_var(name, value);
+            }
+            for name in cleared {
+                saved.push((*name, std::env::var(name).ok()));
+                std::env::remove_var(name);
+            }
+            TestEnv { _lock: lock, saved }
+        }
+    }
+
+    impl Drop for TestEnv {
+        fn drop(&mut self) {
+            for (name, value) in &self.saved {
+                match value {
+                    Some(value) => std::env::set_var(name, value),
+                    None => std::env::remove_var(name),
+                }
+            }
+        }
+    }
+}
+
+#[cfg(test)]
 mod tests {
     use super::{http_client, os_arch, os_platform, pi_user_agent, pi_user_agent_from, ApiImpl};
     use crate::ai::transcript::TranscriptContext;

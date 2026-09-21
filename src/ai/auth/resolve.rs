@@ -402,14 +402,15 @@ async fn refresh_under_lock(
         },
         _ = options.cancelled() => Err(AuthError::Cancelled),
         // Upstream composes `AbortSignal.timeout(15s)` into the refresh
-        // signal; the abort rejects the refresh with an AbortError whose
-        // message the wrap below reproduces.
+        // signal; the abort rejects the refresh with a `TimeoutError`
+        // DOMException whose message (`AbortSignal.timeout`) the wrap below
+        // reproduces.
         _ = tokio::time::sleep(std::time::Duration::from_millis(
             DEFAULT_OAUTH_REFRESH_TIMEOUT_MS,
         )) => Err(AuthError::Models(ModelsError::with_cause(
             ModelsErrorCode::OAuth,
             format!("OAuth refresh failed for {provider_id}"),
-            "The operation was aborted",
+            "The operation was aborted due to timeout",
         ))),
     }
 }
@@ -438,8 +439,11 @@ async fn resolve_api_key(
     }
 }
 
-/// Upstream `readCredential` (resolve.ts:195-205).
-async fn read_credential(
+/// Upstream `readCredential` (resolve.ts:195-205). Also the credential-read
+/// wrap the refresh paths share: the models collection's
+/// `read_refresh_credential` delegates here, so store-read failures carry the
+/// same code-`"auth"` `ModelsError` on both flows.
+pub(crate) async fn read_credential(
     credentials: &dyn CredentialStore,
     provider_id: &str,
     options: &AuthOperationOptions,
@@ -1112,7 +1116,7 @@ mod tests {
         assert_eq!(error.code, ModelsErrorCode::OAuth);
         assert_eq!(
             error.to_string(),
-            "OAuth refresh failed for fake-provider: The operation was aborted"
+            "OAuth refresh failed for fake-provider: The operation was aborted due to timeout"
         );
     }
 

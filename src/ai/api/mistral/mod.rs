@@ -68,6 +68,12 @@
 //!   `content[].thinking` degrades to empty where upstream threw a TypeError —
 //!   both only reachable with malformed provider payloads. `delta.content`
 //!   scalars other than string/array error like upstream's non-iterable throw.
+//!   Two more choices the serde layer makes on malformed payloads: a choice
+//!   without `delta` deserializes to the default empty delta and is processed
+//!   as a no-op (upstream's bare `choice.delta` access would TypeError into
+//!   its catch block), and a `tool_calls[]` entry missing `function` fails the
+//!   chunk's deserialization with serde's `missing field \`function\``
+//!   message (upstream: the same TypeError-into-catch shape, different text).
 //! - JSON object key order follows `serde_json` (sorted), not JS insertion
 //!   order — same documented deviation as the request-builder ports.
 
@@ -2354,6 +2360,37 @@ mod tests {
         model.thinking_level_map = Some(level_map(&[("medium", None)]));
         let (_, _, body, _) = capture_simple(&server, &model, &ctx, &options).await;
         assert_eq!(body["reasoning_effort"], json!("high"));
+    }
+
+    /// The provider-neutral toolChoice passthrough reaches the wire as the
+    /// mistral `tool_choice` string (upstream lines 196-209 + 966-968); the
+    /// key is omitted when no choice is requested.
+    #[tokio::test]
+    async fn tool_choice_reaches_the_wire() {
+        let server = wiremock::MockServer::start().await;
+        let ctx = ctx_with(vec![user_msg("hello")]);
+        let model = model(&server.uri());
+
+        mount(&server, &[terminal_event("stop")]).await;
+        let options = SimpleStreamOptions {
+            tool_choice: Some(ToolChoice::None),
+            ..SimpleStreamOptions::default()
+        };
+        let (_, _, body, _) = capture_simple(&server, &model, &ctx, &options).await;
+        assert_eq!(body["tool_choice"], json!("none"));
+
+        mount(&server, &[terminal_event("stop")]).await;
+        let options = SimpleStreamOptions {
+            tool_choice: Some(ToolChoice::Auto),
+            ..SimpleStreamOptions::default()
+        };
+        let (_, _, body, _) = capture_simple(&server, &model, &ctx, &options).await;
+        assert_eq!(body["tool_choice"], json!("auto"));
+
+        mount(&server, &[terminal_event("stop")]).await;
+        let (_, _, body, _) =
+            capture_simple(&server, &model, &ctx, &SimpleStreamOptions::default()).await;
+        assert!(body.get("tool_choice").is_none(), "{body}");
     }
 
     #[tokio::test]

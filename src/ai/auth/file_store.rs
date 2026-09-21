@@ -610,11 +610,7 @@ mod tests {
         // Final `{}` proves the ordering: a delete that had beaten the
         // modify would have removed nothing and the writer would have
         // re-written the entry afterwards.
-        assert_eq!(read_file_by(&dir), "{}");
-    }
-
-    fn read_file_by(dir: &TempDir) -> String {
-        std::fs::read_to_string(dir.path().join("auth.json")).unwrap()
+        assert_eq!(read_file(&dir), "{}");
     }
 
     #[cfg(unix)]

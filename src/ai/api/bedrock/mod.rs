@@ -2794,46 +2794,13 @@ mod tests {
         assert_eq!(resolved.region, None);
     }
 
-    /// Process env is process-global; serialize env-mutating tests and
-    /// restore the saved values on drop (the oracle's `stubEnv`/`afterEach`).
-    static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    /// Process env is process-global; the shared
+    /// [`test_support::TestEnv`](crate::ai::api::test_support::TestEnv)
+    /// serializes env-mutating tests and restores the saved values on drop
+    /// (the oracle's `stubEnv`/`afterEach`).
+    use crate::ai::api::test_support::TestEnv;
 
-    struct TestEnv {
-        _lock: std::sync::MutexGuard<'static, ()>,
-        saved: Vec<(&'static str, Option<String>)>,
-    }
-
-    impl TestEnv {
-        /// Sets `settings`, removes `cleared`, restoring everything on drop.
-        fn apply(settings: &[(&'static str, String)], cleared: &[&'static str]) -> Self {
-            let lock = ENV_LOCK
-                .lock()
-                .unwrap_or_else(|poisoned| poisoned.into_inner());
-            let mut saved = Vec::new();
-            for (name, value) in settings {
-                saved.push((*name, std::env::var(name).ok()));
-                std::env::set_var(name, value);
-            }
-            for name in cleared {
-                saved.push((*name, std::env::var(name).ok()));
-                std::env::remove_var(name);
-            }
-            TestEnv { _lock: lock, saved }
-        }
-    }
-
-    impl Drop for TestEnv {
-        fn drop(&mut self) {
-            for (name, value) in &self.saved {
-                match value {
-                    Some(value) => std::env::set_var(name, value),
-                    None => std::env::remove_var(name),
-                }
-            }
-        }
-    }
-
-    /// Holds [`ENV_LOCK`] with the AWS ambient vars cleared: the baseline for
+    /// Holds the env lock with the AWS ambient vars cleared: the baseline for
     /// resolution tests whose `env=None` inputs read the process env (the
     /// oracle's env-mutating tests run in parallel).
     fn cleared_aws_env() -> TestEnv {
@@ -2852,10 +2819,10 @@ mod tests {
         )
     }
 
-    fn ambient_keys() -> Vec<(&'static str, String)> {
+    fn ambient_keys() -> Vec<(&'static str, &'static str)> {
         vec![
-            ("AWS_ACCESS_KEY_ID", "AKIAEXAMPLE".to_string()),
-            ("AWS_SECRET_ACCESS_KEY", "secretexample".to_string()),
+            ("AWS_ACCESS_KEY_ID", "AKIAEXAMPLE"),
+            ("AWS_SECRET_ACCESS_KEY", "secretexample"),
         ]
     }
 
@@ -2900,7 +2867,7 @@ mod tests {
     #[test]
     fn ambient_profile_keeps_the_ambient_aws_access_keys() {
         let mut settings = ambient_keys();
-        settings.push(("AWS_PROFILE", "ambient-profile".to_string()));
+        settings.push(("AWS_PROFILE", "ambient-profile"));
         let _env = TestEnv::apply(&settings, &["AWS_REGION", "AWS_DEFAULT_REGION"]);
         let resolved = resolve_endpoint_config(&claude_sonnet_4_5(), None, true, None);
         assert_eq!(resolved.profile.as_deref(), Some("ambient-profile"));
@@ -2918,7 +2885,7 @@ mod tests {
     #[test]
     fn ambient_session_token_rides_the_static_keys() {
         let mut settings = ambient_keys();
-        settings.push(("AWS_SESSION_TOKEN", "token".to_string()));
+        settings.push(("AWS_SESSION_TOKEN", "token"));
         let _env = TestEnv::apply(
             &settings,
             &["AWS_PROFILE", "AWS_REGION", "AWS_DEFAULT_REGION"],

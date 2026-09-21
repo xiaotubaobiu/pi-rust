@@ -1602,6 +1602,30 @@ mod tests {
         assert!(partial.is_terminal());
     }
 
+    /// Valid-JSON non-object SSE data payloads parse but carry no `type`:
+    /// upstream's untyped `event.type` access falls to the default switch and
+    /// ignores them, so the port classifies them [`ResponsesStreamEvent::
+    /// Unhandled`](crate::ai::api::openai_responses_shared::ResponsesStreamEvent)
+    /// instead of failing the stream with a deserialize error.
+    #[tokio::test]
+    async fn non_object_sse_payloads_are_ignored() {
+        let server = wiremock::MockServer::start().await;
+        let body = format!(
+            "data: [1, 2]\n\ndata: \"text\"\n\ndata: 42\n\ndata: null\n\n{}",
+            completed_sse()
+        );
+        mount(&server, &body).await;
+        let model = model();
+        let ctx = ctx_with(Some("sys"), vec![user_msg("hi")], None);
+        let events = collect_simple(&server, &model, &ctx, &SimpleStreamOptions::default()).await;
+
+        // The stream completes normally: the payloads were skipped, not
+        // deserialization errors.
+        assert_eq!(event_types(&events), ["start", "done"], "{events:?}");
+        let partial = apply_all(&events);
+        assert!(partial.is_terminal());
+    }
+
     #[tokio::test]
     async fn incomplete_max_output_tokens_is_a_length_stop() {
         let server = wiremock::MockServer::start().await;

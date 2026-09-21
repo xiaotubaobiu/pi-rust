@@ -199,18 +199,21 @@ pub fn content_text(content: &StringOrBlocks) -> String {
 
 /// Upstream `getSystemMessageText` (text.ts:15-21): render a system message
 /// as a complete prompt — its content followed by its sections (in section
-/// order), empty parts dropped, joined by blank lines.
+/// order), empty parts dropped, joined by blank lines. Section texts are
+/// borrowed, not cloned, into the join.
 pub fn get_system_message_text(message: &SystemMessage) -> String {
-    let mut parts = vec![content_text(&message.content)];
-    for (_, value) in message.sections.as_ref().into_iter().flatten() {
-        if let Some(text) = value {
-            parts.push(text.clone());
-        }
-    }
-    parts
+    let content = content_text(&message.content);
+    let sections = message
+        .sections
+        .as_ref()
         .into_iter()
+        .flatten()
+        .filter_map(|(_, value)| value.as_deref())
+        .filter(|text| !text.is_empty());
+    std::iter::once(content.as_str())
+        .chain(sections)
         .filter(|part| !part.is_empty())
-        .collect::<Vec<String>>()
+        .collect::<Vec<_>>()
         .join("\n\n")
 }
 

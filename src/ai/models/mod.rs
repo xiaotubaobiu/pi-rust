@@ -1087,25 +1087,16 @@ fn auth_refresh_error(error: AuthError) -> RefreshModelsError {
 }
 
 /// Upstream `readCredential` (models.ts:489-495) as the refresh path sees it:
-/// store read failures wrapped in a code-`"auth"` `ModelsError`, raced
-/// against the refresh token. Shared with `get_available`, which surfaces the
+/// the shared [`read_credential`](crate::ai::auth::resolve::read_credential)
+/// wrap (store-read failures become code-`"auth"` `ModelsError`s) with the
+/// operation-less option set. Shared with `get_available`, which surfaces the
 /// same wrapping through its `AuthError` channel (upstream resolve.ts:195-205).
 async fn read_refresh_credential(
     credentials: &dyn CredentialStore,
     provider_id: &str,
 ) -> Result<Option<Credential>, AuthError> {
-    match credentials
-        .read(provider_id, &AuthOperationOptions::NONE)
+    crate::ai::auth::resolve::read_credential(credentials, provider_id, &AuthOperationOptions::NONE)
         .await
-    {
-        Ok(credential) => Ok(credential),
-        Err(AuthError::Cancelled) => Err(AuthError::Cancelled),
-        Err(error) => Err(AuthError::Models(ModelsError::with_cause(
-            ModelsErrorCode::Auth,
-            format!("Credential store read failed for {provider_id}"),
-            error,
-        ))),
-    }
 }
 
 /// Per-refresh operation inputs, bundled once per provider slot (upstream
@@ -1126,19 +1117,17 @@ struct RefreshRun<'a> {
 /// network is allowed and a credential resolved — the network fetch phase.
 async fn run_provider_refresh(run: RefreshRun<'_>) -> Result<(), RefreshModelsError> {
     // Best-effort credential read (models.ts:414-420): the failure is held
-    // and thrown only after the restore phase ran.
+    // and thrown only after the restore phase ran. The read goes through the
+    // shared `read_credential` wrap, so the held error is already a
+    // code-`"auth"` `ModelsError` (or `Cancelled`).
     let (stored_credential, credential_error) = {
         let options = AuthOperationOptions::new(run.token.clone());
         let read = tokio::select! {
-            result = run.credentials.read(run.provider.id(), &options) => match result {
-                Ok(credential) => Ok(credential),
-                Err(AuthError::Cancelled) => Err(RefreshModelsError::Cancelled),
-                Err(error) => Err(RefreshModelsError::Failed(ModelsError::with_cause(
-                    ModelsErrorCode::Auth,
-                    format!("Credential store read failed for {}", run.provider.id()),
-                    error,
-                ))),
-            },
+            result = crate::ai::auth::resolve::read_credential(
+                run.credentials,
+                run.provider.id(),
+                &options,
+            ) => result.map_err(auth_refresh_error),
             _ = run.token.cancelled() => Err(RefreshModelsError::Cancelled),
         };
         match read {
