@@ -1,9 +1,17 @@
-//! Agent loop core turns from upstream `packages/agent/src/agent-loop.ts`:
+//! Agent loop from upstream `packages/agent/src/agent-loop.ts`:
 //! prompt list -> per-turn context build (`declareToolChanges` +
 //! `convertToLlm`) -> `Models::stream_simple` -> assistant event mapping ->
 //! tool execution (sequential and parallel modes with
 //! before/after hooks and the batch early-termination rule) ->
-//! toolResult messages -> done.
+//! toolResult messages -> repeat, with steering messages polled and injected
+//! at the turn boundaries (agent-loop.ts:174, 200-204, 263), follow-up
+//! messages checked when the agent would stop (agent-loop.ts:266-272), and
+//! abort checks at the tool-execution points.
+//!
+//! The steering/follow-up queues themselves are abstracted behind the
+//! `getSteeringMessages`/`getFollowUpMessages` hooks exactly as upstream;
+//! [`PendingMessageQueue`] (the agent.ts queue the Agent class backs those
+//! hooks with, including the one-at-a-time/all drain modes) ports alongside.
 //!
 //! Upstream is a generator-style `EventStream<AgentEvent, AgentMessage[]>`;
 //! the port is channel-based: [`agent_loop`] spawns the loop and returns an
@@ -29,11 +37,14 @@
 //! - Hook and callback payloads carry owned snapshots (`AgentContext` clones),
 //!   not live references: upstream hooks read the live loop context. Clones
 //!   are read-equivalent for every hook contract in `types.ts`.
-//! - `getSteeringMessages`/`getFollowUpMessages` are carried as config fields
-//!   but never polled here: steering, follow-up, and abort behavior are
-//!   M3a Task 3. The abort token parameter is plumbed to the provider stream
-//!   options and tool `execute` calls (transport plumbing, as upstream
-//!   `streamAssistantResponse` does), but the loop never acts on it.
+//! - Upstream `AbortSignal` is the port's [`CancellationToken`]; the loop
+//!   plumbs it to the provider stream options and tool `execute` calls and
+//!   checks it at the upstream points: tool preflight (after the
+//!   `beforeToolCall` hook and before returning a prepared call), the
+//!   sequential executor after each call, the parallel preflight after each
+//!   entry, and the parallel execution closure (agent-loop.ts:531, 569, 597,
+//!   691, 710, 576). A provider stream that settles aborted still ends the
+//!   run through the error/aborted turn branch (agent-loop.ts:221-225).
 //! - The M1-carried `max_turns` guard (upstream agent-loop.ts has no
 //!   equivalent) bails the loop with `exceeded max_turns (N)` after emitting
 //!   `agent_end`, preserving the agent_start..agent_end event pairing.
@@ -70,7 +81,7 @@ use crate::ai::validation::validate_tool_arguments;
 
 use super::types::{
     AfterToolCallResult, AgentEvent, AgentMessage, AgentTool, AgentToolResult,
-    AgentToolUpdateCallback, BeforeToolCallResult, ThinkingLevel, ToolExecutionMode,
+    AgentToolUpdateCallback, BeforeToolCallResult, QueueMode, ThinkingLevel, ToolExecutionMode,
 };
 
 /// Upstream `AgentContext` (types.ts:434-439): the context snapshot passed
@@ -196,9 +207,10 @@ pub type ShouldStopAfterTurnHook =
 pub type PrepareNextTurnHook =
     dyn Fn(PrepareNextTurnContext) -> BoxFuture<'static, Option<AgentLoopTurnUpdate>> + Send + Sync;
 
-/// `getSteeringMessages`/`getFollowUpMessages` (types.ts:243-265). Carried as
-/// a seam for M3a Task 3 (steering/follow-up queues); not polled by the
-/// core-turn loop.
+/// `getSteeringMessages`/`getFollowUpMessages` (types.ts:243-265): polled by
+/// the loop at the upstream points (loop start, after preparation, after each
+/// turn; follow-up at the stop point). The Agent class (M3a Task 4) backs
+/// these hooks with a [`PendingMessageQueue`].
 pub type GetQueuedMessagesHook = dyn Fn() -> BoxFuture<'static, Vec<AgentMessage>> + Send + Sync;
 
 /// Configuration for the low-level agent loop (upstream `AgentLoopConfig`,
@@ -227,9 +239,11 @@ pub struct AgentLoopConfig {
     pub should_stop_after_turn: Option<Arc<ShouldStopAfterTurnHook>>,
     /// Called before the next turn when the loop continues.
     pub prepare_next_turn: Option<Arc<PrepareNextTurnHook>>,
-    /// Steering queue hook (Task 3 seam; not polled).
+    /// Steering queue hook, polled at loop start, after preparation, and
+    /// after each completed turn (upstream `getSteeringMessages`).
     pub get_steering_messages: Option<Arc<GetQueuedMessagesHook>>,
-    /// Follow-up queue hook (Task 3 seam; not polled).
+    /// Follow-up queue hook, polled when the agent would stop (upstream
+    /// `getFollowUpMessages`).
     pub get_follow_up_messages: Option<Arc<GetQueuedMessagesHook>>,
 }
 
@@ -260,6 +274,58 @@ pub type AgentLoopRun = (
     mpsc::UnboundedReceiver<AgentEvent>,
     tokio::task::JoinHandle<anyhow::Result<Vec<AgentMessage>>>,
 );
+
+/// Upstream `PendingMessageQueue` (agent.ts:140-177): the steering/follow-up
+/// message store behind the Agent class's `steer`/`followUp`/`clear*Queue`
+/// surface. `drain` implements the two [`QueueMode`] behaviors — `All`
+/// returns and clears the whole queue, `OneAtATime` returns only the oldest
+/// message and leaves the rest for later drain points. The Agent class backs
+/// its `getSteeringMessages`/`getFollowUpMessages` loop hooks with one queue
+/// each; the loop itself only sees drained messages.
+pub struct PendingMessageQueue {
+    messages: Vec<AgentMessage>,
+    mode: QueueMode,
+}
+
+impl PendingMessageQueue {
+    /// An empty queue with the given drain mode.
+    pub fn new(mode: QueueMode) -> Self {
+        Self {
+            messages: Vec::new(),
+            mode,
+        }
+    }
+
+    /// Queue a message (upstream `enqueue`).
+    pub fn enqueue(&mut self, message: AgentMessage) {
+        self.messages.push(message);
+    }
+
+    /// Whether any message is queued (upstream `hasItems`).
+    pub fn has_items(&self) -> bool {
+        !self.messages.is_empty()
+    }
+
+    /// Take the messages injected at this drain point (upstream `drain`).
+    pub fn drain(&mut self) -> Vec<AgentMessage> {
+        match self.mode {
+            QueueMode::All => std::mem::take(&mut self.messages),
+            QueueMode::OneAtATime => {
+                if self.messages.is_empty() {
+                    Vec::new()
+                } else {
+                    vec![self.messages.remove(0)]
+                }
+            }
+        }
+    }
+
+    /// Drop every queued message (upstream `clear`; the Agent class's
+    /// `clearSteeringQueue`/`clearFollowUpQueue`/`clearAllQueues` primitive).
+    pub fn clear(&mut self) {
+        self.messages.clear();
+    }
+}
 
 /// Upstream `agentLoop` (agent-loop.ts:37-60): start a run with new prompt
 /// messages. Returns the event receiver and the run handle; the handle's
@@ -382,8 +448,9 @@ fn validate_continue_context(context: &AgentContext) -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Upstream `runLoop` (agent-loop.ts:162-279), core turns: steering, follow-up
-/// and abort handling are M3a Task 3 seams (see the module docs).
+/// Upstream `runLoop` (agent-loop.ts:162-279): the outer loop re-enters when
+/// queued follow-up messages arrive after the agent would stop; the inner
+/// loop processes tool calls and steering messages.
 async fn run_loop(
     current_context: &mut AgentContext,
     new_messages: &mut Vec<AgentMessage>,
@@ -394,148 +461,198 @@ async fn run_loop(
 ) -> anyhow::Result<()> {
     let mut last_completed_turn: Option<PrepareNextTurnContext> = None;
     let mut turns_executed = 0usize;
-    // Upstream polls `getSteeringMessages` once before the outer loop
-    // (agent-loop.ts:174) — steering lands in Task 3.
+    // Upstream checks for steering messages at start (agent-loop.ts:174):
+    // the user may have typed while waiting for the run.
+    let mut pending_messages: Vec<AgentMessage> = poll_steering(&config).await;
 
-    // Upstream wraps this loop in an outer loop that feeds queued follow-up
-    // messages back in when the agent would stop (agent-loop.ts:176-276);
-    // that outer loop and its inner steering handling are Task 3 seams.
-    let mut has_more_tool_calls = true;
+    // Outer loop: continues when queued follow-up messages arrive after the
+    // agent would stop (agent-loop.ts:177-276).
+    loop {
+        let mut has_more_tool_calls = true;
 
-    while has_more_tool_calls {
-        // M1-carried maxTurns guard (upstream agent-loop.ts has no
-        // equivalent): the check sits before any turn-boundary work, so a
-        // turn that would exceed the bound never starts. Emitting
-        // agent_end first keeps the agent_start..agent_end pairing intact.
-        if turns_executed >= config.max_turns {
-            (emit)(AgentEvent::AgentEnd {
-                messages: new_messages.clone(),
-            });
-            bail!("exceeded max_turns ({})", config.max_turns);
-        }
+        // Inner loop: process tool calls and steering messages
+        // (agent-loop.ts:181-264).
+        while has_more_tool_calls || !pending_messages.is_empty() {
+            // M1-carried maxTurns guard (upstream agent-loop.ts has no
+            // equivalent): the check sits before any turn-boundary work, so a
+            // turn that would exceed the bound never starts. Emitting
+            // agent_end first keeps the agent_start..agent_end pairing intact.
+            if turns_executed >= config.max_turns {
+                (emit)(AgentEvent::AgentEnd {
+                    messages: new_messages.clone(),
+                });
+                bail!("exceeded max_turns ({})", config.max_turns);
+            }
 
-        let mut prepared_messages: Vec<AgentMessage> = Vec::new();
-        if let Some(turn) = last_completed_turn {
-            if let Some(hook) = &config.prepare_next_turn {
-                if let Some(update) = hook(turn).await {
-                    if let Some(context) = update.context {
-                        *current_context = context;
+            let mut prepared_messages: Vec<AgentMessage> = Vec::new();
+            if let Some(turn) = last_completed_turn {
+                if let Some(hook) = &config.prepare_next_turn {
+                    if let Some(update) = hook(turn).await {
+                        if let Some(context) = update.context {
+                            *current_context = context;
+                        }
+                        prepared_messages = update.messages.unwrap_or_default();
+                        if let Some(model) = update.model {
+                            config.model = model;
+                        }
+                        // Upstream maps "off" to `undefined` (agent-loop.ts:194-196).
+                        config.thinking_level = match update.thinking_level {
+                            Some(ThinkingLevel::Off) => None,
+                            Some(level) => Some(level),
+                            None => config.thinking_level,
+                        };
                     }
-                    prepared_messages = update.messages.unwrap_or_default();
-                    if let Some(model) = update.model {
-                        config.model = model;
-                    }
-                    // Upstream maps "off" to `undefined` (agent-loop.ts:194-196).
-                    config.thinking_level = match update.thinking_level {
-                        Some(ThinkingLevel::Off) => None,
-                        Some(level) => Some(level),
-                        None => config.thinking_level,
-                    };
                 }
+                // Preparation can be long-running (for example, compaction).
+                // Pick up steering queued while it ran. Only poll again if the
+                // earlier poll returned nothing; otherwise one-at-a-time mode
+                // would deliver two messages in this turn
+                // (agent-loop.ts:200-204).
+                if pending_messages.is_empty() {
+                    pending_messages = poll_steering(&config).await;
+                }
+                (emit)(AgentEvent::TurnStart);
             }
-            // Upstream re-polls steering after long-running preparation
-            // (agent-loop.ts:200-204) — Task 3.
-            (emit)(AgentEvent::TurnStart);
-        }
 
-        // Process prepared messages before the next assistant response.
-        for message in declare_tool_changes(current_context, prepared_messages) {
-            (emit)(AgentEvent::MessageStart {
-                message: message.clone(),
-            });
-            (emit)(AgentEvent::MessageEnd {
-                message: message.clone(),
-            });
-            current_context.messages.push(message.clone());
-            new_messages.push(message);
-        }
-
-        // Stream assistant response.
-        let message =
-            stream_assistant_response(current_context, &config, models, signal.clone(), emit).await;
-        turns_executed += 1;
-        new_messages.push(AgentMessage::Assistant(message.clone()));
-
-        // Stream errors end the run with the failed assistant message
-        // (agent-loop.ts:221-225) — never toolResult messages.
-        if message.stop_reason == StopReason::Error || message.stop_reason == StopReason::Aborted {
-            (emit)(AgentEvent::TurnEnd {
-                message: AgentMessage::Assistant(message),
-                tool_results: Vec::new(),
-            });
-            (emit)(AgentEvent::AgentEnd {
-                messages: new_messages.clone(),
-            });
-            return Ok(());
-        }
-
-        let tool_calls: Vec<ToolCall> = message
-            .content
-            .iter()
-            .filter_map(|block| match block {
-                AssistantBlock::ToolCall(call) => Some(call.clone()),
-                _ => None,
-            })
-            .collect();
-
-        let mut tool_results: Vec<ToolResultMessage> = Vec::new();
-        has_more_tool_calls = false;
-        if !tool_calls.is_empty() {
-            // A "length" stop means the output was cut off by the token
-            // limit, so every tool call may carry truncated arguments
-            // (agent-loop.ts:233-239).
-            let batch = if message.stop_reason == StopReason::Length {
-                fail_tool_calls_from_truncated_message(&tool_calls, emit).await
-            } else {
-                execute_tool_calls(current_context, &message, &config, signal.clone(), emit).await
-            };
-            tool_results = batch.messages;
-            has_more_tool_calls = !batch.terminate;
-            for result in &tool_results {
-                current_context
-                    .messages
-                    .push(AgentMessage::ToolResult(result.clone()));
-                new_messages.push(AgentMessage::ToolResult(result.clone()));
+            // Process prepared and queued messages before the next assistant
+            // response (agent-loop.ts:208-215).
+            let incoming: Vec<AgentMessage> = prepared_messages
+                .into_iter()
+                .chain(pending_messages.drain(..))
+                .collect();
+            for message in declare_tool_changes(current_context, incoming) {
+                (emit)(AgentEvent::MessageStart {
+                    message: message.clone(),
+                });
+                (emit)(AgentEvent::MessageEnd {
+                    message: message.clone(),
+                });
+                current_context.messages.push(message.clone());
+                new_messages.push(message);
             }
-        }
 
-        (emit)(AgentEvent::TurnEnd {
-            message: AgentMessage::Assistant(message.clone()),
-            tool_results: tool_results.clone(),
-        });
+            // Stream assistant response.
+            let message =
+                stream_assistant_response(current_context, &config, models, signal.clone(), emit)
+                    .await;
+            turns_executed += 1;
+            new_messages.push(AgentMessage::Assistant(message.clone()));
 
-        if let Some(hook) = &config.should_stop_after_turn {
-            let stop = hook(ShouldStopAfterTurnContext {
-                message: message.clone(),
-                tool_results: tool_results.clone(),
-                context: current_context.clone(),
-                new_messages: new_messages.clone(),
-            })
-            .await;
-            if stop {
+            // Stream errors end the run with the failed assistant message
+            // (agent-loop.ts:221-225) — never toolResult messages.
+            if message.stop_reason == StopReason::Error
+                || message.stop_reason == StopReason::Aborted
+            {
+                (emit)(AgentEvent::TurnEnd {
+                    message: AgentMessage::Assistant(message),
+                    tool_results: Vec::new(),
+                });
                 (emit)(AgentEvent::AgentEnd {
                     messages: new_messages.clone(),
                 });
                 return Ok(());
             }
+
+            let tool_calls: Vec<ToolCall> = message
+                .content
+                .iter()
+                .filter_map(|block| match block {
+                    AssistantBlock::ToolCall(call) => Some(call.clone()),
+                    _ => None,
+                })
+                .collect();
+
+            let mut tool_results: Vec<ToolResultMessage> = Vec::new();
+            has_more_tool_calls = false;
+            if !tool_calls.is_empty() {
+                // A "length" stop means the output was cut off by the token
+                // limit, so every tool call may carry truncated arguments
+                // (agent-loop.ts:233-239).
+                let batch = if message.stop_reason == StopReason::Length {
+                    fail_tool_calls_from_truncated_message(&tool_calls, emit).await
+                } else {
+                    execute_tool_calls(current_context, &message, &config, signal.clone(), emit)
+                        .await
+                };
+                tool_results = batch.messages;
+                has_more_tool_calls = !batch.terminate;
+                for result in &tool_results {
+                    current_context
+                        .messages
+                        .push(AgentMessage::ToolResult(result.clone()));
+                    new_messages.push(AgentMessage::ToolResult(result.clone()));
+                }
+            }
+
+            (emit)(AgentEvent::TurnEnd {
+                message: AgentMessage::Assistant(message.clone()),
+                tool_results: tool_results.clone(),
+            });
+
+            last_completed_turn = Some(PrepareNextTurnContext {
+                message: message.clone(),
+                tool_results: tool_results.clone(),
+                context: current_context.clone(),
+                new_messages: new_messages.clone(),
+            });
+
+            if let Some(hook) = &config.should_stop_after_turn {
+                let stop = hook(ShouldStopAfterTurnContext {
+                    message,
+                    tool_results,
+                    context: current_context.clone(),
+                    new_messages: new_messages.clone(),
+                })
+                .await;
+                if stop {
+                    (emit)(AgentEvent::AgentEnd {
+                        messages: new_messages.clone(),
+                    });
+                    return Ok(());
+                }
+            }
+
+            // Steering is polled after every completed turn
+            // (agent-loop.ts:263); the inner-loop condition decides whether
+            // the queued messages start the next turn.
+            pending_messages = poll_steering(&config).await;
         }
 
-        last_completed_turn = Some(PrepareNextTurnContext {
-            message,
-            tool_results,
-            context: current_context.clone(),
-            new_messages: new_messages.clone(),
-        });
+        // Agent would stop here. Check for follow-up messages
+        // (agent-loop.ts:266-272); any message re-enters the inner loop.
+        let follow_up_messages = poll_follow_up(&config).await;
+        if !follow_up_messages.is_empty() {
+            pending_messages = follow_up_messages;
+            continue;
+        }
 
-        // Upstream polls steering here (agent-loop.ts:263) — Task 3.
-        // Upstream then polls the follow-up queue when the agent would stop
-        // (agent-loop.ts:266-272) — Task 3; the loop exits.
+        // No more messages, exit (agent-loop.ts:274-275).
+        break;
     }
 
     (emit)(AgentEvent::AgentEnd {
         messages: new_messages.clone(),
     });
     Ok(())
+}
+
+/// Upstream `(await config.getSteeringMessages?.()) || []`
+/// (agent-loop.ts:174, 203, 263): poll the steering queue hook; an absent
+/// hook polls to an empty injection.
+async fn poll_steering(config: &AgentLoopConfig) -> Vec<AgentMessage> {
+    match &config.get_steering_messages {
+        Some(hook) => hook().await,
+        None => Vec::new(),
+    }
+}
+
+/// Upstream `(await config.getFollowUpMessages?.()) || []`
+/// (agent-loop.ts:267): poll the follow-up queue hook at the stop point.
+async fn poll_follow_up(config: &AgentLoopConfig) -> Vec<AgentMessage> {
+    match &config.get_follow_up_messages {
+        Some(hook) => hook().await,
+        None => Vec::new(),
+    }
 }
 
 /// Upstream `declareToolChanges` (agent-loop.ts:291-321): declare tool loadout
@@ -854,6 +971,12 @@ async fn execute_tool_calls(
     }
 }
 
+/// Upstream `signal?.aborted` (agent-loop.ts:531, 569, 597, 691, 710, 576):
+/// the port's [`CancellationToken`] equivalent.
+fn signal_aborted(signal: Option<&CancellationToken>) -> bool {
+    signal.is_some_and(CancellationToken::is_cancelled)
+}
+
 /// Upstream `executeToolCallsSequential` (agent-loop.ts:486-540).
 async fn execute_tool_calls_sequential(
     context: &AgentContext,
@@ -873,37 +996,44 @@ async fn execute_tool_calls_sequential(
             args: tool_call.arguments.clone(),
         });
 
-        let finalized =
-            match prepare_tool_call(context, assistant_message, tool_call.clone(), config).await {
-                PreparedToolCall::Immediate { result, is_error } => FinalizedToolCallOutcome {
+        let finalized = match prepare_tool_call(
+            context,
+            assistant_message,
+            tool_call.clone(),
+            config,
+            signal.as_ref(),
+        )
+        .await
+        {
+            PreparedToolCall::Immediate { result, is_error } => FinalizedToolCallOutcome {
+                tool_call,
+                result,
+                is_error,
+            },
+            PreparedToolCall::Prepared {
+                tool_call,
+                tool,
+                args,
+            } => {
+                let executed = execute_prepared_tool_call(
+                    &tool_call,
+                    &tool,
+                    args.clone(),
+                    signal.clone(),
+                    emit,
+                )
+                .await;
+                finalize_executed_tool_call(
+                    context,
+                    assistant_message,
                     tool_call,
-                    result,
-                    is_error,
-                },
-                PreparedToolCall::Prepared {
-                    tool_call,
-                    tool,
                     args,
-                } => {
-                    let executed = execute_prepared_tool_call(
-                        &tool_call,
-                        &tool,
-                        args.clone(),
-                        signal.clone(),
-                        emit,
-                    )
-                    .await;
-                    finalize_executed_tool_call(
-                        context,
-                        assistant_message,
-                        tool_call,
-                        args,
-                        executed,
-                        config.after_tool_call.as_ref(),
-                    )
-                    .await
-                }
-            };
+                    executed,
+                    config.after_tool_call.as_ref(),
+                )
+                .await
+            }
+        };
 
         emit_tool_execution_end(&finalized, emit);
         let tool_result_message = create_tool_result_message(&finalized);
@@ -912,7 +1042,11 @@ async fn execute_tool_calls_sequential(
         messages.push(tool_result_message);
 
         // Upstream breaks out of the loop when `signal.aborted`
-        // (agent-loop.ts:531-533) — abort lands in Task 3.
+        // (agent-loop.ts:531-533): remaining tool calls in the batch are
+        // skipped entirely.
+        if signal_aborted(signal.as_ref()) {
+            break;
+        }
     }
 
     ExecutedToolCallBatch {
@@ -945,7 +1079,15 @@ async fn execute_tool_calls_parallel(
             args: tool_call.arguments.clone(),
         });
 
-        match prepare_tool_call(context, assistant_message, tool_call.clone(), config).await {
+        match prepare_tool_call(
+            context,
+            assistant_message,
+            tool_call.clone(),
+            config,
+            signal.as_ref(),
+        )
+        .await
+        {
             PreparedToolCall::Immediate { result, is_error } => {
                 let finalized = FinalizedToolCallOutcome {
                     tool_call,
@@ -955,18 +1097,28 @@ async fn execute_tool_calls_parallel(
                 emit_tool_execution_end(&finalized, emit);
                 entries.push(ToolCallEntry::Ready(finalized));
                 // Upstream breaks out of the preflight loop when
-                // `signal.aborted` (agent-loop.ts:569-571, 597-599) — abort
-                // lands in Task 3.
+                // `signal.aborted` (agent-loop.ts:569-571): later calls never
+                // reach preflight.
+                if signal_aborted(signal.as_ref()) {
+                    break;
+                }
             }
             PreparedToolCall::Prepared {
                 tool_call,
                 tool,
                 args,
-            } => entries.push(ToolCallEntry::Pending {
-                tool_call,
-                tool,
-                args,
-            }),
+            } => {
+                entries.push(ToolCallEntry::Pending {
+                    tool_call,
+                    tool,
+                    args,
+                });
+                // Same preflight break after a pending entry
+                // (agent-loop.ts:597-599).
+                if signal_aborted(signal.as_ref()) {
+                    break;
+                }
+            }
         }
     }
 
@@ -986,6 +1138,18 @@ async fn execute_tool_calls_parallel(
                     tool,
                     args,
                 } => {
+                    // Upstream checks `signal.aborted` at execution time and
+                    // fails the call without running the tool
+                    // (agent-loop.ts:576-584).
+                    if signal_aborted(signal.as_ref()) {
+                        let finalized = FinalizedToolCallOutcome {
+                            tool_call,
+                            result: error_tool_result("Operation aborted"),
+                            is_error: true,
+                        };
+                        emit_tool_execution_end(&finalized, &emit);
+                        return finalized;
+                    }
                     let executed =
                         execute_prepared_tool_call(&tool_call, &tool, args.clone(), signal, &emit)
                             .await;
@@ -1077,6 +1241,7 @@ async fn prepare_tool_call(
     assistant_message: &AssistantMessage,
     tool_call: ToolCall,
     config: &AgentLoopConfig,
+    signal: Option<&CancellationToken>,
 ) -> PreparedToolCall {
     let Some(tool) = context
         .tools
@@ -1122,7 +1287,14 @@ async fn prepare_tool_call(
         })
         .await;
         // Upstream re-checks `signal.aborted` after the hook
-        // (agent-loop.ts:691-697) — abort lands in Task 3.
+        // (agent-loop.ts:691-697): an aborted call fails without running the
+        // tool, ahead of any block decision.
+        if signal_aborted(signal) {
+            return PreparedToolCall::Immediate {
+                result: error_tool_result("Operation aborted"),
+                is_error: true,
+            };
+        }
         if let Some(result) = &outcome.result {
             if result.block == Some(true) {
                 let mut result_override = error_tool_result(
@@ -1149,7 +1321,13 @@ async fn prepare_tool_call(
         }
     }
     // Upstream checks `signal.aborted` before returning the prepared call
-    // (agent-loop.ts:710-716) — abort lands in Task 3.
+    // (agent-loop.ts:710-716).
+    if signal_aborted(signal) {
+        return PreparedToolCall::Immediate {
+            result: error_tool_result("Operation aborted"),
+            is_error: true,
+        };
+    }
     PreparedToolCall::Prepared {
         tool_call,
         tool,
@@ -1291,6 +1469,7 @@ fn emit_tool_result_message(message: &ToolResultMessage, emit: &AgentEventSink) 
 mod tests {
     use super::*;
     use crate::agent_core::CustomAgentMessage;
+    use crate::ai::models::faux::FauxTokenSize;
     use crate::ai::models::{
         create_models, faux_assistant_message, faux_provider, faux_tool_call, CreateModelsOptions,
         FauxFactoryArgs, FauxMessageOptions, FauxProviderHandle, FauxProviderOptions,
@@ -2404,9 +2583,9 @@ mod tests {
     }
 
     /// Oracle "should stop after the current turn when shouldStopAfterTurn
-    /// returns true", including the exact event sequence. The steering and
-    /// follow-up queue hooks stay unpolled until Task 3 wires them (upstream
-    /// polls steering once at loop start).
+    /// returns true", including the exact event sequence. Upstream pins
+    /// steeringPolls == 1 (the loop-start poll) and followUpPolls == 0: the
+    /// hook exits before the post-turn steering poll and the follow-up poll.
     #[tokio::test]
     async fn stops_after_the_current_turn_when_should_stop_after_turn_is_true() {
         let (models, faux, model) = faux_models();
@@ -2473,9 +2652,11 @@ mod tests {
 
         assert_eq!(call_count(&faux), 1);
         assert_eq!(*executed.lock().unwrap(), [serde_json::json!("hello")]);
-        // Task 3 seam: upstream polls steering once at loop start and never
-        // reaches the follow-up poll (shouldStopAfterTurn exits first).
-        assert_eq!(steering_polls.load(Ordering::SeqCst), 0);
+        // Upstream counts: the loop-start steering poll runs once
+        // (agent-loop.ts:174); shouldStopAfterTurn exits before the post-turn
+        // steering poll (agent-loop.ts:263) and the follow-up poll
+        // (agent-loop.ts:267).
+        assert_eq!(steering_polls.load(Ordering::SeqCst), 1);
         assert_eq!(follow_up_polls.load(Ordering::SeqCst), 0);
         assert_eq!(*callback_tool_result_ids.lock().unwrap(), ["tool-1"]);
         assert_eq!(
@@ -2506,6 +2687,355 @@ mod tests {
                 "agent_end",
             ]
         );
+    }
+
+    /// Oracle "should inject queued messages after all tool calls complete":
+    /// both tools of the assistant message execute before the queued steering
+    /// message is injected, and the follow-up LLM call sees it in context.
+    #[tokio::test]
+    async fn injects_queued_messages_after_all_tool_calls_complete() {
+        let (models, faux, model) = faux_models();
+        let executed = Arc::new(Mutex::new(Vec::<serde_json::Value>::new()));
+        let executed_writer = executed.clone();
+        let queued_delivered = Arc::new(AtomicBool::new(false));
+        let delivered_writer = queued_delivered.clone();
+        let mut config = identity_config(model);
+        config.tool_execution = Some(ToolExecutionMode::Sequential);
+        // Return the steering message after tool execution has started
+        // (upstream hook shape, agent-loop.test.ts:747-754).
+        config.get_steering_messages = Some(Arc::new(move || {
+            let (executed_writer, delivered_writer) =
+                (executed_writer.clone(), delivered_writer.clone());
+            Box::pin(async move {
+                if !executed_writer.lock().unwrap().is_empty()
+                    && !delivered_writer.swap(true, Ordering::SeqCst)
+                {
+                    vec![user_message("interrupt")]
+                } else {
+                    Vec::new()
+                }
+            })
+        }));
+        let saw_interrupt = Arc::new(AtomicBool::new(false));
+        let saw_writer = saw_interrupt.clone();
+        faux.set_responses(vec![
+            tool_call_response(
+                vec![
+                    ("tool-1", "echo", serde_json::json!({"value": "first"})),
+                    ("tool-2", "echo", serde_json::json!({"value": "second"})),
+                ],
+                StopReason::ToolUse,
+            ),
+            FauxResponseStep::Factory(Arc::new(move |args: FauxFactoryArgs| {
+                let saw_writer = saw_writer.clone();
+                Box::pin(async move {
+                    let saw = args.context.messages().iter().any(|message| {
+                        matches!(message, Message::User(user) if content_text(&user.content) == "interrupt")
+                    });
+                    saw_writer.store(saw, Ordering::SeqCst);
+                    Ok(faux_assistant_message("done", FauxMessageOptions::default()))
+                })
+            })),
+        ]);
+
+        let (rx, handle) = agent_loop(
+            vec![user_message("start")],
+            AgentContext {
+                messages: Vec::new(),
+                tools: vec![Arc::new(echo_tool(executed.clone()))],
+            },
+            config,
+            models,
+            None,
+        );
+        handle.await.unwrap().unwrap();
+        let events = collect_events(rx).await;
+
+        // Both tools should execute before steering is injected
+        assert_eq!(
+            *executed.lock().unwrap(),
+            [serde_json::json!("first"), serde_json::json!("second")]
+        );
+        let tool_ends: Vec<bool> = events
+            .iter()
+            .filter_map(|event| match event {
+                AgentEvent::ToolExecutionEnd { is_error, .. } => Some(*is_error),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(tool_ends, [false, false]);
+
+        // Queued message appears in events after both tool result messages
+        let sequence: Vec<String> = events
+            .iter()
+            .filter_map(|event| match event {
+                AgentEvent::MessageStart { message } => match message {
+                    AgentMessage::ToolResult(tool_result) => {
+                        Some(format!("tool:{}", tool_result.tool_call_id))
+                    }
+                    AgentMessage::User(user) => Some(content_text(&user.content)),
+                    _ => None,
+                },
+                _ => None,
+            })
+            .collect();
+        let interrupt_index = sequence
+            .iter()
+            .position(|entry| entry == "interrupt")
+            .expect("interrupt injected");
+        let tool_1_index = sequence
+            .iter()
+            .position(|entry| entry == "tool:tool-1")
+            .expect("tool-1 result");
+        let tool_2_index = sequence
+            .iter()
+            .position(|entry| entry == "tool:tool-2")
+            .expect("tool-2 result");
+        assert!(tool_1_index < interrupt_index);
+        assert!(tool_2_index < interrupt_index);
+
+        // Interrupt message was in context when the second LLM call was made
+        assert!(saw_interrupt.load(Ordering::SeqCst));
+    }
+
+    /// Upstream "continue() should process queued follow-up messages after an
+    /// assistant turn" (agent.test.ts:795) at the loop level: the follow-up
+    /// hook is consulted when the agent would stop, its message is injected,
+    /// and another turn runs.
+    #[tokio::test]
+    async fn processes_follow_up_messages_when_the_agent_would_stop() {
+        let (models, faux, model) = faux_models();
+        let follow_up_polls = Arc::new(AtomicUsize::new(0));
+        let polls_writer = follow_up_polls.clone();
+        let mut config = identity_config(model);
+        config.get_follow_up_messages = Some(Arc::new(move || {
+            let polls_writer = polls_writer.clone();
+            Box::pin(async move {
+                let poll = polls_writer.fetch_add(1, Ordering::SeqCst);
+                if poll == 0 {
+                    vec![user_message("follow up")]
+                } else {
+                    Vec::new()
+                }
+            })
+        }));
+        faux.set_responses(vec![text_response("first"), text_response("second")]);
+
+        let (rx, handle) = agent_loop(
+            vec![user_message("start")],
+            AgentContext::default(),
+            config,
+            models,
+            None,
+        );
+        let messages = handle.await.unwrap().unwrap();
+        let events = collect_events(rx).await;
+
+        assert_eq!(call_count(&faux), 2);
+        assert_eq!(follow_up_polls.load(Ordering::SeqCst), 2);
+        // No tools in the context, so no tool-declaration system message.
+        assert_eq!(
+            role_names(&messages),
+            ["user", "assistant", "user", "assistant"]
+        );
+        assert_eq!(
+            events
+                .iter()
+                .filter(|event| matches!(event, AgentEvent::TurnStart))
+                .count(),
+            2
+        );
+    }
+
+    /// Upstream one-at-a-time steering semantics (agent.test.ts:833-872 at
+    /// the loop level): each drain point injects exactly one queued message,
+    /// so two queued steering messages take two turns.
+    #[tokio::test]
+    async fn steering_one_at_a_time_drains_one_message_per_poll() {
+        let (models, faux, model) = faux_models();
+        let queue = Arc::new(Mutex::new(PendingMessageQueue::new(QueueMode::OneAtATime)));
+        {
+            let mut queued = queue.lock().unwrap();
+            queued.enqueue(user_message("steer 1"));
+            queued.enqueue(user_message("steer 2"));
+        }
+        let queue_writer = queue.clone();
+        let mut config = identity_config(model);
+        config.get_steering_messages = Some(Arc::new(move || {
+            let queue_writer = queue_writer.clone();
+            Box::pin(async move { queue_writer.lock().unwrap().drain() })
+        }));
+        faux.set_responses(vec![text_response("first"), text_response("second")]);
+
+        let (_rx, handle) = agent_loop(
+            vec![user_message("start")],
+            AgentContext::default(),
+            config,
+            models,
+            None,
+        );
+        let messages = handle.await.unwrap().unwrap();
+
+        assert_eq!(call_count(&faux), 2);
+        let user_texts: Vec<String> = messages
+            .iter()
+            .filter_map(|message| match message {
+                AgentMessage::User(user) => Some(content_text(&user.content)),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(user_texts, ["start", "steer 1", "steer 2"]);
+    }
+
+    /// Upstream "all" steering mode: a drain point injects the whole queue,
+    /// so both queued steering messages land in one turn with one LLM call.
+    #[tokio::test]
+    async fn steering_all_mode_drains_the_whole_queue_in_one_turn() {
+        let (models, faux, model) = faux_models();
+        let queue = Arc::new(Mutex::new(PendingMessageQueue::new(QueueMode::All)));
+        {
+            let mut queued = queue.lock().unwrap();
+            queued.enqueue(user_message("steer 1"));
+            queued.enqueue(user_message("steer 2"));
+        }
+        let queue_writer = queue.clone();
+        let mut config = identity_config(model);
+        config.get_steering_messages = Some(Arc::new(move || {
+            let queue_writer = queue_writer.clone();
+            Box::pin(async move { queue_writer.lock().unwrap().drain() })
+        }));
+        faux.set_responses(vec![text_response("only response")]);
+
+        let (_rx, handle) = agent_loop(
+            vec![user_message("start")],
+            AgentContext::default(),
+            config,
+            models,
+            None,
+        );
+        let messages = handle.await.unwrap().unwrap();
+
+        assert_eq!(call_count(&faux), 1);
+        // No tools in the context, so no tool-declaration system message.
+        assert_eq!(role_names(&messages), ["user", "user", "user", "assistant"]);
+        let user_texts: Vec<String> = messages
+            .iter()
+            .filter_map(|message| match message {
+                AgentMessage::User(user) => Some(content_text(&user.content)),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(user_texts, ["start", "steer 1", "steer 2"]);
+    }
+
+    /// Follow-up is consulted only when there are no more tool calls and no
+    /// steering messages (README "Steering and Follow-up"): the queued
+    /// steering message turns first; the follow-up turns after the steering
+    /// queue empties.
+    #[tokio::test]
+    async fn steering_is_drained_before_the_follow_up_queue() {
+        let (models, faux, model) = faux_models();
+        let queue = Arc::new(Mutex::new(PendingMessageQueue::new(QueueMode::OneAtATime)));
+        queue.lock().unwrap().enqueue(user_message("steer"));
+        let queue_writer = queue.clone();
+        let follow_up_polls = Arc::new(AtomicUsize::new(0));
+        let polls_writer = follow_up_polls.clone();
+        let mut config = identity_config(model);
+        config.get_steering_messages = Some(Arc::new(move || {
+            let queue_writer = queue_writer.clone();
+            Box::pin(async move { queue_writer.lock().unwrap().drain() })
+        }));
+        config.get_follow_up_messages = Some(Arc::new(move || {
+            let polls_writer = polls_writer.clone();
+            Box::pin(async move {
+                let poll = polls_writer.fetch_add(1, Ordering::SeqCst);
+                if poll == 0 {
+                    vec![user_message("follow up")]
+                } else {
+                    Vec::new()
+                }
+            })
+        }));
+        faux.set_responses(vec![text_response("first"), text_response("second")]);
+
+        let (_rx, handle) = agent_loop(
+            vec![user_message("start")],
+            AgentContext::default(),
+            config,
+            models,
+            None,
+        );
+        let messages = handle.await.unwrap().unwrap();
+
+        assert_eq!(call_count(&faux), 2);
+        let user_texts: Vec<String> = messages
+            .iter()
+            .filter_map(|message| match message {
+                AgentMessage::User(user) => Some(content_text(&user.content)),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(user_texts, ["start", "steer", "follow up"]);
+    }
+
+    /// Steering queued while `prepareNextTurn` runs is picked up before the
+    /// next turn (agent-loop.ts:200-204): the post-turn poll returned
+    /// nothing, so the preparation-time re-poll delivers the message.
+    #[tokio::test]
+    async fn steering_queued_during_preparation_is_picked_up() {
+        let (models, faux, model) = faux_models();
+        let queue = Arc::new(Mutex::new(PendingMessageQueue::new(QueueMode::OneAtATime)));
+        let prepare_queue = queue.clone();
+        let poll_queue = queue.clone();
+        let enqueued = Arc::new(AtomicBool::new(false));
+        let enqueued_writer = enqueued.clone();
+        let mut config = identity_config(model);
+        config.prepare_next_turn = Some(Arc::new(move |_context: PrepareNextTurnContext| {
+            let (prepare_queue, enqueued_writer) = (prepare_queue.clone(), enqueued_writer.clone());
+            Box::pin(async move {
+                // The user steers while preparation (e.g. compaction) runs.
+                if !enqueued_writer.swap(true, Ordering::SeqCst) {
+                    prepare_queue
+                        .lock()
+                        .unwrap()
+                        .enqueue(user_message("late steer"));
+                }
+                None
+            })
+        }));
+        config.get_steering_messages = Some(Arc::new(move || {
+            let poll_queue = poll_queue.clone();
+            Box::pin(async move { poll_queue.lock().unwrap().drain() })
+        }));
+        faux.set_responses(vec![
+            tool_call_response(
+                vec![("tool-1", "echo", serde_json::json!({"value": "hello"}))],
+                StopReason::ToolUse,
+            ),
+            text_response("done"),
+        ]);
+
+        let (_rx, handle) = agent_loop(
+            vec![user_message("start")],
+            AgentContext {
+                messages: Vec::new(),
+                tools: vec![Arc::new(echo_tool(Arc::new(Mutex::new(Vec::new()))))],
+            },
+            config,
+            models,
+            None,
+        );
+        let messages = handle.await.unwrap().unwrap();
+
+        assert_eq!(call_count(&faux), 2);
+        let user_texts: Vec<String> = messages
+            .iter()
+            .filter_map(|message| match message {
+                AgentMessage::User(user) => Some(content_text(&user.content)),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(user_texts, ["start", "late steer"]);
     }
 
     /// Oracle "should stop after a tool batch when every tool result sets
@@ -2860,6 +3390,496 @@ mod tests {
         let events = collect_events(rx).await;
         assert_eq!(event_names(&events).last().copied(), Some("agent_end"));
         assert_eq!(call_count(&faux), 2);
+    }
+
+    /// Abort mid-batch (agent-loop.ts:531-533): after tool-1's execution the
+    /// sequential executor breaks, so tool-2 never starts; the follow-up
+    /// provider call sees the cancelled token and settles aborted
+    /// (agent-loop.ts:221-225).
+    #[tokio::test]
+    async fn sequential_execution_skips_remaining_calls_after_an_abort() {
+        let (models, faux, model) = faux_models();
+        let executed = Arc::new(Mutex::new(Vec::<serde_json::Value>::new()));
+        let executed_writer = executed.clone();
+        let token = CancellationToken::new();
+        let tool = AgentTool {
+            name: "echo".into(),
+            label: "Echo".into(),
+            description: "Echo tool".into(),
+            parameters: serde_json::json!({
+                "type": "object",
+                "properties": {"value": {"type": "string"}},
+                "required": ["value"]
+            }),
+            execute: Arc::new(
+                move |_id: String,
+                      params: serde_json::Value,
+                      signal: Option<CancellationToken>,
+                      _on_update: Option<Arc<AgentToolUpdateCallback>>| {
+                    let executed_writer = executed_writer.clone();
+                    Box::pin(async move {
+                        executed_writer
+                            .lock()
+                            .unwrap()
+                            .push(params["value"].clone());
+                        if params["value"] == "first" {
+                            // Cancel while the first tool runs; the token the
+                            // loop handed the tool is the run's token.
+                            if let Some(signal) = signal {
+                                signal.cancel();
+                            }
+                        }
+                        Ok(AgentToolResult {
+                            content: vec![text_block(&format!(
+                                "echoed: {}",
+                                params["value"].as_str().unwrap_or_default()
+                            ))],
+                            details: Some(serde_json::json!({"value": params["value"]})),
+                            ..AgentToolResult::default()
+                        })
+                    })
+                },
+            ),
+            constrained_sampling: None,
+            prepare_arguments: None,
+            replay: None,
+            execution_mode: None,
+        };
+        let mut config = identity_config(model);
+        config.tool_execution = Some(ToolExecutionMode::Sequential);
+        // The second response is never streamed: the pre-cancelled token
+        // settles the stream aborted before any event.
+        faux.set_responses(vec![
+            tool_call_response(
+                vec![
+                    ("tool-1", "echo", serde_json::json!({"value": "first"})),
+                    ("tool-2", "echo", serde_json::json!({"value": "second"})),
+                ],
+                StopReason::ToolUse,
+            ),
+            text_response("never streamed"),
+        ]);
+
+        let (rx, handle) = agent_loop(
+            vec![user_message("echo both")],
+            AgentContext {
+                messages: Vec::new(),
+                tools: vec![Arc::new(tool)],
+            },
+            config,
+            models,
+            Some(token),
+        );
+        let messages = handle.await.unwrap().unwrap();
+        let events = collect_events(rx).await;
+
+        assert_eq!(*executed.lock().unwrap(), [serde_json::json!("first")]);
+        let started: Vec<&str> = events
+            .iter()
+            .filter_map(|event| match event {
+                AgentEvent::ToolExecutionStart { tool_call_id, .. } => Some(tool_call_id.as_str()),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(started, ["tool-1"]);
+        // The second provider request is rejected in auth setup by the
+        // already-cancelled token ("auth operation cancelled", counted as 1
+        // provider call); the loop ends the run with the failed assistant
+        // message (agent-loop.ts:221-225).
+        match messages.last() {
+            Some(AgentMessage::Assistant(assistant)) => assert!(matches!(
+                assistant.stop_reason,
+                StopReason::Aborted | StopReason::Error
+            )),
+            other => panic!(
+                "expected final assistant message, got {:?}",
+                other.map(|m| m.role())
+            ),
+        }
+        assert_eq!(call_count(&faux), 1);
+    }
+
+    /// Abort during parallel preflight (agent-loop.ts:691-697, 569-571): the
+    /// `beforeToolCall` hook cancels the token, the post-hook check fails the
+    /// call with "Operation aborted" without running the tool, and the
+    /// preflight break means later calls never start.
+    #[tokio::test]
+    async fn parallel_preflight_fails_and_stops_after_an_abort() {
+        let (models, faux, model) = faux_models();
+        let executed = Arc::new(Mutex::new(Vec::<serde_json::Value>::new()));
+        let token = CancellationToken::new();
+        let token_writer = token.clone();
+        let mut config = identity_config(model);
+        config.before_tool_call = Some(Arc::new(move |_hook: BeforeToolCallContext| {
+            let token_writer = token_writer.clone();
+            Box::pin(async move {
+                token_writer.cancel();
+                BeforeToolCallOutcome::default()
+            })
+        }));
+        faux.set_responses(vec![
+            tool_call_response(
+                vec![
+                    ("tool-1", "echo", serde_json::json!({"value": "first"})),
+                    ("tool-2", "echo", serde_json::json!({"value": "second"})),
+                ],
+                StopReason::ToolUse,
+            ),
+            text_response("never streamed"),
+        ]);
+
+        let (rx, handle) = agent_loop(
+            vec![user_message("echo both")],
+            AgentContext {
+                messages: Vec::new(),
+                tools: vec![Arc::new(echo_tool(executed.clone()))],
+            },
+            config,
+            models,
+            Some(token),
+        );
+        let messages = handle.await.unwrap().unwrap();
+        let events = collect_events(rx).await;
+
+        assert!(executed.lock().unwrap().is_empty());
+        let started: Vec<&str> = events
+            .iter()
+            .filter_map(|event| match event {
+                AgentEvent::ToolExecutionStart { tool_call_id, .. } => Some(tool_call_id.as_str()),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(started, ["tool-1"]);
+        let aborted_end = events.iter().any(|event| match event {
+            AgentEvent::ToolExecutionEnd {
+                is_error, result, ..
+            } => {
+                *is_error
+                    && result["content"][0]["text"]
+                        .as_str()
+                        .is_some_and(|text| text == "Operation aborted")
+            }
+            _ => false,
+        });
+        assert!(aborted_end);
+        // The second provider request is rejected in auth setup by the
+        // already-cancelled token ("auth operation cancelled", counted as 1
+        // provider call); the loop ends the run with the failed assistant
+        // message (agent-loop.ts:221-225).
+        match messages.last() {
+            Some(AgentMessage::Assistant(assistant)) => assert!(matches!(
+                assistant.stop_reason,
+                StopReason::Aborted | StopReason::Error
+            )),
+            other => panic!(
+                "expected final assistant message, got {:?}",
+                other.map(|m| m.role())
+            ),
+        }
+        assert_eq!(call_count(&faux), 1);
+    }
+
+    /// Abort between parallel preflights (agent-loop.ts:576-584): tool-1 was
+    /// preflighted before the token was cancelled, so its pending execution
+    /// fails with "Operation aborted" without running the tool; tool-2's
+    /// post-hook check fails it during preflight. The tool-1
+    /// `tool_execution_end` emitted at execution time proves the closure path
+    /// ran.
+    #[tokio::test]
+    async fn parallel_pending_execution_fails_after_an_abort() {
+        let (models, faux, model) = faux_models();
+        let executed = Arc::new(Mutex::new(Vec::<serde_json::Value>::new()));
+        let token = CancellationToken::new();
+        let token_writer = token.clone();
+        let hook_calls = Arc::new(AtomicUsize::new(0));
+        let calls_writer = hook_calls.clone();
+        let mut config = identity_config(model);
+        config.before_tool_call = Some(Arc::new(move |_hook: BeforeToolCallContext| {
+            let (token_writer, calls_writer) = (token_writer.clone(), calls_writer.clone());
+            Box::pin(async move {
+                if calls_writer.fetch_add(1, Ordering::SeqCst) == 1 {
+                    // Second invocation: cancel before returning, so the
+                    // post-hook check fails tool-2 and the preflight breaks.
+                    token_writer.cancel();
+                }
+                BeforeToolCallOutcome::default()
+            })
+        }));
+        faux.set_responses(vec![
+            tool_call_response(
+                vec![
+                    ("tool-1", "echo", serde_json::json!({"value": "first"})),
+                    ("tool-2", "echo", serde_json::json!({"value": "second"})),
+                ],
+                StopReason::ToolUse,
+            ),
+            text_response("never streamed"),
+        ]);
+
+        let (rx, handle) = agent_loop(
+            vec![user_message("echo both")],
+            AgentContext {
+                messages: Vec::new(),
+                tools: vec![Arc::new(echo_tool(executed.clone()))],
+            },
+            config,
+            models,
+            Some(token),
+        );
+        let messages = handle.await.unwrap().unwrap();
+        let events = collect_events(rx).await;
+
+        assert!(executed.lock().unwrap().is_empty());
+        let ends: Vec<(&str, bool, String)> = events
+            .iter()
+            .filter_map(|event| match event {
+                AgentEvent::ToolExecutionEnd {
+                    tool_call_id,
+                    is_error,
+                    result,
+                    ..
+                } => Some((
+                    tool_call_id.as_str(),
+                    *is_error,
+                    result["content"][0]["text"]
+                        .as_str()
+                        .unwrap_or_default()
+                        .to_string(),
+                )),
+                _ => None,
+            })
+            .collect();
+        // tool-2's end came from the preflight, tool-1's from the aborted
+        // pending execution: completion order, both "Operation aborted".
+        assert_eq!(
+            ends,
+            [
+                ("tool-2", true, "Operation aborted".to_string()),
+                ("tool-1", true, "Operation aborted".to_string()),
+            ]
+        );
+        // The second provider request is rejected in auth setup by the
+        // already-cancelled token ("auth operation cancelled", counted as 1
+        // provider call); the loop ends the run with the failed assistant
+        // message (agent-loop.ts:221-225).
+        match messages.last() {
+            Some(AgentMessage::Assistant(assistant)) => assert!(matches!(
+                assistant.stop_reason,
+                StopReason::Aborted | StopReason::Error
+            )),
+            other => panic!(
+                "expected final assistant message, got {:?}",
+                other.map(|m| m.role())
+            ),
+        }
+        assert_eq!(call_count(&faux), 1);
+    }
+
+    /// A provider stream that settles aborted mid-flight ends the run with
+    /// the aborted assistant message: `turn_end` + `agent_end`, no further
+    /// LLM call (agent-loop.ts:221-225; upstream agent.test.ts abort tests
+    /// push `{ type: "error", reason: "aborted" }` from the stream).
+    #[tokio::test]
+    async fn run_settles_with_turn_end_and_agent_end_when_the_stream_aborts() {
+        // A throttled faux stream: one token per chunk at 50 tokens/second,
+        // so a 4000-character response streams for about 320ms.
+        let faux = faux_provider(FauxProviderOptions {
+            tokens_per_second: Some(50.0),
+            token_size: Some(FauxTokenSize {
+                min: Some(1),
+                max: Some(1),
+            }),
+            ..FauxProviderOptions::default()
+        });
+        let mut models = create_models(CreateModelsOptions::default());
+        models.set_provider(faux.provider.clone());
+        let model = faux.get_model(None).expect("faux default model");
+        faux.set_responses(vec![FauxResponseStep::Message(Box::new(
+            faux_assistant_message("x".repeat(4000), FauxMessageOptions::default()),
+        ))]);
+        let models = Arc::new(models);
+
+        let token = CancellationToken::new();
+        let canceller = token.clone();
+        tokio::spawn(async move {
+            tokio::time::sleep(Duration::from_millis(100)).await;
+            canceller.cancel();
+        });
+
+        let (rx, handle) = agent_loop(
+            vec![user_message("Hello")],
+            AgentContext::default(),
+            identity_config(model),
+            models,
+            Some(token),
+        );
+        let messages = handle.await.unwrap().unwrap();
+        let events = collect_events(rx).await;
+
+        assert_eq!(call_count(&faux), 1);
+        assert_eq!(role_names(&messages), ["user", "assistant"]);
+        let last = messages.last().expect("assistant message");
+        let AgentMessage::Assistant(assistant) = last else {
+            panic!("expected assistant message, got {}", last.role());
+        };
+        assert_eq!(assistant.stop_reason, StopReason::Aborted);
+        assert_eq!(
+            assistant.error_message.as_deref(),
+            Some("Request was aborted")
+        );
+        // The run ends at the aborted turn: one turn_end, then agent_end.
+        let tail: Vec<&str> = event_names(&events)
+            .iter()
+            .rev()
+            .take(2)
+            .rev()
+            .copied()
+            .collect();
+        assert_eq!(tail, ["turn_end", "agent_end"]);
+        assert_eq!(
+            events
+                .iter()
+                .filter(|event| matches!(event, AgentEvent::TurnEnd { .. }))
+                .count(),
+            1
+        );
+    }
+
+    /// The preflight abort checks (agent-loop.ts:691-697, 710-716) directly:
+    /// with a cancelled token a call fails with "Operation aborted" after the
+    /// hook and again before returning a prepared call (no-hook path).
+    #[tokio::test]
+    async fn prepare_fails_with_operation_aborted_when_the_token_is_cancelled() {
+        let (models, _faux, model) = faux_models();
+        let context = AgentContext {
+            messages: Vec::new(),
+            tools: vec![Arc::new(echo_tool(Arc::new(Mutex::new(Vec::new()))))],
+        };
+        let assistant = faux_assistant_message("hi", FauxMessageOptions::default());
+        let AssistantBlock::ToolCall(tool_call) = faux_tool_call(
+            "echo",
+            serde_json::json!({"value": "hello"}),
+            FauxToolCallOptions {
+                id: Some("tool-1".into()),
+            },
+        ) else {
+            panic!("expected tool call block");
+        };
+
+        // No hook: the pre-return check (agent-loop.ts:710-716) fires.
+        let token = CancellationToken::new();
+        token.cancel();
+        let prepared = prepare_tool_call(
+            &context,
+            &assistant,
+            tool_call,
+            &identity_config(model.clone()),
+            Some(&token),
+        )
+        .await;
+        match prepared {
+            PreparedToolCall::Immediate { result, is_error } => {
+                assert!(is_error);
+                let TextOrImageBlock::Text(text) = &result.content[0] else {
+                    panic!("expected text block");
+                };
+                assert_eq!(text.text, "Operation aborted");
+            }
+            PreparedToolCall::Prepared { .. } => {
+                panic!("cancelled token must not prepare a call");
+            }
+        }
+
+        // With a hook: the post-hook check (agent-loop.ts:691-697) fires
+        // ahead of any block decision.
+        let mut config = identity_config(model);
+        config.before_tool_call = Some(Arc::new(|_hook: BeforeToolCallContext| {
+            Box::pin(async move {
+                BeforeToolCallOutcome {
+                    args: None,
+                    result: Some(BeforeToolCallResult {
+                        block: Some(true),
+                        reason: Some("should not be reached".into()),
+                        terminate: None,
+                    }),
+                }
+            })
+        }));
+        let token = CancellationToken::new();
+        token.cancel();
+        let AssistantBlock::ToolCall(tool_call) = faux_tool_call(
+            "echo",
+            serde_json::json!({"value": "hello"}),
+            FauxToolCallOptions {
+                id: Some("tool-1".into()),
+            },
+        ) else {
+            panic!("expected tool call block");
+        };
+        let prepared =
+            prepare_tool_call(&context, &assistant, tool_call, &config, Some(&token)).await;
+        match prepared {
+            PreparedToolCall::Immediate { result, is_error } => {
+                assert!(is_error);
+                let TextOrImageBlock::Text(text) = &result.content[0] else {
+                    panic!("expected text block");
+                };
+                assert_eq!(text.text, "Operation aborted");
+            }
+            PreparedToolCall::Prepared { .. } => {
+                panic!("cancelled token must not prepare a call");
+            }
+        }
+        let _ = models;
+    }
+
+    // ---- PendingMessageQueue (agent.ts:140-177) ----
+
+    #[test]
+    fn queue_one_at_a_time_drains_one_message_per_drain() {
+        let mut queue = PendingMessageQueue::new(QueueMode::OneAtATime);
+        assert!(!queue.has_items());
+        assert!(queue.drain().is_empty());
+
+        queue.enqueue(user_message("a"));
+        queue.enqueue(user_message("b"));
+        assert!(queue.has_items());
+
+        let drained = queue.drain();
+        assert_eq!(drained.len(), 1);
+        assert!(
+            matches!(&drained[0], AgentMessage::User(user) if content_text(&user.content) == "a")
+        );
+        assert!(queue.has_items());
+
+        let drained = queue.drain();
+        assert_eq!(drained.len(), 1);
+        assert!(
+            matches!(&drained[0], AgentMessage::User(user) if content_text(&user.content) == "b")
+        );
+        assert!(!queue.has_items());
+
+        queue.clear();
+        assert!(!queue.has_items());
+        assert!(queue.drain().is_empty());
+    }
+
+    #[test]
+    fn queue_all_mode_drains_every_message() {
+        let mut queue = PendingMessageQueue::new(QueueMode::All);
+        queue.enqueue(user_message("a"));
+        queue.enqueue(user_message("b"));
+
+        let drained = queue.drain();
+        assert_eq!(drained.len(), 2);
+        assert!(
+            matches!(&drained[0], AgentMessage::User(user) if content_text(&user.content) == "a")
+        );
+        assert!(
+            matches!(&drained[1], AgentMessage::User(user) if content_text(&user.content) == "b")
+        );
+        assert!(!queue.has_items());
+        assert!(queue.drain().is_empty());
     }
 
     // ---- agentLoopContinue (oracle block, agent-loop.test.ts:1516) ----
