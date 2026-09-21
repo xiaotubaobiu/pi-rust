@@ -13,9 +13,11 @@
 //! # Task seams (M2e plan)
 //!
 //! - Stream behavior rides on the held `ApiImpl` handles
-//!   ([`StandardProvider::api_for`], the upstream `apiFor` dispatch,
-//!   models.ts:801) and is routed by the `Models` collection with auth
-//!   resolution in Task 3 (`filterModels`, models.ts:136, joins there too).
+//!   ([`Provider::api_for`], the upstream `apiFor` dispatch, models.ts:801)
+//!   and is routed by the `Models` collection with auth resolution in
+//!   Task 3. `filterModels` (models.ts:136/773) rides with Task 4: its only
+//!   consumer is `Models.getAvailable` (models.ts:551), which is Task 4
+//!   scope alongside refresh.
 //! - `refreshModels` (models.ts:129) and the dynamic-catalog publication join
 //!   with Task 4; the overlay storage ([`StandardProvider::dynamic`]) and the
 //!   baseline merge ([`merge_catalog`], upstream `currentModels`,
@@ -69,6 +71,19 @@ pub trait Provider: Send + Sync {
     /// that failure channel explicit as `Err` — surfaced precisely by the
     /// provider itself, swallowed to no models by the collection.
     fn get_models(&self) -> Result<Vec<Model>, ModelsError>;
+
+    /// The API implementation serving one model (upstream
+    /// `Provider.stream`/`streamSimple`, models.ts:139-149: the port's
+    /// `Models` collection routes streams through the held `ApiImpl` handles
+    /// instead of stream methods on the trait, so the two upstream methods
+    /// collapse into this lookup). `None` = no entry — upstream produces the
+    /// stream error
+    /// ``Provider {id} has no API implementation for "{api}"`` at dispatch
+    /// time (models.ts:808-811).
+    fn api_for(&self, model: &Model) -> Option<Arc<dyn ApiImpl>> {
+        let _ = model;
+        None
+    }
 }
 
 /// Upstream `CreateProviderOptions.api`
@@ -140,20 +155,6 @@ pub(crate) fn merge_catalog(baseline: &[Model], dynamic: &[Model]) -> Vec<Model>
     merged
 }
 
-impl StandardProvider {
-    /// Upstream `apiFor` (models.ts:801): a single implementation serves every
-    /// model; the map form dispatches on `model.api`. `None` = no entry —
-    /// upstream produces the stream error
-    /// ``Provider {id} has no API implementation for "{api}"`` at dispatch
-    /// time (models.ts:808-811); that stream routing lands with Task 3.
-    pub fn api_for(&self, model: &Model) -> Option<Arc<dyn ApiImpl>> {
-        match &self.api {
-            ApiImpls::Single(implementation) => Some(Arc::clone(implementation)),
-            ApiImpls::PerApi(map) => map.get(&model.api).cloned(),
-        }
-    }
-}
-
 impl Provider for StandardProvider {
     fn id(&self) -> &str {
         &self.id
@@ -181,6 +182,17 @@ impl Provider for StandardProvider {
             .read()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
         Ok(merge_catalog(&self.baseline, &dynamic))
+    }
+
+    /// Upstream `apiFor` (models.ts:801): a single implementation serves every
+    /// model; the map form dispatches on `model.api`. The "no API
+    /// implementation" stream error for a `None` result is produced by the
+    /// `Models` collection at dispatch time (models.ts:808-811).
+    fn api_for(&self, model: &Model) -> Option<Arc<dyn ApiImpl>> {
+        match &self.api {
+            ApiImpls::Single(implementation) => Some(Arc::clone(implementation)),
+            ApiImpls::PerApi(map) => map.get(&model.api).cloned(),
+        }
     }
 }
 
