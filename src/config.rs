@@ -716,8 +716,10 @@ base_url = "https://open.bigmodel.cn/api/paas/v4"
             oauth_credential("stale", "r", crate::ai::now_ms() - 1000),
         )
         .await;
+        // One expiry value for the flow and the assertion (now_ms drifts).
+        let expiry = far_future_expiry();
         let flow = Arc::new(FakeFlow {
-            rotated: oauth_cred("fresh", "r2", far_future_expiry()),
+            rotated: oauth_cred("fresh", "r2", expiry),
             refresh_calls: Mutex::new(0),
         });
         let resolved =
@@ -734,10 +736,7 @@ base_url = "https://open.bigmodel.cn/api/paas/v4"
             )
             .await
             .unwrap();
-        assert_eq!(
-            stored,
-            Some(oauth_credential("fresh", "r2", far_future_expiry()))
-        );
+        assert_eq!(stored, Some(oauth_credential("fresh", "r2", expiry)));
     }
 
     #[tokio::test]
