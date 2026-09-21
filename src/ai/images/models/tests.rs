@@ -386,6 +386,30 @@ async fn error_result_for_unknown_providers_and_unconfigured_auth() {
     assert_eq!(calls.lock().unwrap()[0].api_key, None);
 }
 
+/// A custom api fn's `Err` (the upstream synchronous-throw channel) becomes
+/// an `AssistantImages` error result through the provider — never a panic
+/// (upstream's total try/catch, images-models.ts:213-223).
+#[tokio::test]
+async fn api_fn_errors_return_error_results() {
+    let mut models = create_images_models(CreateModelsOptions::default());
+    models.set_provider(create_images_provider(CreateImagesProviderOptions {
+        id: "p1".to_string(),
+        name: None,
+        auth: ambient_auth(),
+        models: vec![test_image_model("p1", "model-a")],
+        refresh_models: None,
+        api: Arc::new(|_model, _context, _options| Box::pin(async { Err("boom".to_string()) })),
+    }));
+    let model = models.get_model("p1", "model-a").unwrap();
+
+    let result = models.generate_images(model, context(), None).await;
+    assert_eq!(result.stop_reason, ImagesStopReason::Error);
+    assert_eq!(result.error_message.as_deref(), Some("boom"));
+    assert!(result.output.is_empty());
+    assert_eq!(result.provider, "p1");
+    assert_eq!(result.model, "model-a");
+}
+
 /// Oracle: "supports dynamic providers via refresh with in-flight dedupe".
 #[tokio::test]
 async fn dynamic_providers_refresh_with_inflight_dedupe() {

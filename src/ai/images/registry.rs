@@ -4,9 +4,10 @@
 //!   `ImagesApiProvider` registry keyed by api id. Upstream wraps every
 //!   registered `generateImages` so a model whose `api` does not match the
 //!   registry key throws `"Mismatched api: ..."`; the port's wrapper returns
-//!   that message through the [`ImagesApiFn`] error channel (the only channel
-//!   a contract violation can take — operational failures stay error results
-//!   inside [`AssistantImages`], exactly like upstream's internal try/catch).
+//!   that message through the [`ImagesApiFn`] error channel (the upstream
+//!   synchronous-throw channel — providers map every `Err` to an
+//!   [`AssistantImages`] error result, exactly like upstream's total
+//!   try/catch in `ImagesModels.generateImages`).
 //! - `packages/ai/src/images.ts`: the [`generate_images`] entry point plus
 //!   the `providers/images/register-builtins.ts` import side effect, which
 //!   the port models as [`ensure_builtin_images_apis_registered`] (Rust has
@@ -35,8 +36,11 @@ use crate::ai::types::model::ModelInput;
 use super::openrouter_images;
 
 /// Upstream `ImagesApiFunction` (images-api-registry.ts:3-7) with the
-/// upstream synchronous-throw channel (`Mismatched api`) made explicit as
-/// `Err`; generation failures themselves are error results, like upstream.
+/// upstream throw channel made explicit as `Err`: registry guards
+/// (`Mismatched api`) and api-fn failures alike. The owning provider maps
+/// `Err` to an [`AssistantImages`] error result — upstream's total try/catch
+/// in `ImagesModels.generateImages` (images-models.ts:213-223) turns any
+/// throw into the same shape.
 pub type ImagesApiFn = Arc<
     dyn Fn(
             ImagesModel,

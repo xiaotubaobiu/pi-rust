@@ -263,20 +263,18 @@ impl ImagesProvider for StandardImagesProvider {
     ) -> BoxFuture<'static, AssistantImages> {
         let api = Arc::clone(&self.api);
         Box::pin(async move {
-            api(model, context, options)
-                .await
-                .unwrap_or_else(panic_on_contract_violation)
+            // The api fn's `Err` is the upstream synchronous-throw channel
+            // (registry.rs `wrapGenerateImages`); upstream's total try/catch
+            // in `ImagesModels.generateImages` (images-models.ts:213-223)
+            // turns any throw into an error result. Custom providers route
+            // through here too, so the mapping happens at the provider —
+            // the throw has already crossed the api boundary.
+            match api(model.clone(), context, options).await {
+                Ok(result) => result,
+                Err(message) => AssistantImages::error(&model, message),
+            }
         })
     }
-}
-
-/// The registered API handlers only fail on contract violations
-/// (`Mismatched api`), which the collection never triggers — it dispatches
-/// through the provider that owns the model. Reaching this means a
-/// hand-rolled provider mismatched its own model; panic loudly rather than
-/// fabricate an error result.
-fn panic_on_contract_violation(message: String) -> AssistantImages {
-    panic!("images api contract violation: {message}");
 }
 
 /// Upstream `createImagesModels` (images-models.ts:227-229) +
