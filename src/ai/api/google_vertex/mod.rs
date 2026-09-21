@@ -51,15 +51,16 @@
 //! - Ambient auth (ADC): the port reproduces upstream's ADC **resolution**
 //!   chain — the express key's `gcp-vertex-credentials` marker and `<...>`
 //!   placeholders select ADC exactly like upstream `resolveApiKey`, then
-//!   `resolveProject` (`GOOGLE_CLOUD_PROJECT`/`GCLOUD_PROJECT`) and
-//!   `resolveLocation` (`GOOGLE_CLOUD_LOCATION`) run with the upstream
-//!   messages, and `GOOGLE_APPLICATION_CREDENTIALS` is read (upstream
-//!   `buildGoogleAuthOptions`). The SDK's credential materialization behind
-//!   it (`google-auth-library` service-account/gcloud login minting OAuth
-//!   tokens) has no port implementation: once the chain resolves, the branch
-//!   fails with a named "not supported by this port" error instead of
-//!   sending an unauthenticated request. Explicit `Authorization` headers
-//!   ride via `options.headers` and reach the wire.
+//!   `resolveProject` (scoped `options.env`/`GOOGLE_CLOUD_PROJECT`/
+//!   `GCLOUD_PROJECT`) and `resolveLocation` (scoped `GOOGLE_CLOUD_LOCATION`)
+//!   run with the upstream messages, and `buildGoogleAuthOptions` reads the
+//!   `GOOGLE_APPLICATION_CREDENTIALS` key file — all three consulting the
+//!   scoped env before the process env, like upstream. The SDK's credential
+//!   materialization behind it (`google-auth-library` service-account/gcloud
+//!   login minting OAuth tokens) has no port implementation: once the chain
+//!   resolves, the branch fails with a named "not supported by this port"
+//!   error instead of sending an unauthenticated request. Explicit
+//!   `Authorization` headers ride via `options.headers` and reach the wire.
 //! - streamSimple error precedence: upstream vertex `streamSimple` resolves
 //!   the thinking level map BEFORE `stream` runs, so a map error fires before
 //!   the express-key/ADC errors — the inverse of the generative-ai adapter,
@@ -111,7 +112,7 @@ use crate::ai::transcript::{
 use crate::ai::types::content::{TextContent, ThinkingContent, ToolCall};
 use crate::ai::types::events::{AssistantMessageEvent, ErrorReason, SuccessReason};
 use crate::ai::types::message::{AssistantBlock, AssistantMessage};
-use crate::ai::types::options::{SimpleStreamOptions, StreamOptions};
+use crate::ai::types::options::{ProviderEnv, SimpleStreamOptions, StreamOptions};
 use crate::ai::types::primitives::{StopReason, ThinkingBudgets, ToolChoice, Usage};
 use crate::ai::types::Model;
 use crate::ai::{now_ms, ProviderConfig};
@@ -845,10 +846,12 @@ fn resolve_auth(stream_options: &StreamOptions, cfg: &ProviderConfig) -> Result<
         None => {
             // The resolution chain runs to completion (named errors when the
             // env surfaces are missing), then hits the disclosed
-            // materialization gap.
-            resolve_project()?;
-            resolve_location()?;
-            Err(match build_google_auth_options() {
+            // materialization gap. All three resolvers read the scoped
+            // `options.env` first, like upstream.
+            let env = stream_options.env.as_ref();
+            resolve_project(env)?;
+            resolve_location(env)?;
+            Err(match build_google_auth_options(env) {
                 Some(key_file) => format!(
                     "Vertex AI ADC authentication with the GOOGLE_APPLICATION_CREDENTIALS key \
                      file \"{key_file}\" is not supported by this port; set GOOGLE_CLOUD_API_KEY \
@@ -864,11 +867,11 @@ fn resolve_auth(stream_options: &StreamOptions, cfg: &ProviderConfig) -> Result<
 }
 
 /// Upstream `resolveProject` (lines 440-451): `options.project` (no port
-/// option surface — the M2a options omission), then the
-/// `GOOGLE_CLOUD_PROJECT`/`GCLOUD_PROJECT` env lookups.
-fn resolve_project() -> Result<String, String> {
-    get_provider_env_value("GOOGLE_CLOUD_PROJECT", None)
-        .or_else(|| get_provider_env_value("GCLOUD_PROJECT", None))
+/// option surface — the M2a options omission), then the scoped `options.env`
+/// `GOOGLE_CLOUD_PROJECT`/`GCLOUD_PROJECT` lookups.
+fn resolve_project(env: Option<&ProviderEnv>) -> Result<String, String> {
+    get_provider_env_value("GOOGLE_CLOUD_PROJECT", env)
+        .or_else(|| get_provider_env_value("GCLOUD_PROJECT", env))
         .ok_or_else(|| {
             "Vertex AI requires a project ID. Set GOOGLE_CLOUD_PROJECT/GCLOUD_PROJECT or pass \
              project in options."
@@ -877,9 +880,10 @@ fn resolve_project() -> Result<String, String> {
 }
 
 /// Upstream `resolveLocation` (lines 453-459): `options.location` (no port
-/// option surface), then the `GOOGLE_CLOUD_LOCATION` env lookup.
-fn resolve_location() -> Result<String, String> {
-    get_provider_env_value("GOOGLE_CLOUD_LOCATION", None).ok_or_else(|| {
+/// option surface), then the scoped `options.env` `GOOGLE_CLOUD_LOCATION`
+/// lookup.
+fn resolve_location(env: Option<&ProviderEnv>) -> Result<String, String> {
+    get_provider_env_value("GOOGLE_CLOUD_LOCATION", env).ok_or_else(|| {
         "Vertex AI requires a location. Set GOOGLE_CLOUD_LOCATION or pass location in options."
             .to_string()
     })
@@ -887,9 +891,9 @@ fn resolve_location() -> Result<String, String> {
 
 /// Upstream `buildGoogleAuthOptions` (lines 423-427): the
 /// `GOOGLE_APPLICATION_CREDENTIALS` key file handed to the SDK's ADC, when
-/// set.
-fn build_google_auth_options() -> Option<String> {
-    get_provider_env_value("GOOGLE_APPLICATION_CREDENTIALS", None)
+/// set (scoped `options.env`, then the process env).
+fn build_google_auth_options(env: Option<&ProviderEnv>) -> Option<String> {
+    get_provider_env_value("GOOGLE_APPLICATION_CREDENTIALS", env)
 }
 
 // =============================================================================
@@ -1916,14 +1920,14 @@ mod tests {
             ],
             &ADC_VARS[2..],
         );
-        assert_eq!(resolve_project().unwrap(), "fresh-project".to_string());
+        assert_eq!(resolve_project(None).unwrap(), "fresh-project".to_string());
     }
 
     #[test]
     fn missing_project_reports_the_upstream_message() {
         let _env = TestEnv::apply(&[], ADC_VARS);
         assert_eq!(
-            resolve_project().unwrap_err(),
+            resolve_project(None).unwrap_err(),
             "Vertex AI requires a project ID. Set GOOGLE_CLOUD_PROJECT/GCLOUD_PROJECT or pass \
              project in options."
                 .to_string()
@@ -1934,9 +1938,55 @@ mod tests {
     fn missing_location_reports_the_upstream_message() {
         let _env = TestEnv::apply(&[("GOOGLE_CLOUD_PROJECT", "p")], &ADC_VARS[2..]);
         assert_eq!(
-            resolve_location().unwrap_err(),
+            resolve_location(None).unwrap_err(),
             "Vertex AI requires a location. Set GOOGLE_CLOUD_LOCATION or pass location in \
              options."
+                .to_string()
+        );
+    }
+
+    /// Upstream reads `options?.env` first in all three ADC resolvers: a
+    /// scoped env carrying `GOOGLE_CLOUD_PROJECT`/`GOOGLE_CLOUD_LOCATION`
+    /// resolves where an empty ambient env would error (the sibling bedrock
+    /// port plumbs the same surface). Scoped values also win over ambient
+    /// ones (`getProviderEnvValue`).
+    #[test]
+    fn scoped_env_resolves_the_adc_surfaces() {
+        // Ambient ADC vars cleared for the whole test: the scoped values
+        // must be what resolves.
+        let _env = TestEnv::apply(&[], ADC_VARS);
+        let scoped = [
+            (
+                "GOOGLE_CLOUD_PROJECT".to_string(),
+                "scoped-project".to_string(),
+            ),
+            (
+                "GOOGLE_CLOUD_LOCATION".to_string(),
+                "scoped-location".to_string(),
+            ),
+        ]
+        .into_iter()
+        .collect::<crate::ai::types::options::ProviderEnv>();
+        assert_eq!(
+            resolve_project(Some(&scoped)).unwrap(),
+            "scoped-project".to_string()
+        );
+        assert_eq!(
+            resolve_location(Some(&scoped)).unwrap(),
+            "scoped-location".to_string()
+        );
+
+        // End to end through `resolve_auth`: the scoped env carries the ADC
+        // chain past project/location to the disclosed gap.
+        let stream_options = StreamOptions {
+            api_key: Some(GCP_VERTEX_CREDENTIALS_MARKER.to_string()),
+            env: Some(scoped),
+            ..Default::default()
+        };
+        assert_eq!(
+            resolve_auth(&stream_options, &cfg()).unwrap_err(),
+            "Vertex AI ADC authentication (gcloud application-default login) is not supported \
+             by this port; set GOOGLE_CLOUD_API_KEY or a provider API key instead"
                 .to_string()
         );
     }
