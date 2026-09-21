@@ -839,7 +839,8 @@ fn is_placeholder_api_key(api_key: &str) -> bool {
 /// the service-account key file or `gcloud` login state and mints OAuth
 /// tokens; the port has no RS256 token minting). When ADC is selected and
 /// project/location resolve, the branch fails with a named error instead of
-/// sending an unauthenticated request.
+/// sending an unauthenticated request. Ruling (M2e): RS256 service-account
+/// minting is an M2f commitment — this named error stands until then.
 fn resolve_auth(stream_options: &StreamOptions, cfg: &ProviderConfig) -> Result<String, String> {
     match resolve_api_key(stream_options, cfg) {
         Some(api_key) => Ok(api_key),

@@ -41,9 +41,14 @@ pub struct Config {
     pub max_tokens: u64,
     /// Context window for the hand-declared model, in tokens. Optional;
     /// defaults to [`DEFAULT_CONTEXT_WINDOW`]. Catalog-based models with
-    /// real per-model metadata arrive in M2e.
+    /// real per-model metadata reach the CLI with the M3 Models wiring.
     #[serde(default = "default_context_window")]
     pub context_window: u64,
+    /// Optional pricing for the hand-declared model, in dollars per million
+    /// tokens, in the upstream catalog `ModelCost` JSON shape (camelCase
+    /// `cacheRead`/`cacheWrite`, optional `tiers` keyed by `inputTokensAbove`).
+    /// Absent: zero rates (upstream's default for unpriced models).
+    pub cost: Option<ModelCost>,
 }
 
 fn default_max_tokens() -> u64 {
@@ -62,6 +67,7 @@ impl Default for Config {
             base_url: None,
             max_tokens: default_max_tokens(),
             context_window: default_context_window(),
+            cost: None,
         }
     }
 }
@@ -122,10 +128,10 @@ pub fn resolve_base_url(cfg: &Config) -> anyhow::Result<String> {
     }
 }
 
-/// Build the hand-declared [`Model`] for one config. Catalog-based models
-/// with real names, pricing, and capability metadata arrive in M2e; until
-/// then every field is the conservative default (no reasoning, text-only,
-/// zero cost) and `context_window`/`max_tokens` come from the config.
+/// Build the hand-declared [`Model`] for one config. Every field is the
+/// conservative default (no reasoning, text-only, zero cost) and
+/// `context_window`/`max_tokens` come from the config; the optional `cost`
+/// table overrides the zero rates when present.
 pub fn build_model(cfg: &Config) -> anyhow::Result<Model> {
     Ok(Model {
         id: cfg.model.clone(),
@@ -136,7 +142,7 @@ pub fn build_model(cfg: &Config) -> anyhow::Result<Model> {
         reasoning: false,
         thinking_level_map: None,
         input: vec![ModelInput::Text],
-        cost: ModelCost::default(),
+        cost: cfg.cost.clone().unwrap_or_default(),
         context_window: cfg.context_window,
         max_tokens: cfg.max_tokens,
         sampling_params: None,
@@ -354,6 +360,65 @@ base_url = "https://open.bigmodel.cn/api/paas/v4"
         assert_eq!(cfg.model, "glm-4.6");
         assert_eq!(cfg.max_tokens, 8192);
         assert_eq!(cfg.context_window, DEFAULT_CONTEXT_WINDOW);
+        assert_eq!(cfg.cost, None);
+    }
+
+    // ---- M2e Task 7: optional `cost` table feeds build_model ----
+
+    #[test]
+    fn parses_cost_table_and_build_model_carries_it() {
+        let cfg = parse_config(
+            r#"
+provider = "anthropic"
+model = "m-1"
+cost = { input = 10.0, output = 50.0, cacheRead = 1.0, cacheWrite = 12.5 }
+"#,
+        )
+        .unwrap();
+        let cost = cfg.cost.as_ref().expect("cost table parsed");
+        assert_eq!(cost.input, 10.0);
+        assert_eq!(cost.output, 50.0);
+        assert_eq!(cost.cache_read, 1.0);
+        assert_eq!(cost.cache_write, 12.5);
+        assert_eq!(cost.tiers, None);
+
+        let model = build_model(&cfg).unwrap();
+        assert_eq!(model.cost.input, 10.0);
+        assert_eq!(model.cost.output, 50.0);
+        assert_eq!(model.cost.cache_read, 1.0);
+        assert_eq!(model.cost.cache_write, 12.5);
+    }
+
+    #[test]
+    fn cost_tiers_match_the_upstream_model_cost_shape() {
+        let cfg = parse_config(
+            r#"
+provider = "openai-compat"
+model = "m-1"
+base_url = "https://example.test/v1"
+
+[cost]
+input = 3.0
+output = 15.0
+cacheRead = 0.3
+cacheWrite = 3.75
+
+[[cost.tiers]]
+inputTokensAbove = 272000
+input = 1.5
+output = 7.5
+cacheRead = 0.15
+cacheWrite = 1.875
+"#,
+        )
+        .unwrap();
+        let model = build_model(&cfg).unwrap();
+        assert_eq!(model.cost.input, 3.0);
+        let tiers = model.cost.tiers.as_ref().expect("tiers parsed");
+        assert_eq!(tiers.len(), 1);
+        assert_eq!(tiers[0].input_tokens_above, 272_000);
+        assert_eq!(tiers[0].input, 1.5);
+        assert_eq!(tiers[0].cache_write, 1.875);
     }
 
     #[test]
