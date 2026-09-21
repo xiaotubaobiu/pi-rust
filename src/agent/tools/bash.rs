@@ -122,7 +122,9 @@ mod tests {
         let cmd = "powershell -NoProfile -Command [Console]::OpenStandardOutput().Write([Text.Encoding]::UTF8.GetBytes(([string]'好'*6000)),0,18000)";
         #[cfg(not(windows))]
         let cmd = "printf '好%.0s' $(seq 6000)";
-        let out = (t.execute)(serde_json::json!({"command": cmd}))
+        // Explicit timeout headroom: PowerShell cold start on a loaded CI
+        // runner can exceed the 30s default and fail the test spuriously.
+        let out = (t.execute)(serde_json::json!({"command": cmd, "timeout_ms": 120_000}))
             .await
             .expect("must not panic on multi-byte truncation");
         assert!(out.contains("... (truncated)"), "got: {out}");
