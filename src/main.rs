@@ -13,18 +13,31 @@ use pi_rust::ai::api::openai_codex_responses::OpenAiCodexResponses;
 use pi_rust::ai::api::openai_completions::OpenAiCompletions;
 use pi_rust::ai::api::openai_responses::OpenAiResponses;
 use pi_rust::ai::api::pi_messages::PiMessages;
+use pi_rust::ai::auth::credential_store::CredentialStore;
+use pi_rust::ai::auth::file_store::FileCredentialStore;
+use pi_rust::ai::auth::oauth::load::{oauth_flow_for, OAUTH_LOGIN_PROVIDERS};
+use pi_rust::ai::auth::types::{AuthInteraction, AuthOperationOptions, OAuthAuth};
+use pi_rust::ai::cli_auth;
 use pi_rust::ai::{ApiImpl, ProviderConfig};
+use pi_rust::cli::console_auth::ConsoleAuthInteraction;
 use pi_rust::cli::repl;
 use pi_rust::config::{
-    build_model, load_config, resolve_api_key, resolve_base_url, Config, PROVIDERS,
+    auth_json_path, build_model, load_config, resolve_api_key_with_auth, resolve_base_url, Config,
+    PROVIDERS,
 };
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 #[derive(Parser)]
 #[command(
     name = "pirs",
     version,
-    about = "Minimal coding agent CLI (Rust rewrite of pi)"
+    about = "Minimal coding agent CLI (Rust rewrite of pi)",
+    after_help = "Credentials live in auth.json ({providerId: credential}, upstream-pi format), \
+                  default <config_dir>/pi-rust/auth.json (Windows: %APPDATA%\\pi-rust\\auth.json, \
+                  macOS: ~/Library/Application Support/pi-rust/auth.json, \
+                  Linux: ~/.config/pi-rust/auth.json); override with --auth. \
+                  OAuth login: pirs login --provider <id>."
 )]
 struct Args {
     /// Provider id (see PROVIDERS): anthropic, openai-compat, openai-responses,
@@ -38,21 +51,43 @@ struct Args {
     /// API base URL (required for openai-compat/openai-responses/pi-messages)
     #[arg(long)]
     base_url: Option<String>,
-    /// API key (overrides env resolution)
+    /// API key (overrides auth.json and env resolution)
     #[arg(long)]
     api_key: Option<String>,
+    /// auth.json path (default <config_dir>/pi-rust/auth.json)
+    #[arg(long)]
+    auth: Option<PathBuf>,
+    #[command(subcommand)]
+    command: Option<Command>,
+}
+
+#[derive(clap::Subcommand, Debug, PartialEq, Eq)]
+enum Command {
+    /// Run an OAuth login flow and store the credential in auth.json
+    Login {
+        /// OAuth provider id: anthropic, openai-codex, github-copilot,
+        /// openrouter, xai, kimi-coding, radius
+        #[arg(long)]
+        provider: String,
+    },
+    /// Remove a provider's stored credential from auth.json
+    Logout {
+        /// Provider id whose stored credential should be removed
+        #[arg(long)]
+        provider: String,
+    },
 }
 
 /// One wire protocol per provider id; the API implementations are unit
 /// structs, so selection is a plain constructor pick.
 ///
-/// Ambient-auth providers are explicit-key only until M2d:
-/// - `google-vertex`: pass an API key (`GOOGLE_CLOUD_API_KEY`/`--api-key`);
-///   Application Default Credentials are M2d.
-/// - `amazon-bedrock`: pass a bearer token via `--api-key`; AWS profiles and
-///   the ambient credential chain are M2d.
-/// - `openai-codex`: pass a JWT bearer via `--api-key`; the ChatGPT OAuth
-///   flow is M2d.
+/// Auth: `--api-key`/auth.json/env resolve through
+/// [`resolve_api_key_with_auth`]. OAuth credentials feed two of the wire
+/// providers cleanly:
+/// - `anthropic`: the `sk-ant-oat` access token is detected natively
+///   (Claude Code identity + oauth beta header).
+/// - `openai-codex`: the access token is the full JWT the codex API parses
+///   for the `chatgpt_account_id` claim.
 fn select_api(provider: &str) -> Result<Arc<dyn ApiImpl>> {
     Ok(match provider {
         "anthropic" => Arc::new(AnthropicMessages),
@@ -69,15 +104,91 @@ fn select_api(provider: &str) -> Result<Arc<dyn ApiImpl>> {
     })
 }
 
+/// `pirs login --provider <id>` (upstream cli.ts `login`): dispatch the
+/// provider's OAuth flow through the load registry, render prompts and
+/// events on the console, persist through the file store.
+async fn login_command(provider_id: &str, auth_path: &Path) -> Result<()> {
+    let flow = oauth_flow(provider_id)?;
+    let store = FileCredentialStore::new(auth_path);
+    perform_login(
+        provider_id,
+        flow.as_ref(),
+        &store,
+        Arc::new(ConsoleAuthInteraction),
+    )
+    .await
+}
+
+fn oauth_flow(provider_id: &str) -> Result<Arc<dyn OAuthAuth>> {
+    oauth_flow_for(provider_id).ok_or_else(|| {
+        anyhow::anyhow!(
+            "unknown OAuth provider: {provider_id}; expected one of {OAUTH_LOGIN_PROVIDERS:?}"
+        )
+    })
+}
+
+/// The login body, split from [`login_command`] so tests can script the
+/// interaction and flow (upstream cli.ts `login(providerId)`).
+async fn perform_login(
+    provider_id: &str,
+    flow: &dyn OAuthAuth,
+    store: &dyn CredentialStore,
+    interaction: Arc<dyn AuthInteraction>,
+) -> Result<()> {
+    cli_auth::login(
+        flow,
+        provider_id,
+        store,
+        interaction,
+        &AuthOperationOptions::default(),
+    )
+    .await?;
+    Ok(())
+}
+
+/// `pirs logout --provider <id>`: remove the stored credential (upstream
+/// `CredentialStore.delete`; messaging is the CLI surface's).
+async fn logout_command(provider_id: &str, auth_path: &Path) -> Result<()> {
+    let store = FileCredentialStore::new(auth_path);
+    perform_logout(provider_id, &store).await
+}
+
+async fn perform_logout(provider_id: &str, store: &dyn CredentialStore) -> Result<()> {
+    cli_auth::logout(store, provider_id, &AuthOperationOptions::default()).await?;
+    println!("logged out of {provider_id} (auth.json)");
+    Ok(())
+}
+
+/// The auth.json path for credential operations: `--auth` wins, else the
+/// standard <config_dir>/pi-rust/auth.json.
+fn resolve_auth_path(auth: Option<&Path>) -> Result<PathBuf> {
+    auth.map(Path::to_path_buf)
+        .or_else(auth_json_path)
+        .context("could not determine the auth.json path; pass --auth")
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     let args = Args::parse();
-    let mut cfg: Config = load_config()?;
-    if let Some(p) = args.provider {
-        cfg.provider = p;
+
+    // Auth commands run standalone: no config, provider validation, or
+    // session state (upstream cli.ts main dispatches them the same way).
+    match &args.command {
+        Some(Command::Login { provider }) => {
+            return login_command(provider, &resolve_auth_path(args.auth.as_deref())?).await;
+        }
+        Some(Command::Logout { provider }) => {
+            return logout_command(provider, &resolve_auth_path(args.auth.as_deref())?).await;
+        }
+        None => {}
     }
-    if let Some(m) = args.model {
-        cfg.model = m;
+
+    let mut cfg: Config = load_config()?;
+    if let Some(p) = &args.provider {
+        cfg.provider = p.clone();
+    }
+    if let Some(m) = &args.model {
+        cfg.model = m.clone();
     }
     if args.base_url.is_some() {
         cfg.base_url = args.base_url.clone();
@@ -103,12 +214,25 @@ async fn main() -> Result<()> {
         bail!("{} requires --base-url or base_url in config", cfg.provider);
     }
 
-    let key = resolve_api_key(&cfg.provider, args.api_key.as_deref()).context(
-        "no API key found: set ANTHROPIC_API_KEY (anthropic), GLM_API_KEY/OPENAI_API_KEY \
+    // Explicit --api-key > auth.json credential (OAuth credentials refresh
+    // through their flow) > env vars (upstream precedence).
+    let store = FileCredentialStore::new(resolve_auth_path(args.auth.as_deref())?);
+    let key = resolve_api_key_with_auth(
+        &cfg.provider,
+        args.api_key.as_deref(),
+        &store,
+        oauth_flow_for(&cfg.provider),
+    )
+    .await?
+    .context(format!(
+        "no API key found: pass --api-key, run `pirs login --provider {}` when it has an \
+         OAuth flow ({}), set ANTHROPIC_API_KEY (anthropic), GLM_API_KEY/OPENAI_API_KEY \
          (openai-compat/openai-responses), AZURE_OPENAI_API_KEY (azure-openai-responses), \
          GEMINI_API_KEY (google), GOOGLE_CLOUD_API_KEY (google-vertex), or MISTRAL_API_KEY \
-         (mistral); openai-codex/amazon-bedrock/pi-messages need --api-key",
-    )?;
+         (mistral); openai-codex/amazon-bedrock/pi-messages otherwise need --api-key",
+        cfg.provider,
+        OAUTH_LOGIN_PROVIDERS.join(", "),
+    ))?;
 
     let pcfg = ProviderConfig {
         base_url: resolve_base_url(&cfg)?,
@@ -139,6 +263,12 @@ async fn main() -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use futures::future::BoxFuture;
+    use pi_rust::ai::auth::types::{
+        AuthError, AuthEvent, AuthPrompt, Credential, ModelAuth, OAuthCredential,
+    };
+    use std::sync::Mutex;
+    use tempfile::TempDir;
 
     #[test]
     fn select_api_maps_each_provider() {
@@ -178,5 +308,191 @@ mod tests {
             Err(err) => assert!(err.to_string().contains("unknown provider"), "{err}"),
             Ok(_) => panic!("expected unknown provider to be rejected"),
         }
+    }
+
+    // ---- Task 9: login/logout CLI surface ----
+
+    #[test]
+    fn subcommands_parse_with_provider_and_auth_flags() {
+        // `pirs login --provider anthropic [--auth path]`.
+        let args = Args::try_parse_from(["pirs", "login", "--provider", "anthropic"]).unwrap();
+        assert_eq!(
+            args.command,
+            Some(Command::Login {
+                provider: "anthropic".to_string()
+            })
+        );
+        assert!(args.auth.is_none());
+        let args = Args::try_parse_from([
+            "pirs",
+            "--auth",
+            "C:\\tmp\\auth.json",
+            "logout",
+            "--provider",
+            "openai-codex",
+        ])
+        .unwrap();
+        assert_eq!(
+            args.command,
+            Some(Command::Logout {
+                provider: "openai-codex".to_string()
+            })
+        );
+        assert_eq!(args.auth.unwrap(), PathBuf::from("C:\\tmp\\auth.json"));
+
+        // No subcommand: the chat REPL path.
+        let args = Args::try_parse_from(["pirs", "--provider", "anthropic"]).unwrap();
+        assert!(args.command.is_none());
+        assert_eq!(args.provider.as_deref(), Some("anthropic"));
+    }
+
+    #[test]
+    fn the_auth_path_flag_overrides_the_standard_location() {
+        // Without --auth the standard location resolves (or fails cleanly
+        // when the platform has no config dir).
+        let standard = resolve_auth_path(None);
+        if dirs::config_dir().is_some() {
+            let path = standard.unwrap();
+            assert!(path.ends_with(Path::new("pi-rust").join("auth.json")));
+        } else {
+            assert!(standard.is_err());
+        }
+        // With --auth it wins verbatim.
+        assert_eq!(
+            resolve_auth_path(Some(Path::new("/tmp/other-auth.json"))).unwrap(),
+            PathBuf::from("/tmp/other-auth.json")
+        );
+    }
+
+    /// Scripted interaction: answers every prompt with `answer`, records
+    /// notify events.
+    struct ScriptedInteraction {
+        answer: String,
+        events: Mutex<Vec<AuthEvent>>,
+    }
+
+    impl AuthInteraction for ScriptedInteraction {
+        fn signal(&self) -> Option<tokio_util::sync::CancellationToken> {
+            None
+        }
+        fn prompt(&self, _prompt: AuthPrompt) -> BoxFuture<'_, Result<String, AuthError>> {
+            let answer = self.answer.clone();
+            Box::pin(async move { Ok(answer) })
+        }
+        fn notify(&self, event: AuthEvent) {
+            self.events.lock().unwrap().push(event);
+        }
+    }
+
+    /// OAuth flow returning a canned credential.
+    struct FakeFlow {
+        credential: OAuthCredential,
+    }
+
+    impl OAuthAuth for FakeFlow {
+        fn name(&self) -> &str {
+            "Fake"
+        }
+        fn login<'a>(
+            &'a self,
+            _interaction: pi_rust::ai::auth::types::ProviderAuthInteraction,
+        ) -> BoxFuture<'a, Result<OAuthCredential, AuthError>> {
+            Box::pin(async move { Ok(self.credential.clone()) })
+        }
+        fn refresh<'a>(
+            &'a self,
+            _credential: OAuthCredential,
+            _options: &'a AuthOperationOptions,
+        ) -> BoxFuture<'a, Result<OAuthCredential, AuthError>> {
+            unreachable!("login never refreshes")
+        }
+        fn to_auth<'a>(
+            &'a self,
+            credential: OAuthCredential,
+        ) -> BoxFuture<'a, Result<ModelAuth, AuthError>> {
+            Box::pin(async move {
+                Ok(ModelAuth {
+                    api_key: Some(credential.access),
+                    ..Default::default()
+                })
+            })
+        }
+    }
+
+    fn canned_credential() -> OAuthCredential {
+        OAuthCredential {
+            refresh: "r".to_string(),
+            access: "a".to_string(),
+            expires: pi_rust::ai::now_ms() + 3_600_000,
+            extra: Default::default(),
+        }
+    }
+
+    #[tokio::test]
+    async fn login_wiring_stores_the_credential_in_auth_json() {
+        let dir = TempDir::new().unwrap();
+        let auth_path = dir.path().join("auth.json");
+        let store = FileCredentialStore::new(&auth_path);
+        let interaction = Arc::new(ScriptedInteraction {
+            answer: "typed".to_string(),
+            events: Mutex::new(Vec::new()),
+        });
+        // One credential value for the flow and the assertion (expires is
+        // captured once).
+        let credential = canned_credential();
+        perform_login(
+            "anthropic",
+            &FakeFlow {
+                credential: credential.clone(),
+            },
+            &store,
+            interaction,
+        )
+        .await
+        .unwrap();
+        // The stored document is the upstream format.
+        let document: std::collections::BTreeMap<String, Credential> =
+            serde_json::from_str(&std::fs::read_to_string(&auth_path).unwrap()).unwrap();
+        assert_eq!(
+            document.get("anthropic"),
+            Some(&Credential::OAuth(credential))
+        );
+    }
+
+    #[tokio::test]
+    async fn logout_wiring_removes_the_stored_entry() {
+        let dir = TempDir::new().unwrap();
+        let auth_path = dir.path().join("auth.json");
+        let store = FileCredentialStore::new(&auth_path);
+        let interaction = Arc::new(ScriptedInteraction {
+            answer: "typed".to_string(),
+            events: Mutex::new(Vec::new()),
+        });
+        perform_login(
+            "anthropic",
+            &FakeFlow {
+                credential: canned_credential(),
+            },
+            &store,
+            interaction,
+        )
+        .await
+        .unwrap();
+        perform_logout("anthropic", &store).await.unwrap();
+        let document: std::collections::BTreeMap<String, Credential> =
+            serde_json::from_str(&std::fs::read_to_string(&auth_path).unwrap()).unwrap();
+        assert!(!document.contains_key("anthropic"));
+    }
+
+    #[tokio::test]
+    async fn login_command_rejects_unknown_oauth_providers() {
+        let dir = TempDir::new().unwrap();
+        let error = login_command("nope", &dir.path().join("auth.json"))
+            .await
+            .unwrap_err();
+        assert!(
+            error.to_string().contains("unknown OAuth provider: nope"),
+            "{error}"
+        );
     }
 }

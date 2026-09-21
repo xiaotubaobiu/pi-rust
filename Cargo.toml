@@ -19,6 +19,9 @@ schemars = "1.2.2"
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.151"
 tokio = { version = "1.53.1", features = ["full"] }
+# Cancellation tokens for the auth surface (`AuthOperationOptions.signal`,
+# upstream `AbortSignal`); the `sync` module needs no tokio-util feature.
+tokio-util = "0.7.19"
 toml = "1.1.6"
 # Pinned exact, disclosed in the openai_codex_responses module docs: the codex
 # websocket transport (tokio-tungstenite with rustls + native roots to match
@@ -36,7 +39,19 @@ aws-sigv4 = "=1.5.3"
 # signer's identity inputs; see the bedrock module docs.
 aws-credential-types = "=1.3.0"
 aws-smithy-runtime-api = "=1.16.2"
+# OAuth flow support (auth/oauth module), pinned exact. All three are already
+# in the dependency tree, so no new upstream code is pulled: `sha2` (via
+# aws-sigv4) hashes the PKCE S256 challenge, `rand` (via aws-lc-rs consumers)
+# supplies the code_verifier entropy, and `url` (via reqwest) ports the
+# upstream WHATWG `URL` parsing of pasted redirect URLs.
+sha2 = "=0.11.0"
+rand = "=0.10.2"
+url = "=2.5.8"
 
 [dev-dependencies]
 tempfile = "3.27.0"
+# `start_paused` for the OAuth refresh timeout test: tokio auto-advances the
+# paused clock when all tasks are parked, so the 15s refresh timeout fires
+# instantly and deterministically.
+tokio = { version = "1.53.1", features = ["test-util"] }
 wiremock = "0.6.5"

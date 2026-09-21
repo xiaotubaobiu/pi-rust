@@ -114,8 +114,10 @@ use tokio::sync::mpsc;
 
 /// Upstream `DEFAULT_CODEX_BASE_URL` (line 52).
 const DEFAULT_CODEX_BASE_URL: &str = "https://chatgpt.com/backend-api";
-/// Upstream `JWT_CLAIM_PATH` (line 53).
-const JWT_CLAIM_PATH: &str = "https://api.openai.com/auth";
+/// Upstream `JWT_CLAIM_PATH` (line 53). `pub(crate)`: the oauth flow port
+/// (`auth::oauth::openai_codex`) reads the same claim when it extracts the
+/// ChatGPT account id from the access token.
+pub(crate) const JWT_CLAIM_PATH: &str = "https://api.openai.com/auth";
 /// Upstream `BASE_DELAY_MS` (line 55).
 const BASE_DELAY_MS: u64 = 1000;
 /// Upstream `DEFAULT_MAX_RETRY_DELAY_MS` (line 56).
@@ -1057,8 +1059,9 @@ fn get_retry_after_delay_ms(headers: &reqwest::header::HeaderMap, now_ms: u64) -
 
 /// IMF-fixdate parsing for the `retry-after` HTTP-date branch (upstream
 /// `Date.parse` also accepts the obsolete RFC 850 / asctime forms; Retry-After
-/// senders use IMF-fixdate).
-fn parse_http_date(value: &str) -> Option<u64> {
+/// senders use IMF-fixdate). Shared with the github-copilot OAuth flow's
+/// rate-limit retry (same upstream `Retry-After` semantics).
+pub(crate) fn parse_http_date(value: &str) -> Option<u64> {
     const MONTHS: [&str; 12] = [
         "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
     ];
@@ -1246,7 +1249,9 @@ fn extract_account_id(token: &str) -> Result<String, CodexStreamError> {
 }
 
 /// `atob`-equivalent decoding of the standard base64 alphabet (JWT payloads).
-fn decode_standard_base64(input: &str) -> Option<Vec<u8>> {
+/// `pub(crate)`: the oauth flow port (`auth::oauth::openai_codex`) decodes
+/// id/access-token payload segments with the same `atob` semantics.
+pub(crate) fn decode_standard_base64(input: &str) -> Option<Vec<u8>> {
     let mut output = Vec::new();
     let mut accumulator: u32 = 0;
     let mut bits: u32 = 0;
