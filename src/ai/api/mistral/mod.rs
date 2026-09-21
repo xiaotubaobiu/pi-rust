@@ -21,7 +21,7 @@
 //!   The oracle assertions against those fields are covered on the fields the
 //!   port does set (max_tokens, prompt_mode, reasoning_effort, prompt_cache_key,
 //!   tools, messages).
-//! - Ambient auth lands in M2d (controller ruling): the key resolves from
+//! - Ambient auth: gcloud CLI variant is a named error (bedrock/vertex env chains landed in M2d): the key resolves from
 //!   `options.apiKey` then `ProviderConfig.api_key`, and a missing key is the
 //!   async error event (upstream `streamSimple` throws synchronously; port
 //!   contract). `options.signal` is the port's non-serialized
@@ -2555,7 +2555,7 @@ mod tests {
         assert_eq!(error.content.len(), 1);
     }
 
-    // ---- 12. auth resolution (ambient auth lands in M2d; the provider
+    // ---- 12. auth resolution (ambient auth is a named error (gcloud CLI out of scope); the provider
     //          config is the port wiring per the M2c ruling) ----
 
     #[tokio::test]

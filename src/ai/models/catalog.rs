@@ -450,7 +450,7 @@ mod tests {
     }
 
     #[test]
-    fn flatten_skips_non_object_group_values_like_object_assign() {
+    fn flatten_skips_non_object_group_values_defensively() {
         let groups = json!({
             "openai-completions": {"a": model_json("a", "openai-completions", 1000)},
             "bogus": 3,

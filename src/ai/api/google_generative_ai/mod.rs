@@ -34,7 +34,7 @@
 //!   `streamSimple` derives them from the provider-neutral `toolChoice` and
 //!   `reasoning`/`thinkingBudgets` — carried on the internal [`GoogleOptions`]
 //!   so the pure builder and the wire stay testable.
-//! - Ambient auth lands in M2d (controller ruling): the key resolves from
+//! - Ambient auth: gcloud CLI variant is a named error (bedrock/vertex env chains landed in M2d): the key resolves from
 //!   `options.apiKey` then `ProviderConfig.api_key`, and a missing key is the
 //!   async error event (upstream `streamSimple` throws synchronously; port
 //!   contract). `options.signal` aborts, `onPayload`/`onResponse`, and
