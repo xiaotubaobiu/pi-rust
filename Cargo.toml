@@ -7,6 +7,12 @@ edition = "2021"
 name = "pirs"
 path = "src/main.rs"
 
+# Port of upstream `scripts/generate-models.ts --data-only` (see the module
+# docs for the disclosed scope cuts vs the upstream script).
+[[bin]]
+name = "generate-models"
+path = "src/bin/generate-models/main.rs"
+
 [dependencies]
 anyhow = "1.0.104"
 clap = { version = "4.6.7", features = ["derive"] }
