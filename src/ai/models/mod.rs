@@ -11,6 +11,7 @@
 //! models.ts:187-208, 523-532, 577-638) join with their consumer task.
 
 pub mod catalog;
+pub mod faux;
 pub mod provider;
 pub mod providers;
 pub mod store;
@@ -20,6 +21,12 @@ pub use catalog::{
     flatten_model_catalog, model_data_manifest, model_data_structure, model_data_structure_hash,
     validate_embedded_catalog, ModelDataManifest, ModelDataStructure, MODEL_DATA_MANIFEST_FILE,
     MODEL_DATA_SCHEMA_VERSION,
+};
+pub use faux::{
+    faux_assistant_message, faux_provider, faux_text, faux_thinking, faux_tool_call, FauxContent,
+    FauxCore, FauxFactoryArgs, FauxMessageOptions, FauxModelDefinition, FauxProviderHandle,
+    FauxProviderOptions, FauxProviderState, FauxResponseFactory, FauxResponseStep, FauxStateHandle,
+    FauxToolCallOptions,
 };
 pub use provider::{
     create_provider, ApiImpls, CreateProviderOptions, FetchModelsFn, FilterModelsFn, Provider,
