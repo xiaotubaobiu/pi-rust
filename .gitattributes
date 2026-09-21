@@ -1,0 +1,4 @@
+# The embedded model catalog snapshot is verified byte-for-byte against its
+# manifest at build time (src/ai/models/catalog.rs); checkout must not convert
+# the data files' line endings.
+assets/model-data/*.json text eol=lf
