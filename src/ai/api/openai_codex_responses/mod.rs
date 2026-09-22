@@ -114,6 +114,7 @@ use crate::ai::types::message::{
 use crate::ai::types::options::{SimpleStreamOptions, StreamOptions};
 use crate::ai::types::primitives::{CacheRetention, StopReason, ToolChoice, Transport, Usage};
 use crate::ai::types::Model;
+use crate::ai::uuid::uuid_v7;
 use crate::ai::{now_ms, ProviderConfig};
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
@@ -1640,81 +1641,6 @@ fn resolve_codex_service_tier(response: Option<&str>, request: Option<&str>) -> 
 fn compress_request_body_zstd(body_json: &str) -> Option<Vec<u8>> {
     zstd::stream::encode_all(body_json.as_bytes(), REQUEST_COMPRESSION_ZSTD_LEVEL).ok()
 }
-
-// =============================================================================
-// uuidv7 (upstream utils/uuid.ts)
-// =============================================================================
-
-struct UuidV7State {
-    last_ordinary_timestamp: i64,
-    sequence: Option<u64>,
-}
-
-static UUID_STATE: std::sync::Mutex<UuidV7State> = std::sync::Mutex::new(UuidV7State {
-    last_ordinary_timestamp: -1,
-    sequence: None,
-});
-
-/// Process-random bytes (the port has no WebCrypto; `RandomState` keys are
-/// thread-seeded, same disclosed pseudo-randomness as the retry jitter).
-fn random_bytes() -> [u8; 16] {
-    use std::hash::{BuildHasher, Hasher};
-    let mut bytes = [0u8; 16];
-    for (index, chunk) in bytes.chunks_mut(8).enumerate() {
-        let mut hasher = std::collections::hash_map::RandomState::new().build_hasher();
-        hasher.write_u64(now_ms() as u64 ^ (index as u64) << 32);
-        let value = hasher.finish();
-        chunk.copy_from_slice(&value.to_ne_bytes()[..chunk.len()]);
-    }
-    bytes
-}
-
-/// Upstream `uuidv7()` (no timestamp argument is reachable from this API):
-/// time-ordered with a 41-bit monotonic sequence.
-fn uuid_v7() -> String {
-    const MAX_SEQUENCE: u64 = (1u64 << 41) - 1;
-    let mut bytes = random_bytes();
-    let mut state = UUID_STATE.lock().unwrap();
-    let timestamp = now_ms().max(state.last_ordinary_timestamp);
-    state.last_ordinary_timestamp = timestamp;
-    state.sequence = match state.sequence {
-        None => Some(
-            ((bytes[1] as u64) << 32)
-                | ((bytes[2] as u64) << 24)
-                | ((bytes[3] as u64) << 16)
-                | ((bytes[4] as u64) << 8)
-                | (bytes[5] as u64),
-        ),
-        Some(sequence) if sequence < MAX_SEQUENCE => Some(sequence + 1),
-        // The 41-bit sequence is effectively inexhaustible at one UUID per
-        // millisecond; upstream throws here.
-        Some(sequence) => Some(sequence),
-    };
-    let sequence = state.sequence.unwrap_or(0);
-    drop(state);
-    for (index, shift) in (0..6).rev().enumerate() {
-        bytes[index] = ((timestamp >> (shift * 8)) & 0xff) as u8;
-    }
-    bytes[6] = 0x70 | ((sequence >> 37) & 0x0f) as u8;
-    bytes[7] = ((sequence >> 29) & 0xff) as u8;
-    bytes[8] = 0x80 | ((sequence >> 23) & 0x3f) as u8;
-    bytes[9] = ((sequence >> 15) & 0xff) as u8;
-    bytes[10] = ((sequence >> 7) & 0xff) as u8;
-    bytes[11] = ((((sequence & 0x7f) << 1) | ((bytes[11] as u64) & 0x01)) & 0xff) as u8;
-    let hex: Vec<String> = bytes.iter().map(|byte| format!("{byte:02x}")).collect();
-    format!(
-        "{}-{}-{}-{}-{}",
-        hex[0..4].concat(),
-        hex[4..6].concat(),
-        hex[6..8].concat(),
-        hex[8..10].concat(),
-        hex[10..16].concat()
-    )
-}
-
-// =============================================================================
-// Tests
-// =============================================================================
 
 #[cfg(test)]
 mod tests {

@@ -184,6 +184,12 @@ pub fn get_current_system_message(messages: &[Message]) -> Option<SystemMessage>
 /// extract and join the text blocks of message content; a bare string passes
 /// through unchanged.
 pub fn content_text(content: &StringOrBlocks) -> String {
+    content_text_with_separator(content, "\n")
+}
+
+/// Upstream `contentText(content, separator)` (text.ts:6-12) with an explicit
+/// separator (`""` where callers join blocks without one).
+pub fn content_text_with_separator(content: &StringOrBlocks, separator: &str) -> String {
     match content {
         StringOrBlocks::Text(text) => text.clone(),
         StringOrBlocks::Blocks(blocks) => blocks
@@ -193,7 +199,7 @@ pub fn content_text(content: &StringOrBlocks) -> String {
                 _ => None,
             })
             .collect::<Vec<&str>>()
-            .join("\n"),
+            .join(separator),
     }
 }
 

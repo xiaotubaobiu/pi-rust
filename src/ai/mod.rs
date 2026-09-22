@@ -22,6 +22,7 @@ pub mod models;
 pub mod retry;
 pub mod transcript;
 pub mod types;
+pub mod uuid;
 pub mod validation;
 
 pub use api::{http_client, pi_user_agent, ApiImpl};
