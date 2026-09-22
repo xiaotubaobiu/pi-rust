@@ -15,14 +15,39 @@ use crate::agent_core::harness::session::types::SessionMetadata;
 pub struct LegacyV3SessionHeader {
     /// Always `"session"`.
     pub r#type: LegacyHeaderType,
-    /// Always `3`.
+    /// Always `3` (validated in [`parse_legacy_v3_session_header`], like
+    /// upstream `value.version === 3`).
     pub version: i64,
     pub id: String,
     /// ISO timestamp string (upstream `Date.parse`d at the consumers).
     pub timestamp: String,
     pub cwd: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    /// Upstream `parentSession: string | undefined` — a JSON `null` is NOT
+    /// accepted (serde `Option` would collapse null and absent; the custom
+    /// deserializer keeps upstream's distinction).
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "deserialize_string_or_absent"
+    )]
     pub parent_session: Option<String>,
+}
+
+/// Upstream `string | undefined` field handling: absent maps to `None`,
+/// `null` is a deserialization error (upstream
+/// `typeof value.parentSession === "string"`), a string maps to `Some`.
+fn deserialize_string_or_absent<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let value: Option<String> = Option::deserialize(deserializer)?;
+    match value {
+        Some(text) => Ok(Some(text)),
+        // `Option::deserialize` maps a JSON null to None; reject it.
+        None => Err(serde::de::Error::custom(
+            "parentSession must be a string or absent",
+        )),
+    }
 }
 
 /// Upstream `type: "session"` literal.
@@ -62,11 +87,17 @@ impl JsonlParsedSessionHeader {
     }
 }
 
-/// Upstream `isLegacyV3SessionHeader` (`codec.ts:21-32`) as a serde
-/// validation: the port deserializes the JSON value into the typed header
-/// and checks the timestamp parses (upstream `Number.isFinite(Date.parse)`).
+/// Upstream `isLegacyV3SessionHeader` (`codec.ts:21-32`): `type ===
+/// "session"`, `version === 3`, string id/cwd/timestamp with a parseable
+/// timestamp, and `parentSession` a string or absent. The port deserializes
+/// the JSON value into the typed header (serde enforces the field types and
+/// the null-parentSession rejection); this function adds the literal
+/// `version === 3` check upstream performs.
 pub fn parse_legacy_v3_session_header(value: &serde_json::Value) -> Option<LegacyV3SessionHeader> {
     let header: LegacyV3SessionHeader = serde_json::from_value(value.clone()).ok()?;
+    if header.version != 3 {
+        return None;
+    }
     parse_iso8601_utc(&header.timestamp)?;
     Some(header)
 }

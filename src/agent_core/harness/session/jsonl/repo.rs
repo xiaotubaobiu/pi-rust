@@ -858,4 +858,6 @@ fn fork_source_metadata(source: &SessionMetadata) -> JsonlForkSourceMetadata {
 use crate::agent_core::harness::session::jsonl::legacy_v3::metadata_from_legacy_v3_header as metadata_from_legacy_v3_header_shim;
 
 #[cfg(test)]
-mod tests;
+mod migration_tests;
+#[cfg(test)]
+pub(crate) mod tests;

@@ -22,7 +22,7 @@ use std::sync::Arc;
 
 const NOW: i64 = 1_700_000_000_000;
 
-async fn resolved_cwd(file_system: &NodeExecutionEnv) -> String {
+pub(crate) async fn resolved_cwd(file_system: &NodeExecutionEnv) -> String {
     file_system
         .absolute_path("/workspace", background_context())
         .await
@@ -31,7 +31,7 @@ async fn resolved_cwd(file_system: &NodeExecutionEnv) -> String {
         .to_string()
 }
 
-fn repo_in(dir: &tempfile::TempDir) -> Arc<JsonlSessionRepo> {
+pub(crate) fn repo_in(dir: &tempfile::TempDir) -> Arc<JsonlSessionRepo> {
     Arc::new(JsonlSessionRepo::new(JsonlSessionRepoOptions {
         file_system: Arc::new(NodeExecutionEnv::new(
             dir.path().to_string_lossy().to_string(),
@@ -178,6 +178,251 @@ async fn holds_explicit_mutation_until_end() {
         Some("explicit".to_string())
     );
     reopened.close(background_context()).await.unwrap();
+    repo.close(background_context()).await.unwrap();
+}
+
+/// `AtomicPublicationNodeExecutionEnv`
+/// (`jsonl-session-repo.test.ts:11-29`): captures the staged content at the
+/// publication rename.
+#[derive(Clone)]
+struct AtomicPublicationEnv {
+    inner: Arc<NodeExecutionEnv>,
+    publication: Arc<std::sync::Mutex<Option<serde_json::Value>>>,
+}
+
+impl FileSystem for AtomicPublicationEnv {
+    fn cwd(&self) -> &str {
+        self.inner.cwd()
+    }
+
+    fn absolute_path<'a>(
+        &'a self,
+        path: &str,
+        context: Context,
+    ) -> BoxFuture<'a, Result<String, FileError>> {
+        self.inner.absolute_path(path, context)
+    }
+
+    fn join_path<'a>(
+        &'a self,
+        parts: &[String],
+        context: Context,
+    ) -> BoxFuture<'a, Result<String, FileError>> {
+        self.inner.join_path(parts, context)
+    }
+
+    fn read_text_file<'a>(
+        &'a self,
+        path: &str,
+        context: Context,
+    ) -> BoxFuture<'a, Result<String, FileError>> {
+        self.inner.read_text_file(path, context)
+    }
+
+    fn open_text_line_reader<'a>(
+        &'a self,
+        path: &str,
+        context: Context,
+    ) -> BoxFuture<'a, Result<Arc<dyn crate::agent_core::harness::types::TextLineReader>, FileError>>
+    {
+        self.inner.open_text_line_reader(path, context)
+    }
+
+    fn read_text_lines<'a>(
+        &'a self,
+        path: &str,
+        options: Option<&crate::agent_core::harness::types::ReadTextLinesOptions>,
+        context: Context,
+    ) -> BoxFuture<'a, Result<Vec<String>, FileError>> {
+        self.inner.read_text_lines(path, options, context)
+    }
+
+    fn read_binary_file<'a>(
+        &'a self,
+        path: &str,
+        context: Context,
+    ) -> BoxFuture<'a, Result<Vec<u8>, FileError>> {
+        self.inner.read_binary_file(path, context)
+    }
+
+    fn write_file<'a>(
+        &'a self,
+        path: &str,
+        content: FileContent,
+        context: Context,
+    ) -> BoxFuture<'a, Result<(), FileError>> {
+        self.inner.write_file(path, content, context)
+    }
+
+    fn append_file<'a>(
+        &'a self,
+        path: &str,
+        content: FileContent,
+        context: Context,
+    ) -> BoxFuture<'a, Result<(), FileError>> {
+        self.inner.append_file(path, content, context)
+    }
+
+    fn rename_file<'a>(
+        &'a self,
+        source_path: &str,
+        destination_path: &str,
+        context: Context,
+    ) -> BoxFuture<'a, Result<(), FileError>> {
+        let inner = Arc::clone(&self.inner);
+        let publication = Arc::clone(&self.publication);
+        let source = source_path.to_string();
+        let destination = destination_path.to_string();
+        Box::pin(async move {
+            // Capture the staged content and destination existence before
+            // publishing (upstream `AtomicPublicationNodeExecutionEnv`).
+            let destination_exists = inner.exists(&destination, context.clone()).await;
+            let staged = inner.read_text_file(&source, context.clone()).await;
+            if let (Ok(destination_existed), Ok(staged_content)) = (&destination_exists, &staged) {
+                *publication.lock().unwrap() = Some(serde_json::json!({
+                    "sourcePath": source,
+                    "destinationPath": destination,
+                    "destinationExisted": destination_existed,
+                    "stagedContent": staged_content,
+                }));
+            }
+            inner.rename_file(&source, &destination, context).await
+        })
+    }
+
+    fn file_info<'a>(
+        &'a self,
+        path: &str,
+        context: Context,
+    ) -> BoxFuture<'a, Result<crate::agent_core::harness::types::FileInfo, FileError>> {
+        self.inner.file_info(path, context)
+    }
+
+    fn list_dir<'a>(
+        &'a self,
+        path: &str,
+        context: Context,
+    ) -> BoxFuture<'a, Result<Vec<crate::agent_core::harness::types::FileInfo>, FileError>> {
+        self.inner.list_dir(path, context)
+    }
+
+    fn canonical_path<'a>(
+        &'a self,
+        path: &str,
+        context: Context,
+    ) -> BoxFuture<'a, Result<String, FileError>> {
+        self.inner.canonical_path(path, context)
+    }
+
+    fn exists<'a>(
+        &'a self,
+        path: &str,
+        context: Context,
+    ) -> BoxFuture<'a, Result<bool, FileError>> {
+        self.inner.exists(path, context)
+    }
+
+    fn create_dir<'a>(
+        &'a self,
+        path: &str,
+        options: Option<&crate::agent_core::harness::types::CreateDirOptions>,
+        context: Context,
+    ) -> BoxFuture<'a, Result<(), FileError>> {
+        self.inner.create_dir(path, options, context)
+    }
+
+    fn remove<'a>(
+        &'a self,
+        path: &str,
+        options: Option<&crate::agent_core::harness::types::RemoveOptions>,
+        context: Context,
+    ) -> BoxFuture<'a, Result<(), FileError>> {
+        self.inner.remove(path, options, context)
+    }
+
+    fn create_temp_dir<'a>(
+        &'a self,
+        prefix: Option<&str>,
+        context: Context,
+    ) -> BoxFuture<'a, Result<String, FileError>> {
+        self.inner.create_temp_dir(prefix, context)
+    }
+
+    fn create_temp_file<'a>(
+        &'a self,
+        options: Option<&crate::agent_core::harness::types::TempFileOptions>,
+        context: Context,
+    ) -> BoxFuture<'a, Result<String, FileError>> {
+        self.inner.create_temp_file(options, context)
+    }
+
+    fn cleanup<'a>(&'a self, context: Context) -> BoxFuture<'a, ()> {
+        self.inner.cleanup(context)
+    }
+}
+
+/// "atomically publishes a branchless session header"
+/// (`jsonl-session-repo.test.ts:70-89`).
+#[tokio::test]
+async fn atomically_publishes_branchless_session_header() {
+    let dir = tempfile::tempdir().unwrap();
+    let inner = Arc::new(NodeExecutionEnv::new(
+        dir.path().to_string_lossy().to_string(),
+    ));
+    let env = AtomicPublicationEnv {
+        inner: Arc::clone(&inner),
+        publication: Arc::new(std::sync::Mutex::new(None)),
+    };
+    let cwd = resolved_cwd(&inner).await;
+    let repo = Arc::new(JsonlSessionRepo::new(JsonlSessionRepoOptions {
+        file_system: Arc::new(AtomicPublicationEnv {
+            inner: Arc::clone(&inner),
+            publication: Arc::clone(&env.publication),
+        }),
+        sessions_root: "sessions".to_string(),
+        now: Some(Arc::new(|| NOW)),
+    }));
+    let session = repo
+        .create(create_options("session", &cwd), background_context())
+        .await
+        .unwrap();
+
+    let publication = env
+        .publication
+        .lock()
+        .unwrap()
+        .clone()
+        .expect("Expected atomic session publication");
+    assert_eq!(
+        publication["destinationPath"],
+        serde_json::json!(session.metadata().path)
+    );
+    assert_eq!(publication["destinationExisted"], serde_json::json!(false));
+    let staged_content = publication["stagedContent"].as_str().unwrap();
+    let lines: Vec<&str> = staged_content.trim_end().split('\n').collect();
+    assert_eq!(lines.len(), 1);
+    let parsed: serde_json::Value = serde_json::from_str(lines[0]).unwrap();
+    assert_eq!(parsed["kind"], "header");
+    assert_eq!(parsed["id"], "session");
+    assert_eq!(
+        inner
+            .read_text_file(
+                session.metadata().path.as_deref().unwrap(),
+                background_context()
+            )
+            .await
+            .unwrap(),
+        staged_content
+    );
+    assert!(!inner
+        .exists(
+            publication["sourcePath"].as_str().unwrap(),
+            background_context()
+        )
+        .await
+        .unwrap());
+
+    session.close(background_context()).await.unwrap();
     repo.close(background_context()).await.unwrap();
 }
 
@@ -393,7 +638,7 @@ async fn allows_same_id_in_different_cwds() {
 // --- legacy v3 migration (jsonl-v3-migration.test.ts) ------------------------
 
 /// The v3 header line shared by the migration fixtures.
-fn v3_header(parent_session: Option<&str>, cwd: &str) -> String {
+pub(crate) fn v3_header(parent_session: Option<&str>, cwd: &str) -> String {
     let mut header = serde_json::json!({
         "type": "session",
         "version": 3,
@@ -407,7 +652,7 @@ fn v3_header(parent_session: Option<&str>, cwd: &str) -> String {
     header.to_string()
 }
 
-async fn write_legacy_v3_fixture(
+pub(crate) async fn write_legacy_v3_fixture(
     dir: &tempfile::TempDir,
     records: &[String],
     parent_session: Option<&str>,
@@ -462,7 +707,12 @@ async fn write_legacy_v3_fixture(
     (path, content)
 }
 
-fn legacy_message(id: &str, parent_id: Option<&str>, text: &str, offset_ms: i64) -> String {
+pub(crate) fn legacy_message(
+    id: &str,
+    parent_id: Option<&str>,
+    text: &str,
+    offset_ms: i64,
+) -> String {
     serde_json::json!({
         "type": "message",
         "id": id,
