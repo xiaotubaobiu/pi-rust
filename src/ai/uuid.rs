@@ -36,8 +36,8 @@ fn random_bytes() -> [u8; 16] {
     bytes
 }
 
-/// Upstream `uuidv7()` (no timestamp argument is reachable from the port's
-/// callers): time-ordered with a 41-bit monotonic sequence.
+/// Upstream `uuidv7()` (`uuid.ts:15-24` no-timestamp branch): time-ordered
+/// with a 41-bit monotonic sequence.
 pub fn uuid_v7() -> String {
     let mut bytes = random_bytes();
     let mut state = UUID_STATE
@@ -60,6 +60,45 @@ pub fn uuid_v7() -> String {
     };
     let sequence = state.sequence.unwrap_or(0);
     drop(state);
+    assemble_uuid_v7(&mut bytes, timestamp as u64, sequence)
+}
+
+/// Upstream `uuidv7(timestampMs)` (`uuid.ts:15-24` supplied-timestamp
+/// branch): the requested timestamp is preserved exactly (no monotonic clamp,
+/// `lastOrdinaryTimestamp` untouched) while the shared sequence still
+/// advances, so follower ids at the same timestamp stay distinct. Ported for
+/// the session layer's id minting (`session.ts`, `legacy-v3.ts` reminting).
+/// `Err` is the upstream `RangeError`.
+pub fn uuid_v7_at(timestamp_ms: i64) -> anyhow::Result<String> {
+    const MAX_UUID_V7_TIMESTAMP: i64 = 0xffff_ffff_ffff;
+    if !(0..=MAX_UUID_V7_TIMESTAMP).contains(&timestamp_ms) {
+        anyhow::bail!("UUIDv7 timestamp must be an integer between 0 and {MAX_UUID_V7_TIMESTAMP}");
+    }
+    let mut bytes = random_bytes();
+    let mut state = UUID_STATE
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    state.sequence = match state.sequence {
+        None => Some(
+            ((bytes[1] as u64) << 32)
+                | ((bytes[2] as u64) << 24)
+                | ((bytes[3] as u64) << 16)
+                | ((bytes[4] as u64) << 8)
+                | (bytes[5] as u64),
+        ),
+        Some(sequence) if sequence < MAX_SEQUENCE => Some(sequence + 1),
+        // Upstream throws "UUIDv7 generator sequence exhausted".
+        Some(_) => anyhow::bail!("UUIDv7 generator sequence exhausted"),
+    };
+    let sequence = state.sequence.unwrap_or(0);
+    drop(state);
+    Ok(assemble_uuid_v7(&mut bytes, timestamp_ms as u64, sequence))
+}
+
+/// The shared byte assembly of both upstream branches (`uuid.ts:32-49`):
+/// 48-bit big-endian timestamp, version 7 nibble, RFC variant bits, and the
+/// 41-bit sequence spread over bytes 6-11.
+fn assemble_uuid_v7(bytes: &mut [u8; 16], timestamp: u64, sequence: u64) -> String {
     for (index, shift) in (0..6).rev().enumerate() {
         bytes[index] = ((timestamp >> (shift * 8)) & 0xff) as u8;
     }

@@ -131,6 +131,7 @@ pub async fn collect_entries_for_branch_summary(
         .find_entries(
             Some(&BranchScan {
                 start: Some(old_tip_id.to_string()),
+                ..BranchScan::default()
             }),
             context.clone(),
         )
@@ -142,6 +143,7 @@ pub async fn collect_entries_for_branch_summary(
         .find_entries(
             Some(&BranchScan {
                 start: Some(target_id.to_string()),
+                ..BranchScan::default()
             }),
             context.clone(),
         )
