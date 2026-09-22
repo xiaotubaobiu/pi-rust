@@ -23,8 +23,10 @@ use futures::future::BoxFuture;
 use serde_json::json;
 
 use super::*;
+use crate::agent_core::harness::compaction::FileOperations;
 use crate::agent_core::harness::{
     background_context, create_context_key, with_abort_signal, with_context_value, Context,
+    DEFAULT_COMPACTION_SETTINGS,
 };
 use crate::agent_core::types::AgentMessage;
 use crate::ai::types::content::TextContent;
@@ -36,6 +38,29 @@ use tokio_util::sync::CancellationToken;
 // ---------------------------------------------------------------------------
 // Fixtures
 // ---------------------------------------------------------------------------
+
+/// A minimal [`BranchSummaryResult`] fixture standing in for the upstream
+/// tests' `{ summary, readFiles, modifiedFiles }` JSON literals.
+fn branch_summary_result(summary: &str) -> BranchSummaryResult {
+    BranchSummaryResult {
+        summary: summary.to_string(),
+        usage: None,
+        read_files: vec![],
+        modified_files: vec![],
+    }
+}
+
+/// A minimal [`CompactResult`] fixture for the upstream
+/// `{ "summary": "plain" }` JSON literal.
+fn compaction_result(summary: &str) -> CompactResult {
+    CompactResult {
+        summary: summary.to_string(),
+        tokens_before: 0,
+        usage: None,
+        retained_tail: vec![],
+        details: None,
+    }
+}
 
 /// Error collector standing in for the upstream `errors: Error[]` reporter.
 type ErrorLog = Arc<Mutex<Vec<String>>>;
@@ -310,7 +335,11 @@ fn before_navigation_invocation() -> HookInvocation {
         run_id: "run".to_string(),
         event: HookEvent::BeforeNavigation(BeforeNavigationEvent {
             target_id: "target".to_string(),
-            preparation: json!({"messages": [], "totalTokens": 0}),
+            preparation: BranchPreparation {
+                messages: vec![],
+                file_ops: FileOperations::new(),
+                total_tokens: 0,
+            },
             custom_instructions: None,
         }),
     }
@@ -920,8 +949,8 @@ async fn accepts_explicit_false_structural_declines_and_rejects_true_conflicts()
     // execution-primitives.test.ts:306-334.
     let errors = error_log();
     let hooks = HookRegistry::new(reporter(errors.clone()));
-    let ignored = json!({"summary": "ignored", "readFiles": [], "modifiedFiles": []});
-    let selected = json!({"summary": "selected", "readFiles": [], "modifiedFiles": []});
+    let ignored = branch_summary_result("ignored");
+    let selected = branch_summary_result("selected");
     let ignored_for_handler = ignored.clone();
     hooks
         .on(
@@ -1277,15 +1306,17 @@ async fn before_compaction_takes_the_first_admitted_result() {
     // skipped (covered by the before_navigation oracle test).
     let errors = error_log();
     let hooks = HookRegistry::new(reporter(errors.clone()));
+    let plain = compaction_result("plain");
     hooks
         .on(
             HookName::BeforeCompaction,
-            simple_handler(|_i, _c| {
-                Box::pin(async {
+            simple_handler(move |_i, _c| {
+                let plain = plain.clone();
+                Box::pin(async move {
                     Ok(HookResult::BeforeCompaction(Some(
                         BeforeCompactionHookResult {
                             decline: None,
-                            compaction: Some(json!({"summary": "plain"})),
+                            compaction: Some(plain),
                         },
                     )))
                 })
@@ -1321,7 +1352,16 @@ async fn before_compaction_takes_the_first_admitted_result() {
                 run_id: "run".to_string(),
                 event: HookEvent::BeforeCompaction(BeforeCompactionEvent {
                     reason: CompactionReason::Threshold,
-                    preparation: json!({}),
+                    preparation: CompactionPreparation {
+                        messages_to_summarize: vec![],
+                        turn_prefix_messages: vec![],
+                        retained_tail: vec![],
+                        is_split_turn: false,
+                        tokens_before: 0,
+                        previous_summary: None,
+                        file_ops: FileOperations::new(),
+                        settings: DEFAULT_COMPACTION_SETTINGS,
+                    },
                     custom_instructions: None,
                 }),
             },
@@ -1333,7 +1373,7 @@ async fn before_compaction_takes_the_first_admitted_result() {
     match result {
         HookResult::BeforeCompaction(Some(result)) => {
             assert_eq!(result.decline, None);
-            assert_eq!(result.compaction, Some(json!({"summary": "plain"})));
+            assert_eq!(result.compaction, Some(compaction_result("plain")));
         }
         other => panic!(
             "expected before_compaction aggregate, got {:?}",

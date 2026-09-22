@@ -27,6 +27,7 @@
 //!   argument type before the compaction task ports; the compaction module
 //!   will re-export it.
 
+pub mod compaction;
 pub mod config;
 pub mod context;
 pub mod events;
@@ -34,12 +35,14 @@ pub mod hooks;
 pub mod messages;
 pub mod prompt_templates;
 pub mod result;
+pub mod session;
 pub mod skills;
 pub mod types;
 
 #[cfg(test)]
 pub(crate) mod test_env;
 
+pub use compaction::*;
 pub use config::*;
 pub use context::*;
 pub use events::*;
@@ -47,5 +50,6 @@ pub use hooks::*;
 pub use messages::*;
 pub use prompt_templates::*;
 pub use result::*;
+pub use session::*;
 pub use skills::*;
 pub use types::*;

@@ -35,12 +35,11 @@
 //!   and have no functional effect.
 //! - **Deferred types.** The compaction-side hook payloads
 //!   ([`CompactionPreparation`], [`CompactResult`], [`BranchPreparation`],
-//!   [`BranchSummaryResult`]) are opaque JSON pass-throughs at this layer
-//!   (upstream `firstStructural` only inspects `decline` and the result
-//!   field, `hooks.ts:337-368`); they become type aliases over
-//!   `serde_json::Value` until the compaction task (M3b Task 5) ports their
-//!   real shapes. [`SettledAssistantMessage`] aliases `AssistantMessage` with
-//!   the upstream invariant (`stopReason` narrowed to non-`pending`,
+//!   [`BranchSummaryResult`]) are re-exported from the compaction module
+//!   (M3b Task 5) — upstream `firstStructural` only inspects `decline` and
+//!   the result field (`hooks.ts:337-368`), so the hook layer treats them as
+//!   opaque values. [`SettledAssistantMessage`] aliases `AssistantMessage`
+//!   with the upstream invariant (`stopReason` narrowed to non-`pending`,
 //!   `session/types.ts:12-14`) kept by construction sites. [`Resources`]
 //!   re-exports the foundation `AgentHarnessResources` (`agent-harness.ts:426`).
 //! - **Identity vs value.** Upstream compares object identity in two places:
@@ -77,23 +76,25 @@ pub type Resources = AgentHarnessResources;
 /// path), not a separate type.
 pub type SettledAssistantMessage = AssistantMessage;
 
-/// Placeholder for upstream `CompactionPreparation`
-/// (`compaction/compaction.ts:614-638`) until M3b Task 5; see the module docs.
-pub type CompactionPreparation = serde_json::Value;
+/// Upstream `CompactionPreparation` (`compaction/compaction.ts:614-638`),
+/// re-exported from the compaction module (M3b Task 5); opaque to the hook
+/// layer.
+pub use crate::agent_core::harness::compaction::CompactionPreparation;
 
-/// Placeholder for upstream `CompactResult<T>` (`compaction/compaction.ts:98-112`)
-/// until M3b Task 5; see the module docs.
-pub type CompactResult = serde_json::Value;
+/// Upstream `CompactResult<T>` (`compaction/compaction.ts:98-112`),
+/// re-exported from the compaction module (M3b Task 5); opaque to the hook
+/// layer.
+pub use crate::agent_core::harness::compaction::CompactResult;
 
-/// Placeholder for upstream `BranchPreparation`
-/// (`compaction/branch-summarization.ts:51-60`) until M3b Task 5; see the
-/// module docs.
-pub type BranchPreparation = serde_json::Value;
+/// Upstream `BranchPreparation`
+/// (`compaction/branch-summarization.ts:51-60`), re-exported from the
+/// compaction module (M3b Task 5); opaque to the hook layer.
+pub use crate::agent_core::harness::compaction::BranchPreparation;
 
-/// Placeholder for upstream `BranchSummaryResult`
-/// (`compaction/branch-summarization.ts:33-39`) until M3b Task 5; see the
-/// module docs.
-pub type BranchSummaryResult = serde_json::Value;
+/// Upstream `BranchSummaryResult`
+/// (`compaction/branch-summarization.ts:33-39`), re-exported from the
+/// compaction module (M3b Task 5); opaque to the hook layer.
+pub use crate::agent_core::harness::compaction::BranchSummaryResult;
 
 /// Upstream `HookName` (`agent-harness.ts:502`): the twelve hook names, with
 /// their upstream wire literals (the `HOOK_NAMES` telemetry vocabulary).
