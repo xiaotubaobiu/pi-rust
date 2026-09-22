@@ -101,6 +101,27 @@ pub struct AgentContext {
     pub tools: Vec<Arc<AgentTool>>,
 }
 
+/// The M1-carried max-turns guard tripped (upstream agent-loop.ts has no
+/// equivalent). The run has already emitted its final `agent_end`, so
+/// stateful callers ([`super::agent::Agent`]) treat this error as a settled
+/// run instead of feeding it to a failure choreography: upstream maintains
+/// exactly one `agent_end` per run on every path (agent-loop.ts:223, 259,
+/// 278), and a synthetic failure message after it would corrupt the
+/// transcript.
+#[derive(Debug)]
+pub struct MaxTurnsExceeded {
+    /// The configured upper bound that was reached.
+    pub max_turns: usize,
+}
+
+impl std::fmt::Display for MaxTurnsExceeded {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "exceeded max_turns ({})", self.max_turns)
+    }
+}
+
+impl std::error::Error for MaxTurnsExceeded {}
+
 /// The agent loop's event sink (upstream `AgentEventSink`, agent-loop.ts:31):
 /// receives every [`AgentEvent`] in emission order. The loop awaits the sink
 /// at each emission; the channel-based [`agent_loop`]/[`agent_loop_continue`]
@@ -511,13 +532,18 @@ async fn run_loop(
             // M1-carried maxTurns guard (upstream agent-loop.ts has no
             // equivalent): the check sits before any turn-boundary work, so a
             // turn that would exceed the bound never starts. Emitting
-            // agent_end first keeps the agent_start..agent_end pairing intact.
+            // agent_end first keeps the agent_start..agent_end pairing intact;
+            // the typed [`MaxTurnsExceeded`] sentinel tells stateful callers
+            // the run already settled, so they must not re-emit agent_end
+            // through a failure path.
             if turns_executed >= config.max_turns {
                 (emit)(AgentEvent::AgentEnd {
                     messages: new_messages.clone(),
                 })
                 .await;
-                bail!("exceeded max_turns ({})", config.max_turns);
+                bail!(MaxTurnsExceeded {
+                    max_turns: config.max_turns,
+                });
             }
 
             let mut prepared_messages: Vec<AgentMessage> = Vec::new();

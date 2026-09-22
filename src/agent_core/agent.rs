@@ -72,7 +72,7 @@ use crate::ai::types::tool::Tool;
 
 use super::agent_loop::{
     run_agent_loop, run_agent_loop_continue, AfterToolCallHook, AgentContext, AgentEventSink,
-    AgentLoopConfig, BeforeToolCallHook, ConvertToLlmFn, PrepareNextTurnHook,
+    AgentLoopConfig, BeforeToolCallHook, ConvertToLlmFn, MaxTurnsExceeded, PrepareNextTurnHook,
     ShouldStopAfterTurnHook, TransformContextFn,
 };
 use super::types::{
@@ -623,7 +623,9 @@ impl Agent {
     /// Upstream `runWithLifecycle` (agent.ts:501-524): register the run,
     /// mark the state streaming, drive the loop, settle run failures with
     /// the synthetic failure-message choreography, then clear the runtime
-    /// state and release waiters.
+    /// state and release waiters. A [`MaxTurnsExceeded`] error is the one
+    /// exception: the loop settled the run itself (its `agent_end` already
+    /// emitted), so nothing is re-emitted.
     async fn run_with_lifecycle(
         &self,
         run: LoopKind,
@@ -676,8 +678,15 @@ impl Agent {
         };
 
         if let Err(error) = result {
-            let aborted = token.is_cancelled();
-            self.handle_run_failure(error, aborted, &sink).await;
+            // The max-turns guard settles its run inside the loop: the single
+            // `agent_end` was already emitted, so the failure choreography
+            // must not run — a second `agent_end` breaks upstream's
+            // one-agent_end-per-run invariant and a synthetic failure message
+            // would be appended after the run already ended.
+            if error.downcast_ref::<MaxTurnsExceeded>().is_none() {
+                let aborted = token.is_cancelled();
+                self.handle_run_failure(error, aborted, &sink).await;
+            }
         }
         self.finish_run();
         Ok(())
@@ -1481,6 +1490,61 @@ mod tests {
         assert_eq!(last.stop_reason, StopReason::Error);
         assert_eq!(last.error_message.as_deref(), Some("provider exploded"));
         assert_eq!(state.error_message.as_deref(), Some("provider exploded"));
+    }
+
+    /// The M1-carried max-turns guard pins the one-agent_end-per-run
+    /// invariant through the Agent (upstream agent-loop.ts emits a single
+    /// agent_end on every path, agent-loop.ts:223/259/278; the guard is the
+    /// port's only loop-level throw): the loop settles the run itself,
+    /// `handle_run_failure` must not run, and no synthetic failure message
+    /// is appended after the run ended.
+    #[tokio::test]
+    async fn max_turns_runs_emit_exactly_one_agent_end() {
+        let (models, faux, model) = faux_models();
+        let executed = Arc::new(Mutex::new(Vec::<serde_json::Value>::new()));
+        // The Agent does not override the loop's default max_turns (25), so
+        // drive 25 non-terminating tool turns to trip the guard.
+        faux.set_responses(vec![
+            tool_call_response(
+                vec![("tool-1", "noop", serde_json::json!({}))],
+                StopReason::ToolUse,
+            );
+            25
+        ]);
+        let agent = Arc::new(Agent::new(
+            AgentOptions {
+                initial_state: AgentInitialState {
+                    tools: vec![Arc::new(echo_tool(executed.clone()))],
+                    model: Some(model.clone()),
+                    ..AgentInitialState::default()
+                },
+                ..AgentOptions::default()
+            },
+            models,
+        ));
+        let events = Arc::new(Mutex::new(Vec::<AgentEvent>::new()));
+        agent.subscribe(recording_listener(events.clone()));
+
+        // The run settles instead of surfacing as a failure.
+        agent.prompt("start").await.unwrap();
+
+        let events = events.lock().unwrap();
+        assert_eq!(
+            events
+                .iter()
+                .filter(|event| matches!(event, AgentEvent::AgentEnd { .. }))
+                .count(),
+            1
+        );
+        assert!(matches!(events.last(), Some(AgentEvent::AgentEnd { .. })));
+        drop(events);
+        assert_eq!(agent.state().error_message, None);
+        // No synthetic failure message: the transcript ends with turn 25's
+        // toolResult, not a trailing assistant error message.
+        assert_eq!(
+            agent.state().messages.last().map(|message| message.role()),
+            Some("toolResult")
+        );
     }
 
     // ---- awaited subscribers (agent.test.ts:371-442) ----
