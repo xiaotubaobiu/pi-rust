@@ -1,4 +1,7 @@
-use crate::agent::tool::{make_tool, AgentTool};
+#[cfg(test)]
+use super::run_tool_text;
+use super::text_result;
+use crate::agent_core::types::{make_tool, AgentTool};
 use schemars::JsonSchema;
 use serde::Deserialize;
 
@@ -14,9 +17,9 @@ pub fn tool() -> AgentTool {
         "Read a text file from disk and return its contents",
         |a: ReadFileArgs| {
             Box::pin(async move {
-                let content =
-                    std::fs::read_to_string(&a.path).map_err(|e| format!("read failed: {e}"))?;
-                Ok(content)
+                let content = std::fs::read_to_string(&a.path)
+                    .map_err(|e| anyhow::anyhow!("read failed: {e}"))?;
+                Ok(text_result(content))
             })
         },
     )
@@ -32,10 +35,10 @@ mod tests {
         let path = dir.path().join("a.txt");
         std::fs::write(&path, "hello").unwrap();
         let t = tool();
-        let ok = (t.execute)(serde_json::json!({"path": path.to_str().unwrap()})).await;
+        let ok = run_tool_text(&t, serde_json::json!({"path": path.to_str().unwrap()})).await;
         assert_eq!(ok.unwrap(), "hello");
 
-        let missing = (t.execute)(serde_json::json!({"path": "/nonexistent/x.txt"})).await;
-        assert!(missing.is_err());
+        let missing = run_tool_text(&t, serde_json::json!({"path": "/nonexistent/x.txt"})).await;
+        assert!(missing.unwrap_err().to_string().contains("read failed"));
     }
 }

@@ -1,4 +1,7 @@
-use crate::agent::tool::{make_tool, AgentTool};
+#[cfg(test)]
+use super::run_tool_text;
+use super::text_result;
+use crate::agent_core::types::{make_tool, AgentTool};
 use schemars::JsonSchema;
 use serde::Deserialize;
 use std::process::Stdio;
@@ -42,7 +45,9 @@ pub fn tool() -> AgentTool {
                     // Windows Job Objects) is deliberately out of scope here.
                     .kill_on_drop(true);
 
-                let child = cmd.spawn().map_err(|e| format!("spawn failed: {e}"))?;
+                let child = cmd
+                    .spawn()
+                    .map_err(|e| anyhow::anyhow!("spawn failed: {e}"))?;
                 let output = match tokio::time::timeout(
                     Duration::from_millis(a.timeout_ms),
                     child.wait_with_output(),
@@ -50,8 +55,8 @@ pub fn tool() -> AgentTool {
                 .await
                 {
                     Ok(Ok(o)) => o,
-                    Ok(Err(e)) => return Err(format!("command failed: {e}")),
-                    Err(_) => return Err(format!("command timed out after {} ms", a.timeout_ms)),
+                    Ok(Err(e)) => anyhow::bail!("command failed: {e}"),
+                    Err(_) => anyhow::bail!("command timed out after {} ms", a.timeout_ms),
                 };
 
                 let mut out = String::from_utf8_lossy(&output.stdout).to_string();
@@ -74,12 +79,12 @@ pub fn tool() -> AgentTool {
                     out.push_str("\n... (truncated)");
                 }
                 if !output.status.success() {
-                    return Ok(format!(
+                    return Ok(text_result(format!(
                         "exit code: {}\n{out}",
                         output.status.code().unwrap_or(-1)
-                    ));
+                    )));
                 }
-                Ok(out)
+                Ok(text_result(out))
             })
         },
     )
@@ -97,7 +102,7 @@ mod tests {
     #[tokio::test]
     async fn runs_command() {
         let t = tool();
-        let out = (t.execute)(serde_json::json!({"command": ECHO}))
+        let out = run_tool_text(&t, serde_json::json!({"command": ECHO}))
             .await
             .unwrap();
         assert!(out.contains("pirs_test_ok"), "got: {out}");
@@ -110,8 +115,8 @@ mod tests {
         let slow = "ping -n 10 127.0.0.1 >nul";
         #[cfg(not(windows))]
         let slow = "sleep 10";
-        let err = (t.execute)(serde_json::json!({"command": slow, "timeout_ms": 300})).await;
-        assert!(err.unwrap_err().contains("timed out"));
+        let err = run_tool_text(&t, serde_json::json!({"command": slow, "timeout_ms": 300})).await;
+        assert!(err.unwrap_err().to_string().contains("timed out"));
     }
 
     // Regression test: truncating >10_000 bytes of multi-byte output used to
@@ -130,9 +135,12 @@ mod tests {
         let cmd = "printf '好%.0s' $(seq 6000)";
         // Explicit timeout headroom: PowerShell cold start on a loaded CI
         // runner can exceed the 30s default and fail the test spuriously.
-        let out = (t.execute)(serde_json::json!({"command": cmd, "timeout_ms": 120_000}))
-            .await
-            .expect("must not panic on multi-byte truncation");
+        let out = run_tool_text(
+            &t,
+            serde_json::json!({"command": cmd, "timeout_ms": 120_000}),
+        )
+        .await
+        .expect("must not panic on multi-byte truncation");
         assert!(out.contains("... (truncated)"), "got: {out}");
         assert!(out.chars().take(3333).all(|c| c == '好'), "got: {out}");
     }
@@ -146,7 +154,7 @@ mod tests {
         let cmd = "echo before-failure & exit /B 3";
         #[cfg(not(windows))]
         let cmd = "echo before-failure; exit 3";
-        let out = (t.execute)(serde_json::json!({"command": cmd}))
+        let out = run_tool_text(&t, serde_json::json!({"command": cmd}))
             .await
             .unwrap();
         assert!(out.starts_with("exit code: 3"), "got: {out}");

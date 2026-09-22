@@ -1,4 +1,7 @@
-use crate::agent::tool::{make_tool, AgentTool};
+#[cfg(test)]
+use super::run_tool_text;
+use super::text_result;
+use crate::agent_core::types::{make_tool, AgentTool};
 use schemars::JsonSchema;
 use serde::Deserialize;
 
@@ -16,18 +19,18 @@ pub fn tool() -> AgentTool {
             Box::pin(async move {
                 let mut out: Vec<String> = Vec::new();
                 let entries =
-                    std::fs::read_dir(&a.path).map_err(|e| format!("list failed: {e}"))?;
+                    std::fs::read_dir(&a.path).map_err(|e| anyhow::anyhow!("list failed: {e}"))?;
                 for entry in entries {
-                    let entry = entry.map_err(|e| format!("list failed: {e}"))?;
+                    let entry = entry.map_err(|e| anyhow::anyhow!("list failed: {e}"))?;
                     let name = entry.file_name().to_string_lossy().to_string();
                     let is_dir = entry.file_type().map(|t| t.is_dir()).unwrap_or(false);
                     out.push(if is_dir { format!("{name}/") } else { name });
                 }
                 out.sort();
                 if out.is_empty() {
-                    Ok("(empty directory)".into())
+                    Ok(text_result("(empty directory)"))
                 } else {
-                    Ok(out.join("\n"))
+                    Ok(text_result(out.join("\n")))
                 }
             })
         },
@@ -44,9 +47,12 @@ mod tests {
         std::fs::write(dir.path().join("b.txt"), "").unwrap();
         std::fs::create_dir(dir.path().join("sub")).unwrap();
         let t = tool();
-        let out = (t.execute)(serde_json::json!({"path": dir.path().to_str().unwrap()}))
-            .await
-            .unwrap();
+        let out = run_tool_text(
+            &t,
+            serde_json::json!({"path": dir.path().to_str().unwrap()}),
+        )
+        .await
+        .unwrap();
         assert!(out.lines().any(|l| l == "b.txt"));
         assert!(out.lines().any(|l| l == "sub/"));
     }
