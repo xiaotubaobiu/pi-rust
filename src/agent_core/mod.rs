@@ -4,12 +4,17 @@
 //! M3a Task 1 ports the shared type surface from
 //! `packages/agent/src/types.ts` ([`types`]); M3a Task 2 ports the agent loop
 //! core turns ([`agent_loop`]) — prompt list, per-turn context build,
-//! streaming, tool execution, and toolResult messages. This module is a
+//! streaming, tool execution, and toolResult messages; M3a Task 3 the loop's
+//! steering/follow-up/abort sections with the `PendingMessageQueue`; M3a
+//! Task 4 the stateful [`agent::Agent`] wrapper (lifecycle events, awaited
+//! subscribers, prompt/continue, reset, queue delegation). This module is a
 //! sibling of `ai`, not a child: the ai layer is upstream
 //! `@earendil-works/pi-ai`.
 
+pub mod agent;
 pub mod agent_loop;
 pub mod types;
 
+pub use agent::*;
 pub use agent_loop::*;
 pub use types::*;

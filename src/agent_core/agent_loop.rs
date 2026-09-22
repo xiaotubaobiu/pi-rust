@@ -22,11 +22,14 @@
 //!
 //! Port deviations from the TypeScript source (each mirrors an existing
 //! port ruling unless noted):
-//! - The emit sink is a shared sync callback
-//!   ([`AgentEventSink`]) instead of an async one: upstream sinks only
-//!   push onto the event stream, and the port's channel sender is sync
-//!   (`UnboundedSender`). Parallel tool futures share the sink the way
-//!   upstream's concurrent `emit` promises do.
+//! - The emit sink ([`AgentEventSink`]) is awaited by the loop at every
+//!   emission, like upstream's awaited `emit` (which resolves when the
+//!   EventStream's async handlers settle) — the README's raw-loop contract is
+//!   observational because the *default* sink pushes onto a channel and
+//!   returns immediately, while the Agent class (M3a Task 4) supplies a sink
+//!   that awaits its listeners, making `message_end` a barrier before tool
+//!   preflight (README "message_end barrier"). Parallel tool futures share
+//!   the sink the way upstream's concurrent `emit` promises do.
 //! - `beforeToolCall` receives the validated args and may return a
 //!   replacement ([`BeforeToolCallOutcome::args`]). Upstream hooks mutate the
 //!   shared `args` object in place and return nothing; a Rust closure cannot
@@ -59,7 +62,8 @@
 //!   layer are not carried; the port's loop resolves credentials through the
 //!   [`Models`] collection.
 
-use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
 
 use anyhow::bail;
 use futures::future::{join_all, BoxFuture};
@@ -76,7 +80,9 @@ use crate::ai::types::message::{
     ToolResultMessage,
 };
 use crate::ai::types::options::{SimpleStreamOptions, StreamOptions};
-use crate::ai::types::primitives::{StopReason, ThinkingLevel as RequestThinkingLevel, Usage};
+use crate::ai::types::primitives::{
+    StopReason, ThinkingBudgets, ThinkingLevel as RequestThinkingLevel, Usage,
+};
 use crate::ai::validation::validate_tool_arguments;
 
 use super::types::{
@@ -96,9 +102,13 @@ pub struct AgentContext {
 }
 
 /// The agent loop's event sink (upstream `AgentEventSink`, agent-loop.ts:31):
-/// receives every [`AgentEvent`] in emission order. Shared so parallel tool
-/// futures can emit concurrently, like upstream's concurrent `emit` promises.
-pub type AgentEventSink = Arc<dyn Fn(AgentEvent) + Send + Sync>;
+/// receives every [`AgentEvent`] in emission order. The loop awaits the sink
+/// at each emission; the channel-based [`agent_loop`]/[`agent_loop_continue`]
+/// wrappers pass a sink that pushes onto an unbounded channel and returns
+/// immediately (an observational stream), while the Agent class passes one
+/// that awaits its listeners. Shared so parallel tool futures can emit
+/// concurrently, like upstream's concurrent `emit` promises.
+pub type AgentEventSink = Arc<dyn Fn(AgentEvent) -> BoxFuture<'static, ()> + Send + Sync>;
 
 /// Context passed to the `beforeToolCall` hook (upstream
 /// `BeforeToolCallContext`, types.ts:103-112).
@@ -214,8 +224,7 @@ pub type PrepareNextTurnHook =
 pub type GetQueuedMessagesHook = dyn Fn() -> BoxFuture<'static, Vec<AgentMessage>> + Send + Sync;
 
 /// Configuration for the low-level agent loop (upstream `AgentLoopConfig`,
-/// types.ts:156-301, minus the `SimpleStreamOptions` passthrough fields that
-/// the [`Models`] collection resolves). `max_turns` is the M1-carried guard.
+/// types.ts:156-301). `max_turns` is the M1-carried guard.
 pub struct AgentLoopConfig {
     /// Model used for provider requests.
     pub model: crate::ai::types::Model,
@@ -231,6 +240,15 @@ pub struct AgentLoopConfig {
     /// Upper bound on assistant turns per run (M1-carried; upstream has no
     /// equivalent). Default 25.
     pub max_turns: usize,
+    /// Session id forwarded to providers for cache-aware backends (upstream
+    /// `AgentLoopConfig.sessionId`, passed through `SimpleStreamOptions`).
+    pub session_id: Option<String>,
+    /// Per-level thinking token budgets forwarded to the stream function
+    /// (upstream `AgentLoopConfig.thinkingBudgets`).
+    pub thinking_budgets: Option<ThinkingBudgets>,
+    /// Optional cap for provider-requested retry delays (upstream
+    /// `AgentLoopConfig.maxRetryDelayMs`).
+    pub max_retry_delay_ms: Option<u64>,
     /// Called before a tool executes, after argument validation.
     pub before_tool_call: Option<Arc<BeforeToolCallHook>>,
     /// Called after a tool finishes, before result events.
@@ -258,6 +276,9 @@ impl AgentLoopConfig {
             transform_context: None,
             tool_execution: None,
             max_turns: 25,
+            session_id: None,
+            thinking_budgets: None,
+            max_retry_delay_ms: None,
             before_tool_call: None,
             after_tool_call: None,
             should_stop_after_turn: None,
@@ -294,6 +315,16 @@ impl PendingMessageQueue {
             messages: Vec::new(),
             mode,
         }
+    }
+
+    /// The current drain mode (upstream public `mode` field).
+    pub fn mode(&self) -> QueueMode {
+        self.mode
+    }
+
+    /// Change the drain mode (upstream assigning `queue.mode`).
+    pub fn set_mode(&mut self, mode: QueueMode) {
+        self.mode = mode;
     }
 
     /// Queue a message (upstream `enqueue`).
@@ -340,6 +371,7 @@ pub fn agent_loop(
     let (tx, rx) = mpsc::unbounded_channel();
     let sink: AgentEventSink = Arc::new(move |event| {
         let _ = tx.send(event);
+        Box::pin(async {})
     });
     let handle = tokio::spawn(async move {
         run_agent_loop(prompts, context, config, models.as_ref(), signal, &sink).await
@@ -361,6 +393,7 @@ pub fn agent_loop_continue(
     let (tx, rx) = mpsc::unbounded_channel();
     let sink: AgentEventSink = Arc::new(move |event| {
         let _ = tx.send(event);
+        Box::pin(async {})
     });
     let handle = tokio::spawn(async move {
         run_agent_loop_continue(context, config, models.as_ref(), signal, &sink).await
@@ -386,15 +419,17 @@ pub async fn run_agent_loop(
         tools: context.tools,
     };
 
-    (emit)(AgentEvent::AgentStart);
-    (emit)(AgentEvent::TurnStart);
+    (emit)(AgentEvent::AgentStart).await;
+    (emit)(AgentEvent::TurnStart).await;
     for message in &initial_messages {
         (emit)(AgentEvent::MessageStart {
             message: message.clone(),
-        });
+        })
+        .await;
         (emit)(AgentEvent::MessageEnd {
             message: message.clone(),
-        });
+        })
+        .await;
     }
 
     run_loop(
@@ -421,8 +456,8 @@ pub async fn run_agent_loop_continue(
     let mut new_messages = Vec::new();
     let mut current_context = context;
 
-    (emit)(AgentEvent::AgentStart);
-    (emit)(AgentEvent::TurnStart);
+    (emit)(AgentEvent::AgentStart).await;
+    (emit)(AgentEvent::TurnStart).await;
 
     run_loop(
         &mut current_context,
@@ -480,7 +515,8 @@ async fn run_loop(
             if turns_executed >= config.max_turns {
                 (emit)(AgentEvent::AgentEnd {
                     messages: new_messages.clone(),
-                });
+                })
+                .await;
                 bail!("exceeded max_turns ({})", config.max_turns);
             }
 
@@ -511,7 +547,7 @@ async fn run_loop(
                 if pending_messages.is_empty() {
                     pending_messages = poll_steering(&config).await;
                 }
-                (emit)(AgentEvent::TurnStart);
+                (emit)(AgentEvent::TurnStart).await;
             }
 
             // Process prepared and queued messages before the next assistant
@@ -523,10 +559,12 @@ async fn run_loop(
             for message in declare_tool_changes(current_context, incoming) {
                 (emit)(AgentEvent::MessageStart {
                     message: message.clone(),
-                });
+                })
+                .await;
                 (emit)(AgentEvent::MessageEnd {
                     message: message.clone(),
-                });
+                })
+                .await;
                 current_context.messages.push(message.clone());
                 new_messages.push(message);
             }
@@ -546,10 +584,12 @@ async fn run_loop(
                 (emit)(AgentEvent::TurnEnd {
                     message: AgentMessage::Assistant(message),
                     tool_results: Vec::new(),
-                });
+                })
+                .await;
                 (emit)(AgentEvent::AgentEnd {
                     messages: new_messages.clone(),
-                });
+                })
+                .await;
                 return Ok(());
             }
 
@@ -587,7 +627,8 @@ async fn run_loop(
             (emit)(AgentEvent::TurnEnd {
                 message: AgentMessage::Assistant(message.clone()),
                 tool_results: tool_results.clone(),
-            });
+            })
+            .await;
 
             last_completed_turn = Some(PrepareNextTurnContext {
                 message: message.clone(),
@@ -607,7 +648,8 @@ async fn run_loop(
                 if stop {
                     (emit)(AgentEvent::AgentEnd {
                         messages: new_messages.clone(),
-                    });
+                    })
+                    .await;
                     return Ok(());
                 }
             }
@@ -632,7 +674,8 @@ async fn run_loop(
 
     (emit)(AgentEvent::AgentEnd {
         messages: new_messages.clone(),
-    });
+    })
+    .await;
     Ok(())
 }
 
@@ -775,6 +818,8 @@ async fn stream_assistant_response(
     let options = SimpleStreamOptions {
         stream: StreamOptions {
             signal,
+            session_id: config.session_id.clone(),
+            max_retry_delay_ms: config.max_retry_delay_ms,
             ..StreamOptions::default()
         },
         reasoning: config.thinking_level.and_then(|level| match level {
@@ -786,6 +831,7 @@ async fn stream_assistant_response(
             ThinkingLevel::Xhigh => Some(RequestThinkingLevel::Xhigh),
             ThinkingLevel::Max => Some(RequestThinkingLevel::Max),
         }),
+        thinking_budgets: config.thinking_budgets,
         ..SimpleStreamOptions::default()
     };
     let request_context = Context {
@@ -824,7 +870,8 @@ async fn stream_assistant_response(
                     added_partial = true;
                     (emit)(AgentEvent::MessageStart {
                         message: AgentMessage::Assistant(snapshot),
-                    });
+                    })
+                    .await;
                 }
             }
             AssistantMessageEvent::Done { message, .. }
@@ -842,7 +889,8 @@ async fn stream_assistant_response(
                         (emit)(AgentEvent::MessageUpdate {
                             message: AgentMessage::Assistant(snapshot),
                             assistant_message_event: event,
-                        });
+                        })
+                        .await;
                     }
                 }
             }
@@ -861,11 +909,13 @@ async fn stream_assistant_response(
     if !added_partial {
         (emit)(AgentEvent::MessageStart {
             message: AgentMessage::Assistant(final_message.clone()),
-        });
+        })
+        .await;
     }
     (emit)(AgentEvent::MessageEnd {
         message: AgentMessage::Assistant(final_message.clone()),
-    });
+    })
+    .await;
     final_message
 }
 
@@ -915,7 +965,8 @@ async fn fail_tool_calls_from_truncated_message(
             tool_call_id: tool_call.id.clone(),
             tool_name: tool_call.name.clone(),
             args: tool_call.arguments.clone(),
-        });
+        })
+        .await;
         let finalized = FinalizedToolCallOutcome {
             tool_call: tool_call.clone(),
             result: error_tool_result(format!(
@@ -924,9 +975,9 @@ async fn fail_tool_calls_from_truncated_message(
             )),
             is_error: true,
         };
-        emit_tool_execution_end(&finalized, emit);
+        emit_tool_execution_end(&finalized, emit).await;
         let tool_result_message = create_tool_result_message(&finalized);
-        emit_tool_result_message(&tool_result_message, emit);
+        emit_tool_result_message(&tool_result_message, emit).await;
         messages.push(tool_result_message);
     }
     ExecutedToolCallBatch {
@@ -994,7 +1045,8 @@ async fn execute_tool_calls_sequential(
             tool_call_id: tool_call.id.clone(),
             tool_name: tool_call.name.clone(),
             args: tool_call.arguments.clone(),
-        });
+        })
+        .await;
 
         let finalized = match prepare_tool_call(
             context,
@@ -1035,9 +1087,9 @@ async fn execute_tool_calls_sequential(
             }
         };
 
-        emit_tool_execution_end(&finalized, emit);
+        emit_tool_execution_end(&finalized, emit).await;
         let tool_result_message = create_tool_result_message(&finalized);
-        emit_tool_result_message(&tool_result_message, emit);
+        emit_tool_result_message(&tool_result_message, emit).await;
         finalized_calls.push(finalized);
         messages.push(tool_result_message);
 
@@ -1077,7 +1129,8 @@ async fn execute_tool_calls_parallel(
             tool_call_id: tool_call.id.clone(),
             tool_name: tool_call.name.clone(),
             args: tool_call.arguments.clone(),
-        });
+        })
+        .await;
 
         match prepare_tool_call(
             context,
@@ -1094,7 +1147,7 @@ async fn execute_tool_calls_parallel(
                     result,
                     is_error,
                 };
-                emit_tool_execution_end(&finalized, emit);
+                emit_tool_execution_end(&finalized, emit).await;
                 entries.push(ToolCallEntry::Ready(finalized));
                 // Upstream breaks out of the preflight loop when
                 // `signal.aborted` (agent-loop.ts:569-571): later calls never
@@ -1147,7 +1200,7 @@ async fn execute_tool_calls_parallel(
                             result: error_tool_result("Operation aborted"),
                             is_error: true,
                         };
-                        emit_tool_execution_end(&finalized, &emit);
+                        emit_tool_execution_end(&finalized, &emit).await;
                         return finalized;
                     }
                     let executed =
@@ -1162,7 +1215,7 @@ async fn execute_tool_calls_parallel(
                         after_hook.as_ref(),
                     )
                     .await;
-                    emit_tool_execution_end(&finalized, &emit);
+                    emit_tool_execution_end(&finalized, &emit).await;
                     finalized
                 }
             }
@@ -1175,7 +1228,7 @@ async fn execute_tool_calls_parallel(
     let mut messages: Vec<ToolResultMessage> = Vec::new();
     for finalized in &ordered_finalized_calls {
         let tool_result_message = create_tool_result_message(finalized);
-        emit_tool_result_message(&tool_result_message, emit);
+        emit_tool_result_message(&tool_result_message, emit).await;
         messages.push(tool_result_message);
     }
 
@@ -1336,8 +1389,10 @@ async fn prepare_tool_call(
 }
 
 /// Upstream `executePreparedToolCall` (agent-loop.ts:732-773): run the tool,
-/// forwarding streamed updates as `tool_execution_update` events; failures
-/// become error results.
+/// collecting streamed updates as `tool_execution_update` emissions; the
+/// emissions run after `execute` resolves and later `onUpdate` calls are
+/// ignored (`acceptingUpdates` guard), so a tool cannot emit after it
+/// settles. Failures become error results.
 async fn execute_prepared_tool_call(
     tool_call: &ToolCall,
     tool: &AgentTool,
@@ -1345,17 +1400,29 @@ async fn execute_prepared_tool_call(
     signal: Option<CancellationToken>,
     emit: &AgentEventSink,
 ) -> ExecutedToolCallOutcome {
-    let update_sink = Arc::clone(emit);
-    let update_tool_call = tool_call.clone();
-    let on_update: Arc<AgentToolUpdateCallback> = Arc::new(move |partial_result| {
-        (update_sink)(AgentEvent::ToolExecutionUpdate {
-            tool_call_id: update_tool_call.id.clone(),
-            tool_name: update_tool_call.name.clone(),
-            args: update_tool_call.arguments.clone(),
-            partial_result: serde_json::to_value(partial_result).expect("tool result serializes"),
-        });
-    });
-    match (tool.execute)(tool_call.id.clone(), args, signal, Some(on_update)).await {
+    let accepting_updates = Arc::new(AtomicBool::new(true));
+    let update_events: Arc<Mutex<Vec<BoxFuture<'static, ()>>>> = Arc::new(Mutex::new(Vec::new()));
+    let on_update: Arc<AgentToolUpdateCallback> = {
+        let (accepting_updates, update_events) =
+            (Arc::clone(&accepting_updates), Arc::clone(&update_events));
+        let update_sink = Arc::clone(emit);
+        let update_tool_call = tool_call.clone();
+        Arc::new(move |partial_result: &AgentToolResult| {
+            if !accepting_updates.load(Ordering::SeqCst) {
+                return;
+            }
+            let update_sink = Arc::clone(&update_sink);
+            let event = AgentEvent::ToolExecutionUpdate {
+                tool_call_id: update_tool_call.id.clone(),
+                tool_name: update_tool_call.name.clone(),
+                args: update_tool_call.arguments.clone(),
+                partial_result: serde_json::to_value(partial_result)
+                    .expect("tool result serializes"),
+            };
+            update_events.lock().unwrap().push(update_sink(event));
+        })
+    };
+    let executed = match (tool.execute)(tool_call.id.clone(), args, signal, Some(on_update)).await {
         Ok(result) => ExecutedToolCallOutcome {
             result,
             is_error: false,
@@ -1364,7 +1431,14 @@ async fn execute_prepared_tool_call(
             result: error_tool_result(error),
             is_error: true,
         },
+    };
+    // Upstream: `acceptingUpdates = false; await Promise.all(updateEvents)`.
+    accepting_updates.store(false, Ordering::SeqCst);
+    let pending: Vec<BoxFuture<'static, ()>> = std::mem::take(&mut *update_events.lock().unwrap());
+    for event in pending {
+        event.await;
     }
+    executed
 }
 
 /// Upstream `finalizeExecutedToolCall` (agent-loop.ts:775-820): apply the
@@ -1432,13 +1506,14 @@ fn error_tool_result(message: impl std::fmt::Display) -> AgentToolResult {
 }
 
 /// Upstream `emitToolExecutionEnd` (agent-loop.ts:829-837).
-fn emit_tool_execution_end(finalized: &FinalizedToolCallOutcome, emit: &AgentEventSink) {
+async fn emit_tool_execution_end(finalized: &FinalizedToolCallOutcome, emit: &AgentEventSink) {
     (emit)(AgentEvent::ToolExecutionEnd {
         tool_call_id: finalized.tool_call.id.clone(),
         tool_name: finalized.tool_call.name.clone(),
         result: serde_json::to_value(&finalized.result).expect("tool result serializes"),
         is_error: finalized.is_error,
-    });
+    })
+    .await;
 }
 
 /// Upstream `createToolResultMessage` (agent-loop.ts:839-852).
@@ -1455,14 +1530,16 @@ fn create_tool_result_message(finalized: &FinalizedToolCallOutcome) -> ToolResul
 }
 
 /// Upstream `emitToolResultMessage` (agent-loop.ts:854-857).
-fn emit_tool_result_message(message: &ToolResultMessage, emit: &AgentEventSink) {
+async fn emit_tool_result_message(message: &ToolResultMessage, emit: &AgentEventSink) {
     let agent_message = AgentMessage::ToolResult(message.clone());
     (emit)(AgentEvent::MessageStart {
         message: agent_message.clone(),
-    });
+    })
+    .await;
     (emit)(AgentEvent::MessageEnd {
         message: agent_message,
-    });
+    })
+    .await;
 }
 
 #[cfg(test)]

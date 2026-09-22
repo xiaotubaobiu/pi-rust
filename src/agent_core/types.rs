@@ -656,21 +656,46 @@ pub struct AgentInitialState {
     pub messages: Vec<AgentMessage>,
 }
 
-/// Upstream `AgentOptions` (agent.ts:113-137), data subset — the task brief's
-/// "AgentOptions (as data)".
+/// Upstream `AgentOptions` (agent.ts:113-138): the full Agent constructor
+/// surface. The data fields landed with M3a Task 1; the callback/executor
+/// fields attach with the loop (Task 3) and the Agent class (Task 4).
 ///
-/// The callback/executor fields (`streamFn`, `convertToLlm`,
-/// `transformContext`, `getApiKey`, `onPayload`, `onResponse`,
-/// `beforeToolCall`, `afterToolCall`, `shouldStopAfterTurn`,
-/// `prepareNextTurn`, `prepareNextTurnWithContext`, `transport`) need the
-/// event-stream and loop surfaces that later M3a tasks port; they attach to
-/// this struct then. Mode defaults: steering/follow-up `one-at-a-time`,
-/// tool execution `parallel`.
-#[derive(Debug, Clone, PartialEq, Default)]
+/// Port mapping: `streamFn`/`getApiKey`/`onPayload`/`onResponse`/`transport`
+/// are not carried — the port's loop resolves credentials, transport, and
+/// streaming through the [`Models`] collection, so the Agent takes
+/// `Arc<Models>` where upstream takes a `streamFn`. `prepareNextTurn` and
+/// `prepareNextTurnWithContext` are one hook here: the port's
+/// [`PrepareNextTurnHook`] already receives the turn context. Upstream
+/// forwards the active run's `AbortSignal` to
+/// `beforeToolCall`/`afterToolCall`/`shouldStopAfterTurn`/
+/// `prepareNextTurn`; the port's hook signatures have no signal parameter,
+/// so that forwarding does not exist.
+///
+/// Mode defaults: steering/follow-up `one-at-a-time`, tool execution
+/// `parallel`.
+#[derive(Clone, Default)]
 pub struct AgentOptions {
     /// Initial state; `systemPrompt` and `tools` become the leading system
     /// message unless `messages` already starts with one.
     pub initial_state: AgentInitialState,
+    /// Transcript-to-LLM conversion before each call (upstream
+    /// `convertToLlm`); defaults to the standard-role filter.
+    pub convert_to_llm: Option<std::sync::Arc<super::agent_loop::ConvertToLlmFn>>,
+    /// Optional transcript transform before `convert_to_llm` (upstream
+    /// `transformContext`).
+    pub transform_context: Option<std::sync::Arc<super::agent_loop::TransformContextFn>>,
+    /// Called before a tool executes, after argument validation (upstream
+    /// `beforeToolCall`).
+    pub before_tool_call: Option<std::sync::Arc<super::agent_loop::BeforeToolCallHook>>,
+    /// Called after a tool finishes, before result events (upstream
+    /// `afterToolCall`).
+    pub after_tool_call: Option<std::sync::Arc<super::agent_loop::AfterToolCallHook>>,
+    /// Called after `turn_end`; `true` stops the run (upstream
+    /// `shouldStopAfterTurn`).
+    pub should_stop_after_turn: Option<std::sync::Arc<super::agent_loop::ShouldStopAfterTurnHook>>,
+    /// Called before the next turn when the loop continues (upstream
+    /// `prepareNextTurn`/`prepareNextTurnWithContext`).
+    pub prepare_next_turn: Option<std::sync::Arc<super::agent_loop::PrepareNextTurnHook>>,
     /// Steering queue drain mode (agent.ts:131); default
     /// [`QueueMode::DEFAULT`].
     pub steering_mode: Option<QueueMode>,
@@ -686,6 +711,29 @@ pub struct AgentOptions {
     pub tool_execution: Option<ToolExecutionMode>,
     /// Upper bound on provider retry backoff.
     pub max_retry_delay_ms: Option<u64>,
+}
+
+impl std::fmt::Debug for AgentOptions {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("AgentOptions")
+            .field("initial_state", &self.initial_state)
+            .field("convert_to_llm", &self.convert_to_llm.is_some())
+            .field("transform_context", &self.transform_context.is_some())
+            .field("before_tool_call", &self.before_tool_call.is_some())
+            .field("after_tool_call", &self.after_tool_call.is_some())
+            .field(
+                "should_stop_after_turn",
+                &self.should_stop_after_turn.is_some(),
+            )
+            .field("prepare_next_turn", &self.prepare_next_turn.is_some())
+            .field("steering_mode", &self.steering_mode)
+            .field("follow_up_mode", &self.follow_up_mode)
+            .field("session_id", &self.session_id)
+            .field("thinking_budgets", &self.thinking_budgets)
+            .field("tool_execution", &self.tool_execution)
+            .field("max_retry_delay_ms", &self.max_retry_delay_ms)
+            .finish()
+    }
 }
 
 #[cfg(test)]
@@ -1100,6 +1148,12 @@ mod tests {
                 tools: tools.clone(),
                 messages: vec![user_message("Hello")],
             },
+            convert_to_llm: None,
+            transform_context: None,
+            before_tool_call: None,
+            after_tool_call: None,
+            should_stop_after_turn: None,
+            prepare_next_turn: None,
             steering_mode: Some(QueueMode::All),
             follow_up_mode: Some(QueueMode::OneAtATime),
             session_id: Some("session-123".into()),
