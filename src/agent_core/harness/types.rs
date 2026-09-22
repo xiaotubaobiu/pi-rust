@@ -838,7 +838,11 @@ pub enum ShellOutputUpdate {
         text: String,
         metadata: ShellOutputMetadata,
     },
-    /// The window slid forward: `drop` leading bytes left the view.
+    /// The window slid forward: `drop` leading characters left the view. The
+    /// unit is the JS string length the upstream producer computes
+    /// (`output-capture.ts:188`, `previous.text.length - shared`, applied via
+    /// `text.slice(update.drop)`) — UTF-16 code units, not bytes; Rust
+    /// consumers applying the update must convert for non-ASCII output.
     Slide {
         drop: u64,
         text: String,

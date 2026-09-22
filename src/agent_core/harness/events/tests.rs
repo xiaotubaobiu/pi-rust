@@ -6,7 +6,7 @@
 
 use super::*;
 use crate::agent_core::harness::{create_context_key, with_context_value, ContextKey};
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 
 /// The `TestSnapshot` payload used by the watcher tests.
 #[derive(Debug, Clone, PartialEq)]
@@ -749,6 +749,34 @@ async fn isolates_listener_failures_and_emits_handler_error() {
 }
 
 #[tokio::test]
+async fn isolates_synchronous_prologue_listener_failures() {
+    // events.ts:145-147 catches the listener call itself, so a failure in
+    // the synchronous prologue — before the returned future is ever polled —
+    // is isolated and reported like a polled-future failure.
+    let bus: HarnessEventBus<TestEvent> = HarnessEventBus::new();
+    let failures: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
+    let failure_sink = Arc::clone(&failures);
+    bus.on("run_start", |_event, _context| -> BoxFuture<'static, ()> {
+        panic!("sync listener failed");
+    })
+    .unwrap();
+    bus.on(HANDLER_ERROR_EVENT_TYPE, move |event, _context| {
+        let sink = Arc::clone(&failure_sink);
+        Box::pin(async move {
+            if let TestEvent::HandlerError { error, .. } = &*event {
+                sink.lock().unwrap().push(error.clone());
+            }
+        })
+    })
+    .unwrap();
+    bus.emit(run_start("run"), Context::background()).await;
+    assert_eq!(
+        &*failures.lock().unwrap(),
+        &["sync listener failed".to_string()]
+    );
+}
+
+#[tokio::test]
 async fn does_not_recurse_when_a_handler_error_listener_fails() {
     // execution-primitives.test.ts:655-669.
     let bus: HarnessEventBus<TestEvent> = HarnessEventBus::new();
@@ -879,4 +907,267 @@ fn handler_error_events_carry_the_failed_type_and_lane() {
     // A laneless source produces a laneless handler_error (events.ts:115).
     let laneless = TestEvent::handler_error("fault".into(), "boom".into(), None);
     assert_eq!(laneless.lane(), None);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn resnapshot_boundary_and_concurrent_publications_do_not_deadlock_or_corrupt() {
+    // Contention smoke for the atomic chain: a resnapshot boundary enqueued
+    // from inside a watcher listener while four publishers keep the bus tail
+    // busy must neither deadlock (the boundary awaits every batch appended
+    // before it) nor corrupt later delivery.
+    let bus: HarnessEventBus<TestEvent> = HarnessEventBus::new();
+    let listener_started = Gate::new();
+    let release = Gate::new();
+    let resnapshot_done = Gate::new();
+    let watcher = bus
+        .watch_with_resnapshot(
+            TestSnapshot {
+                version: "old".into(),
+            },
+            |_| true,
+            Context::background(),
+            Some(Arc::new(
+                |_context: Context, mark_boundary: MarkBoundary| {
+                    Box::pin(async move {
+                        let mut mark_boundary = mark_boundary;
+                        mark_boundary();
+                        Ok(TestSnapshot {
+                            version: "fresh".into(),
+                        })
+                    })
+                },
+            )),
+        )
+        .unwrap();
+    let listener_watcher = watcher.clone();
+    let done_for_listener = resnapshot_done.clone();
+    let (listener_started_for_listener, release_for_listener) =
+        (listener_started.clone(), release.clone());
+    watcher.start(move |event, context| {
+        let listener_watcher = listener_watcher.clone();
+        let done_for_listener = done_for_listener.clone();
+        let listener_started = listener_started_for_listener.clone();
+        let release = release_for_listener.clone();
+        Box::pin(async move {
+            if let TestEvent::NavigationEnd { run_id, .. } = &*event {
+                if run_id == "trigger" {
+                    listener_started.open();
+                    release.wait().await;
+                    listener_watcher.resnapshot(context).await.unwrap();
+                    done_for_listener.open();
+                }
+            }
+        })
+    });
+    bus.emit(
+        TestEvent::NavigationEnd {
+            run_id: "trigger".into(),
+            status: "completed".into(),
+            lane: "main".into(),
+        },
+        Context::background(),
+    )
+    .await;
+    listener_started.wait().await;
+    // Publishers keep appending to the tail while the trigger's listener is
+    // parked; the resnapshot boundary (appended after `release`) must chain
+    // behind all of them.
+    let mut publishers = Vec::new();
+    for index in 0..4 {
+        let bus = bus.clone();
+        publishers.push(tokio::spawn(async move {
+            for step in 0..25 {
+                bus.emit(
+                    TestEvent::QueueUpdate {
+                        entry_ids: vec![format!("p{index}-{step}")],
+                        lane: "main".into(),
+                    },
+                    Context::background(),
+                )
+                .await;
+            }
+        }));
+    }
+    release.open();
+    for publisher in publishers {
+        publisher.await.unwrap();
+    }
+    resnapshot_done.wait().await;
+    assert_eq!(
+        watcher.snapshot(),
+        TestSnapshot {
+            version: "fresh".into()
+        }
+    );
+    // The bus still delivers and new watchers still work after the
+    // contention (a WatchHandle may only start once, so use a fresh one).
+    let seen: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
+    let sink = Arc::clone(&seen);
+    let sentinel_watcher = bus
+        .watch(
+            TestSnapshot {
+                version: "post".into(),
+            },
+            |event| event.event_type() == "queue_update",
+            Context::background(),
+        )
+        .unwrap();
+    sentinel_watcher.start(move |event, _context| {
+        let sink = Arc::clone(&sink);
+        Box::pin(async move {
+            if let TestEvent::QueueUpdate { entry_ids, .. } = &*event {
+                sink.lock().unwrap().push(entry_ids[0].clone());
+            }
+        })
+    });
+    bus.emit(
+        TestEvent::QueueUpdate {
+            entry_ids: vec!["sentinel".into()],
+            lane: "main".into(),
+        },
+        Context::background(),
+    )
+    .await;
+    settle().await;
+    assert_eq!(&*seen.lock().unwrap(), &["sentinel".to_string()]);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn concurrent_publications_never_escape_the_delivery_chain() {
+    // Regression for atomic tail chaining. Upstream's bind-and-chain
+    // prologue is atomic (JS event loop); the port must take the previous
+    // tail receiver and install its own in ONE critical section. With two
+    // separate lock acquisitions, two concurrent publishers can both
+    // observe an empty slot and both jobs escape the chain — running
+    // concurrently and unordered, which breaks the barrier contract ("the
+    // boundary runs only after every previously published batch was
+    // delivered").
+    //
+    // Detection: 8 publishers free-run fire-and-forget appends (no
+    // serialization between them) while a churner thread hammers the
+    // tail-slot mutex, stretching every racy take/install window so other
+    // publishers' takes land inside it. Escaped jobs deliver concurrently,
+    // which the in-flight counter observes (each listener parks 300us so
+    // escaped jobs must overlap in wall time). With the atomic prologue the
+    // churner cannot split a take/install, so deliveries stay serialized.
+    let bus: HarnessEventBus<TestEvent> = HarnessEventBus::new();
+    const PUBLISHERS: usize = 8;
+    const BATCHES: usize = 60;
+
+    let delivered: Arc<Mutex<Vec<u64>>> = Arc::new(Mutex::new(Vec::new()));
+    let in_flight = Arc::new(AtomicUsize::new(0));
+    let overlaps = Arc::new(AtomicUsize::new(0));
+    let handler_errors = Arc::new(AtomicUsize::new(0));
+    let (sink, in_flight_sink, overlaps_sink) = (
+        Arc::clone(&delivered),
+        Arc::clone(&in_flight),
+        Arc::clone(&overlaps),
+    );
+    bus.on("queue_update", move |event, _context| {
+        let sink = Arc::clone(&sink);
+        let in_flight = Arc::clone(&in_flight_sink);
+        let overlaps = Arc::clone(&overlaps_sink);
+        Box::pin(async move {
+            if in_flight.fetch_add(1, Ordering::SeqCst) != 0 {
+                overlaps.fetch_add(1, Ordering::SeqCst);
+            }
+            // Hold the delivery slot with a short busy-spin (not a timer
+            // sleep, whose wake granularity dwarfs the hold) so two escaped
+            // jobs must overlap in wall time, making non-serialization
+            // observable.
+            let hold = std::time::Instant::now();
+            while hold.elapsed() < std::time::Duration::from_micros(300) {
+                std::hint::spin_loop();
+            }
+            if let TestEvent::QueueUpdate { entry_ids, .. } = &*event {
+                sink.lock()
+                    .unwrap()
+                    .push(entry_ids[0].parse::<u64>().unwrap());
+            }
+            in_flight.fetch_sub(1, Ordering::SeqCst);
+        })
+    })
+    .unwrap();
+    let handler_sink = Arc::clone(&handler_errors);
+    bus.on(HANDLER_ERROR_EVENT_TYPE, move |_event, _context| {
+        let handler_sink = Arc::clone(&handler_sink);
+        Box::pin(async move {
+            handler_sink.fetch_add(1, Ordering::SeqCst);
+        })
+    })
+    .unwrap();
+
+    // The churner: keep the tail-slot mutex hot so a racy take/install
+    // window is stretched across other publishers' takes.
+    let churn_bus = bus.clone();
+    let churner = std::thread::spawn(move || {
+        let deadline = std::time::Instant::now() + std::time::Duration::from_millis(150);
+        while std::time::Instant::now() < deadline {
+            let _guard = lock(&churn_bus.inner.delivery_tail);
+            std::hint::spin_loop();
+        }
+    });
+
+    let next_id = Arc::new(AtomicU64::new(0));
+    let mut publishers = Vec::new();
+    for _ in 0..PUBLISHERS {
+        let bus = bus.clone();
+        let next_id = Arc::clone(&next_id);
+        publishers.push(tokio::spawn(async move {
+            let mut pending = Vec::new();
+            for _ in 0..BATCHES {
+                let id = next_id.fetch_add(1, Ordering::SeqCst);
+                // Fire-and-forget: push the chain job synchronously (inside
+                // emit_batch) and collect the completion future.
+                pending.push(bus.emit_batch(
+                    vec![TestEvent::QueueUpdate {
+                        entry_ids: vec![id.to_string()],
+                        lane: "main".into(),
+                    }],
+                    Context::background(),
+                ));
+            }
+            for future in pending {
+                future.await;
+            }
+        }));
+    }
+    churner.join().unwrap();
+    for publisher in publishers {
+        publisher.await.unwrap();
+    }
+    // Drain: deliveries trail the appends (300us each, serialized). Bounded
+    // so a lost event fails the assertions below instead of hanging.
+    for _ in 0..2000 {
+        if delivered.lock().unwrap().len() == PUBLISHERS * BATCHES
+            && in_flight.load(Ordering::SeqCst) == 0
+        {
+            break;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+    }
+
+    let mut delivered = delivered.lock().unwrap().clone();
+    assert_eq!(
+        delivered.len(),
+        PUBLISHERS * BATCHES,
+        "every event delivered exactly once"
+    );
+    assert_eq!(
+        overlaps.load(Ordering::SeqCst),
+        0,
+        "two batch jobs delivered concurrently — the tail chain leaked"
+    );
+    assert_eq!(
+        handler_errors.load(Ordering::SeqCst),
+        0,
+        "listener failures during delivery"
+    );
+    delivered.sort_unstable();
+    delivered.dedup();
+    assert_eq!(
+        delivered.len(),
+        PUBLISHERS * BATCHES,
+        "every event id delivered exactly once"
+    );
 }

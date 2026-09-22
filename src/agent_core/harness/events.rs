@@ -135,17 +135,22 @@ fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
 /// receiver (or `None` for the first) plus this job's sender.
 type TailSlot = Mutex<Option<tokio::sync::oneshot::Receiver<()>>>;
 
-/// Append `body` to the promise-chain-style tail: take the previous
-/// receiver, install this job's, and spawn a job that awaits its predecessor
-/// before running. Chain order follows call order regardless of task
-/// scheduling.
+/// Append `body` to the promise-chain-style tail. The take-previous and
+/// install-own steps run in ONE critical section, so two concurrent
+/// publishers can never both observe an empty slot and escape the chain
+/// (upstream: the JS event loop makes the bind-and-chain prologue atomic).
+/// Chain order follows call order regardless of task scheduling.
 fn append_job<F>(slot: &TailSlot, body: F) -> tokio::task::JoinHandle<()>
 where
     F: Future<Output = ()> + Send + 'static,
 {
-    let previous = lock(slot).take();
-    let (sender, receiver) = tokio::sync::oneshot::channel();
-    *lock(slot) = Some(receiver);
+    let (previous, sender) = {
+        let mut slot = lock(slot);
+        let previous = slot.take();
+        let (sender, receiver) = tokio::sync::oneshot::channel();
+        *slot = Some(receiver);
+        (previous, sender)
+    };
     tokio::spawn(async move {
         if let Some(previous) = previous {
             let _ = previous.await;
@@ -165,6 +170,20 @@ fn panic_message(payload: Box<dyn Any + Send>) -> String {
         (*message).to_string()
     } else {
         "listener panicked".to_string()
+    }
+}
+
+/// Invoke a listener with both failure channels caught: the synchronous
+/// prologue (the closure body runs before the returned future is ever
+/// polled, so its panics would otherwise escape `catch_unwind`) and the
+/// polled future. Upstream `try { await listener(...) }` catches both
+/// (`events.ts:145-147, 281`).
+async fn catch_listener<T>(
+    invoke: impl FnOnce() -> BoxFuture<'static, T>,
+) -> Result<T, Box<dyn Any + Send>> {
+    match std::panic::catch_unwind(AssertUnwindSafe(invoke)) {
+        Err(payload) => Err(payload),
+        Ok(future) => AssertUnwindSafe(future).catch_unwind().await,
     }
 }
 
@@ -238,8 +257,9 @@ impl<E: BusEvent> BusInner<E> {
     ) -> BoxFuture<'a, ()> {
         Box::pin(async move {
             for listener in recipients {
-                let future = AssertUnwindSafe(listener(Arc::clone(&event), context.clone()));
-                match future.catch_unwind().await {
+                let outcome =
+                    catch_listener(|| listener(Arc::clone(&event), context.clone())).await;
+                match outcome {
                     Ok(()) => {}
                     Err(payload) => {
                         if !report_errors || event.event_type() == HANDLER_ERROR_EVENT_TYPE {
@@ -728,17 +748,14 @@ impl<T: Send + Sync + 'static, E: BusEvent> WatcherCore<T, E> {
     }
 
     /// Upstream `enqueue` (`events.ts:273-285`): chain the delivery onto the
-    /// watcher's own tail; stale epochs and unsubscribed states are skipped
-    /// at run time, failures go to `onError`.
+    /// watcher's own tail through the same atomic take-and-install as the bus
+    /// tail; stale epochs and unsubscribed states are skipped at run time,
+    /// failures go to `onError`.
     fn enqueue(self: &Arc<Self>, event: Arc<E>, context: Context, epoch: u64) {
-        let previous = lock(&self.delivery_tail).take();
-        let (sender, receiver) = tokio::sync::oneshot::channel();
-        *lock(&self.delivery_tail) = Some(receiver);
         let core = Arc::clone(self);
-        tokio::spawn(async move {
-            if let Some(previous) = previous {
-                let _ = previous.await;
-            }
+        // The returned handle is detached (the original spawns fire-and-forget
+        // deliveries; nothing awaits the watcher's tail directly).
+        let _handle = append_job(&self.delivery_tail, async move {
             let listener = {
                 let state = lock(&core.state);
                 if state.lifecycle == Lifecycle::Started && state.epoch == epoch {
@@ -748,14 +765,14 @@ impl<T: Send + Sync + 'static, E: BusEvent> WatcherCore<T, E> {
                 }
             };
             if let Some(listener) = listener {
-                let future = AssertUnwindSafe(listener(Arc::clone(&event), context.clone()));
-                if let Err(payload) = future.catch_unwind().await {
+                let outcome =
+                    catch_listener(|| listener(Arc::clone(&event), context.clone())).await;
+                if let Err(payload) = outcome {
                     let error = anyhow!(panic_message(payload));
                     // Upstream swallows onError failures (`events.ts:281-283`).
                     let _ = core.on_error.clone()(error, event, context).await;
                 }
             }
-            let _ = sender.send(());
         });
     }
 }
