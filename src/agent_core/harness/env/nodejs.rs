@@ -1283,12 +1283,14 @@ async fn fail_spill(spill: &SharedSpill, kill: &ChildKill, message: String) {
     fail_locked(&mut shared, kill, message);
 }
 
-/// Open the spill file, start the writer task, and drain the queued chunks
-/// into it in arrival order (upstream `startSpill`, `nodejs.ts:559-579`:
+/// Open the spill file, start the writer task, and hand the queued chunks to
+/// it as its ordered backlog (upstream `startSpill`, `nodejs.ts:559-579`:
 /// `for (const queued of spillQueue) writeSpill(queued)`). Called by the one
-/// feed that drove the start; the spill lock is held across the whole body,
-/// so chunks routed while the temp file is being created queue up behind the
-/// drain and no direct send can interleave ahead of them.
+/// feed that drove the start. The spill lock is held only while the file is
+/// created and the writer installed — never across a channel send — so the
+/// writer's failure path can always acquire it (no drain/writer cycle), and
+/// chunks routed while the temp file was being created keep their arrival
+/// order ahead of everything routed after the sender was installed.
 async fn start_spill(
     spill: &SharedSpill,
     capture: &Arc<OutputCapture>,
@@ -1327,11 +1329,23 @@ async fn start_spill(
         }
     };
     let (sender, mut receiver) = mpsc::channel::<Vec<u8>>(8);
+    // The queued chunks become the writer's ordered backlog: it writes them
+    // before anything routed after the sender was installed, so arrival
+    // order survives without holding the lock across channel sends — the
+    // writer's failure path can always acquire the lock and never cycles
+    // against a parked drain.
+    let backlog = std::mem::take(&mut shared.queue);
     shared.path = Some(path);
-    shared.sender = Some(sender.clone());
+    shared.sender = Some(sender);
     let writer_spill = Arc::clone(spill);
     let writer_kill = Arc::clone(kill);
     tokio::spawn(async move {
+        for chunk in backlog {
+            if let Err(error) = file.write_all(&chunk).await {
+                fail_spill(&writer_spill, &writer_kill, error.to_string()).await;
+                break;
+            }
+        }
         while let Some(chunk) = receiver.recv().await {
             if let Err(error) = file.write_all(&chunk).await {
                 fail_spill(&writer_spill, &writer_kill, error.to_string()).await;
@@ -1341,11 +1355,6 @@ async fn start_spill(
         let _ = file.flush().await;
         writer_spill.lock().await.done = true;
     });
-    // Drain the queue in arrival order before releasing the lock, so no
-    // direct send can overtake the queued chunks.
-    for chunk in std::mem::take(&mut shared.queue) {
-        let _ = sender.send(chunk).await;
-    }
 }
 
 /// Shared reader-task state for one exec run.
@@ -1390,10 +1399,13 @@ impl RunState {
         }
         if shared.path.is_some() {
             // Spill open: the bounded channel applies the backpressure
-            // upstream got from `write() === false` + pause/resume.
-            let sender = shared.sender.clone().expect("open spill has a sender");
-            drop(shared);
-            let _ = sender.send(chunk).await;
+            // upstream got from `write() === false` + pause/resume. A
+            // missing sender means the streams were already destroyed during
+            // settle (upstream `child.stdout?.destroy()`); discard.
+            if let Some(sender) = shared.sender.clone() {
+                drop(shared);
+                let _ = sender.send(chunk).await;
+            }
             return;
         }
         // Spill not open yet (starting, or crossing now): queue the chunk.

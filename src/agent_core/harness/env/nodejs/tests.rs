@@ -1382,14 +1382,22 @@ struct GatedSpillExecutionEnv {
     inner: NodeExecutionEnv,
     entered: Arc<tokio::sync::Notify>,
     release: Arc<tokio::sync::Notify>,
+    /// When set, `create_temp_file` returns this exact (pre-created) path
+    /// after the gate instead of delegating to the inner env.
+    fixed_spill_path: Option<String>,
 }
 
 impl GatedSpillExecutionEnv {
     fn new(root: &str) -> Self {
+        GatedSpillExecutionEnv::new_with_spill_path(root, None)
+    }
+
+    fn new_with_spill_path(root: &str, fixed_spill_path: Option<String>) -> Self {
         GatedSpillExecutionEnv {
             inner: NodeExecutionEnv::new(root),
             entered: Arc::new(tokio::sync::Notify::new()),
             release: Arc::new(tokio::sync::Notify::new()),
+            fixed_spill_path,
         }
     }
 }
@@ -1524,11 +1532,15 @@ impl FileSystem for GatedSpillExecutionEnv {
             == Some("pi-output-");
         let entered = Arc::clone(&self.entered);
         let release = Arc::clone(&self.release);
+        let fixed_spill_path = self.fixed_spill_path.clone();
         Box::pin(async move {
             if is_spill {
                 // Announce the spill-start window and hold it open.
                 entered.notify_one();
                 release.notified().await;
+                if let Some(fixed) = fixed_spill_path {
+                    return Ok(fixed);
+                }
             }
             self.inner
                 .create_temp_file(options.as_ref(), background_context())
@@ -1628,4 +1640,70 @@ async fn queues_chunks_that_arrive_during_the_spill_start_window() {
         bytes.len()
     );
     assert_eq!(bytes.len(), 200, "spill must hold the complete output");
+}
+
+/// Regression test for the spill drain/writer lock cycle: with a deep
+/// queue and a writer whose appends fail, the exec must settle with the
+/// spill error (killing the child) instead of parking forever. The queue
+/// goes deep before the spill ever starts: the byte limit exceeds the pipe
+/// chunk size, so every pre-truncation chunk queues as a prefix (~30+ chunks
+/// for 2.7MB of output against 64KB reads) until the crossing drives the
+/// start with the queue already past the channel capacity (8). The writer's
+/// appends fail because the test holds a mandatory byte-range lock over the
+/// spill file (fs2/LockFileEx on Windows).
+#[cfg(windows)]
+#[tokio::test]
+async fn settles_with_the_spill_error_when_the_writer_fails_on_a_deep_queue() {
+    use fs2::FileExt;
+
+    let (_dir, root) = temp_root();
+    let spill_target = joined(&root, "locked-spill.log");
+    let lock_handle = std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&spill_target)
+        .expect("create spill target");
+    lock_handle.lock_exclusive().expect("lock spill target");
+
+    let env = GatedSpillExecutionEnv::new_with_spill_path(&root, Some(spill_target.clone()));
+    // Release the gate up front: the accumulation comes from the byte limit,
+    // not from gating the start.
+    env.release.notify_one();
+    let options = ShellExecOptions {
+        capture: Some(ShellOutputCaptureOptions {
+            limits: ShellOutputLimits {
+                max_bytes: 2_000_000,
+                max_lines: 1_000_000,
+                retain: Some(ShellOutputRetention::Tail),
+            },
+            spill: Some(true),
+        }),
+        on_update: Some(Arc::new(|_update, _context| {})),
+        ..Default::default()
+    };
+    // ~2.7MB of stderr.
+    let command = "printf 'line-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n%.0s' $(seq 1 75000) >&2";
+
+    let exec_env = env.clone();
+    let execution = tokio::spawn(async move {
+        exec_env
+            .exec(command, Some(&options), background_context())
+            .await
+    });
+
+    let settled = tokio::time::timeout(Duration::from_secs(15), execution).await;
+    let joined = settled.expect("exec must settle instead of deadlocking");
+    let result = joined.expect("exec task joins");
+    let Err(error) = result else {
+        panic!("expected the spill error");
+    };
+    assert_eq!(error.code, ExecutionErrorCode::Unknown);
+    assert!(
+        error
+            .message
+            .contains("Failed to preserve complete shell output"),
+        "{}",
+        error.message
+    );
+    drop(lock_handle);
 }
