@@ -5,9 +5,13 @@ use std::path::{Path, PathBuf};
 /// Append-only JSONL transcript: one AgentMessage per line. Messages
 /// serialize in the upstream wire format — flat role-tagged objects
 /// (`role`, camelCase fields, Unix-millisecond timestamps), custom messages
-/// as their flat `{ role, ... }` payload — so the file round-trips through
-/// upstream pi. The M1-era `{"kind":"message",...}` wrapper is gone: it was
-/// a port-only shape, and M1 session files are not migrated.
+/// as their flat `{ role, ... }` payload — so each line parses as an
+/// upstream AgentMessage. Note: upstream's SessionManager wraps entries in
+/// an envelope (`{type:"message", id, parentId, timestamp, message}` —
+/// coding-agent session-manager.ts), so the upstream SessionManager would
+/// not load this file as-is; the envelope lands with M3b's harness session
+/// layer. The M1-era `{"kind":"message",...}` wrapper is gone: it was a
+/// port-only shape, and M1 session files are not migrated.
 pub struct SessionWriter {
     file: std::fs::File,
     path: PathBuf,
