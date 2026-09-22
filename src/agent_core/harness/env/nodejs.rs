@@ -1248,7 +1248,7 @@ struct SpillShared {
     error: Option<ExecutionError>,
 }
 
-type SharedSpill = Arc<Mutex<SpillShared>>;
+type SharedSpill = Arc<tokio::sync::Mutex<SpillShared>>;
 type FailFn = Arc<dyn Fn(String) + Send + Sync>;
 
 /// Kill the running child (upstream `onAbort`, `nodejs.ts:499-501`): the pid
@@ -1265,32 +1265,30 @@ impl ChildKill {
     }
 }
 
-fn fail_spill(spill: &SharedSpill, kill: &ChildKill, message: String) {
-    {
-        let mut shared = spill.lock().unwrap();
-        if shared.error.is_some() {
-            return;
-        }
-        shared.error = Some(ExecutionError::new(
-            ExecutionErrorCode::Unknown,
-            format!("Failed to preserve complete shell output: {message}"),
-        ));
-        shared.done = true;
+fn fail_locked(shared: &mut SpillShared, kill: &ChildKill, message: String) {
+    if shared.error.is_some() {
+        return;
     }
+    shared.error = Some(ExecutionError::new(
+        ExecutionErrorCode::Unknown,
+        format!("Failed to preserve complete shell output: {message}"),
+    ));
+    shared.done = true;
     kill.kill();
 }
 
-/// Write one chunk into the spill channel; a bounded channel applies the
-/// backpressure upstream got from `write() === false` + pause/resume.
-async fn write_spill(spill: &SharedSpill, chunk: Vec<u8>) {
-    let sender = spill.lock().unwrap().sender.clone();
-    if let Some(sender) = sender {
-        let _ = sender.send(chunk).await;
-    }
+/// For callers that do not hold the spill lock (the writer task).
+async fn fail_spill(spill: &SharedSpill, kill: &ChildKill, message: String) {
+    let mut shared = spill.lock().await;
+    fail_locked(&mut shared, kill, message);
 }
 
-/// Open the spill file and start the writer task (upstream `startSpill`,
-/// `nodejs.ts:559-579`).
+/// Open the spill file, start the writer task, and drain the queued chunks
+/// into it in arrival order (upstream `startSpill`, `nodejs.ts:559-579`:
+/// `for (const queued of spillQueue) writeSpill(queued)`). Called by the one
+/// feed that drove the start; the spill lock is held across the whole body,
+/// so chunks routed while the temp file is being created queue up behind the
+/// drain and no direct send can interleave ahead of them.
 async fn start_spill(
     spill: &SharedSpill,
     capture: &Arc<OutputCapture>,
@@ -1298,13 +1296,7 @@ async fn start_spill(
     context: &Context,
     kill: &Arc<ChildKill>,
 ) {
-    {
-        let mut shared = spill.lock().unwrap();
-        if shared.start_started {
-            return;
-        }
-        shared.start_started = true;
-    }
+    let mut shared = spill.lock().await;
     let created = env
         .create_temp_file(
             Some(&TempFileOptions {
@@ -1314,10 +1306,12 @@ async fn start_spill(
             context.clone(),
         )
         .await;
-    let Ok(path) = created else {
-        let error = created.unwrap_err();
-        fail_spill(spill, kill, error.to_string());
-        return;
+    let path = match created {
+        Ok(path) => path,
+        Err(error) => {
+            fail_locked(&mut shared, kill, error.to_string());
+            return;
+        }
     };
     capture.set_spill_path(&path);
     let opened = tokio::fs::OpenOptions::new()
@@ -1325,70 +1319,33 @@ async fn start_spill(
         .append(true)
         .open(&path)
         .await;
-    let Ok(mut file) = opened else {
-        let error = opened.unwrap_err();
-        fail_spill(spill, kill, error.to_string());
-        return;
+    let mut file = match opened {
+        Ok(file) => file,
+        Err(error) => {
+            fail_locked(&mut shared, kill, error.to_string());
+            return;
+        }
     };
     let (sender, mut receiver) = mpsc::channel::<Vec<u8>>(8);
-    {
-        let mut shared = spill.lock().unwrap();
-        shared.path = Some(path);
-        shared.sender = Some(sender);
-    }
+    shared.path = Some(path);
+    shared.sender = Some(sender.clone());
     let writer_spill = Arc::clone(spill);
     let writer_kill = Arc::clone(kill);
     tokio::spawn(async move {
         while let Some(chunk) = receiver.recv().await {
             if let Err(error) = file.write_all(&chunk).await {
-                fail_spill(&writer_spill, &writer_kill, error.to_string());
+                fail_spill(&writer_spill, &writer_kill, error.to_string()).await;
                 break;
             }
         }
         let _ = file.flush().await;
-        writer_spill.lock().unwrap().done = true;
+        writer_spill.lock().await.done = true;
     });
-}
-
-/// One chunk's routing decision (upstream `feed`, `nodejs.ts:628-645`).
-enum FeedDecision {
-    Write(Vec<u8>),
-    StartAndWrite(Vec<Vec<u8>>),
-    /// Held (or spill disabled): nothing to write.
-    Held,
-}
-
-/// The synchronous half of `feed`: push into the capture, then route the
-/// chunk for spilling. Panics from the capture's callback path surface as
-/// `Err` (upstream wraps feed in try/catch feeding `failCallback`).
-fn decide_feed(
-    spill: &SharedSpill,
-    capture: &OutputCapture,
-    chunk: &[u8],
-    spill_enabled: bool,
-) -> Result<FeedDecision, String> {
-    std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        let was_truncated = capture.truncated();
-        capture.push(chunk);
-        if !spill_enabled || chunk.is_empty() {
-            return FeedDecision::Held;
-        }
-        let mut shared = spill.lock().unwrap();
-        if shared.error.is_some() {
-            return FeedDecision::Held;
-        }
-        if shared.path.is_some() || was_truncated {
-            return FeedDecision::Write(chunk.to_vec());
-        }
-        if capture.truncated() {
-            let mut queued = std::mem::take(&mut shared.queue);
-            queued.push(chunk.to_vec());
-            return FeedDecision::StartAndWrite(queued);
-        }
-        shared.queue.push(chunk.to_vec());
-        FeedDecision::Held
-    }))
-    .map_err(|error| panic_message(error.as_ref()))
+    // Drain the queue in arrival order before releasing the lock, so no
+    // direct send can overtake the queued chunks.
+    for chunk in std::mem::take(&mut shared.queue) {
+        let _ = sender.send(chunk).await;
+    }
 }
 
 /// Shared reader-task state for one exec run.
@@ -1406,30 +1363,55 @@ struct RunState {
 }
 
 impl RunState {
+    /// Upstream `feed` (`nodejs.ts:628-645`): push into the capture, then
+    /// route the chunk for spilling. A chunk arriving while the spill is
+    /// starting (was already truncated, spill not open) queues behind the
+    /// start — upstream's `startSpill` pushes it into `spillQueue` — and the
+    /// start drains the queue in arrival order. Panics from the capture's
+    /// callback path surface through `fail` (upstream try/catch feeding
+    /// `failCallback`).
     async fn feed(&self, chunk: Vec<u8>) {
-        let decision = match decide_feed(&self.spill, &self.capture, &chunk, self.spill_enabled) {
-            Ok(decision) => decision,
-            Err(message) => {
-                (self.fail)(message);
+        let now_truncated = match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            self.capture.push(&chunk);
+            self.capture.truncated()
+        })) {
+            Ok(now_truncated) => now_truncated,
+            Err(error) => {
+                (self.fail)(panic_message(error.as_ref()));
                 return;
             }
         };
-        match decision {
-            FeedDecision::Held => {}
-            FeedDecision::Write(chunk) => write_spill(&self.spill, chunk).await,
-            FeedDecision::StartAndWrite(queued) => {
-                start_spill(
-                    &self.spill,
-                    &self.capture,
-                    &self.env,
-                    &self.context,
-                    &self.kill,
-                )
-                .await;
-                for chunk in queued {
-                    write_spill(&self.spill, chunk).await;
-                }
-            }
+        if !self.spill_enabled || chunk.is_empty() {
+            return;
+        }
+        let mut shared = self.spill.lock().await;
+        if shared.error.is_some() {
+            return;
+        }
+        if shared.path.is_some() {
+            // Spill open: the bounded channel applies the backpressure
+            // upstream got from `write() === false` + pause/resume.
+            let sender = shared.sender.clone().expect("open spill has a sender");
+            drop(shared);
+            let _ = sender.send(chunk).await;
+            return;
+        }
+        // Spill not open yet (starting, or crossing now): queue the chunk.
+        shared.queue.push(chunk);
+        let drive_start = !shared.start_started && now_truncated;
+        if drive_start {
+            shared.start_started = true;
+        }
+        drop(shared);
+        if drive_start {
+            start_spill(
+                &self.spill,
+                &self.capture,
+                &self.env,
+                &self.context,
+                &self.kill,
+            )
+            .await;
         }
     }
 }
@@ -1537,7 +1519,7 @@ pub async fn exec_via(
         .and_then(|options| options.capture.as_ref())
         .and_then(|capture| capture.spill)
         .unwrap_or(false);
-    let spill: SharedSpill = Arc::new(Mutex::new(SpillShared {
+    let spill: SharedSpill = Arc::new(tokio::sync::Mutex::new(SpillShared {
         queue: Vec::new(),
         path: None,
         sender: None,
@@ -1654,7 +1636,7 @@ pub async fn exec_via(
         let now = Instant::now();
         if now >= deadline {
             let spill_draining = {
-                let shared = spill.lock().unwrap();
+                let shared = spill.lock().await;
                 shared.error.is_none() && shared.start_started && !shared.done
             };
             let seen = state.data_seen.load(Ordering::SeqCst);
@@ -1676,12 +1658,12 @@ pub async fn exec_via(
     // finishes (the stored clone would otherwise keep the channel open
     // forever).
 
-    spill.lock().unwrap().sender = None;
+    spill.lock().await.sender = None;
 
     // `finishSpill` (nodejs.ts:580-589): wait for the spill writer to drain.
     loop {
         let settled = {
-            let shared = spill.lock().unwrap();
+            let shared = spill.lock().await;
             !shared.start_started || shared.done || shared.error.is_some()
         };
         if settled {
@@ -1703,7 +1685,10 @@ pub async fn exec_via(
 
     // Settle (nodejs.ts:663-695): priority order callback > timeout >
     // aborted > spill > result.
-    let settled = if let Some(error) = callback_error.lock().unwrap().take() {
+    // Hoisted so the std guard cannot live across the spill lock's await
+    // below (the future must stay Send).
+    let callback_failure = callback_error.lock().unwrap().take();
+    let settled = if let Some(error) = callback_failure {
         Err(error)
     } else if timed_out.load(Ordering::SeqCst) {
         let timeout = options.and_then(|options| options.timeout);
@@ -1713,7 +1698,7 @@ pub async fn exec_via(
         ))
     } else if signal.as_ref().is_some_and(|signal| signal.is_cancelled()) {
         Err(ExecutionError::new(ExecutionErrorCode::Aborted, "aborted"))
-    } else if let Some(error) = spill.lock().unwrap().error.take() {
+    } else if let Some(error) = spill.lock().await.error.take() {
         Err(error)
     } else {
         let output = capture.snapshot();

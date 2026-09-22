@@ -1371,3 +1371,261 @@ async fn captures_large_shell_output_to_a_full_output_file_through_the_execution
     assert!(full_output.split('\n').count() > 10_000);
     assert!(result.output.len() < full_output.len());
 }
+
+/// A spill-start gate like the oracle's `FailingSpillExecutionEnv` subclass:
+/// `create_temp_file` announces the spill-start window and only resolves when
+/// the test releases it, so a follow-up chunk is guaranteed to arrive while
+/// the spill is still starting (upstream `startSpill` queues it into
+/// `spillQueue`; nodejs.ts:559-565).
+#[derive(Clone)]
+struct GatedSpillExecutionEnv {
+    inner: NodeExecutionEnv,
+    entered: Arc<tokio::sync::Notify>,
+    release: Arc<tokio::sync::Notify>,
+}
+
+impl GatedSpillExecutionEnv {
+    fn new(root: &str) -> Self {
+        GatedSpillExecutionEnv {
+            inner: NodeExecutionEnv::new(root),
+            entered: Arc::new(tokio::sync::Notify::new()),
+            release: Arc::new(tokio::sync::Notify::new()),
+        }
+    }
+}
+
+impl FileSystem for GatedSpillExecutionEnv {
+    fn cwd(&self) -> &str {
+        self.inner.cwd()
+    }
+    fn absolute_path<'a>(
+        &'a self,
+        path: &str,
+        c: Context,
+    ) -> BoxFuture<'a, Result<String, FileError>> {
+        self.inner.absolute_path(path, c)
+    }
+    fn join_path<'a>(
+        &'a self,
+        parts: &[String],
+        c: Context,
+    ) -> BoxFuture<'a, Result<String, FileError>> {
+        self.inner.join_path(parts, c)
+    }
+    fn read_text_file<'a>(
+        &'a self,
+        path: &str,
+        c: Context,
+    ) -> BoxFuture<'a, Result<String, FileError>> {
+        self.inner.read_text_file(path, c)
+    }
+    fn open_text_line_reader<'a>(
+        &'a self,
+        path: &str,
+        c: Context,
+    ) -> BoxFuture<'a, Result<Arc<dyn TextLineReader>, FileError>> {
+        self.inner.open_text_line_reader(path, c)
+    }
+    fn read_text_lines<'a>(
+        &'a self,
+        path: &str,
+        options: Option<&ReadTextLinesOptions>,
+        c: Context,
+    ) -> BoxFuture<'a, Result<Vec<String>, FileError>> {
+        self.inner.read_text_lines(path, options, c)
+    }
+    fn read_binary_file<'a>(
+        &'a self,
+        path: &str,
+        c: Context,
+    ) -> BoxFuture<'a, Result<Vec<u8>, FileError>> {
+        self.inner.read_binary_file(path, c)
+    }
+    fn write_file<'a>(
+        &'a self,
+        path: &str,
+        content: FileContent,
+        c: Context,
+    ) -> BoxFuture<'a, Result<(), FileError>> {
+        self.inner.write_file(path, content, c)
+    }
+    fn append_file<'a>(
+        &'a self,
+        path: &str,
+        content: FileContent,
+        c: Context,
+    ) -> BoxFuture<'a, Result<(), FileError>> {
+        self.inner.append_file(path, content, c)
+    }
+    fn rename_file<'a>(
+        &'a self,
+        source_path: &str,
+        destination_path: &str,
+        c: Context,
+    ) -> BoxFuture<'a, Result<(), FileError>> {
+        self.inner.rename_file(source_path, destination_path, c)
+    }
+    fn file_info<'a>(
+        &'a self,
+        path: &str,
+        c: Context,
+    ) -> BoxFuture<'a, Result<FileInfo, FileError>> {
+        self.inner.file_info(path, c)
+    }
+    fn list_dir<'a>(
+        &'a self,
+        path: &str,
+        c: Context,
+    ) -> BoxFuture<'a, Result<Vec<FileInfo>, FileError>> {
+        self.inner.list_dir(path, c)
+    }
+    fn canonical_path<'a>(
+        &'a self,
+        path: &str,
+        c: Context,
+    ) -> BoxFuture<'a, Result<String, FileError>> {
+        self.inner.canonical_path(path, c)
+    }
+    fn exists<'a>(&'a self, path: &str, c: Context) -> BoxFuture<'a, Result<bool, FileError>> {
+        self.inner.exists(path, c)
+    }
+    fn create_dir<'a>(
+        &'a self,
+        path: &str,
+        options: Option<&CreateDirOptions>,
+        c: Context,
+    ) -> BoxFuture<'a, Result<(), FileError>> {
+        self.inner.create_dir(path, options, c)
+    }
+    fn remove<'a>(
+        &'a self,
+        path: &str,
+        options: Option<&RemoveOptions>,
+        c: Context,
+    ) -> BoxFuture<'a, Result<(), FileError>> {
+        self.inner.remove(path, options, c)
+    }
+    fn create_temp_dir<'a>(
+        &'a self,
+        prefix: Option<&str>,
+        c: Context,
+    ) -> BoxFuture<'a, Result<String, FileError>> {
+        self.inner.create_temp_dir(prefix, c)
+    }
+    fn create_temp_file<'a>(
+        &'a self,
+        options: Option<&TempFileOptions>,
+        _context: Context,
+    ) -> BoxFuture<'a, Result<String, FileError>> {
+        let options = options.cloned();
+        let is_spill = options
+            .as_ref()
+            .and_then(|options| options.prefix.as_deref())
+            == Some("pi-output-");
+        let entered = Arc::clone(&self.entered);
+        let release = Arc::clone(&self.release);
+        Box::pin(async move {
+            if is_spill {
+                // Announce the spill-start window and hold it open.
+                entered.notify_one();
+                release.notified().await;
+            }
+            self.inner
+                .create_temp_file(options.as_ref(), background_context())
+                .await
+        })
+    }
+    fn cleanup<'a>(&'a self, c: Context) -> BoxFuture<'a, ()> {
+        Shell::cleanup(&self.inner, c)
+    }
+}
+
+impl Shell for GatedSpillExecutionEnv {
+    fn exec<'a>(
+        &'a self,
+        command: &str,
+        options: Option<&ShellExecOptions>,
+        context: Context,
+    ) -> BoxFuture<'a, Result<ShellExecResult, ExecutionError>> {
+        let env: Arc<dyn ExecutionEnv> = Arc::new(self.clone());
+        let command = command.to_string();
+        let options = options.cloned();
+        Box::pin(async move {
+            exec_via(
+                env,
+                self.inner.runtime.clone(),
+                &command,
+                options.as_ref(),
+                context,
+            )
+            .await
+        })
+    }
+    fn cleanup<'a>(&'a self, c: Context) -> BoxFuture<'a, ()> {
+        Shell::cleanup(&self.inner, c)
+    }
+}
+
+impl ExecutionEnv for GatedSpillExecutionEnv {}
+
+/// Regression test for the spill-start window: a chunk that arrives while
+/// `create_temp_file` is still awaited (was_truncated already true, spill not
+/// open) must reach the spill file, not be dropped. Upstream queues it into
+/// `spillQueue` and drains after the temp file resolves.
+#[tokio::test]
+async fn queues_chunks_that_arrive_during_the_spill_start_window() {
+    let (_dir, root) = temp_root();
+    let env = GatedSpillExecutionEnv::new(&root);
+    let mut options = ShellExecOptions {
+        capture: Some(ShellOutputCaptureOptions {
+            limits: ShellOutputLimits {
+                max_bytes: 10,
+                max_lines: 10,
+                retain: Some(ShellOutputRetention::Tail),
+            },
+            spill: Some(true),
+        }),
+        on_update: Some(Arc::new(|_update, _context| {})),
+        ..Default::default()
+    };
+    let _ = &mut options;
+    let stdout_run = "A".repeat(100);
+    let stderr_run = "B".repeat(100);
+    let command = format!("printf '{stdout_run}'; printf '{stderr_run}' >&2");
+
+    let execution = {
+        let env = env.clone();
+        tokio::spawn(async move { env.exec(&command, Some(&options), ctx()).await })
+    };
+
+    // Wait for the spill-start window (create_temp_file entered), then give
+    // the stderr reader time to route its chunk through the window.
+    tokio::time::timeout(Duration::from_secs(5), env.entered.notified())
+        .await
+        .expect("spill start entered the gate");
+    tokio::time::sleep(Duration::from_millis(200)).await;
+    env.release.notify_one();
+
+    let result = tokio::time::timeout(Duration::from_secs(10), execution)
+        .await
+        .expect("exec resolves");
+    let result = unwrap_ok(result.expect("join"));
+    let spill_path = result.metadata.spill_path.expect("spill path");
+    let bytes = unwrap_ok(env.read_binary_file(&spill_path, ctx()).await);
+
+    assert!(
+        bytes
+            .windows(100)
+            .any(|window| window == stdout_run.as_bytes()),
+        "stdout run missing from spill: {} bytes",
+        bytes.len()
+    );
+    assert!(
+        bytes
+            .windows(100)
+            .any(|window| window == stderr_run.as_bytes()),
+        "stderr run missing from spill (dropped in the spill-start window?): {} bytes",
+        bytes.len()
+    );
+    assert_eq!(bytes.len(), 200, "spill must hold the complete output");
+}
