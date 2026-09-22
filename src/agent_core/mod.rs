@@ -13,6 +13,7 @@
 
 pub mod agent;
 pub mod agent_loop;
+pub mod chord_support;
 pub mod session;
 pub mod tools;
 pub mod types;
