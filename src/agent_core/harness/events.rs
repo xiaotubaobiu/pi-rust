@@ -108,7 +108,7 @@ pub struct Unsubscribe {
 }
 
 impl Unsubscribe {
-    fn new(callback: Box<dyn Fn() + Send + Sync>) -> Self {
+    pub(crate) fn new(callback: Box<dyn Fn() + Send + Sync>) -> Self {
         Unsubscribe { callback }
     }
 

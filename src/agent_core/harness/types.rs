@@ -284,33 +284,93 @@ pub struct AgentHarnessStreamOptions {
     pub deferred: Option<DeferredFlag>,
 }
 
+/// Deserialize a patch field that distinguishes absent from explicit `null`:
+/// an absent key takes the `None` default, `null` becomes `Some(None)`, a
+/// value becomes `Some(Some(v))`. Plain `Option<Option<T>>` deserialization
+/// collapses `null` to `None`, losing the upstream explicit-`undefined`
+/// deletion state (the JS `"key" in patch` + `undefined` distinction the
+/// `before_request` hooks rely on).
+fn deserialize_explicit_undefined<'de, D, T>(deserializer: D) -> Result<Option<Option<T>>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+    T: serde::Deserialize<'de>,
+{
+    serde::Deserialize::deserialize(deserializer).map(Some)
+}
+
 /// Per-request stream option patch returned by provider hooks
 /// (upstream `AgentHarnessStreamOptionsPatch`, `types.ts:149-156`).
-/// `headers`/`metadata` are delete-capable maps: an entry with `None` deletes
-/// the key; a `None` field on the patch itself clears the whole map (upstream
-/// "explicit `headers: undefined` clears all headers").
+///
+/// Every field is a double option because upstream distinguishes three states
+/// per key that a plain `Option` cannot express (the `in`-check plus the
+/// `undefined` value; exercised by the `before_request` hooks):
+/// - `None` — field absent from the patch (upstream `!(key in patch)`): the
+///   base value is untouched. This is the partial-patch shape most hooks
+///   return.
+/// - `Some(None)` — field present with an `undefined` value (upstream
+///   explicit deletion): the scalar/map is removed; for `headers`/`metadata`
+///   that clears the whole map ("explicit `headers: undefined` clears all
+///   headers").
+/// - `Some(Some(value))` — set to `value`. Map entries are themselves
+///   delete-capable (`Record<string, string | undefined>`): an inner `None`
+///   deletes that key from the base map.
+///
+/// Serde maps the three states to omitted / `null` / value, so upstream JSON
+/// patches round-trip unchanged.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct AgentHarnessStreamOptionsPatch {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub transport: Option<Transport>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub timeout_ms: Option<u64>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub max_retries: Option<u32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub max_retry_delay_ms: Option<u64>,
-    /// Header patch: `Some(map)` merges (deleting `None`-valued keys);
-    /// `None` clears all headers.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub headers: Option<BTreeMap<String, Option<String>>>,
-    /// Metadata patch with the same delete semantics as `headers`.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub metadata: Option<BTreeMap<String, Option<serde_json::Value>>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub cache_retention: Option<CacheRetention>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub deferred: Option<DeferredFlag>,
+    #[serde(
+        default,
+        deserialize_with = "deserialize_explicit_undefined",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub transport: Option<Option<Transport>>,
+    #[serde(
+        default,
+        deserialize_with = "deserialize_explicit_undefined",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub timeout_ms: Option<Option<u64>>,
+    #[serde(
+        default,
+        deserialize_with = "deserialize_explicit_undefined",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub max_retries: Option<Option<u32>>,
+    #[serde(
+        default,
+        deserialize_with = "deserialize_explicit_undefined",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub max_retry_delay_ms: Option<Option<u64>>,
+    /// Header patch: `Some(Some(map))` merges (deleting `None`-valued keys);
+    /// `Some(None)` clears all headers; `None` leaves headers untouched.
+    #[serde(
+        default,
+        deserialize_with = "deserialize_explicit_undefined",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub headers: Option<Option<BTreeMap<String, Option<String>>>>,
+    /// Metadata patch with the same three-state semantics as `headers`.
+    #[serde(
+        default,
+        deserialize_with = "deserialize_explicit_undefined",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub metadata: Option<Option<BTreeMap<String, Option<serde_json::Value>>>>,
+    #[serde(
+        default,
+        deserialize_with = "deserialize_explicit_undefined",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub cache_retention: Option<Option<CacheRetention>>,
+    #[serde(
+        default,
+        deserialize_with = "deserialize_explicit_undefined",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub deferred: Option<Option<DeferredFlag>>,
 }
 
 /// Upstream `FileKind` (`types.ts:159`). Symlinks are not followed

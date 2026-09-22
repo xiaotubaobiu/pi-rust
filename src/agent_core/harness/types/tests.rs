@@ -112,19 +112,27 @@ fn stream_options_round_trip_the_upstream_field_set() {
 
 #[test]
 fn stream_options_patch_uses_delete_capable_maps() {
-    // types.ts:149-156: `undefined` values delete keys.
+    // types.ts:149-156: `undefined` values delete keys, an explicit
+    // `headers: undefined` clears the map, absent fields are omitted. The
+    // double options carry the JS in-check/undefined distinction: None =
+    // field absent, Some(None) = explicit undefined, Some(Some(v)) = set.
     let patch = AgentHarnessStreamOptionsPatch {
-        headers: Some(BTreeMap::from([
+        timeout_ms: Some(Some(5000)),
+        max_retries: Some(None),
+        headers: Some(Some(BTreeMap::from([
             ("x-keep".into(), Some("1".into())),
             ("x-drop".into(), None),
-        ])),
-        metadata: Some(BTreeMap::from([("kind".into(), None)])),
+        ]))),
+        metadata: Some(None),
         ..AgentHarnessStreamOptionsPatch::default()
     };
     let json = serde_json::to_value(&patch).unwrap();
+    assert_eq!(json["timeoutMs"], 5000);
+    assert_eq!(json["maxRetries"], serde_json::Value::Null);
     assert_eq!(json["headers"]["x-drop"], serde_json::Value::Null);
     assert_eq!(json["headers"]["x-keep"], "1");
-    assert_eq!(json["metadata"]["kind"], serde_json::Value::Null);
+    assert_eq!(json["metadata"], serde_json::Value::Null);
+    assert!(json.get("transport").is_none());
     let parsed: AgentHarnessStreamOptionsPatch = serde_json::from_value(json).unwrap();
     assert_eq!(parsed, patch);
 }
