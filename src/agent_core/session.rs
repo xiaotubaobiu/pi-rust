@@ -1,11 +1,13 @@
-use crate::agent::AgentMessage;
+use crate::agent_core::types::AgentMessage;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
-/// Append-only JSONL transcript: one AgentMessage per line. Wrapped messages
-/// are full upstream `Message`s, so the file is upstream-compatible wire
-/// format (role tags, camelCase fields, Unix-millisecond timestamps). M1
-/// session files are not migrated.
+/// Append-only JSONL transcript: one AgentMessage per line. Messages
+/// serialize in the upstream wire format — flat role-tagged objects
+/// (`role`, camelCase fields, Unix-millisecond timestamps), custom messages
+/// as their flat `{ role, ... }` payload — so the file round-trips through
+/// upstream pi. The M1-era `{"kind":"message",...}` wrapper is gone: it was
+/// a port-only shape, and M1 session files are not migrated.
 pub struct SessionWriter {
     file: std::fs::File,
     path: PathBuf,
@@ -42,41 +44,46 @@ impl SessionWriter {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ai::types::message::{Message, StringOrBlocks, UserMessage};
+    use crate::agent_core::types::CustomAgentMessage;
+    use crate::ai::types::message::{StringOrBlocks, UserMessage};
 
     #[test]
     fn appends_parsable_lines_in_upstream_wire_format() {
         let dir = tempfile::tempdir().unwrap();
         let mut s = SessionWriter::create(dir.path()).unwrap();
-        s.append(&AgentMessage::Message(Message::User(UserMessage {
+        s.append(&AgentMessage::User(UserMessage {
             content: StringOrBlocks::Text("hello".into()),
             timestamp: 1758240000000,
-        })))
+        }))
         .unwrap();
-        s.append(&AgentMessage::Notification { text: "ui".into() })
-            .unwrap();
+        // App-only custom messages (the M1 Notification intent) serialize as
+        // their flat role-tagged payload.
+        let mut notification = CustomAgentMessage::new("notification");
+        notification.data.insert("text".into(), "ui".into());
+        s.append(&AgentMessage::Custom(notification)).unwrap();
 
         let content = std::fs::read_to_string(s.path()).unwrap();
         let lines: Vec<&str> = content.lines().collect();
         assert_eq!(lines.len(), 2);
-        // Upstream-compatible wire format: role tag + camelCase field names.
+        // Upstream-compatible wire format: flat role tag + camelCase fields.
         assert_eq!(
             lines[0],
-            r#"{"kind":"message","role":"user","content":"hello","timestamp":1758240000000}"#
+            r#"{"role":"user","content":"hello","timestamp":1758240000000}"#
         );
+        assert_eq!(lines[1], r#"{"role":"notification","text":"ui"}"#);
         match serde_json::from_str::<AgentMessage>(lines[0]).unwrap() {
-            AgentMessage::Message(m) => match m {
-                Message::User(user) => {
-                    assert_eq!(user.content, StringOrBlocks::Text("hello".into()));
-                    assert_eq!(user.timestamp, 1758240000000);
-                }
-                other => panic!("expected user message, got {other:?}"),
-            },
-            other => panic!("expected message line, got {other:?}"),
+            AgentMessage::User(user) => {
+                assert_eq!(user.content, StringOrBlocks::Text("hello".into()));
+                assert_eq!(user.timestamp, 1758240000000);
+            }
+            other => panic!("expected user line, got {other:?}"),
         }
         match serde_json::from_str::<AgentMessage>(lines[1]).unwrap() {
-            AgentMessage::Notification { text } => assert_eq!(text, "ui"),
-            other => panic!("expected notification line, got {other:?}"),
+            AgentMessage::Custom(custom) => {
+                assert_eq!(custom.role, "notification");
+                assert_eq!(custom.data["text"], "ui");
+            }
+            other => panic!("expected custom line, got {other:?}"),
         }
     }
 

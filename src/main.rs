@@ -1,8 +1,7 @@
 use anyhow::{bail, Context as AnyhowContext, Result};
 use clap::Parser;
-use pi_rust::agent::session::SessionWriter;
-use pi_rust::agent::tools::builtin_tools;
-use pi_rust::agent::Agent;
+use futures::future::BoxFuture;
+use pi_rust::agent_core::{builtin_tools, Agent, AgentInitialState, AgentOptions, SessionWriter};
 use pi_rust::ai::api::anthropic::AnthropicMessages;
 use pi_rust::ai::api::azure_openai_responses::AzureOpenAiResponses;
 use pi_rust::ai::api::bedrock::BedrockConverseStream;
@@ -16,14 +15,19 @@ use pi_rust::ai::api::pi_messages::PiMessages;
 use pi_rust::ai::auth::credential_store::CredentialStore;
 use pi_rust::ai::auth::file_store::FileCredentialStore;
 use pi_rust::ai::auth::oauth::load::{oauth_flow_for, OAUTH_LOGIN_PROVIDERS};
-use pi_rust::ai::auth::types::{AuthInteraction, AuthOperationOptions, OAuthAuth};
+use pi_rust::ai::auth::types::{
+    ApiKeyAuth, ApiKeyAuthInput, AuthError, AuthInteraction, AuthOperationOptions, AuthResult,
+    ModelAuth, OAuthAuth, ProviderAuth,
+};
 use pi_rust::ai::cli_auth;
-use pi_rust::ai::{ApiImpl, ProviderConfig};
+use pi_rust::ai::models::provider::{create_provider, ApiImpls, CreateProviderOptions};
+use pi_rust::ai::models::{create_models, CreateModelsOptions, Models};
+use pi_rust::ai::types::Model;
+use pi_rust::ai::ApiImpl;
 use pi_rust::cli::console_auth::ConsoleAuthInteraction;
 use pi_rust::cli::repl;
 use pi_rust::config::{
-    auth_json_path, build_model, load_config, resolve_api_key_with_auth, resolve_base_url, Config,
-    PROVIDERS,
+    auth_json_path, build_model, load_config, resolve_api_key_with_auth, Config, PROVIDERS,
 };
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -102,6 +106,61 @@ fn select_api(provider: &str) -> Result<Arc<dyn ApiImpl>> {
         "pi-messages" => Arc::new(PiMessages),
         other => bail!("unknown provider: {other}"),
     })
+}
+
+/// Api-key auth carrying the key the CLI resolved itself (explicit `--api-key`,
+/// then auth.json, then env; the M2e-T7 decision keeps that config-declared
+/// flow). The agent core streams through the [`Models`] collection, whose
+/// auth resolution must produce the same key the direct `ProviderConfig` call
+/// carried before the M3a swap.
+struct ResolvedKeyAuth {
+    key: String,
+}
+
+impl ApiKeyAuth for ResolvedKeyAuth {
+    fn name(&self) -> &str {
+        "resolved API key"
+    }
+
+    fn resolve<'a>(
+        &'a self,
+        _input: ApiKeyAuthInput<'a>,
+    ) -> BoxFuture<'a, Result<Option<AuthResult>, AuthError>> {
+        Box::pin(async move {
+            Ok(Some(AuthResult {
+                auth: ModelAuth {
+                    api_key: Some(self.key.clone()),
+                    ..ModelAuth::default()
+                },
+                ..AuthResult::default()
+            }))
+        })
+    }
+}
+
+/// The `Models` collection for one config-declared provider: it serves the
+/// hand-declared model through the selected wire implementation and resolves
+/// auth to the pre-resolved key. This is the bridge from the M1-era direct
+/// `ApiImpl` + `ProviderConfig` construction onto the agent core.
+fn build_models(provider_id: &str, api_key: &str, model: Model, api: Arc<dyn ApiImpl>) -> Models {
+    let mut models = create_models(CreateModelsOptions::default());
+    models.set_provider(create_provider(CreateProviderOptions {
+        id: provider_id.to_string(),
+        name: None,
+        base_url: None,
+        headers: None,
+        auth: ProviderAuth {
+            api_key: Some(Arc::new(ResolvedKeyAuth {
+                key: api_key.to_string(),
+            })),
+            oauth: None,
+        },
+        models: vec![model],
+        fetch_models: None,
+        filter_models: None,
+        api: ApiImpls::Single(api),
+    }));
+    models
 }
 
 /// `pirs login --provider <id>` (upstream cli.ts `login`): dispatch the
@@ -234,21 +293,21 @@ async fn main() -> Result<()> {
         OAUTH_LOGIN_PROVIDERS.join(", "),
     ))?;
 
-    let pcfg = ProviderConfig {
-        base_url: resolve_base_url(&cfg)?,
-        api_key: key,
-        max_tokens: cfg.max_tokens,
-    };
     let model = build_model(&cfg)?;
+    let api = select_api(&cfg.provider)?;
+    let models = build_models(&cfg.provider, &key, model.clone(), api);
 
-    let provider = select_api(&cfg.provider)?;
-
-    let mut agent = Agent::new(
-        provider,
-        pcfg,
-        model,
-        builtin_tools(),
-        repl::SYSTEM_PROMPT.to_string(),
+    let agent = Agent::new(
+        AgentOptions {
+            initial_state: AgentInitialState {
+                system_prompt: Some(repl::SYSTEM_PROMPT.to_string()),
+                model: Some(model),
+                tools: builtin_tools().into_iter().map(Arc::new).collect(),
+                ..AgentInitialState::default()
+            },
+            ..AgentOptions::default()
+        },
+        Arc::new(models),
     );
     let sessions_dir = dirs::data_local_dir()
         .unwrap_or_else(|| std::path::PathBuf::from("."))
@@ -257,7 +316,7 @@ async fn main() -> Result<()> {
     let mut session = SessionWriter::create(&sessions_dir)?;
     println!("session: {}", session.path().display());
 
-    repl::run(&mut agent, &mut session, &cfg.model).await
+    repl::run(&agent, &mut session, &cfg.model).await
 }
 
 #[cfg(test)]
@@ -308,6 +367,24 @@ mod tests {
             Err(err) => assert!(err.to_string().contains("unknown provider"), "{err}"),
             Ok(_) => panic!("expected unknown provider to be rejected"),
         }
+    }
+
+    /// The M3a bridge: the config-declared model is served by the collection
+    /// and auth resolution produces the pre-resolved key — the same inputs
+    /// the pre-swap code passed straight to the ApiImpl as `ProviderConfig`.
+    #[test]
+    fn build_models_serves_the_config_model_and_resolves_the_pre_resolved_key() {
+        let cfg = Config::default();
+        let model = build_model(&cfg).unwrap();
+        let api = select_api(&cfg.provider).unwrap();
+        let models = build_models(&cfg.provider, "resolved-key", model.clone(), api);
+
+        assert_eq!(models.get_model(&cfg.provider, &model.id), Some(model));
+
+        let resolved = futures::executor::block_on(models.get_auth(&cfg.provider, None))
+            .unwrap()
+            .expect("auth resolves");
+        assert_eq!(resolved.auth.api_key.as_deref(), Some("resolved-key"));
     }
 
     // ---- Task 9: login/logout CLI surface ----

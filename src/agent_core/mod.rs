@@ -13,8 +13,12 @@
 
 pub mod agent;
 pub mod agent_loop;
+pub mod session;
+pub mod tools;
 pub mod types;
 
 pub use agent::*;
 pub use agent_loop::*;
+pub use session::*;
+pub use tools::builtin_tools;
 pub use types::*;

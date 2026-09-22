@@ -1,4 +1,7 @@
-use crate::agent::tool::{make_tool, AgentTool};
+#[cfg(test)]
+use super::run_tool_text;
+use super::text_result;
+use crate::agent_core::types::{make_tool, AgentTool};
 use schemars::JsonSchema;
 use serde::Deserialize;
 
@@ -17,11 +20,13 @@ pub fn tool() -> AgentTool {
         |a: WriteFileArgs| {
             Box::pin(async move {
                 if let Some(parent) = std::path::Path::new(&a.path).parent() {
-                    std::fs::create_dir_all(parent).map_err(|e| format!("mkdir failed: {e}"))?;
+                    std::fs::create_dir_all(parent)
+                        .map_err(|e| anyhow::anyhow!("mkdir failed: {e}"))?;
                 }
                 let bytes = a.content.len();
-                std::fs::write(&a.path, &a.content).map_err(|e| format!("write failed: {e}"))?;
-                Ok(format!("wrote {bytes} bytes to {}", a.path))
+                std::fs::write(&a.path, &a.content)
+                    .map_err(|e| anyhow::anyhow!("write failed: {e}"))?;
+                Ok(text_result(format!("wrote {bytes} bytes to {}", a.path)))
             })
         },
     )
@@ -36,10 +41,12 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("sub/dir/a.txt");
         let t = tool();
-        let out =
-            (t.execute)(serde_json::json!({"path": path.to_str().unwrap(), "content": "abc"}))
-                .await
-                .unwrap();
+        let out = run_tool_text(
+            &t,
+            serde_json::json!({"path": path.to_str().unwrap(), "content": "abc"}),
+        )
+        .await
+        .unwrap();
         assert!(out.contains("3 bytes"));
         assert_eq!(std::fs::read_to_string(&path).unwrap(), "abc");
     }

@@ -1571,8 +1571,16 @@ async fn emit_tool_result_message(message: &ToolResultMessage, emit: &AgentEvent
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::agent_core::types::make_tool;
     use crate::agent_core::CustomAgentMessage;
+    use crate::ai::api::anthropic::AnthropicMessages;
+    use crate::ai::api::openai_completions::OpenAiCompletions;
+    use crate::ai::api::openai_responses::OpenAiResponses;
+    use crate::ai::auth::types::{
+        ApiKeyAuth, ApiKeyAuthInput, AuthError, AuthResult, ModelAuth, ProviderAuth,
+    };
     use crate::ai::models::faux::FauxTokenSize;
+    use crate::ai::models::provider::{create_provider, ApiImpls, CreateProviderOptions};
     use crate::ai::models::{
         create_models, faux_assistant_message, faux_provider, faux_tool_call, CreateModelsOptions,
         FauxFactoryArgs, FauxMessageOptions, FauxProviderHandle, FauxProviderOptions,
@@ -1580,7 +1588,10 @@ mod tests {
     };
     use crate::ai::transcript::content_text;
     use crate::ai::types::message::UserMessage;
-    use crate::ai::types::primitives::UsageCost;
+    use crate::ai::types::primitives::{ModelCost, UsageCost};
+    use crate::ai::types::Model;
+    use crate::ai::types::ModelInput;
+    use crate::ai::ApiImpl;
     use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
     use std::sync::Mutex;
     use std::time::Duration;
@@ -3848,6 +3859,56 @@ mod tests {
         );
     }
 
+    /// M1 intent (mini-loop `stream_error_is_reported`): a provider stream
+    /// that settles with an error is reported — the error text is preserved on
+    /// the failed assistant message, and the run ends at that turn
+    /// (agent-loop.ts:221-225), never converting the failure into toolResult
+    /// messages.
+    #[tokio::test]
+    async fn stream_error_ends_the_run_with_the_reported_error_message() {
+        let (models, faux, model) = faux_models();
+        faux.set_responses(vec![FauxResponseStep::Factory(Arc::new(
+            |_args: FauxFactoryArgs| {
+                Box::pin(async move { Err("boom".to_string()) })
+                    as BoxFuture<'static, Result<AssistantMessage, String>>
+            },
+        ))]);
+
+        let (rx, handle) = agent_loop(
+            vec![user_message("hi")],
+            AgentContext::default(),
+            identity_config(model),
+            models,
+            None,
+        );
+        let messages = handle.await.unwrap().unwrap();
+        let events = collect_events(rx).await;
+
+        assert_eq!(role_names(&messages), ["user", "assistant"]);
+        let AgentMessage::Assistant(assistant) = &messages[1] else {
+            panic!("expected assistant message, got {}", messages[1].role());
+        };
+        assert_eq!(assistant.stop_reason, StopReason::Error);
+        assert_eq!(assistant.error_message.as_deref(), Some("boom"));
+        // The failure is reported to listeners: the assistant message_end
+        // carries the error text, then the run settles turn_end + agent_end.
+        let reported = events.iter().any(|event| match event {
+            AgentEvent::MessageEnd {
+                message: AgentMessage::Assistant(assistant),
+            } => assistant.error_message.as_deref() == Some("boom"),
+            _ => false,
+        });
+        assert!(reported);
+        let tail: Vec<&str> = event_names(&events)
+            .iter()
+            .rev()
+            .take(2)
+            .rev()
+            .copied()
+            .collect();
+        assert_eq!(tail, ["turn_end", "agent_end"]);
+    }
+
     /// The preflight abort checks (agent-loop.ts:691-697, 710-716) directly:
     /// with a cancelled token a call fails with "Operation aborted" after the
     /// hook and again before returning a prepared call (no-hook path).
@@ -4114,5 +4175,505 @@ mod tests {
         let messages = handle.await.unwrap().unwrap();
         assert_eq!(messages.len(), 1);
         assert_eq!(role_names(&messages), ["assistant"]);
+    }
+
+    // ---- M1-carried integration: invalid arguments and unknown tools ----
+
+    /// M1 intent (mini-loop `invalid_args_and_unknown_tool_become_error_results`):
+    /// invalid arguments and unknown tools both settle as error tool results
+    /// without executing the tool, and the run continues to the final text turn.
+    #[tokio::test]
+    async fn invalid_arguments_and_unknown_tools_become_error_results() {
+        #[derive(serde::Deserialize, schemars::JsonSchema)]
+        struct EchoArgs {
+            text: String,
+        }
+        fn typed_echo_tool(executed: Arc<Mutex<Vec<serde_json::Value>>>) -> AgentTool {
+            make_tool("echo", "echo text back", move |a: EchoArgs| {
+                let executed = executed.clone();
+                Box::pin(async move {
+                    executed.lock().unwrap().push(serde_json::json!(a.text));
+                    Ok(AgentToolResult {
+                        content: vec![text_block(&format!("echo: {}", a.text))],
+                        ..AgentToolResult::default()
+                    })
+                })
+            })
+        }
+
+        let (models, faux, model) = faux_models();
+        let executed = Arc::new(Mutex::new(Vec::<serde_json::Value>::new()));
+        faux.set_responses(vec![
+            tool_call_response(
+                vec![("t1", "echo", serde_json::json!({"wrong": "arg"}))],
+                StopReason::ToolUse,
+            ),
+            tool_call_response(
+                vec![("t2", "nope", serde_json::json!({}))],
+                StopReason::ToolUse,
+            ),
+            text_response("done"),
+        ]);
+
+        let (rx, handle) = agent_loop(
+            vec![user_message("go")],
+            AgentContext {
+                messages: Vec::new(),
+                tools: vec![Arc::new(typed_echo_tool(executed.clone()))],
+            },
+            identity_config(model),
+            models,
+            None,
+        );
+        let events = collect_events(rx).await;
+        handle.await.unwrap().unwrap();
+
+        let errors: Vec<bool> = events
+            .iter()
+            .filter_map(|event| match event {
+                AgentEvent::ToolExecutionEnd { is_error, .. } => Some(*is_error),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(errors, [true, true]);
+        // Neither the invalid-arguments call nor the unknown tool executed.
+        assert!(executed.lock().unwrap().is_empty());
+        // The run continues to the final text turn.
+        let final_assistant = events
+            .iter()
+            .rev()
+            .find_map(|event| match event {
+                AgentEvent::MessageEnd {
+                    message: AgentMessage::Assistant(assistant),
+                } => Some(assistant.clone()),
+                _ => None,
+            })
+            .expect("a final assistant message_end");
+        assert_eq!(
+            final_assistant.content,
+            vec![AssistantBlock::Text(
+                crate::ai::types::content::TextContent {
+                    text: "done".into(),
+                    text_signature: None,
+                }
+            )],
+        );
+        assert_eq!(final_assistant.stop_reason, StopReason::Stop);
+    }
+
+    // ---- M1-carried integration: the loop against the real ApiImpls (wiremock) ----
+
+    /// Static-key auth for the wire-test providers: the M1 wire tests passed
+    /// the key directly through `ProviderConfig`; the port routes through the
+    /// `Models` collection, whose auth resolution must produce the same key.
+    struct StaticKeyAuth {
+        key: String,
+    }
+
+    impl ApiKeyAuth for StaticKeyAuth {
+        fn name(&self) -> &str {
+            "static test key"
+        }
+
+        fn resolve<'a>(
+            &'a self,
+            _input: ApiKeyAuthInput<'a>,
+        ) -> BoxFuture<'a, Result<Option<AuthResult>, AuthError>> {
+            Box::pin(async move {
+                Ok(Some(AuthResult {
+                    auth: ModelAuth {
+                        api_key: Some(self.key.clone()),
+                        ..ModelAuth::default()
+                    },
+                    ..AuthResult::default()
+                }))
+            })
+        }
+    }
+
+    /// A `Models` collection serving one config-declared model through one
+    /// real API implementation (the M1 wire tests' direct `ApiImpl` + config).
+    fn wire_models(api: Arc<dyn ApiImpl>, provider_id: &str, model: Model) -> Arc<Models> {
+        let mut models = create_models(CreateModelsOptions::default());
+        models.set_provider(create_provider(CreateProviderOptions {
+            id: provider_id.to_string(),
+            name: None,
+            base_url: None,
+            headers: None,
+            auth: ProviderAuth {
+                api_key: Some(Arc::new(StaticKeyAuth { key: "k".into() })),
+                oauth: None,
+            },
+            models: vec![model],
+            fetch_models: None,
+            filter_models: None,
+            api: ApiImpls::Single(api),
+        }));
+        Arc::new(models)
+    }
+
+    fn wire_model(api: &str, provider: &str, id: &str, base_url: &str) -> Model {
+        Model {
+            id: id.into(),
+            name: id.into(),
+            api: api.into(),
+            provider: provider.into(),
+            base_url: base_url.into(),
+            reasoning: false,
+            thinking_level_map: None,
+            input: vec![ModelInput::Text],
+            cost: ModelCost::default(),
+            context_window: 200_000,
+            max_tokens: 8192,
+            sampling_params: None,
+            headers: None,
+            compat: None,
+        }
+    }
+
+    fn system_message(text: &str) -> AgentMessage {
+        AgentMessage::System(SystemMessage {
+            content: StringOrBlocks::Text(text.into()),
+            sections: None,
+            tools_added: None,
+            tools_removed: None,
+            timestamp: now_ms(),
+        })
+    }
+
+    fn data_line(json: serde_json::Value) -> String {
+        format!("data: {json}\n\n")
+    }
+
+    fn content_chunk(text: &str) -> serde_json::Value {
+        serde_json::json!({"choices": [{"delta": {"content": text}}]})
+    }
+
+    fn finish_chunk(finish_reason: &str) -> serde_json::Value {
+        serde_json::json!({"choices": [{"delta": {}, "finish_reason": finish_reason}]})
+    }
+
+    fn sse(body: &str) -> wiremock::ResponseTemplate {
+        wiremock::ResponseTemplate::new(200)
+            .insert_header("content-type", "text/event-stream")
+            .set_body_string(body.to_string())
+    }
+
+    fn streamed_deltas(events: &[AgentEvent]) -> String {
+        events
+            .iter()
+            .filter_map(|event| match event {
+                AgentEvent::MessageUpdate {
+                    assistant_message_event: AssistantMessageEvent::TextDelta { delta, .. },
+                    ..
+                } => Some(delta.clone()),
+                _ => None,
+            })
+            .collect::<Vec<String>>()
+            .join("")
+    }
+
+    /// M1 intent (`agent_runs_text_turn_on_openai_completions_api`): one full
+    /// agent text turn over `openai-completions` — the streamed deltas reach
+    /// the events, the stored assistant message carries the Model-stamped
+    /// metadata, and the wire body replays the transcript (system message
+    /// leading, model id, user prompt).
+    #[tokio::test]
+    async fn agent_runs_text_turn_on_openai_completions_api() {
+        let server = wiremock::MockServer::start().await;
+        let body = format!(
+            "{}{}{}",
+            data_line(content_chunk("he")),
+            data_line(content_chunk("y")),
+            data_line(finish_chunk("stop"))
+        );
+        wiremock::Mock::given(wiremock::matchers::method("POST"))
+            .and(wiremock::matchers::path("/v1/chat/completions"))
+            .respond_with(sse(&format!("{body}\ndata: [DONE]\n\n")))
+            .mount(&server)
+            .await;
+
+        let base = format!("{}/v1", server.uri());
+        let model = wire_model("openai-completions", "openai", "gpt-test", &base);
+        let (rx, handle) = agent_loop(
+            vec![user_message("hello")],
+            AgentContext {
+                messages: vec![system_message("sys")],
+                tools: Vec::new(),
+            },
+            identity_config(model.clone()),
+            wire_models(Arc::new(OpenAiCompletions), "openai", model),
+            None,
+        );
+
+        let events = collect_events(rx).await;
+        let messages = handle.await.unwrap().unwrap();
+
+        assert_eq!(streamed_deltas(&events), "hey");
+        // The run's new messages: the context system message is replayed from
+        // the transcript, not part of the run's new messages.
+        assert_eq!(role_names(&messages), ["user", "assistant"]);
+        let AgentMessage::Assistant(assistant) = &messages[1] else {
+            panic!("expected assistant message, got {:?}", messages[1].role());
+        };
+        assert_eq!(assistant.api, "openai-completions");
+        assert_eq!(assistant.provider, "openai");
+        assert_eq!(assistant.model, "gpt-test");
+        assert_eq!(assistant.stop_reason, StopReason::Stop);
+
+        let requests = server.received_requests().await.unwrap();
+        assert_eq!(requests.len(), 1);
+        let sent: serde_json::Value = serde_json::from_slice(&requests[0].body).unwrap();
+        assert_eq!(sent["model"], "gpt-test");
+        assert_eq!(sent["messages"][0]["role"], "system");
+        assert_eq!(sent["messages"][0]["content"], "sys");
+        assert_eq!(sent["messages"][1]["role"], "user");
+        assert_eq!(sent["messages"][1]["content"], "hello");
+    }
+
+    /// M1 intent (`agent_runs_tool_loop_on_openai_completions_api`): a
+    /// two-turn tool loop over `openai-completions` — streamed tool-call
+    /// fragments with split JSON arguments execute the tool, the result feeds
+    /// back as a replayed tool message on turn 2, and the declaration system
+    /// message leads both requests.
+    #[tokio::test]
+    async fn agent_runs_tool_loop_on_openai_completions_api() {
+        #[derive(serde::Deserialize, schemars::JsonSchema)]
+        struct EchoArgs {
+            text: String,
+        }
+        fn typed_echo_tool() -> AgentTool {
+            make_tool("echo", "echo text back", |a: EchoArgs| {
+                Box::pin(async move {
+                    Ok(AgentToolResult {
+                        content: vec![text_block(&format!("echo: {}", a.text))],
+                        ..AgentToolResult::default()
+                    })
+                })
+            })
+        }
+
+        let server = wiremock::MockServer::start().await;
+        let turn1 = format!(
+            "{}{}{}",
+            data_line(serde_json::json!({"choices": [{"delta": {"tool_calls": [
+                {"index": 0, "id": "t1", "type": "function", "function": {"name": "echo", "arguments": "{\"text\":"}}
+            ]}}]})),
+            data_line(serde_json::json!({"choices": [{"delta": {"tool_calls": [
+                {"index": 0, "function": {"arguments": "\"hi\"}"}}
+            ]}}]})),
+            data_line(finish_chunk("tool_calls")),
+        );
+        let turn2 = format!(
+            "{}{}",
+            data_line(content_chunk("echo said hi")),
+            data_line(finish_chunk("stop"))
+        );
+        let served_turn1 = std::sync::atomic::AtomicBool::new(true);
+        struct Alternate {
+            turn1: String,
+            turn2: String,
+            served_turn1: std::sync::atomic::AtomicBool,
+        }
+        impl wiremock::Respond for Alternate {
+            fn respond(&self, _req: &wiremock::Request) -> wiremock::ResponseTemplate {
+                let first = self
+                    .served_turn1
+                    .swap(false, std::sync::atomic::Ordering::SeqCst);
+                let body = if first { &self.turn1 } else { &self.turn2 };
+                sse(&format!("{body}\ndata: [DONE]\n\n"))
+            }
+        }
+        wiremock::Mock::given(wiremock::matchers::method("POST"))
+            .respond_with(Alternate {
+                turn1,
+                turn2,
+                served_turn1,
+            })
+            .mount(&server)
+            .await;
+
+        let base = format!("{}/v1", server.uri());
+        let model = wire_model("openai-completions", "openai", "gpt-test", &base);
+        let (rx, handle) = agent_loop(
+            vec![user_message("run echo")],
+            AgentContext {
+                messages: Vec::new(),
+                tools: vec![Arc::new(typed_echo_tool())],
+            },
+            identity_config(model.clone()),
+            wire_models(Arc::new(OpenAiCompletions), "openai", model),
+            None,
+        );
+
+        let _events = collect_events(rx).await;
+        let messages = handle.await.unwrap().unwrap();
+
+        // system declaration, user, assistant(toolcall), toolResult, final
+        assert_eq!(
+            role_names(&messages),
+            ["system", "user", "assistant", "toolResult", "assistant"]
+        );
+        let AgentMessage::Assistant(assistant) = &messages[2] else {
+            panic!("expected assistant message, got {:?}", messages[2].role());
+        };
+        assert_eq!(assistant.stop_reason, StopReason::ToolUse);
+        let AgentMessage::ToolResult(result) = &messages[3] else {
+            panic!("expected tool result, got {:?}", messages[3].role());
+        };
+        assert_eq!(result.tool_call_id, "t1");
+        assert_eq!(result.content, vec![text_block("echo: hi")],);
+        // Turn 2 replays the assistant tool call and the tool result. The
+        // declaration system message (empty content) collapses into the
+        // request-level `tools` param on the wire, not a chat message.
+        let requests = server.received_requests().await.unwrap();
+        let second: serde_json::Value = serde_json::from_slice(&requests[1].body).unwrap();
+        let roles: Vec<&str> = second["messages"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|m| m["role"].as_str().unwrap())
+            .collect();
+        assert_eq!(roles, ["user", "assistant", "tool"]);
+        assert_eq!(
+            second["tools"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|t| t["function"]["name"].as_str().unwrap())
+                .collect::<Vec<_>>(),
+            ["echo"]
+        );
+    }
+
+    /// M1 intent (`agent_runs_text_turn_on_anthropic_messages_api`): the same
+    /// text turn over `anthropic-messages` — stamps and SSE parsing hold at
+    /// the agent level for the second wire protocol too.
+    #[tokio::test]
+    async fn agent_runs_text_turn_on_anthropic_messages_api() {
+        let server = wiremock::MockServer::start().await;
+        // Event data carries the upstream `type` field; the impl dispatches
+        // on it (upstream parses `{type: eventName, ...}`).
+        let ev = |name: &str, data: serde_json::Value| {
+            let mut data = data;
+            data["type"] = serde_json::json!(name);
+            format!("event: {name}\ndata: {data}\n\n")
+        };
+        let body = format!(
+            "{}{}{}{}{}{}",
+            ev(
+                "message_start",
+                serde_json::json!({"message": {"id": "msg_test", "usage": {"input_tokens": 1}}})
+            ),
+            ev(
+                "content_block_start",
+                serde_json::json!({"index": 0, "content_block": {"type": "text", "text": ""}})
+            ),
+            ev(
+                "content_block_delta",
+                serde_json::json!({"index": 0, "delta": {"type": "text_delta", "text": "hey"}})
+            ),
+            ev("content_block_stop", serde_json::json!({"index": 0})),
+            ev(
+                "message_delta",
+                serde_json::json!({"delta": {"stop_reason": "end_turn"}, "usage": {"output_tokens": 1}})
+            ),
+            ev("message_stop", serde_json::json!({})),
+        );
+        wiremock::Mock::given(wiremock::matchers::method("POST"))
+            .and(wiremock::matchers::path("/v1/messages"))
+            .respond_with(sse(&body))
+            .mount(&server)
+            .await;
+
+        let base = server.uri();
+        let model = wire_model("anthropic-messages", "anthropic", "claude-test", &base);
+        let (rx, handle) = agent_loop(
+            vec![user_message("hello")],
+            AgentContext::default(),
+            identity_config(model.clone()),
+            wire_models(Arc::new(AnthropicMessages), "anthropic", model),
+            None,
+        );
+
+        let events = collect_events(rx).await;
+        let messages = handle.await.unwrap().unwrap();
+
+        assert_eq!(streamed_deltas(&events), "hey");
+        let AgentMessage::Assistant(assistant) = &messages[1] else {
+            panic!("expected assistant message, got {:?}", messages[1].role());
+        };
+        assert_eq!(assistant.api, "anthropic-messages");
+        assert_eq!(assistant.provider, "anthropic");
+        assert_eq!(assistant.model, "claude-test");
+        assert_eq!(assistant.stop_reason, StopReason::Stop);
+    }
+
+    /// M1 intent (`agent_runs_text_turn_on_openai_responses_api`): a third
+    /// wire protocol at the agent level — `openai-responses` streams a text
+    /// turn and stamps the Model metadata into the stored message.
+    #[tokio::test]
+    async fn agent_runs_text_turn_on_openai_responses_api() {
+        let server = wiremock::MockServer::start().await;
+        let data = |value: serde_json::Value| format!("data: {value}\n\n");
+        let body = format!(
+            "{}{}{}{}{}",
+            data(serde_json::json!({
+                "type": "response.created",
+                "response": {"id": "resp_ok"}
+            })),
+            data(serde_json::json!({
+                "type": "response.output_item.added",
+                "output_index": 0,
+                "item": {"type": "message", "id": "msg_1", "role": "assistant", "content": []}
+            })),
+            data(serde_json::json!({
+                "type": "response.output_text.delta",
+                "output_index": 0,
+                "item_id": "msg_1",
+                "delta": "hey"
+            })),
+            data(serde_json::json!({
+                "type": "response.output_item.done",
+                "output_index": 0,
+                "item": {"type": "message", "id": "msg_1", "role": "assistant",
+                          "content": [{"type": "output_text", "text": "hey", "annotations": []}]}
+            })),
+            data(serde_json::json!({
+                "type": "response.completed",
+                "response": {"id": "resp_ok", "status": "completed",
+                              "usage": {"input_tokens": 1, "output_tokens": 1, "total_tokens": 2}}
+            })),
+        );
+        wiremock::Mock::given(wiremock::matchers::method("POST"))
+            .and(wiremock::matchers::path("/v1/responses"))
+            .respond_with(sse(&body))
+            .mount(&server)
+            .await;
+
+        let base = format!("{}/v1", server.uri());
+        let model = wire_model("openai-responses", "openai", "gpt-test", &base);
+        let (rx, handle) = agent_loop(
+            vec![user_message("hello")],
+            AgentContext::default(),
+            identity_config(model.clone()),
+            wire_models(Arc::new(OpenAiResponses), "openai", model),
+            None,
+        );
+
+        let events = collect_events(rx).await;
+        let messages = handle.await.unwrap().unwrap();
+
+        assert_eq!(streamed_deltas(&events), "hey");
+        let AgentMessage::Assistant(assistant) = &messages[1] else {
+            panic!("expected assistant message, got {:?}", messages[1].role());
+        };
+        assert_eq!(assistant.api, "openai-responses");
+        assert_eq!(assistant.provider, "openai");
+        assert_eq!(assistant.model, "gpt-test");
+        assert_eq!(assistant.stop_reason, StopReason::Stop);
+        let requests = server.received_requests().await.unwrap();
+        let sent: serde_json::Value = serde_json::from_slice(&requests[0].body).unwrap();
+        assert_eq!(sent["model"], "gpt-test");
     }
 }

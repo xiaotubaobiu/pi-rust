@@ -46,6 +46,7 @@
 //!   behavior as every other `serde_json::Value` field in the port. Key order
 //!   inside custom payloads is not semantic upstream.
 
+use schemars::JsonSchema;
 use serde::de::{Deserializer, Error as DeError};
 use serde::ser::{SerializeMap, Serializer};
 use serde::{Deserialize, Serialize};
@@ -555,6 +556,38 @@ impl AgentTool {
             parameters: self.parameters.clone(),
             constrained_sampling: self.constrained_sampling.clone(),
         }
+    }
+}
+
+/// Convenience constructor for typed tools (the M1 `make_tool` helper,
+/// carried into the core when the crate swapped onto it): the struct's JSON
+/// Schema (schemars) is sent to the LLM, and incoming arguments are validated
+/// by deserialization before `execute` runs. The loop validates every call
+/// against the schema first (upstream `validateToolCall`); this second
+/// deserialization also guards direct `execute` callers (unit tests, apps).
+/// `label` defaults to the tool name.
+pub fn make_tool<T, F>(name: &str, description: &str, execute: F) -> AgentTool
+where
+    T: serde::de::DeserializeOwned + JsonSchema + Send + 'static,
+    F: Fn(T) -> BoxToolFuture + Send + Sync + 'static,
+{
+    AgentTool {
+        name: name.to_string(),
+        label: name.to_string(),
+        description: description.to_string(),
+        parameters: serde_json::to_value(schemars::schema_for!(T)).expect("schema serializes"),
+        execute: Arc::new(move |_tool_call_id, value, _signal, _on_update| {
+            match serde_json::from_value::<T>(value) {
+                Ok(args) => execute(args),
+                Err(error) => {
+                    Box::pin(async move { Err(anyhow::anyhow!("invalid arguments: {error}")) })
+                }
+            }
+        }),
+        constrained_sampling: None,
+        prepare_arguments: None,
+        replay: None,
+        execution_mode: None,
     }
 }
 
@@ -1265,5 +1298,49 @@ mod tests {
             (tool.prepare_arguments.as_ref().unwrap())(serde_json::json!({"text": "raw"}));
         assert_eq!(prepared["text"], "shimmed");
         assert_eq!(tool.replay, None);
+    }
+
+    // ---- make_tool (the M1 typed-tool constructor, carried into the core) ----
+
+    #[derive(serde::Deserialize, JsonSchema)]
+    struct MakeToolArgs {
+        text: String,
+    }
+
+    #[tokio::test]
+    async fn make_tool_sends_the_schema_and_validates_by_deserialization() {
+        let tool = make_tool("echo", "echo text back", |args: MakeToolArgs| {
+            Box::pin(async move {
+                Ok(AgentToolResult {
+                    content: vec![text_block(&format!("echo: {}", args.text))],
+                    ..AgentToolResult::default()
+                })
+            })
+        });
+        // The struct's schemars schema is the declaration sent to the LLM.
+        assert_eq!(tool.name, "echo");
+        assert_eq!(tool.label, "echo");
+        assert_eq!(tool.description, "echo text back");
+        assert_eq!(
+            tool.parameters["properties"]["text"]["type"],
+            serde_json::json!("string")
+        );
+        assert_eq!(tool.parameters["required"], serde_json::json!(["text"]));
+
+        let ok = (tool.execute)(
+            "call_1".into(),
+            serde_json::json!({"text": "hi"}),
+            None,
+            None,
+        )
+        .await
+        .unwrap();
+        assert_eq!(ok.content, vec![text_block("echo: hi")]);
+
+        // Invalid arguments become an "invalid arguments" error result.
+        let error = (tool.execute)("call_2".into(), serde_json::json!({"wrong": 1}), None, None)
+            .await
+            .unwrap_err();
+        assert!(error.to_string().contains("invalid arguments"), "{error}");
     }
 }
