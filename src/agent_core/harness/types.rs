@@ -847,7 +847,7 @@ pub enum TruncatedBy {
 /// without a duplicate copy of the retained text. The full `TruncationResult`
 /// (with `content`) is defined with the truncate port; the bounded-view
 /// consumers here only need this shape.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ShellOutputTruncation {
     /// Whether truncation occurred.
@@ -941,7 +941,7 @@ pub type ShellUpdateCallback = dyn Fn(ShellOutputUpdate, &Context) + Send + Sync
 
 /// Upstream `ShellExecOptions` (`types.ts:379-392`). Runtime options (the
 /// upstream object carries a callback), so no serde.
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct ShellExecOptions {
     /// Working directory for the command; relative paths resolve against
     /// [`FileSystem::cwd`] unless overridden. Defaults to the env's cwd.
