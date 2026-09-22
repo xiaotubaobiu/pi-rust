@@ -52,10 +52,11 @@
 //!   used by chord services, not by the harness subtree.
 //! - `overlap` is ported as a private helper (the harness never imports it;
 //!   upstream exports it).
-//! - `TODO_CONTEXT`, `withAbortSignal`, `withoutAbortSignal`, `withCancel`,
-//!   `awaitWithContext` — imported via `packages/agent/src/harness/context.ts`
-//!   and to be ported with that file (the abort-signal representation must
-//!   bind to the repo's [`tokio_util::sync::CancellationToken`] convention).
+//! - `TODO_CONTEXT` is ported as [`context::Context::todo`]; the abort-signal
+//!   helpers (`withAbortSignal`, `withoutAbortSignal`, `withCancel`,
+//!   `awaitWithContext`) are ported with `src/agent_core/harness/context.rs`,
+//!   which binds them to the repo's
+//!   [`tokio_util::sync::CancellationToken`] convention.
 //! - `isJsonValue`, `ReplicatedState`, `MutableReplicatedState`,
 //!   `defineService`, facets, services — M6 / later harness tasks.
 

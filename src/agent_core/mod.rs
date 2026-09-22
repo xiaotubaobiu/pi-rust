@@ -10,10 +10,17 @@
 //! subscribers, prompt/continue, reset, queue delegation). This module is a
 //! sibling of `ai`, not a child: the ai layer is upstream
 //! `@earendil-works/pi-ai`.
+//!
+//! M3b adds the harness subtree under [`harness`] (upstream
+//! `packages/agent/src/harness/`): M3b Task 1 the chord-support subset
+//! ([`chord_support`]), M3b Task 2 the harness foundation types
+//! ([`harness`]) — the harness module keeps its own namespace rather than
+//! glob-re-exporting here, since it grows a full subpackage across M3b.
 
 pub mod agent;
 pub mod agent_loop;
 pub mod chord_support;
+pub mod harness;
 pub mod session;
 pub mod tools;
 pub mod types;

@@ -9,11 +9,13 @@
 //! holds an `Arc` parent, so derivation is O(1) and cloning a context shares
 //! the chain.
 //!
-//! Deferred from this subset (see the parent module docs):
-//! `withAbortSignal`, `withoutAbortSignal`, `withCancel`, `awaitWithContext`,
-//! `TODO_CONTEXT`. The `abortSignal` *lookup* is ported
-//! ([`Context::abort_signal`]); the signal-combining helpers are ported with
-//! `packages/agent/src/harness/context.ts`.
+//! Deferred from this subset (see the parent module docs): the abort-signal
+//! helpers `withAbortSignal`, `withoutAbortSignal`, `withCancel`,
+//! `awaitWithContext` (ported with `src/agent_core/harness/context.rs`), and
+//! `TODO_CONTEXT` (ported here as [`Context::todo`]). The `abortSignal`
+//! *lookup* is ported ([`Context::abort_signal`]); the signal-combining
+//! helpers bind to the repo's [`tokio_util::sync::CancellationToken`]
+//! convention.
 
 use std::any::Any;
 use std::borrow::Cow;
@@ -104,9 +106,9 @@ pub fn create_context_key<T>(description: impl Into<Cow<'static, str>>) -> Conte
 #[derive(Clone)]
 pub enum Context {
     /// Upstream `EmptyContext` (`context/index.ts:16-31`): answers no keys.
-    /// Only two instances exist upstream, `BACKGROUND_CONTEXT`
-    /// (`context/index.ts:55`) and `TODO_CONTEXT` (`context/index.ts:56`,
-    /// deferred — not in the harness import list).
+    /// Two instances exist upstream, `BACKGROUND_CONTEXT`
+    /// ([`Context::background`], `context/index.ts:55`) and `TODO_CONTEXT`
+    /// ([`Context::todo`], `context/index.ts:56`).
     Background {
         /// `#name`, shown by `toString` (`context/index.ts:28-30`).
         name: &'static str,
@@ -129,6 +131,16 @@ impl Context {
     pub fn background() -> Context {
         Context::Background {
             name: "[Context BACKGROUND_CONTEXT]",
+        }
+    }
+
+    /// Upstream `TODO_CONTEXT` (`context/index.ts:56`): an empty context for
+    /// call sites that have no caller context to pass. Ported with
+    /// `packages/agent/src/harness/context.ts` (deferred from the original
+    /// subset; see the chord module docs).
+    pub fn todo() -> Context {
+        Context::Background {
+            name: "[Context TODO_CONTEXT]",
         }
     }
 
