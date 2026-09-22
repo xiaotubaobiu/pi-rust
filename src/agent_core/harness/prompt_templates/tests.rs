@@ -232,3 +232,64 @@ fn parse_command_args_splits_shell_style_arguments() {
     // Unclosed quotes keep scanning to the end of the input.
     assert_eq!(parse("'abc def"), vec!["abc def"]);
 }
+
+#[test]
+fn substitute_args_expands_js_replacement_patterns_in_passes_3_and_4() {
+    let args = |values: &[&str]| {
+        values
+            .iter()
+            .map(|value| value.to_string())
+            .collect::<Vec<_>>()
+    };
+
+    // Upstream `substituteArgs("$ARGUMENTS", ["a$$b"])`: the joined args are
+    // a JS *string* replacement for passes 3/4, so `$$` renders as one `$`.
+    let template = PromptTemplate {
+        name: "one".to_string(),
+        description: None,
+        content: "$ARGUMENTS".to_string(),
+    };
+    assert_eq!(
+        format_prompt_template_invocation(&template, &args(&["a$$b"])),
+        "a$b"
+    );
+    // `$&` expands to the matched placeholder text.
+    assert_eq!(
+        substitute_args("X$ARGUMENTSY", &args(&["$&"])),
+        "X$ARGUMENTSY"
+    );
+    // `` $` `` / `$'` expand to the text before / after the match (the
+    // matched placeholder itself is replaced by the expanded text, so the
+    // neighbor text ends up duplicated around it).
+    assert_eq!(substitute_args("A$@B", &args(&["$'"])), "ABB");
+    assert_eq!(substitute_args("A$@B", &args(&["$`"])), "AAB");
+    // Passes 1-2 remain upstream function replacers: their inserted text is
+    // verbatim, never `$`-expanded.
+    assert_eq!(substitute_args("$1", &args(&["$$&"])), "$$&");
+}
+
+#[test]
+fn expand_js_replacement_covers_the_four_js_patterns() {
+    // haystack "pre MATCH post", matched "MATCH" at 4..9.
+    let expand =
+        |replacement: &str| expand_js_replacement("pre MATCH post", 4, 9, "MATCH", replacement);
+
+    // Literal text with no patterns.
+    assert_eq!(expand("plain"), "plain");
+    // `$$` -> literal `$`.
+    assert_eq!(expand("a$$b"), "a$b");
+    // `$&` -> the matched text.
+    assert_eq!(expand("[$&]"), "[MATCH]");
+    // `` $` `` -> text before the match; `$'` -> text after the match.
+    assert_eq!(expand("X$`Y"), "Xpre Y");
+    assert_eq!(expand("X$'Y"), "X postY");
+    // Combinations.
+    assert_eq!(expand("$$&"), "$&");
+    assert_eq!(expand("$&$$"), "MATCH$");
+    assert_eq!(expand("$`$'$&"), "pre  postMATCH");
+    // Unknown sequences and a lone trailing `$` stay literal.
+    assert_eq!(expand("$1$x"), "$1$x");
+    assert_eq!(expand("ends with $"), "ends with $");
+    // Multibyte text passes through.
+    assert_eq!(expand("é$&"), "éMATCH");
+}

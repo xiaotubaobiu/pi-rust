@@ -14,8 +14,14 @@
 //! - **`substituteArgs` regexes.** The four upstream global replaces run as
 //!   four sequential single-pass `regex` crate replaces in the same order, so
 //!   text inserted by an earlier pass is visible to later passes exactly as
-//!   upstream (and replacement values are never `$`-expanded, matching the
-//!   upstream function-replacer form).
+//!   upstream. Passes 1-2 (`$N`, `${@:N:L}`) use upstream function replacers,
+//!   so their replacement text is inserted verbatim. Passes 3-4
+//!   (`$ARGUMENTS`, `$@`) pass the joined arguments as a JS *string*
+//!   replacement, which expands the replacement patterns `$$` -> `$`,
+//!   `$&` -> the matched placeholder text, `` $` `` -> the text before the
+//!   match, and `$'` -> the text after the match ([`expand_js_replacement`]
+//!   reproduces this; `$n`/`$<name>` are inert without capture groups, as
+//!   upstream).
 //! - **First-line description slice.** Upstream `slice(0, 60)` counts UTF-16
 //!   units; the port takes 60 `char`s (identical for ASCII).
 
@@ -404,6 +410,11 @@ static POSITIONAL_ARGUMENT: LazyLock<Regex> =
 /// Upstream `/\$\{@:(\d+)(?::(\d+))?\}/g` (`prompt-templates.ts:255`).
 static SLICE_ARGUMENT: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"\$\{@:(\d+)(?::(\d+))?\}").expect("valid regex"));
+/// Upstream `/\$ARGUMENTS/g` (`prompt-templates.ts:262`).
+static ALL_ARGUMENTS: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"\$ARGUMENTS").expect("valid regex"));
+/// Upstream `/\$@/g` (`prompt-templates.ts:263`).
+static AT_ARGUMENT: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\$@").expect("valid regex"));
 
 /// Parse an argument string using simple shell-style single and double
 /// quotes (`prompt-templates.ts:226-249`).
@@ -463,12 +474,83 @@ pub fn substitute_args(content: &str, args: &[String]) -> String {
         }
     });
     let all_args = args.join(" ");
-    // Literal single-pass replaces of the fixed placeholders. (Upstream's
-    // JS `replace` with a string replacement would interpret `$`-sequences
-    // inside `allArgs`; the port substitutes it verbatim.)
-    result
-        .replace("$ARGUMENTS", &all_args)
-        .replace("$@", &all_args)
+    // Passes 3/4 pass `allArgs` as a JS *string* replacement, which expands
+    // the replacement patterns inside it; see `expand_js_replacement`.
+    let result = ALL_ARGUMENTS.replace_all(&result, |captures: &Captures| {
+        let matched = captures.get(0).expect("regex group 0");
+        expand_js_replacement(
+            &result,
+            matched.start(),
+            matched.end(),
+            matched.as_str(),
+            &all_args,
+        )
+    });
+    let result = AT_ARGUMENT.replace_all(&result, |captures: &Captures| {
+        let matched = captures.get(0).expect("regex group 0");
+        expand_js_replacement(
+            &result,
+            matched.start(),
+            matched.end(),
+            matched.as_str(),
+            &all_args,
+        )
+    });
+    result.into_owned()
+}
+
+/// Expand the JS `String.prototype.replace` replacement patterns for one
+/// match of `matched` at `match_start..match_end` in `haystack` (the string
+/// the replace ran on): `$$` -> `$`, `$&` -> the matched text, `` $` `` ->
+/// the text before the match, `$'` -> the text after the match. Any other
+/// `$` sequence (including `$n`/`$<name>`, which are inert because these two
+/// upstream regexes have no capture groups, and a lone trailing `$`) is kept
+/// literally, as upstream.
+fn expand_js_replacement(
+    haystack: &str,
+    match_start: usize,
+    match_end: usize,
+    matched: &str,
+    replacement: &str,
+) -> String {
+    let mut expanded = String::with_capacity(replacement.len());
+    let bytes = replacement.as_bytes();
+    let mut index = 0;
+    while index < bytes.len() {
+        if bytes[index] == b'$' && index + 1 < bytes.len() {
+            match bytes[index + 1] {
+                b'$' => {
+                    expanded.push('$');
+                    index += 2;
+                    continue;
+                }
+                b'&' => {
+                    expanded.push_str(matched);
+                    index += 2;
+                    continue;
+                }
+                b'`' => {
+                    expanded.push_str(&haystack[..match_start]);
+                    index += 2;
+                    continue;
+                }
+                b'\'' => {
+                    expanded.push_str(&haystack[match_end..]);
+                    index += 2;
+                    continue;
+                }
+                _ => {}
+            }
+        }
+        // Copy one full character (multibyte-safe).
+        let character = replacement[index..]
+            .chars()
+            .next()
+            .expect("non-empty remainder");
+        expanded.push(character);
+        index += character.len_utf8();
+    }
+    expanded
 }
 
 /// Format a prompt template invocation with positional arguments
