@@ -94,6 +94,18 @@ pub struct PromptTemplate {
     pub content: String,
 }
 
+/// The shared `{ path, source }` input record of the two upstream
+/// `loadSourced*` signatures (`skills.ts:88`, `prompt-templates.ts:74`).
+/// Source values are preserved exactly and attached to every loaded resource
+/// and diagnostic; the agent package does not interpret source values.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SourcedInput<TSource> {
+    /// Directory or file path to load.
+    pub path: String,
+    /// Application-defined provenance value.
+    pub source: TSource,
+}
+
 /// Options for one live harness tool progress update
 /// (upstream `AgentHarnessToolUpdateOptions`, `types.ts:83-87`).
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]

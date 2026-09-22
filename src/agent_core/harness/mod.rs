@@ -5,8 +5,8 @@
 //! source file and lines.
 //!
 //! Later M3b tasks add the remaining harness subtree under this module
-//! (`skills`, `hooks`, `compaction`, `execution`/`env`, `pico3`,
-//! `agent_harness`, `telemetry`).
+//! (`hooks`, `compaction`, `execution`/`env`, `pico3`, `agent_harness`,
+//! `telemetry`); the skills and prompt-template loaders already live here.
 //!
 //! Disclosed substitutions (module docs carry the per-item notes):
 //! - Upstream `Result<TValue, TError>` and its `ok`/`err`/`getOrThrow`/
@@ -30,12 +30,19 @@ pub mod config;
 pub mod context;
 pub mod events;
 pub mod messages;
+pub mod prompt_templates;
 pub mod result;
+pub mod skills;
 pub mod types;
+
+#[cfg(test)]
+pub(crate) mod test_env;
 
 pub use config::*;
 pub use context::*;
 pub use events::*;
 pub use messages::*;
+pub use prompt_templates::*;
 pub use result::*;
+pub use skills::*;
 pub use types::*;

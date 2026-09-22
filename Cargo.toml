@@ -59,6 +59,17 @@ url = "=2.5.8"
 # the only one sharing the tree's sha2 0.11 / rand 0.10 (the stable 0.9
 # line would duplicate both).
 rsa = "=0.10.0-rc.18"
+# Harness resource loaders (M3b Task 3), pinned exact. `yaml-rust2` parses
+# SKILL.md / prompt-template frontmatter (upstream uses the npm `yaml`
+# package's `parse`); the `encoding` default feature is dropped because the
+# port only parses `&str`. `ignore` provides the in-memory gitignore-style
+# matcher for skill-directory ignore files (upstream uses the npm `ignore`
+# package's `ignore().add(...).ignores(...)`); only its `gitignore` module is
+# used, no directory walking. `regex` (already in the dependency tree) ports
+# the global-replace argument substitution for prompt templates.
+yaml-rust2 = { version = "=0.13.0", default-features = false }
+ignore = "=0.4.33"
+regex = "=1.13.1"
 
 [dev-dependencies]
 tempfile = "3.27.0"
