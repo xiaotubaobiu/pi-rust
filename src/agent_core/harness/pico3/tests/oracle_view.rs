@@ -476,6 +476,67 @@ async fn unstarted_watches_stop_at_capacity() {
     );
 }
 
+/// Round-1 review fix 2 (view half): upstream renders a stored or declared
+/// null config value into `ConversationView.config` (`view.ts:176-178`:
+/// `value !== undefined`); only absence is skipped.
+#[tokio::test]
+async fn view_config_includes_declared_nulls() {
+    let mut kinds = stub_kinds();
+    kinds.insert(
+        "pi.plugin".to_owned(),
+        std::sync::Arc::new(
+            crate::agent_core::harness::pico3::types::BasicKind::new("pi.plugin").config(
+                crate::agent_core::harness::pico3::types::KindConfig {
+                    rewindable: Default::default(),
+                    sticky: json!({ "note": null }).as_object().cloned().unwrap(),
+                },
+            ),
+        ),
+    );
+    let env = Env::open_memory_with_kinds(kinds).await.unwrap();
+    let manager = attach_view(&env);
+    let watch = watch_root(&manager, &env).await;
+    let config = json!(watch.view)["config"]
+        .as_object()
+        .cloned()
+        .expect("config object");
+    assert!(
+        config.contains_key("note"),
+        "a declared null config value renders (it is a value, not absence): {config:?}"
+    );
+    assert_eq!(config.get("note"), Some(&json!(null)));
+    watch.stop();
+}
+
+/// Round-1 review fix 5: stopping a watcher detaches it from its record, and
+/// the record is evicted when its last watcher stops (`view.ts:63-67`), so
+/// the manager does not accumulate records or deliver to dead watchers.
+#[tokio::test]
+async fn watchers_detach_and_records_evict_on_stop() {
+    let env = Env::open_memory().await.unwrap();
+    let manager = attach_view(&env);
+    let first = watch_root(&manager, &env).await;
+    let second = watch_root(&manager, &env).await;
+    assert_eq!(manager.watcher_counts(), vec![(1, 2)]);
+    first.stop();
+    assert_eq!(
+        manager.watcher_counts(),
+        vec![(1, 1)],
+        "the stopped watcher is detached"
+    );
+    second.stop();
+    assert!(
+        manager.watcher_counts().is_empty(),
+        "the record is evicted when its last watcher stops: {:?}",
+        manager.watcher_counts()
+    );
+    // A later watch rebuilds a fresh record.
+    let third = watch_root(&manager, &env).await;
+    assert_eq!(manager.watcher_counts(), vec![(1, 1)]);
+    third.stop();
+    assert!(manager.watcher_counts().is_empty());
+}
+
 /// `spec-view-events.test.ts` "a namespace projection failure closes its
 /// watches without failing the persisted writer" (`view.ts:243-259` +
 /// `update`'s record-drop path).

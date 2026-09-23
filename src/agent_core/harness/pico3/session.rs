@@ -1743,7 +1743,10 @@ impl Tx {
                     _ => &config.sticky,
                 }) {
                     for (key, fallback) in declared {
-                        if !value.contains_key(key) && !fallback.is_null() {
+                        // `fallback !== undefined` (`session.ts:518`): a
+                        // declared null is a value and IS applied; only
+                        // absence (the key not being declared) skips.
+                        if !value.contains_key(key) {
                             value.insert(key.clone(), plain(fallback));
                         }
                     }
@@ -1849,11 +1852,17 @@ impl Tx {
             }
             (registration.routes.clone(), registration.defaults.clone())
         };
+        // `invocationConversationId("plugins(ns)")` (`session.ts:570`):
+        // invokers with no bound conversation reject here, before any
+        // document is touched.
+        let conversation_id =
+            self.invocation_conversation_id(&format!("plugins({})", namespace.id))?;
         Ok(PluginsView {
             tx: self,
             namespace_id: namespace.id.clone(),
             routes,
             defaults,
+            conversation_id,
         })
     }
 
@@ -2312,37 +2321,37 @@ impl Tx {
                 .or_else(|| state.live_tasks.get(&task.id).cloned())
         };
         let mut patch = TaskPatch::new(task.id);
-        let same = |before: Option<Value>, after: Value| before == Some(after);
-        let value_of = |value: serde_json::Value| value;
-        if !same(
-            prev.as_ref().map(|p| value_of(serde_json::json!(p.status))),
-            value_of(serde_json::json!(task.status)),
-        ) {
+        // Upstream compares `JSON.stringify(prev?.[key]) ===
+        // JSON.stringify(task[key])` (`session.ts:771-775`): absent (None)
+        // and stored null (Some(Null)) are different values, and
+        // absent-vs-absent compares equal so the key is skipped entirely.
+        let prev_status = prev.as_ref().map(|p| json!(p.status));
+        let task_status = Some(json!(task.status));
+        if prev_status != task_status {
             patch.status = Some(task.status);
         }
-        if !same(
-            prev.as_ref()
-                .and_then(|p| p.checkpoint.as_ref())
-                .map(|c| value_of(json!(c))),
-            value_of(json!(task.checkpoint)),
-        ) {
+        let prev_checkpoint = prev
+            .as_ref()
+            .and_then(|p| p.checkpoint.as_ref())
+            .map(|c| json!(c));
+        let task_checkpoint = task.checkpoint.as_ref().map(|c| json!(c));
+        if prev_checkpoint != task_checkpoint {
             patch.checkpoint = Some(task.checkpoint.clone());
         }
         if prev.as_ref().and_then(|p| p.abort) != task.abort {
             patch.abort = task.abort;
         }
-        if !same(
-            prev.as_ref()
-                .and_then(|p| p.outcome.as_ref())
-                .map(|o| value_of(json!(o))),
-            value_of(json!(task.outcome)),
-        ) {
+        let prev_outcome = prev
+            .as_ref()
+            .and_then(|p| p.outcome.as_ref())
+            .map(|o| json!(o));
+        let task_outcome = task.outcome.as_ref().map(|o| json!(o));
+        if prev_outcome != task_outcome {
             patch.outcome = task.outcome.clone();
         }
-        if !same(
-            prev.as_ref().map(|p| value_of(json!(p.owns))),
-            value_of(json!(task.owns)),
-        ) {
+        let prev_owns = prev.as_ref().map(|p| json!(p.owns));
+        let task_owns = Some(json!(task.owns));
+        if prev_owns != task_owns {
             patch.owns = Some(task.owns.clone());
         }
         if task.status == TaskStatus::Terminal {
@@ -3380,6 +3389,7 @@ pub struct PluginsView<'tx> {
     namespace_id: String,
     routes: Vec<(String, String)>,
     defaults: super::types::NamespaceDefaultsValue,
+    conversation_id: Id,
 }
 
 impl PluginsView<'_> {
@@ -3400,7 +3410,7 @@ impl PluginsView<'_> {
         let routes = self.routes.clone();
         let namespace_id = self.namespace_id.clone();
         for (route_key, doc) in &routes {
-            let reference = DocRef::from_name(doc, self.tx.invoker.conversation_id().unwrap_or(0));
+            let reference = DocRef::from_name(doc, self.conversation_id);
             let default = match doc.as_str() {
                 "rewindable" => self.defaults.rewindable.get(route_key).cloned(),
                 "sticky" => self.defaults.sticky.get(route_key).cloned(),
@@ -3427,7 +3437,7 @@ impl PluginsView<'_> {
     pub fn get(&mut self, key: &str) -> anyhow::Result<Option<Value>> {
         self.materialize_all()?;
         let doc = self.route_doc(key)?;
-        let reference = DocRef::from_name(&doc, self.tx.invoker.conversation_id().unwrap_or(0));
+        let reference = DocRef::from_name(&doc, self.conversation_id);
         let state = self.tx.doc_state(reference)?;
         Ok(state
             .get("plugins")
@@ -3444,7 +3454,7 @@ impl PluginsView<'_> {
         let mut out = JsonObject::new();
         for key in &route_keys {
             let doc = self.route_doc(key)?;
-            let reference = DocRef::from_name(&doc, self.tx.invoker.conversation_id().unwrap_or(0));
+            let reference = DocRef::from_name(&doc, self.conversation_id);
             let state = self.tx.doc_state(reference)?;
             if let Some(value) = state
                 .get("plugins")
@@ -3462,7 +3472,7 @@ impl PluginsView<'_> {
     pub fn set(&mut self, key: &str, value: Value) -> anyhow::Result<()> {
         self.materialize_all()?;
         let doc = self.route_doc(key)?;
-        let reference = DocRef::from_name(&doc, self.tx.invoker.conversation_id().unwrap_or(0));
+        let reference = DocRef::from_name(&doc, self.conversation_id);
         let namespace_id = self.namespace_id.clone();
         let key = key.to_owned();
         self.tx.with_doc(reference, move |state| {

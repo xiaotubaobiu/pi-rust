@@ -754,11 +754,16 @@ fn truncate_torn_tail(file: &Path) -> anyhow::Result<()> {
     }
     let mut buf = Vec::new();
     fd.read_to_end(&mut buf)?;
-    if let Some(end) = buf.iter().rposition(|byte| *byte == 0x0a) {
-        if end + 1 != buf.len() {
-            fd.seek(SeekFrom::Start(0))?;
-            fd.set_len((end + 1) as u64)?;
-        }
+    // `lastIndexOf` returns -1 when the file has no newline at all, so
+    // `end + 1` is 0 and the whole file is a torn record: cut it
+    // (`jsonl.ts:337-338`).
+    let keep = buf
+        .iter()
+        .rposition(|byte| *byte == 0x0a)
+        .map_or(0, |end| end + 1);
+    if keep != buf.len() {
+        fd.seek(SeekFrom::Start(0))?;
+        fd.set_len(keep as u64)?;
     }
     Ok(())
 }

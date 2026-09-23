@@ -256,8 +256,10 @@ impl Completion {
     }
 }
 
-/// Upstream `Task["status"]` (`types.ts:131`).
+/// Upstream `Task["status"]` (`types.ts:131`). The wire literals are
+/// lowercase (`"pending"` / `"running"` / `"terminal"`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum TaskStatus {
     Pending,
     Running,

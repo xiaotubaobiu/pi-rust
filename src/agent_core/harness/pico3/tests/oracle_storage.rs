@@ -14,7 +14,7 @@ use crate::agent_core::harness::pico3::types::{
 };
 
 use futures::FutureExt;
-use serde_json::json;
+use serde_json::{json, Value};
 
 fn conversation(id: i64) -> Write {
     Write::Conversation {
@@ -424,6 +424,51 @@ async fn torn_tails_are_truncated_on_open() {
     let content = std::fs::read_to_string(dir.join("main.jsonl")).unwrap();
     for line in content.lines() {
         serde_json::from_str::<serde_json::Value>(line)
+            .unwrap_or_else(|error| panic!("every line is a complete record: {error} in {line}"));
+    }
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+/// Round-1 review fix 3: a file whose entire content is a torn record (no
+/// newline at all) truncates to zero on open (`jsonl.ts:337-338`:
+/// `lastIndexOf` -1 -> cut to 0), so a later append cannot extend the
+/// garbage line.
+#[tokio::test]
+async fn newline_less_torn_file_truncates_to_zero() {
+    let env = Env::open_jsonl().await.unwrap();
+    let dir = env.dir.clone().unwrap();
+    env.crash().await.unwrap();
+    std::fs::write(dir.join("main.jsonl"), b"{\"seq\":99,\"maxId\":9,\"wri").unwrap();
+    let reopened = JsonlStorage::open(&dir, false).await.unwrap();
+    assert_eq!(
+        std::fs::metadata(dir.join("main.jsonl")).unwrap().len(),
+        0,
+        "the newline-less torn record is cut to zero"
+    );
+    reopened.close(ctx()).await.unwrap();
+
+    // The emptied directory replays clean and a later append writes a
+    // complete line.
+    let env2 = Env::reopen_jsonl(dir.clone()).await.unwrap();
+    let _ = env2
+        .commit_host(|tx, _ctx| {
+            async move {
+                tx.write(
+                    1,
+                    crate::agent_core::harness::pico3::types::NewEntry::new("note"),
+                )
+                .await?;
+                Ok(())
+            }
+            .boxed()
+        })
+        .await
+        .unwrap();
+    drop(env2);
+    let content = std::fs::read_to_string(dir.join("main.jsonl")).unwrap();
+    assert!(!content.is_empty());
+    for line in content.lines() {
+        serde_json::from_str::<Value>(line)
             .unwrap_or_else(|error| panic!("every line is a complete record: {error} in {line}"));
     }
     let _ = std::fs::remove_dir_all(dir);

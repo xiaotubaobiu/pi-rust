@@ -53,6 +53,10 @@ pub struct Watch {
     /// The revision at watch creation (`view.ts:280-285`).
     pub revision: i64,
     on_report: Arc<dyn Fn(&anyhow::Error) + Send + Sync>,
+    /// Upstream's `onStop` closure (`view.ts:63-67`): detaches the watcher
+    /// from its record and evicts the record when the last watcher stops.
+    /// Run once, from [`Watch::stop`].
+    on_stop: Mutex<Option<Box<dyn Fn() + Send + Sync>>>,
 }
 
 /// A delivered-envelope listener (`view.ts:35`).
@@ -85,15 +89,23 @@ impl Watch {
     }
 
     /// Upstream `stop` (`view.ts:296-301`): idempotent; a hard no-callback
-    /// boundary.
+    /// boundary. Stopping also detaches the watcher from its manager record
+    /// and evicts the record when the last watcher stopped
+    /// (`view.ts:63-67`).
     pub fn stop(&self) {
-        let mut state = state_lock(&self.state);
-        if state.stopped {
-            return;
+        let on_stop = {
+            let mut state = state_lock(&self.state);
+            if state.stopped {
+                return;
+            }
+            state.stopped = true;
+            state.buffer.clear();
+            state.listener = None;
+            self.on_stop.lock().expect("on stop").take()
+        };
+        if let Some(on_stop) = on_stop {
+            on_stop();
         }
-        state.stopped = true;
-        state.buffer.clear();
-        state.listener = None;
     }
 
     /// Upstream `get closed` (`view.ts:283-285`).
@@ -171,9 +183,21 @@ struct ViewRecord {
 
 /// Upstream `ViewManager` (`view.ts:44-260`).
 pub struct ViewManager {
+    inner: Arc<ManagerInner>,
+}
+
+struct ManagerInner {
     records: Mutex<HashMap<Id, ViewRecord>>,
     deliveries: Mutex<Vec<(Envelope, Vec<Arc<Watch>>)>>,
     session: Arc<Session>,
+}
+
+impl Clone for ViewManager {
+    fn clone(&self) -> ViewManager {
+        ViewManager {
+            inner: self.inner.clone(),
+        }
+    }
 }
 
 impl ViewManager {
@@ -181,10 +205,17 @@ impl ViewManager {
     /// listener failures report through the session's `onReport`.
     pub fn new(session: Arc<Session>) -> Arc<ViewManager> {
         Arc::new(ViewManager {
-            records: Mutex::new(HashMap::new()),
-            deliveries: Mutex::new(Vec::new()),
-            session,
+            inner: Arc::new(ManagerInner {
+                records: Mutex::new(HashMap::new()),
+                deliveries: Mutex::new(Vec::new()),
+                session,
+            }),
         })
+    }
+
+    /// An owned handle for the onStop closure (`view.ts:63-67`).
+    fn self_clone(&self) -> ViewManager {
+        self.clone()
     }
 
     /// Upstream `watch` (`view.ts:55-70`): build or reuse the conversation
@@ -194,7 +225,7 @@ impl ViewManager {
         conversation: &Conversation,
         entries: Vec<Entry>,
     ) -> anyhow::Result<Arc<Watch>> {
-        let mut records = self.records.lock().expect("view records");
+        let mut records = self.inner.records.lock().expect("view records");
         let record = match records.get_mut(&conversation.id) {
             Some(record) => record,
             None => {
@@ -214,7 +245,7 @@ impl ViewManager {
             }
         };
         let snapshot: ConversationView = serde_json::from_value(record.tracker.state().clone())?;
-        let session = self.session.clone();
+        let session = self.inner.session.clone();
         let watch = Arc::new(Watch {
             state: Arc::new(Mutex::new(WatchState {
                 listener: None,
@@ -228,50 +259,102 @@ impl ViewManager {
                     session.report_public(error);
                 }));
             }),
+            on_stop: Mutex::new(None),
         });
-        let weak = Arc::downgrade(&watch);
         record.watchers.push(watch.clone());
-        let _ = weak;
+        // Upstream's onStop closure (`view.ts:63-67`): on stop, remove this
+        // watcher from the record; when the record's last watcher is gone,
+        // drop the record so a later watch rebuilds fresh.
+        let manager = self.self_clone();
+        let weak = Arc::downgrade(&watch);
+        let conversation_id = conversation.id;
+        *watch.on_stop.lock().expect("on stop") = Some(Box::new(move || {
+            if let Some(watch) = weak.upgrade() {
+                manager.detach_watcher(conversation_id, &watch);
+            }
+        }));
         Ok(watch)
     }
 
     /// Runs on the Session line after persistence and in-memory indexes
     /// update (`view.ts:72-133`).
     pub fn update(&self, result: &CommitRecord) {
-        let mut records = self.records.lock().expect("view records");
-        let conversation_ids: Vec<Id> = records.keys().copied().collect();
-        for conversation_id in conversation_ids {
-            let conversation = match self.session.conversation_records().get(&conversation_id) {
-                Some(conversation) => conversation.clone(),
-                None => continue,
-            };
-            let outcome = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                self.update_record(&mut records, conversation_id, &conversation, result)
-            }));
-            match outcome {
-                Ok(Ok(())) => {}
-                Ok(Err(error)) => {
-                    // The record's watchers fail and the record is dropped
-                    // (`view.ts:128-131`).
-                    if let Some(record) = records.remove(&conversation_id) {
-                        for watcher in &record.watchers {
-                            watcher.fail();
+        // (watcher, report) pairs: watcher stops re-enter the manager, so
+        // they run after the records lock is released.
+        let mut failed: Vec<(Arc<Watch>, Option<String>)> = Vec::new();
+        {
+            let mut records = self.inner.records.lock().expect("view records");
+            let conversation_ids: Vec<Id> = records.keys().copied().collect();
+            for conversation_id in conversation_ids {
+                let conversation = match self
+                    .inner
+                    .session
+                    .conversation_records()
+                    .get(&conversation_id)
+                {
+                    Some(conversation) => conversation.clone(),
+                    None => continue,
+                };
+                let outcome = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                    self.update_record(&mut records, conversation_id, &conversation, result)
+                }));
+                match outcome {
+                    Ok(Ok(())) => {}
+                    Ok(Err(error)) => {
+                        // The record's watchers fail and the record is
+                        // dropped (`view.ts:128-131`).
+                        if let Some(record) = records.remove(&conversation_id) {
+                            failed.extend(
+                                record
+                                    .watchers
+                                    .into_iter()
+                                    .map(|watcher| (watcher, Some(format!("{error}")))),
+                            );
                         }
                     }
-                    self.report_error(error);
-                }
-                Err(payload) => {
-                    if let Some(record) = records.remove(&conversation_id) {
-                        for watcher in &record.watchers {
-                            watcher.fail();
+                    Err(payload) => {
+                        if let Some(record) = records.remove(&conversation_id) {
+                            failed.extend(record.watchers.into_iter().map(|watcher| {
+                                (watcher, Some(format!("view update panicked: {payload:?}")))
+                            }));
                         }
                     }
-                    self.report_error(anyhow::Error::msg(format!(
-                        "view update panicked: {payload:?}"
-                    )));
                 }
             }
         }
+        for (watcher, report) in failed {
+            watcher.fail();
+            if let Some(report) = report {
+                self.report_error(anyhow::Error::msg(report));
+            }
+        }
+    }
+
+    /// Upstream's onStop body (`view.ts:63-67`): remove the watcher from its
+    /// record; evict the record when its last watcher stopped.
+    fn detach_watcher(&self, conversation_id: Id, watcher: &Arc<Watch>) {
+        let mut records = self.inner.records.lock().expect("view records");
+        let Some(record) = records.get_mut(&conversation_id) else {
+            return;
+        };
+        record
+            .watchers
+            .retain(|existing| !Arc::ptr_eq(existing, watcher));
+        if record.watchers.is_empty() {
+            records.remove(&conversation_id);
+        }
+    }
+
+    /// Test visibility: live watcher counts per conversation record.
+    #[cfg(test)]
+    pub(crate) fn watcher_counts(&self) -> Vec<(Id, usize)> {
+        self.inner
+            .records
+            .lock()
+            .expect("view records")
+            .iter()
+            .map(|(id, record)| (*id, record.watchers.len()))
+            .collect()
     }
 
     fn update_record(
@@ -439,7 +522,8 @@ impl ViewManager {
         };
         let watchers = record.watchers.clone();
         let _ = conversation;
-        self.deliveries
+        self.inner
+            .deliveries
             .lock()
             .expect("deliveries")
             .push((envelope, watchers));
@@ -450,6 +534,7 @@ impl ViewManager {
     /// (`view.ts:135-140`).
     pub fn deliver(&self) {
         let deliveries: Vec<(Envelope, Vec<Arc<Watch>>)> = self
+            .inner
             .deliveries
             .lock()
             .expect("deliveries")
@@ -464,13 +549,19 @@ impl ViewManager {
 
     /// Upstream `close` (`view.ts:142-147`).
     pub fn close(&self) {
-        let mut records = self.records.lock().expect("view records");
-        let drained: Vec<ViewRecord> = records.drain().map(|(_, record)| record).collect();
-        self.deliveries.lock().expect("deliveries").clear();
-        for record in drained {
-            for watcher in record.watchers {
-                watcher.stop();
-            }
+        let watchers: Vec<Arc<Watch>> = {
+            let mut records = self.inner.records.lock().expect("view records");
+            let watchers: Vec<Arc<Watch>> = records
+                .drain()
+                .flat_map(|(_, record)| record.watchers)
+                .collect();
+            self.inner.deliveries.lock().expect("deliveries").clear();
+            watchers
+        };
+        // Watcher stops re-enter detach_watcher, so the records lock must
+        // be released first.
+        for watcher in watchers {
+            watcher.stop();
         }
     }
 
@@ -511,7 +602,7 @@ impl ViewManager {
     /// Upstream `document` (`view.ts:166-170`): a loaded document from the
     /// session cache.
     fn document_json(&self, reference: &super::types::DocRef) -> anyhow::Result<JsonObject> {
-        match self.session.loaded_document(reference) {
+        match self.inner.session.loaded_document(reference) {
             Some(document) => Ok(document),
             None => anyhow::bail!("view document {} is not loaded", doc_label(reference)),
         }
@@ -520,7 +611,7 @@ impl ViewManager {
     /// Upstream `config` (`view.ts:172-180`): every declared key's effective
     /// value across both documents.
     fn config(&self, rewindable: &JsonObject, sticky: &JsonObject) -> anyhow::Result<JsonObject> {
-        let defaults = self.session.defaults();
+        let defaults = self.inner.session.defaults();
         let mut out = JsonObject::new();
         for (key, doc) in &defaults.route {
             let source = if doc == "rewindable" {
@@ -533,10 +624,10 @@ impl ViewManager {
             } else {
                 defaults.sticky.get(key)
             };
+            // `value !== undefined` (`view.ts:178`): a stored or declared
+            // null is a value and renders; only absence is skipped.
             if let Some(value) = source.get(key).or(fallback) {
-                if !value.is_null() {
-                    out.insert(key.clone(), value.clone());
-                }
+                out.insert(key.clone(), value.clone());
             }
         }
         Ok(out)
@@ -544,7 +635,7 @@ impl ViewManager {
 
     /// Upstream `turn` (`view.ts:182-199`).
     fn turn(&self, conversation_id: Id, sticky: &JsonObject) -> anyhow::Result<Option<TurnView>> {
-        let live_tasks = self.session.live_tasks();
+        let live_tasks = self.inner.session.live_tasks();
         let mut live: Vec<&Task> = live_tasks
             .values()
             .filter(|task| task.conversation_id == conversation_id)
@@ -554,7 +645,8 @@ impl ViewManager {
             .iter()
             .copied()
             .filter(|task| {
-                self.session
+                self.inner
+                    .session
                     .kinds()
                     .get(&task.kind)
                     .map(|kind| kind.turn())
@@ -603,7 +695,7 @@ impl ViewManager {
 
     /// Upstream `compaction` (`view.ts:201-219`).
     fn compaction(&self, conversation_id: Id) -> Option<super::types::CompactionView> {
-        let live_tasks = self.session.live_tasks();
+        let live_tasks = self.inner.session.live_tasks();
         let mut live: Vec<&Task> = live_tasks
             .values()
             .filter(|task| task.conversation_id == conversation_id && task.kind == "pi.collapse")
@@ -650,14 +742,14 @@ impl ViewManager {
         sticky: &JsonObject,
     ) -> anyhow::Result<HashMap<String, super::types::TaskViewSummary>> {
         let mut out = HashMap::new();
-        let live_tasks = self.session.live_tasks();
+        let live_tasks = self.inner.session.live_tasks();
         let mut live: Vec<&Task> = live_tasks
             .values()
             .filter(|task| task.conversation_id == conversation_id)
             .collect();
         live.sort_by_key(|task| task.id);
         for task in live {
-            let Some(kind) = self.session.kinds().get(&task.kind) else {
+            let Some(kind) = self.inner.session.kinds().get(&task.kind) else {
                 continue;
             };
             if kind.turn() || task.kind == "pi.collapse" {
@@ -696,7 +788,7 @@ impl ViewManager {
         session: &JsonObject,
     ) -> anyhow::Result<JsonObject> {
         let mut out = JsonObject::new();
-        let namespaces = self.session.namespaces().read().expect("namespaces");
+        let namespaces = self.inner.session.namespaces().read().expect("namespaces");
         for (id, registration) in namespaces.iter() {
             let Some(project) = &registration.project else {
                 continue;
@@ -743,7 +835,7 @@ impl ViewManager {
     fn report_error(&self, error: anyhow::Error) {
         // `onReport` failures are swallowed (`view.ts:330-334`).
         let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            self.session.report_public(&error);
+            self.inner.session.report_public(&error);
         }));
     }
 }

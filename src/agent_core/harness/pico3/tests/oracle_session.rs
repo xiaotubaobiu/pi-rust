@@ -8,7 +8,7 @@ use crate::agent_core::harness::pico3::memory::MemoryStorage;
 use crate::agent_core::harness::pico3::session::Resolution;
 use crate::agent_core::harness::pico3::tests::support::*;
 use crate::agent_core::harness::pico3::types::{
-    InvocationToken, Invoker, NewEntry, ReadAfterWrite, SendInput, UserInput,
+    InvocationMode, InvocationToken, Invoker, NewEntry, ReadAfterWrite, SendInput, UserInput,
 };
 
 use futures::FutureExt;
@@ -1612,6 +1612,168 @@ async fn forged_core_metadata_confers_nothing() {
         .unwrap()
         .iter()
         .any(|entry| entry.kind == "core.entry"));
+}
+
+/// Round-1 review fix 1: `setTask`'s patch diff compares absent (None)
+/// against stored null separately (`session.ts:771-775` compares
+/// `JSON.stringify(prev?.[key]) === JSON.stringify(task[key])`), so a
+/// non-terminal patch on a task without checkpoint/outcome carries neither
+/// key on the wire, and an identical setTask writes nothing (the patch is
+/// empty) — so a same-transaction `tasks()` scan does not poison.
+#[tokio::test]
+async fn set_task_patches_only_changed_fields() {
+    let env = Env::open_jsonl().await.unwrap();
+    let dir = env.dir.clone().unwrap();
+    let (task_id, _token) = env.create_background_task().await.unwrap();
+    env.commit_kernel(move |tx, _ctx| {
+        async move {
+            let mut task = tx.task(task_id).await?.expect("task");
+            task.status = crate::agent_core::harness::pico3::types::TaskStatus::Running;
+            tx.set_task(task)?;
+            Ok(())
+        }
+        .boxed()
+    })
+    .await
+    .unwrap();
+    // Non-terminal patches live in the task sidecar (`jsonl.ts:209-215`).
+    let sidecar = std::fs::read_to_string(dir.join(format!("task-{task_id}.jsonl"))).unwrap();
+    let patch_line = sidecar
+        .lines()
+        .rev()
+        .find(|line| line.contains("\"task.patch\""))
+        .expect("the running patch persisted");
+    let record: Value = serde_json::from_str(patch_line).unwrap();
+    let patch = &record["writes"][0]["patch"];
+    assert_eq!(patch["status"], json!("running"));
+    assert!(
+        patch.get("checkpoint").is_none(),
+        "absent checkpoint stays absent on the wire: {patch}"
+    );
+    assert!(
+        patch.get("outcome").is_none(),
+        "absent outcome stays absent on the wire: {patch}"
+    );
+    assert!(
+        patch.get("abort").is_none(),
+        "absent abort stays absent on the wire: {patch}"
+    );
+
+    // An identical setTask produces an empty patch: no write, no seq, and a
+    // same-transaction `tasks()` scan does not reject as ReadAfterWrite.
+    let main_before = std::fs::read_to_string(dir.join("main.jsonl")).unwrap();
+    let result = env
+        .commit_kernel(move |tx, _ctx| {
+            async move {
+                let before = tx.tasks(&Default::default()).await?;
+                let task = tx.task(task_id).await?.expect("task");
+                tx.set_task(task)?;
+                let after = tx.tasks(&Default::default()).await?;
+                Ok((before.len(), after.len()))
+            }
+            .boxed()
+        })
+        .await
+        .unwrap();
+    assert_eq!(result.seq, None, "an identical setTask persists nothing");
+    assert_eq!(result.value.0, result.value.1);
+    let main_after = std::fs::read_to_string(dir.join("main.jsonl")).unwrap();
+    assert_eq!(main_before, main_after, "no new main records");
+}
+
+/// Round-1 review fix 2 (snapshot half): upstream applies a kind-declared
+/// fallback when `fallback !== undefined` (`session.ts:515-519`) — a
+/// declared null IS applied to a document missing the key.
+#[tokio::test]
+async fn snapshot_applies_declared_null_fallbacks() {
+    let mut kinds = stub_kinds();
+    // The declaring kind is deliberately NOT the session-registered token:
+    // the fallback path applies a task's own declaration even when the key
+    // never reached the session defaults (nothing seeds it).
+    let late_kind: std::sync::Arc<dyn crate::agent_core::harness::pico3::types::AnyKind> =
+        std::sync::Arc::new(
+            crate::agent_core::harness::pico3::types::BasicKind::new("late.declared").config(
+                crate::agent_core::harness::pico3::types::KindConfig {
+                    rewindable: Default::default(),
+                    sticky: json!({ "w": null }).as_object().cloned().unwrap(),
+                },
+            ),
+        );
+    kinds.insert(
+        "pi.plugin".to_owned(),
+        std::sync::Arc::new(crate::agent_core::harness::pico3::types::BasicKind::new(
+            "pi.plugin",
+        )),
+    );
+    let env = Env::open_memory_with_kinds(kinds).await.unwrap();
+    let (task_id, token) = env.create_background_task().await.unwrap();
+    let observed = env
+        .session
+        .commit(
+            Invoker::Task {
+                token,
+                id: task_id,
+                conversation_id: 1,
+                kind: late_kind,
+                core: false,
+                mode: InvocationMode::Run,
+            },
+            ctx(),
+            crate::agent_core::harness::pico3::session::CommitOptions {
+                docs: vec![crate::agent_core::harness::pico3::types::DocRef::Sticky {
+                    conversation_id: 1,
+                }],
+                closing: false,
+            },
+            |tx, _ctx| {
+                async move {
+                    let snapshot =
+                        tx.snapshot(crate::agent_core::harness::pico3::types::DocRef::Sticky {
+                            conversation_id: 1,
+                        })?;
+                    Ok((
+                        snapshot.get("w").cloned(),
+                        snapshot.get("undeclared").cloned(),
+                    ))
+                }
+                .boxed()
+            },
+        )
+        .await
+        .unwrap()
+        .value;
+    assert_eq!(
+        observed.0,
+        Some(json!(null)),
+        "a declared null fallback IS applied; it is not treated as absence"
+    );
+    assert_eq!(observed.1, None, "a key no kind declares stays absent");
+}
+
+/// Round-1 review fix 4: constructing the namespace view runs the upstream
+/// authority check (`session.ts:570`,
+/// `invocationConversationId("plugins(ns)")`) — an invoker with no bound
+/// conversation is Forbidden, not a missing-document error.
+#[tokio::test]
+async fn plugins_view_requires_a_bound_conversation() {
+    let env = Env::open_memory().await.unwrap();
+    let namespace = env.namespace(ns("test.unbound", json!({}), json!({ "s": 0 })));
+    let error = env
+        .commit_kernel(move |tx, _ctx| {
+            let namespace = namespace.clone();
+            async move {
+                tx.plugins(&namespace)?;
+                Ok(())
+            }
+            .boxed()
+        })
+        .await
+        .unwrap_err();
+    assert_named(&error, "Forbidden");
+    assert!(
+        format!("{error}").contains("no conversation is bound"),
+        "{error}"
+    );
 }
 
 /// `reads.test.ts` "ordinary tasks can directly read entries inherited by
