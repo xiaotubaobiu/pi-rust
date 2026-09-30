@@ -529,6 +529,7 @@ mod tests {
     /// The oracle was captured with HOME=C:\Users\13063 and cwd =
     /// scratch/utils_oracle; entries pinned to those substitute the live
     /// values so the grid stays machine-independent.
+    #[cfg(windows)] // only the win32-host resolve grid consumes it
     fn adjust_oracle_value(expected: &str) -> String {
         let captured_cwd =
             "C:\\Users\\13063\\Desktop\\code\\agent work\\pi-rust\\scratch\\utils_oracle";

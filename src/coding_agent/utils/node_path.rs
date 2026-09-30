@@ -1021,6 +1021,7 @@ mod tests {
         }
     }
 
+    #[cfg(windows)] // only the win32 grids resolve against the live cwd
     fn cwd() -> String {
         current_dir_string()
     }
@@ -1071,6 +1072,7 @@ mod tests {
     /// resolution surface the root with its trailing separator while the
     /// capture (a non-root cwd) stored none; drop trailing separators on both
     /// comparison sides.
+    #[cfg(windows)] // only the win32 grids compare resolved absolute paths
     fn strip_trailing_separator(value: &str, windows: bool) -> &str {
         let separator = if windows { '\\' } else { '/' };
         value.strip_suffix(separator).unwrap_or(value)
@@ -1085,6 +1087,7 @@ mod tests {
     /// the live drive differs from the synthetic letter, as on any real
     /// runner: only then does node's per-device fallback land on the device
     /// root like the capture.)
+    #[cfg(windows)] // only the win32 grids retarget capture-drive inputs
     fn retarget_args(args: &[&str], expected: &str) -> Vec<String> {
         let marker = expected.starts_with("!REL")
             || expected.starts_with("!CWD")
