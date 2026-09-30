@@ -1,0 +1,3467 @@
+{
+ "platform": "darwin",
+ "wslDistro": "",
+ "wslInterop": "",
+ "detected": false,
+ "keybinding_ids": [
+  "tui.editor.cursorUp",
+  "tui.editor.cursorDown",
+  "tui.editor.historyPrevious",
+  "tui.editor.historyNext",
+  "tui.editor.cursorLeft",
+  "tui.editor.cursorRight",
+  "tui.editor.cursorWordLeft",
+  "tui.editor.cursorWordRight",
+  "tui.editor.cursorLineStart",
+  "tui.editor.cursorLineEnd",
+  "tui.editor.jumpForward",
+  "tui.editor.jumpBackward",
+  "tui.editor.pageUp",
+  "tui.editor.pageDown",
+  "tui.editor.deleteCharBackward",
+  "tui.editor.deleteCharForward",
+  "tui.editor.deleteWordBackward",
+  "tui.editor.deleteWordForward",
+  "tui.editor.deleteToLineStart",
+  "tui.editor.deleteToLineEnd",
+  "tui.editor.yank",
+  "tui.editor.yankPop",
+  "tui.editor.undo",
+  "tui.input.newLine",
+  "tui.input.submit",
+  "tui.input.tab",
+  "tui.input.copy",
+  "tui.select.up",
+  "tui.select.down",
+  "tui.select.pageUp",
+  "tui.select.pageDown",
+  "tui.select.confirm",
+  "tui.select.cancel",
+  "tui.altScreen.pageUp",
+  "tui.altScreen.pageDown",
+  "tui.altScreen.halfPageUp",
+  "tui.altScreen.halfPageDown",
+  "tui.altScreen.lineUp",
+  "tui.altScreen.lineDown",
+  "tui.altScreen.previousPrompt",
+  "tui.altScreen.nextPrompt",
+  "tui.altScreen.search",
+  "tui.altScreen.searchNext",
+  "tui.altScreen.searchPrevious",
+  "tui.altScreen.searchClose",
+  "tui.altScreen.top",
+  "tui.altScreen.bottom",
+  "app.interrupt",
+  "app.clear",
+  "app.exit",
+  "app.suspend",
+  "app.thinking.cycle",
+  "app.thinking.save",
+  "app.model.cycleForward",
+  "app.model.cycleBackward",
+  "app.model.select",
+  "app.tools.expand",
+  "app.thinking.toggle",
+  "app.session.toggleNamedFilter",
+  "app.editor.external",
+  "app.message.copy",
+  "app.message.followUp",
+  "app.message.dequeue",
+  "app.clipboard.pasteImage",
+  "app.session.new",
+  "app.session.tree",
+  "app.session.fork",
+  "app.session.resume",
+  "app.tree.foldOrUp",
+  "app.tree.unfoldOrDown",
+  "app.tree.editLabel",
+  "app.tree.toggleLabelTimestamp",
+  "app.session.togglePath",
+  "app.session.toggleSort",
+  "app.session.rename",
+  "app.session.delete",
+  "app.session.deleteNoninvasive",
+  "app.models.save",
+  "app.models.enableAll",
+  "app.models.clearAll",
+  "app.models.toggleProvider",
+  "app.models.reorderUp",
+  "app.models.reorderDown",
+  "app.tree.filter.default",
+  "app.tree.filter.noTools",
+  "app.tree.filter.userOnly",
+  "app.tree.filter.labeledOnly",
+  "app.tree.filter.all",
+  "app.tree.filter.cycleForward",
+  "app.tree.filter.cycleBackward"
+ ],
+ "keybindings": [
+  {
+   "id": "tui.editor.cursorUp",
+   "defaultKeys": "up",
+   "description": "Move cursor up"
+  },
+  {
+   "id": "tui.editor.cursorDown",
+   "defaultKeys": "down",
+   "description": "Move cursor down"
+  },
+  {
+   "id": "tui.editor.historyPrevious",
+   "defaultKeys": [],
+   "description": "Select previous prompt history entry"
+  },
+  {
+   "id": "tui.editor.historyNext",
+   "defaultKeys": [],
+   "description": "Select next prompt history entry"
+  },
+  {
+   "id": "tui.editor.cursorLeft",
+   "defaultKeys": [
+    "left",
+    "ctrl+b"
+   ],
+   "description": "Move cursor left"
+  },
+  {
+   "id": "tui.editor.cursorRight",
+   "defaultKeys": [
+    "right",
+    "ctrl+f"
+   ],
+   "description": "Move cursor right"
+  },
+  {
+   "id": "tui.editor.cursorWordLeft",
+   "defaultKeys": [
+    "alt+left",
+    "ctrl+left",
+    "alt+b"
+   ],
+   "description": "Move cursor word left"
+  },
+  {
+   "id": "tui.editor.cursorWordRight",
+   "defaultKeys": [
+    "alt+right",
+    "ctrl+right",
+    "alt+f"
+   ],
+   "description": "Move cursor word right"
+  },
+  {
+   "id": "tui.editor.cursorLineStart",
+   "defaultKeys": [
+    "home",
+    "ctrl+home",
+    "ctrl+a"
+   ],
+   "description": "Move to line start"
+  },
+  {
+   "id": "tui.editor.cursorLineEnd",
+   "defaultKeys": [
+    "end",
+    "ctrl+end",
+    "ctrl+e"
+   ],
+   "description": "Move to line end"
+  },
+  {
+   "id": "tui.editor.jumpForward",
+   "defaultKeys": "ctrl+]",
+   "description": "Jump forward to character"
+  },
+  {
+   "id": "tui.editor.jumpBackward",
+   "defaultKeys": "ctrl+alt+]",
+   "description": "Jump backward to character"
+  },
+  {
+   "id": "tui.editor.pageUp",
+   "defaultKeys": [
+    "pageUp",
+    "ctrl+pageUp"
+   ],
+   "description": "Page up"
+  },
+  {
+   "id": "tui.editor.pageDown",
+   "defaultKeys": [
+    "pageDown",
+    "ctrl+pageDown"
+   ],
+   "description": "Page down"
+  },
+  {
+   "id": "tui.editor.deleteCharBackward",
+   "defaultKeys": "backspace",
+   "description": "Delete character backward"
+  },
+  {
+   "id": "tui.editor.deleteCharForward",
+   "defaultKeys": [
+    "delete",
+    "ctrl+d"
+   ],
+   "description": "Delete character forward"
+  },
+  {
+   "id": "tui.editor.deleteWordBackward",
+   "defaultKeys": [
+    "ctrl+w",
+    "alt+backspace"
+   ],
+   "description": "Delete word backward"
+  },
+  {
+   "id": "tui.editor.deleteWordForward",
+   "defaultKeys": [
+    "alt+d",
+    "alt+delete"
+   ],
+   "description": "Delete word forward"
+  },
+  {
+   "id": "tui.editor.deleteToLineStart",
+   "defaultKeys": "ctrl+u",
+   "description": "Delete to line start"
+  },
+  {
+   "id": "tui.editor.deleteToLineEnd",
+   "defaultKeys": "ctrl+k",
+   "description": "Delete to line end"
+  },
+  {
+   "id": "tui.editor.yank",
+   "defaultKeys": "ctrl+y",
+   "description": "Yank"
+  },
+  {
+   "id": "tui.editor.yankPop",
+   "defaultKeys": "alt+y",
+   "description": "Yank pop"
+  },
+  {
+   "id": "tui.editor.undo",
+   "defaultKeys": "ctrl+-",
+   "description": "Undo"
+  },
+  {
+   "id": "tui.input.newLine",
+   "defaultKeys": [
+    "shift+enter",
+    "ctrl+j"
+   ],
+   "description": "Insert newline"
+  },
+  {
+   "id": "tui.input.submit",
+   "defaultKeys": "enter",
+   "description": "Submit input"
+  },
+  {
+   "id": "tui.input.tab",
+   "defaultKeys": "tab",
+   "description": "Tab / autocomplete"
+  },
+  {
+   "id": "tui.input.copy",
+   "defaultKeys": "ctrl+c",
+   "description": "Copy selection"
+  },
+  {
+   "id": "tui.select.up",
+   "defaultKeys": "up",
+   "description": "Move selection up"
+  },
+  {
+   "id": "tui.select.down",
+   "defaultKeys": "down",
+   "description": "Move selection down"
+  },
+  {
+   "id": "tui.select.pageUp",
+   "defaultKeys": "pageUp",
+   "description": "Selection page up"
+  },
+  {
+   "id": "tui.select.pageDown",
+   "defaultKeys": "pageDown",
+   "description": "Selection page down"
+  },
+  {
+   "id": "tui.select.confirm",
+   "defaultKeys": "enter",
+   "description": "Confirm selection"
+  },
+  {
+   "id": "tui.select.cancel",
+   "defaultKeys": [
+    "escape",
+    "ctrl+c"
+   ],
+   "description": "Cancel selection"
+  },
+  {
+   "id": "tui.altScreen.pageUp",
+   "defaultKeys": "pageUp",
+   "description": "Scroll viewport up one page"
+  },
+  {
+   "id": "tui.altScreen.pageDown",
+   "defaultKeys": "pageDown",
+   "description": "Scroll viewport down one page"
+  },
+  {
+   "id": "tui.altScreen.halfPageUp",
+   "defaultKeys": [],
+   "description": "Scroll viewport up half a page"
+  },
+  {
+   "id": "tui.altScreen.halfPageDown",
+   "defaultKeys": [],
+   "description": "Scroll viewport down half a page"
+  },
+  {
+   "id": "tui.altScreen.lineUp",
+   "defaultKeys": [],
+   "description": "Scroll viewport up one line"
+  },
+  {
+   "id": "tui.altScreen.lineDown",
+   "defaultKeys": [],
+   "description": "Scroll viewport down one line"
+  },
+  {
+   "id": "tui.altScreen.previousPrompt",
+   "defaultKeys": [
+    "ctrl+shift+up",
+    "ctrl+up"
+   ],
+   "description": "Jump to previous semantic prompt"
+  },
+  {
+   "id": "tui.altScreen.nextPrompt",
+   "defaultKeys": [
+    "ctrl+shift+down",
+    "ctrl+down"
+   ],
+   "description": "Jump to next semantic prompt"
+  },
+  {
+   "id": "tui.altScreen.search",
+   "defaultKeys": "ctrl+shift+f",
+   "description": "Search the primary scroll view"
+  },
+  {
+   "id": "tui.altScreen.searchNext",
+   "defaultKeys": [
+    "enter",
+    "ctrl+g"
+   ],
+   "description": "Select the next search match"
+  },
+  {
+   "id": "tui.altScreen.searchPrevious",
+   "defaultKeys": [
+    "shift+enter",
+    "ctrl+shift+g"
+   ],
+   "description": "Select the previous search match"
+  },
+  {
+   "id": "tui.altScreen.searchClose",
+   "defaultKeys": "escape",
+   "description": "Close transcript search"
+  },
+  {
+   "id": "tui.altScreen.top",
+   "defaultKeys": "home",
+   "description": "Scroll viewport to top"
+  },
+  {
+   "id": "tui.altScreen.bottom",
+   "defaultKeys": "end",
+   "description": "Scroll viewport to bottom"
+  },
+  {
+   "id": "app.interrupt",
+   "defaultKeys": "escape",
+   "description": "Cancel or abort"
+  },
+  {
+   "id": "app.clear",
+   "defaultKeys": "ctrl+c",
+   "description": "Clear editor"
+  },
+  {
+   "id": "app.exit",
+   "defaultKeys": "ctrl+d",
+   "description": "Exit when editor is empty"
+  },
+  {
+   "id": "app.suspend",
+   "defaultKeys": "ctrl+z",
+   "description": "Suspend to background"
+  },
+  {
+   "id": "app.thinking.cycle",
+   "defaultKeys": "shift+tab",
+   "description": "Cycle thinking level"
+  },
+  {
+   "id": "app.thinking.save",
+   "defaultKeys": "ctrl+s",
+   "description": "Save thinking level"
+  },
+  {
+   "id": "app.model.cycleForward",
+   "defaultKeys": "ctrl+p",
+   "description": "Cycle to next model"
+  },
+  {
+   "id": "app.model.cycleBackward",
+   "defaultKeys": "shift+ctrl+p",
+   "description": "Cycle to previous model"
+  },
+  {
+   "id": "app.model.select",
+   "defaultKeys": "ctrl+l",
+   "description": "Open model selector"
+  },
+  {
+   "id": "app.tools.expand",
+   "defaultKeys": "ctrl+o",
+   "description": "Toggle tool output"
+  },
+  {
+   "id": "app.thinking.toggle",
+   "defaultKeys": "ctrl+t",
+   "description": "Toggle thinking blocks"
+  },
+  {
+   "id": "app.session.toggleNamedFilter",
+   "defaultKeys": "ctrl+n",
+   "description": "Toggle named session filter"
+  },
+  {
+   "id": "app.editor.external",
+   "defaultKeys": "ctrl+g",
+   "description": "Open external editor"
+  },
+  {
+   "id": "app.message.copy",
+   "defaultKeys": "ctrl+x",
+   "description": "Copy message to clipboard"
+  },
+  {
+   "id": "app.message.followUp",
+   "defaultKeys": "alt+enter",
+   "description": "Queue follow-up message"
+  },
+  {
+   "id": "app.message.dequeue",
+   "defaultKeys": "alt+up",
+   "description": "Restore queued messages"
+  },
+  {
+   "id": "app.clipboard.pasteImage",
+   "defaultKeys": "ctrl+v",
+   "description": "Paste image from clipboard (text fallback)"
+  },
+  {
+   "id": "app.session.new",
+   "defaultKeys": [],
+   "description": "Start a new session"
+  },
+  {
+   "id": "app.session.tree",
+   "defaultKeys": [],
+   "description": "Open session tree"
+  },
+  {
+   "id": "app.session.fork",
+   "defaultKeys": [],
+   "description": "Fork current session"
+  },
+  {
+   "id": "app.session.resume",
+   "defaultKeys": [],
+   "description": "Resume a session"
+  },
+  {
+   "id": "app.tree.foldOrUp",
+   "defaultKeys": [
+    "alt+left",
+    "ctrl+left"
+   ],
+   "description": "Fold tree branch or move up"
+  },
+  {
+   "id": "app.tree.unfoldOrDown",
+   "defaultKeys": [
+    "alt+right",
+    "ctrl+right"
+   ],
+   "description": "Unfold tree branch or move down"
+  },
+  {
+   "id": "app.tree.editLabel",
+   "defaultKeys": "shift+l",
+   "description": "Edit tree label"
+  },
+  {
+   "id": "app.tree.toggleLabelTimestamp",
+   "defaultKeys": "shift+t",
+   "description": "Toggle tree label timestamps"
+  },
+  {
+   "id": "app.session.togglePath",
+   "defaultKeys": "ctrl+p",
+   "description": "Toggle session path display"
+  },
+  {
+   "id": "app.session.toggleSort",
+   "defaultKeys": "ctrl+s",
+   "description": "Toggle session sort mode"
+  },
+  {
+   "id": "app.session.rename",
+   "defaultKeys": "ctrl+r",
+   "description": "Rename session"
+  },
+  {
+   "id": "app.session.delete",
+   "defaultKeys": "ctrl+d",
+   "description": "Delete session"
+  },
+  {
+   "id": "app.session.deleteNoninvasive",
+   "defaultKeys": "ctrl+backspace",
+   "description": "Delete session when query is empty"
+  },
+  {
+   "id": "app.models.save",
+   "defaultKeys": "ctrl+s",
+   "description": "Save model selection"
+  },
+  {
+   "id": "app.models.enableAll",
+   "defaultKeys": "ctrl+a",
+   "description": "Enable all models"
+  },
+  {
+   "id": "app.models.clearAll",
+   "defaultKeys": "ctrl+x",
+   "description": "Clear all models"
+  },
+  {
+   "id": "app.models.toggleProvider",
+   "defaultKeys": "ctrl+p",
+   "description": "Toggle all models for provider"
+  },
+  {
+   "id": "app.models.reorderUp",
+   "defaultKeys": "alt+up",
+   "description": "Move model up in order"
+  },
+  {
+   "id": "app.models.reorderDown",
+   "defaultKeys": "alt+down",
+   "description": "Move model down in order"
+  },
+  {
+   "id": "app.tree.filter.default",
+   "defaultKeys": "ctrl+d",
+   "description": "Tree filter: default view"
+  },
+  {
+   "id": "app.tree.filter.noTools",
+   "defaultKeys": "ctrl+t",
+   "description": "Tree filter: hide tool results"
+  },
+  {
+   "id": "app.tree.filter.userOnly",
+   "defaultKeys": "ctrl+u",
+   "description": "Tree filter: user messages only"
+  },
+  {
+   "id": "app.tree.filter.labeledOnly",
+   "defaultKeys": "ctrl+l",
+   "description": "Tree filter: labeled entries only"
+  },
+  {
+   "id": "app.tree.filter.all",
+   "defaultKeys": "ctrl+a",
+   "description": "Tree filter: show all entries"
+  },
+  {
+   "id": "app.tree.filter.cycleForward",
+   "defaultKeys": "ctrl+o",
+   "description": "Tree filter: cycle forward"
+  },
+  {
+   "id": "app.tree.filter.cycleBackward",
+   "defaultKeys": "shift+ctrl+o",
+   "description": "Tree filter: cycle backward"
+  }
+ ],
+ "tui_keybinding_ids": [
+  "tui.editor.cursorUp",
+  "tui.editor.cursorDown",
+  "tui.editor.historyPrevious",
+  "tui.editor.historyNext",
+  "tui.editor.cursorLeft",
+  "tui.editor.cursorRight",
+  "tui.editor.cursorWordLeft",
+  "tui.editor.cursorWordRight",
+  "tui.editor.cursorLineStart",
+  "tui.editor.cursorLineEnd",
+  "tui.editor.jumpForward",
+  "tui.editor.jumpBackward",
+  "tui.editor.pageUp",
+  "tui.editor.pageDown",
+  "tui.editor.deleteCharBackward",
+  "tui.editor.deleteCharForward",
+  "tui.editor.deleteWordBackward",
+  "tui.editor.deleteWordForward",
+  "tui.editor.deleteToLineStart",
+  "tui.editor.deleteToLineEnd",
+  "tui.editor.yank",
+  "tui.editor.yankPop",
+  "tui.editor.undo",
+  "tui.input.newLine",
+  "tui.input.submit",
+  "tui.input.tab",
+  "tui.input.copy",
+  "tui.select.up",
+  "tui.select.down",
+  "tui.select.pageUp",
+  "tui.select.pageDown",
+  "tui.select.confirm",
+  "tui.select.cancel",
+  "tui.altScreen.pageUp",
+  "tui.altScreen.pageDown",
+  "tui.altScreen.halfPageUp",
+  "tui.altScreen.halfPageDown",
+  "tui.altScreen.lineUp",
+  "tui.altScreen.lineDown",
+  "tui.altScreen.previousPrompt",
+  "tui.altScreen.nextPrompt",
+  "tui.altScreen.search",
+  "tui.altScreen.searchNext",
+  "tui.altScreen.searchPrevious",
+  "tui.altScreen.searchClose",
+  "tui.altScreen.top",
+  "tui.altScreen.bottom"
+ ],
+ "tui_overridden_kept_description": [
+  {
+   "id": "tui.editor.undo",
+   "description": "Undo"
+  },
+  {
+   "id": "tui.altScreen.previousPrompt",
+   "description": "Jump to previous semantic prompt"
+  },
+  {
+   "id": "tui.altScreen.nextPrompt",
+   "description": "Jump to next semantic prompt"
+  },
+  {
+   "id": "tui.altScreen.search",
+   "description": "Search the primary scroll view"
+  }
+ ],
+ "use_windows_cases": [
+  {
+   "platform": "win32",
+   "env": {},
+   "result": true
+  },
+  {
+   "platform": "linux",
+   "env": {},
+   "result": false
+  },
+  {
+   "platform": "linux",
+   "env": {
+    "WSL_DISTRO_NAME": "Ubuntu"
+   },
+   "result": true
+  },
+  {
+   "platform": "linux",
+   "env": {
+    "WSL_INTEROP": "/run/WSL/123_interop"
+   },
+   "result": true
+  },
+  {
+   "platform": "linux",
+   "env": {
+    "WT_SESSION": "session"
+   },
+   "result": false
+  },
+  {
+   "platform": "darwin",
+   "env": {},
+   "result": false
+  },
+  {
+   "platform": "sunos",
+   "env": {},
+   "result": false
+  }
+ ],
+ "migration_cases": [
+  {
+   "rawConfig": {
+    "cursorUp": [
+     "up",
+     "ctrl+p"
+    ],
+    "expandTools": "ctrl+x"
+   },
+   "config": {
+    "tui.editor.cursorUp": [
+     "up",
+     "ctrl+p"
+    ],
+    "app.tools.expand": "ctrl+x"
+   },
+   "migrated": true
+  },
+  {
+   "rawConfig": {
+    "expandTools": "ctrl+x",
+    "app.tools.expand": "ctrl+y"
+   },
+   "config": {
+    "app.tools.expand": "ctrl+y"
+   },
+   "migrated": true
+  },
+  {
+   "rawConfig": {
+    "selectConfirm": "enter",
+    "interrupt": "ctrl+x"
+   },
+   "config": {
+    "tui.select.confirm": "enter",
+    "app.interrupt": "ctrl+x"
+   },
+   "migrated": true
+  },
+  {
+   "rawConfig": {
+    "zzz.custom": 1,
+    "app.clear": "ctrl+c",
+    "aaa.beta": true,
+    "undo": "ctrl+-"
+   },
+   "config": {
+    "tui.editor.undo": "ctrl+-",
+    "app.clear": "ctrl+c",
+    "aaa.beta": true,
+    "zzz.custom": 1
+   },
+   "migrated": true
+  },
+  {
+   "rawConfig": {
+    "app.clear": {
+     "nested": true
+    },
+    "tui.input.submit": [
+     "enter",
+     42
+    ],
+    "tui.input.tab": null
+   },
+   "config": {
+    "tui.input.submit": [
+     "enter",
+     42
+    ],
+    "tui.input.tab": null,
+    "app.clear": {
+     "nested": true
+    }
+   },
+   "migrated": false
+  },
+  {
+   "rawConfig": {},
+   "config": {},
+   "migrated": false
+  }
+ ],
+ "manager_cases": [
+  {
+   "name": "legacy_names",
+   "before": {
+    "user": {
+     "tui.editor.cursorUp": [
+      "up",
+      "ctrl+p"
+     ],
+     "app.tools.expand": "ctrl+x"
+    },
+    "effective": {
+     "tui.editor.cursorUp": [
+      "up",
+      "ctrl+p"
+     ],
+     "tui.editor.cursorDown": "down",
+     "tui.editor.historyPrevious": [],
+     "tui.editor.historyNext": [],
+     "tui.editor.cursorLeft": [
+      "left",
+      "ctrl+b"
+     ],
+     "tui.editor.cursorRight": [
+      "right",
+      "ctrl+f"
+     ],
+     "tui.editor.cursorWordLeft": [
+      "alt+left",
+      "ctrl+left",
+      "alt+b"
+     ],
+     "tui.editor.cursorWordRight": [
+      "alt+right",
+      "ctrl+right",
+      "alt+f"
+     ],
+     "tui.editor.cursorLineStart": [
+      "home",
+      "ctrl+home",
+      "ctrl+a"
+     ],
+     "tui.editor.cursorLineEnd": [
+      "end",
+      "ctrl+end",
+      "ctrl+e"
+     ],
+     "tui.editor.jumpForward": "ctrl+]",
+     "tui.editor.jumpBackward": "ctrl+alt+]",
+     "tui.editor.pageUp": [
+      "pageUp",
+      "ctrl+pageUp"
+     ],
+     "tui.editor.pageDown": [
+      "pageDown",
+      "ctrl+pageDown"
+     ],
+     "tui.editor.deleteCharBackward": "backspace",
+     "tui.editor.deleteCharForward": [
+      "delete",
+      "ctrl+d"
+     ],
+     "tui.editor.deleteWordBackward": [
+      "ctrl+w",
+      "alt+backspace"
+     ],
+     "tui.editor.deleteWordForward": [
+      "alt+d",
+      "alt+delete"
+     ],
+     "tui.editor.deleteToLineStart": "ctrl+u",
+     "tui.editor.deleteToLineEnd": "ctrl+k",
+     "tui.editor.yank": "ctrl+y",
+     "tui.editor.yankPop": "alt+y",
+     "tui.editor.undo": "ctrl+-",
+     "tui.input.newLine": [
+      "shift+enter",
+      "ctrl+j"
+     ],
+     "tui.input.submit": "enter",
+     "tui.input.tab": "tab",
+     "tui.input.copy": "ctrl+c",
+     "tui.select.up": "up",
+     "tui.select.down": "down",
+     "tui.select.pageUp": "pageUp",
+     "tui.select.pageDown": "pageDown",
+     "tui.select.confirm": "enter",
+     "tui.select.cancel": [
+      "escape",
+      "ctrl+c"
+     ],
+     "tui.altScreen.pageUp": "pageUp",
+     "tui.altScreen.pageDown": "pageDown",
+     "tui.altScreen.halfPageUp": [],
+     "tui.altScreen.halfPageDown": [],
+     "tui.altScreen.lineUp": [],
+     "tui.altScreen.lineDown": [],
+     "tui.altScreen.previousPrompt": [
+      "ctrl+shift+up",
+      "ctrl+up"
+     ],
+     "tui.altScreen.nextPrompt": [
+      "ctrl+shift+down",
+      "ctrl+down"
+     ],
+     "tui.altScreen.search": "ctrl+shift+f",
+     "tui.altScreen.searchNext": [
+      "enter",
+      "ctrl+g"
+     ],
+     "tui.altScreen.searchPrevious": [
+      "shift+enter",
+      "ctrl+shift+g"
+     ],
+     "tui.altScreen.searchClose": "escape",
+     "tui.altScreen.top": "home",
+     "tui.altScreen.bottom": "end",
+     "app.interrupt": "escape",
+     "app.clear": "ctrl+c",
+     "app.exit": "ctrl+d",
+     "app.suspend": "ctrl+z",
+     "app.thinking.cycle": "shift+tab",
+     "app.thinking.save": "ctrl+s",
+     "app.model.cycleForward": "ctrl+p",
+     "app.model.cycleBackward": "shift+ctrl+p",
+     "app.model.select": "ctrl+l",
+     "app.tools.expand": "ctrl+x",
+     "app.thinking.toggle": "ctrl+t",
+     "app.session.toggleNamedFilter": "ctrl+n",
+     "app.editor.external": "ctrl+g",
+     "app.message.copy": "ctrl+x",
+     "app.message.followUp": "alt+enter",
+     "app.message.dequeue": "alt+up",
+     "app.clipboard.pasteImage": "ctrl+v",
+     "app.session.new": [],
+     "app.session.tree": [],
+     "app.session.fork": [],
+     "app.session.resume": [],
+     "app.tree.foldOrUp": [
+      "alt+left",
+      "ctrl+left"
+     ],
+     "app.tree.unfoldOrDown": [
+      "alt+right",
+      "ctrl+right"
+     ],
+     "app.tree.editLabel": "shift+l",
+     "app.tree.toggleLabelTimestamp": "shift+t",
+     "app.session.togglePath": "ctrl+p",
+     "app.session.toggleSort": "ctrl+s",
+     "app.session.rename": "ctrl+r",
+     "app.session.delete": "ctrl+d",
+     "app.session.deleteNoninvasive": "ctrl+backspace",
+     "app.models.save": "ctrl+s",
+     "app.models.enableAll": "ctrl+a",
+     "app.models.clearAll": "ctrl+x",
+     "app.models.toggleProvider": "ctrl+p",
+     "app.models.reorderUp": "alt+up",
+     "app.models.reorderDown": "alt+down",
+     "app.tree.filter.default": "ctrl+d",
+     "app.tree.filter.noTools": "ctrl+t",
+     "app.tree.filter.userOnly": "ctrl+u",
+     "app.tree.filter.labeledOnly": "ctrl+l",
+     "app.tree.filter.all": "ctrl+a",
+     "app.tree.filter.cycleForward": "ctrl+o",
+     "app.tree.filter.cycleBackward": "shift+ctrl+o"
+    }
+   },
+   "afterReload": {
+    "effective": {
+     "tui.editor.cursorUp": "up",
+     "tui.editor.cursorDown": "down",
+     "tui.editor.historyPrevious": [],
+     "tui.editor.historyNext": [],
+     "tui.editor.cursorLeft": [
+      "left",
+      "ctrl+b"
+     ],
+     "tui.editor.cursorRight": [
+      "right",
+      "ctrl+f"
+     ],
+     "tui.editor.cursorWordLeft": [
+      "alt+left",
+      "ctrl+left",
+      "alt+b"
+     ],
+     "tui.editor.cursorWordRight": [
+      "alt+right",
+      "ctrl+right",
+      "alt+f"
+     ],
+     "tui.editor.cursorLineStart": [
+      "home",
+      "ctrl+home",
+      "ctrl+a"
+     ],
+     "tui.editor.cursorLineEnd": [
+      "end",
+      "ctrl+end",
+      "ctrl+e"
+     ],
+     "tui.editor.jumpForward": "ctrl+]",
+     "tui.editor.jumpBackward": "ctrl+alt+]",
+     "tui.editor.pageUp": [
+      "pageUp",
+      "ctrl+pageUp"
+     ],
+     "tui.editor.pageDown": [
+      "pageDown",
+      "ctrl+pageDown"
+     ],
+     "tui.editor.deleteCharBackward": "backspace",
+     "tui.editor.deleteCharForward": [
+      "delete",
+      "ctrl+d"
+     ],
+     "tui.editor.deleteWordBackward": [
+      "ctrl+w",
+      "alt+backspace"
+     ],
+     "tui.editor.deleteWordForward": [
+      "alt+d",
+      "alt+delete"
+     ],
+     "tui.editor.deleteToLineStart": "ctrl+u",
+     "tui.editor.deleteToLineEnd": "ctrl+k",
+     "tui.editor.yank": "ctrl+y",
+     "tui.editor.yankPop": "alt+y",
+     "tui.editor.undo": "ctrl+-",
+     "tui.input.newLine": [
+      "shift+enter",
+      "ctrl+j"
+     ],
+     "tui.input.submit": "enter",
+     "tui.input.tab": "tab",
+     "tui.input.copy": "ctrl+c",
+     "tui.select.up": "up",
+     "tui.select.down": "down",
+     "tui.select.pageUp": "pageUp",
+     "tui.select.pageDown": "pageDown",
+     "tui.select.confirm": "enter",
+     "tui.select.cancel": [
+      "escape",
+      "ctrl+c"
+     ],
+     "tui.altScreen.pageUp": "pageUp",
+     "tui.altScreen.pageDown": "pageDown",
+     "tui.altScreen.halfPageUp": [],
+     "tui.altScreen.halfPageDown": [],
+     "tui.altScreen.lineUp": [],
+     "tui.altScreen.lineDown": [],
+     "tui.altScreen.previousPrompt": [
+      "ctrl+shift+up",
+      "ctrl+up"
+     ],
+     "tui.altScreen.nextPrompt": [
+      "ctrl+shift+down",
+      "ctrl+down"
+     ],
+     "tui.altScreen.search": "ctrl+shift+f",
+     "tui.altScreen.searchNext": [
+      "enter",
+      "ctrl+g"
+     ],
+     "tui.altScreen.searchPrevious": [
+      "shift+enter",
+      "ctrl+shift+g"
+     ],
+     "tui.altScreen.searchClose": "escape",
+     "tui.altScreen.top": "home",
+     "tui.altScreen.bottom": "end",
+     "app.interrupt": "escape",
+     "app.clear": "ctrl+shift+c",
+     "app.exit": "ctrl+d",
+     "app.suspend": "ctrl+z",
+     "app.thinking.cycle": "shift+tab",
+     "app.thinking.save": "ctrl+s",
+     "app.model.cycleForward": "ctrl+p",
+     "app.model.cycleBackward": "shift+ctrl+p",
+     "app.model.select": "ctrl+l",
+     "app.tools.expand": "ctrl+o",
+     "app.thinking.toggle": "ctrl+t",
+     "app.session.toggleNamedFilter": "ctrl+n",
+     "app.editor.external": "ctrl+g",
+     "app.message.copy": "ctrl+x",
+     "app.message.followUp": "alt+enter",
+     "app.message.dequeue": "alt+up",
+     "app.clipboard.pasteImage": "ctrl+v",
+     "app.session.new": [],
+     "app.session.tree": [],
+     "app.session.fork": [],
+     "app.session.resume": [],
+     "app.tree.foldOrUp": [
+      "alt+left",
+      "ctrl+left"
+     ],
+     "app.tree.unfoldOrDown": [
+      "alt+right",
+      "ctrl+right"
+     ],
+     "app.tree.editLabel": "shift+l",
+     "app.tree.toggleLabelTimestamp": "shift+t",
+     "app.session.togglePath": "ctrl+p",
+     "app.session.toggleSort": "ctrl+s",
+     "app.session.rename": "ctrl+r",
+     "app.session.delete": "ctrl+d",
+     "app.session.deleteNoninvasive": "ctrl+backspace",
+     "app.models.save": "ctrl+s",
+     "app.models.enableAll": "ctrl+a",
+     "app.models.clearAll": "ctrl+x",
+     "app.models.toggleProvider": "ctrl+p",
+     "app.models.reorderUp": "alt+up",
+     "app.models.reorderDown": "alt+down",
+     "app.tree.filter.default": "ctrl+d",
+     "app.tree.filter.noTools": "ctrl+t",
+     "app.tree.filter.userOnly": "ctrl+u",
+     "app.tree.filter.labeledOnly": "ctrl+l",
+     "app.tree.filter.all": "ctrl+a",
+     "app.tree.filter.cycleForward": "ctrl+o",
+     "app.tree.filter.cycleBackward": "shift+ctrl+o"
+    }
+   },
+   "effectiveAfterSecondReload": {
+    "tui.editor.cursorUp": "up",
+    "tui.editor.cursorDown": "down",
+    "tui.editor.historyPrevious": [],
+    "tui.editor.historyNext": [],
+    "tui.editor.cursorLeft": [
+     "left",
+     "ctrl+b"
+    ],
+    "tui.editor.cursorRight": [
+     "right",
+     "ctrl+f"
+    ],
+    "tui.editor.cursorWordLeft": [
+     "alt+left",
+     "ctrl+left",
+     "alt+b"
+    ],
+    "tui.editor.cursorWordRight": [
+     "alt+right",
+     "ctrl+right",
+     "alt+f"
+    ],
+    "tui.editor.cursorLineStart": [
+     "home",
+     "ctrl+home",
+     "ctrl+a"
+    ],
+    "tui.editor.cursorLineEnd": [
+     "end",
+     "ctrl+end",
+     "ctrl+e"
+    ],
+    "tui.editor.jumpForward": "ctrl+]",
+    "tui.editor.jumpBackward": "ctrl+alt+]",
+    "tui.editor.pageUp": [
+     "pageUp",
+     "ctrl+pageUp"
+    ],
+    "tui.editor.pageDown": [
+     "pageDown",
+     "ctrl+pageDown"
+    ],
+    "tui.editor.deleteCharBackward": "backspace",
+    "tui.editor.deleteCharForward": [
+     "delete",
+     "ctrl+d"
+    ],
+    "tui.editor.deleteWordBackward": [
+     "ctrl+w",
+     "alt+backspace"
+    ],
+    "tui.editor.deleteWordForward": [
+     "alt+d",
+     "alt+delete"
+    ],
+    "tui.editor.deleteToLineStart": "ctrl+u",
+    "tui.editor.deleteToLineEnd": "ctrl+k",
+    "tui.editor.yank": "ctrl+y",
+    "tui.editor.yankPop": "alt+y",
+    "tui.editor.undo": "ctrl+-",
+    "tui.input.newLine": [
+     "shift+enter",
+     "ctrl+j"
+    ],
+    "tui.input.submit": "enter",
+    "tui.input.tab": "tab",
+    "tui.input.copy": "ctrl+c",
+    "tui.select.up": "up",
+    "tui.select.down": "down",
+    "tui.select.pageUp": "pageUp",
+    "tui.select.pageDown": "pageDown",
+    "tui.select.confirm": "enter",
+    "tui.select.cancel": [
+     "escape",
+     "ctrl+c"
+    ],
+    "tui.altScreen.pageUp": "pageUp",
+    "tui.altScreen.pageDown": "pageDown",
+    "tui.altScreen.halfPageUp": [],
+    "tui.altScreen.halfPageDown": [],
+    "tui.altScreen.lineUp": [],
+    "tui.altScreen.lineDown": [],
+    "tui.altScreen.previousPrompt": [
+     "ctrl+shift+up",
+     "ctrl+up"
+    ],
+    "tui.altScreen.nextPrompt": [
+     "ctrl+shift+down",
+     "ctrl+down"
+    ],
+    "tui.altScreen.search": "ctrl+shift+f",
+    "tui.altScreen.searchNext": [
+     "enter",
+     "ctrl+g"
+    ],
+    "tui.altScreen.searchPrevious": [
+     "shift+enter",
+     "ctrl+shift+g"
+    ],
+    "tui.altScreen.searchClose": "escape",
+    "tui.altScreen.top": "home",
+    "tui.altScreen.bottom": "end",
+    "app.interrupt": "escape",
+    "app.clear": "ctrl+shift+c",
+    "app.exit": "ctrl+d",
+    "app.suspend": "ctrl+z",
+    "app.thinking.cycle": "shift+tab",
+    "app.thinking.save": "ctrl+s",
+    "app.model.cycleForward": "ctrl+p",
+    "app.model.cycleBackward": "shift+ctrl+p",
+    "app.model.select": "ctrl+l",
+    "app.tools.expand": "ctrl+o",
+    "app.thinking.toggle": "ctrl+t",
+    "app.session.toggleNamedFilter": "ctrl+n",
+    "app.editor.external": "ctrl+g",
+    "app.message.copy": "ctrl+x",
+    "app.message.followUp": "alt+enter",
+    "app.message.dequeue": "alt+up",
+    "app.clipboard.pasteImage": "ctrl+v",
+    "app.session.new": [],
+    "app.session.tree": [],
+    "app.session.fork": [],
+    "app.session.resume": [],
+    "app.tree.foldOrUp": [
+     "alt+left",
+     "ctrl+left"
+    ],
+    "app.tree.unfoldOrDown": [
+     "alt+right",
+     "ctrl+right"
+    ],
+    "app.tree.editLabel": "shift+l",
+    "app.tree.toggleLabelTimestamp": "shift+t",
+    "app.session.togglePath": "ctrl+p",
+    "app.session.toggleSort": "ctrl+s",
+    "app.session.rename": "ctrl+r",
+    "app.session.delete": "ctrl+d",
+    "app.session.deleteNoninvasive": "ctrl+backspace",
+    "app.models.save": "ctrl+s",
+    "app.models.enableAll": "ctrl+a",
+    "app.models.clearAll": "ctrl+x",
+    "app.models.toggleProvider": "ctrl+p",
+    "app.models.reorderUp": "alt+up",
+    "app.models.reorderDown": "alt+down",
+    "app.tree.filter.default": "ctrl+d",
+    "app.tree.filter.noTools": "ctrl+t",
+    "app.tree.filter.userOnly": "ctrl+u",
+    "app.tree.filter.labeledOnly": "ctrl+l",
+    "app.tree.filter.all": "ctrl+a",
+    "app.tree.filter.cycleForward": "ctrl+o",
+    "app.tree.filter.cycleBackward": "shift+ctrl+o"
+   }
+  },
+  {
+   "name": "namespaced_wins",
+   "before": {
+    "user": {
+     "app.tools.expand": "ctrl+y"
+    },
+    "effective": {
+     "tui.editor.cursorUp": "up",
+     "tui.editor.cursorDown": "down",
+     "tui.editor.historyPrevious": [],
+     "tui.editor.historyNext": [],
+     "tui.editor.cursorLeft": [
+      "left",
+      "ctrl+b"
+     ],
+     "tui.editor.cursorRight": [
+      "right",
+      "ctrl+f"
+     ],
+     "tui.editor.cursorWordLeft": [
+      "alt+left",
+      "ctrl+left",
+      "alt+b"
+     ],
+     "tui.editor.cursorWordRight": [
+      "alt+right",
+      "ctrl+right",
+      "alt+f"
+     ],
+     "tui.editor.cursorLineStart": [
+      "home",
+      "ctrl+home",
+      "ctrl+a"
+     ],
+     "tui.editor.cursorLineEnd": [
+      "end",
+      "ctrl+end",
+      "ctrl+e"
+     ],
+     "tui.editor.jumpForward": "ctrl+]",
+     "tui.editor.jumpBackward": "ctrl+alt+]",
+     "tui.editor.pageUp": [
+      "pageUp",
+      "ctrl+pageUp"
+     ],
+     "tui.editor.pageDown": [
+      "pageDown",
+      "ctrl+pageDown"
+     ],
+     "tui.editor.deleteCharBackward": "backspace",
+     "tui.editor.deleteCharForward": [
+      "delete",
+      "ctrl+d"
+     ],
+     "tui.editor.deleteWordBackward": [
+      "ctrl+w",
+      "alt+backspace"
+     ],
+     "tui.editor.deleteWordForward": [
+      "alt+d",
+      "alt+delete"
+     ],
+     "tui.editor.deleteToLineStart": "ctrl+u",
+     "tui.editor.deleteToLineEnd": "ctrl+k",
+     "tui.editor.yank": "ctrl+y",
+     "tui.editor.yankPop": "alt+y",
+     "tui.editor.undo": "ctrl+-",
+     "tui.input.newLine": [
+      "shift+enter",
+      "ctrl+j"
+     ],
+     "tui.input.submit": "enter",
+     "tui.input.tab": "tab",
+     "tui.input.copy": "ctrl+c",
+     "tui.select.up": "up",
+     "tui.select.down": "down",
+     "tui.select.pageUp": "pageUp",
+     "tui.select.pageDown": "pageDown",
+     "tui.select.confirm": "enter",
+     "tui.select.cancel": [
+      "escape",
+      "ctrl+c"
+     ],
+     "tui.altScreen.pageUp": "pageUp",
+     "tui.altScreen.pageDown": "pageDown",
+     "tui.altScreen.halfPageUp": [],
+     "tui.altScreen.halfPageDown": [],
+     "tui.altScreen.lineUp": [],
+     "tui.altScreen.lineDown": [],
+     "tui.altScreen.previousPrompt": [
+      "ctrl+shift+up",
+      "ctrl+up"
+     ],
+     "tui.altScreen.nextPrompt": [
+      "ctrl+shift+down",
+      "ctrl+down"
+     ],
+     "tui.altScreen.search": "ctrl+shift+f",
+     "tui.altScreen.searchNext": [
+      "enter",
+      "ctrl+g"
+     ],
+     "tui.altScreen.searchPrevious": [
+      "shift+enter",
+      "ctrl+shift+g"
+     ],
+     "tui.altScreen.searchClose": "escape",
+     "tui.altScreen.top": "home",
+     "tui.altScreen.bottom": "end",
+     "app.interrupt": "escape",
+     "app.clear": "ctrl+c",
+     "app.exit": "ctrl+d",
+     "app.suspend": "ctrl+z",
+     "app.thinking.cycle": "shift+tab",
+     "app.thinking.save": "ctrl+s",
+     "app.model.cycleForward": "ctrl+p",
+     "app.model.cycleBackward": "shift+ctrl+p",
+     "app.model.select": "ctrl+l",
+     "app.tools.expand": "ctrl+y",
+     "app.thinking.toggle": "ctrl+t",
+     "app.session.toggleNamedFilter": "ctrl+n",
+     "app.editor.external": "ctrl+g",
+     "app.message.copy": "ctrl+x",
+     "app.message.followUp": "alt+enter",
+     "app.message.dequeue": "alt+up",
+     "app.clipboard.pasteImage": "ctrl+v",
+     "app.session.new": [],
+     "app.session.tree": [],
+     "app.session.fork": [],
+     "app.session.resume": [],
+     "app.tree.foldOrUp": [
+      "alt+left",
+      "ctrl+left"
+     ],
+     "app.tree.unfoldOrDown": [
+      "alt+right",
+      "ctrl+right"
+     ],
+     "app.tree.editLabel": "shift+l",
+     "app.tree.toggleLabelTimestamp": "shift+t",
+     "app.session.togglePath": "ctrl+p",
+     "app.session.toggleSort": "ctrl+s",
+     "app.session.rename": "ctrl+r",
+     "app.session.delete": "ctrl+d",
+     "app.session.deleteNoninvasive": "ctrl+backspace",
+     "app.models.save": "ctrl+s",
+     "app.models.enableAll": "ctrl+a",
+     "app.models.clearAll": "ctrl+x",
+     "app.models.toggleProvider": "ctrl+p",
+     "app.models.reorderUp": "alt+up",
+     "app.models.reorderDown": "alt+down",
+     "app.tree.filter.default": "ctrl+d",
+     "app.tree.filter.noTools": "ctrl+t",
+     "app.tree.filter.userOnly": "ctrl+u",
+     "app.tree.filter.labeledOnly": "ctrl+l",
+     "app.tree.filter.all": "ctrl+a",
+     "app.tree.filter.cycleForward": "ctrl+o",
+     "app.tree.filter.cycleBackward": "shift+ctrl+o"
+    }
+   },
+   "afterReload": {
+    "effective": {
+     "tui.editor.cursorUp": "up",
+     "tui.editor.cursorDown": "down",
+     "tui.editor.historyPrevious": [],
+     "tui.editor.historyNext": [],
+     "tui.editor.cursorLeft": [
+      "left",
+      "ctrl+b"
+     ],
+     "tui.editor.cursorRight": [
+      "right",
+      "ctrl+f"
+     ],
+     "tui.editor.cursorWordLeft": [
+      "alt+left",
+      "ctrl+left",
+      "alt+b"
+     ],
+     "tui.editor.cursorWordRight": [
+      "alt+right",
+      "ctrl+right",
+      "alt+f"
+     ],
+     "tui.editor.cursorLineStart": [
+      "home",
+      "ctrl+home",
+      "ctrl+a"
+     ],
+     "tui.editor.cursorLineEnd": [
+      "end",
+      "ctrl+end",
+      "ctrl+e"
+     ],
+     "tui.editor.jumpForward": "ctrl+]",
+     "tui.editor.jumpBackward": "ctrl+alt+]",
+     "tui.editor.pageUp": [
+      "pageUp",
+      "ctrl+pageUp"
+     ],
+     "tui.editor.pageDown": [
+      "pageDown",
+      "ctrl+pageDown"
+     ],
+     "tui.editor.deleteCharBackward": "backspace",
+     "tui.editor.deleteCharForward": [
+      "delete",
+      "ctrl+d"
+     ],
+     "tui.editor.deleteWordBackward": [
+      "ctrl+w",
+      "alt+backspace"
+     ],
+     "tui.editor.deleteWordForward": [
+      "alt+d",
+      "alt+delete"
+     ],
+     "tui.editor.deleteToLineStart": "ctrl+u",
+     "tui.editor.deleteToLineEnd": "ctrl+k",
+     "tui.editor.yank": "ctrl+y",
+     "tui.editor.yankPop": "alt+y",
+     "tui.editor.undo": "ctrl+-",
+     "tui.input.newLine": [
+      "shift+enter",
+      "ctrl+j"
+     ],
+     "tui.input.submit": "enter",
+     "tui.input.tab": "tab",
+     "tui.input.copy": "ctrl+c",
+     "tui.select.up": "up",
+     "tui.select.down": "down",
+     "tui.select.pageUp": "pageUp",
+     "tui.select.pageDown": "pageDown",
+     "tui.select.confirm": "enter",
+     "tui.select.cancel": [
+      "escape",
+      "ctrl+c"
+     ],
+     "tui.altScreen.pageUp": "pageUp",
+     "tui.altScreen.pageDown": "pageDown",
+     "tui.altScreen.halfPageUp": [],
+     "tui.altScreen.halfPageDown": [],
+     "tui.altScreen.lineUp": [],
+     "tui.altScreen.lineDown": [],
+     "tui.altScreen.previousPrompt": [
+      "ctrl+shift+up",
+      "ctrl+up"
+     ],
+     "tui.altScreen.nextPrompt": [
+      "ctrl+shift+down",
+      "ctrl+down"
+     ],
+     "tui.altScreen.search": "ctrl+shift+f",
+     "tui.altScreen.searchNext": [
+      "enter",
+      "ctrl+g"
+     ],
+     "tui.altScreen.searchPrevious": [
+      "shift+enter",
+      "ctrl+shift+g"
+     ],
+     "tui.altScreen.searchClose": "escape",
+     "tui.altScreen.top": "home",
+     "tui.altScreen.bottom": "end",
+     "app.interrupt": "escape",
+     "app.clear": "ctrl+shift+c",
+     "app.exit": "ctrl+d",
+     "app.suspend": "ctrl+z",
+     "app.thinking.cycle": "shift+tab",
+     "app.thinking.save": "ctrl+s",
+     "app.model.cycleForward": "ctrl+p",
+     "app.model.cycleBackward": "shift+ctrl+p",
+     "app.model.select": "ctrl+l",
+     "app.tools.expand": "ctrl+o",
+     "app.thinking.toggle": "ctrl+t",
+     "app.session.toggleNamedFilter": "ctrl+n",
+     "app.editor.external": "ctrl+g",
+     "app.message.copy": "ctrl+x",
+     "app.message.followUp": "alt+enter",
+     "app.message.dequeue": "alt+up",
+     "app.clipboard.pasteImage": "ctrl+v",
+     "app.session.new": [],
+     "app.session.tree": [],
+     "app.session.fork": [],
+     "app.session.resume": [],
+     "app.tree.foldOrUp": [
+      "alt+left",
+      "ctrl+left"
+     ],
+     "app.tree.unfoldOrDown": [
+      "alt+right",
+      "ctrl+right"
+     ],
+     "app.tree.editLabel": "shift+l",
+     "app.tree.toggleLabelTimestamp": "shift+t",
+     "app.session.togglePath": "ctrl+p",
+     "app.session.toggleSort": "ctrl+s",
+     "app.session.rename": "ctrl+r",
+     "app.session.delete": "ctrl+d",
+     "app.session.deleteNoninvasive": "ctrl+backspace",
+     "app.models.save": "ctrl+s",
+     "app.models.enableAll": "ctrl+a",
+     "app.models.clearAll": "ctrl+x",
+     "app.models.toggleProvider": "ctrl+p",
+     "app.models.reorderUp": "alt+up",
+     "app.models.reorderDown": "alt+down",
+     "app.tree.filter.default": "ctrl+d",
+     "app.tree.filter.noTools": "ctrl+t",
+     "app.tree.filter.userOnly": "ctrl+u",
+     "app.tree.filter.labeledOnly": "ctrl+l",
+     "app.tree.filter.all": "ctrl+a",
+     "app.tree.filter.cycleForward": "ctrl+o",
+     "app.tree.filter.cycleBackward": "shift+ctrl+o"
+    }
+   },
+   "effectiveAfterSecondReload": {
+    "tui.editor.cursorUp": "up",
+    "tui.editor.cursorDown": "down",
+    "tui.editor.historyPrevious": [],
+    "tui.editor.historyNext": [],
+    "tui.editor.cursorLeft": [
+     "left",
+     "ctrl+b"
+    ],
+    "tui.editor.cursorRight": [
+     "right",
+     "ctrl+f"
+    ],
+    "tui.editor.cursorWordLeft": [
+     "alt+left",
+     "ctrl+left",
+     "alt+b"
+    ],
+    "tui.editor.cursorWordRight": [
+     "alt+right",
+     "ctrl+right",
+     "alt+f"
+    ],
+    "tui.editor.cursorLineStart": [
+     "home",
+     "ctrl+home",
+     "ctrl+a"
+    ],
+    "tui.editor.cursorLineEnd": [
+     "end",
+     "ctrl+end",
+     "ctrl+e"
+    ],
+    "tui.editor.jumpForward": "ctrl+]",
+    "tui.editor.jumpBackward": "ctrl+alt+]",
+    "tui.editor.pageUp": [
+     "pageUp",
+     "ctrl+pageUp"
+    ],
+    "tui.editor.pageDown": [
+     "pageDown",
+     "ctrl+pageDown"
+    ],
+    "tui.editor.deleteCharBackward": "backspace",
+    "tui.editor.deleteCharForward": [
+     "delete",
+     "ctrl+d"
+    ],
+    "tui.editor.deleteWordBackward": [
+     "ctrl+w",
+     "alt+backspace"
+    ],
+    "tui.editor.deleteWordForward": [
+     "alt+d",
+     "alt+delete"
+    ],
+    "tui.editor.deleteToLineStart": "ctrl+u",
+    "tui.editor.deleteToLineEnd": "ctrl+k",
+    "tui.editor.yank": "ctrl+y",
+    "tui.editor.yankPop": "alt+y",
+    "tui.editor.undo": "ctrl+-",
+    "tui.input.newLine": [
+     "shift+enter",
+     "ctrl+j"
+    ],
+    "tui.input.submit": "enter",
+    "tui.input.tab": "tab",
+    "tui.input.copy": "ctrl+c",
+    "tui.select.up": "up",
+    "tui.select.down": "down",
+    "tui.select.pageUp": "pageUp",
+    "tui.select.pageDown": "pageDown",
+    "tui.select.confirm": "enter",
+    "tui.select.cancel": [
+     "escape",
+     "ctrl+c"
+    ],
+    "tui.altScreen.pageUp": "pageUp",
+    "tui.altScreen.pageDown": "pageDown",
+    "tui.altScreen.halfPageUp": [],
+    "tui.altScreen.halfPageDown": [],
+    "tui.altScreen.lineUp": [],
+    "tui.altScreen.lineDown": [],
+    "tui.altScreen.previousPrompt": [
+     "ctrl+shift+up",
+     "ctrl+up"
+    ],
+    "tui.altScreen.nextPrompt": [
+     "ctrl+shift+down",
+     "ctrl+down"
+    ],
+    "tui.altScreen.search": "ctrl+shift+f",
+    "tui.altScreen.searchNext": [
+     "enter",
+     "ctrl+g"
+    ],
+    "tui.altScreen.searchPrevious": [
+     "shift+enter",
+     "ctrl+shift+g"
+    ],
+    "tui.altScreen.searchClose": "escape",
+    "tui.altScreen.top": "home",
+    "tui.altScreen.bottom": "end",
+    "app.interrupt": "escape",
+    "app.clear": "ctrl+shift+c",
+    "app.exit": "ctrl+d",
+    "app.suspend": "ctrl+z",
+    "app.thinking.cycle": "shift+tab",
+    "app.thinking.save": "ctrl+s",
+    "app.model.cycleForward": "ctrl+p",
+    "app.model.cycleBackward": "shift+ctrl+p",
+    "app.model.select": "ctrl+l",
+    "app.tools.expand": "ctrl+o",
+    "app.thinking.toggle": "ctrl+t",
+    "app.session.toggleNamedFilter": "ctrl+n",
+    "app.editor.external": "ctrl+g",
+    "app.message.copy": "ctrl+x",
+    "app.message.followUp": "alt+enter",
+    "app.message.dequeue": "alt+up",
+    "app.clipboard.pasteImage": "ctrl+v",
+    "app.session.new": [],
+    "app.session.tree": [],
+    "app.session.fork": [],
+    "app.session.resume": [],
+    "app.tree.foldOrUp": [
+     "alt+left",
+     "ctrl+left"
+    ],
+    "app.tree.unfoldOrDown": [
+     "alt+right",
+     "ctrl+right"
+    ],
+    "app.tree.editLabel": "shift+l",
+    "app.tree.toggleLabelTimestamp": "shift+t",
+    "app.session.togglePath": "ctrl+p",
+    "app.session.toggleSort": "ctrl+s",
+    "app.session.rename": "ctrl+r",
+    "app.session.delete": "ctrl+d",
+    "app.session.deleteNoninvasive": "ctrl+backspace",
+    "app.models.save": "ctrl+s",
+    "app.models.enableAll": "ctrl+a",
+    "app.models.clearAll": "ctrl+x",
+    "app.models.toggleProvider": "ctrl+p",
+    "app.models.reorderUp": "alt+up",
+    "app.models.reorderDown": "alt+down",
+    "app.tree.filter.default": "ctrl+d",
+    "app.tree.filter.noTools": "ctrl+t",
+    "app.tree.filter.userOnly": "ctrl+u",
+    "app.tree.filter.labeledOnly": "ctrl+l",
+    "app.tree.filter.all": "ctrl+a",
+    "app.tree.filter.cycleForward": "ctrl+o",
+    "app.tree.filter.cycleBackward": "shift+ctrl+o"
+   }
+  },
+  {
+   "name": "missing_file",
+   "before": {
+    "user": {},
+    "effective": {
+     "tui.editor.cursorUp": "up",
+     "tui.editor.cursorDown": "down",
+     "tui.editor.historyPrevious": [],
+     "tui.editor.historyNext": [],
+     "tui.editor.cursorLeft": [
+      "left",
+      "ctrl+b"
+     ],
+     "tui.editor.cursorRight": [
+      "right",
+      "ctrl+f"
+     ],
+     "tui.editor.cursorWordLeft": [
+      "alt+left",
+      "ctrl+left",
+      "alt+b"
+     ],
+     "tui.editor.cursorWordRight": [
+      "alt+right",
+      "ctrl+right",
+      "alt+f"
+     ],
+     "tui.editor.cursorLineStart": [
+      "home",
+      "ctrl+home",
+      "ctrl+a"
+     ],
+     "tui.editor.cursorLineEnd": [
+      "end",
+      "ctrl+end",
+      "ctrl+e"
+     ],
+     "tui.editor.jumpForward": "ctrl+]",
+     "tui.editor.jumpBackward": "ctrl+alt+]",
+     "tui.editor.pageUp": [
+      "pageUp",
+      "ctrl+pageUp"
+     ],
+     "tui.editor.pageDown": [
+      "pageDown",
+      "ctrl+pageDown"
+     ],
+     "tui.editor.deleteCharBackward": "backspace",
+     "tui.editor.deleteCharForward": [
+      "delete",
+      "ctrl+d"
+     ],
+     "tui.editor.deleteWordBackward": [
+      "ctrl+w",
+      "alt+backspace"
+     ],
+     "tui.editor.deleteWordForward": [
+      "alt+d",
+      "alt+delete"
+     ],
+     "tui.editor.deleteToLineStart": "ctrl+u",
+     "tui.editor.deleteToLineEnd": "ctrl+k",
+     "tui.editor.yank": "ctrl+y",
+     "tui.editor.yankPop": "alt+y",
+     "tui.editor.undo": "ctrl+-",
+     "tui.input.newLine": [
+      "shift+enter",
+      "ctrl+j"
+     ],
+     "tui.input.submit": "enter",
+     "tui.input.tab": "tab",
+     "tui.input.copy": "ctrl+c",
+     "tui.select.up": "up",
+     "tui.select.down": "down",
+     "tui.select.pageUp": "pageUp",
+     "tui.select.pageDown": "pageDown",
+     "tui.select.confirm": "enter",
+     "tui.select.cancel": [
+      "escape",
+      "ctrl+c"
+     ],
+     "tui.altScreen.pageUp": "pageUp",
+     "tui.altScreen.pageDown": "pageDown",
+     "tui.altScreen.halfPageUp": [],
+     "tui.altScreen.halfPageDown": [],
+     "tui.altScreen.lineUp": [],
+     "tui.altScreen.lineDown": [],
+     "tui.altScreen.previousPrompt": [
+      "ctrl+shift+up",
+      "ctrl+up"
+     ],
+     "tui.altScreen.nextPrompt": [
+      "ctrl+shift+down",
+      "ctrl+down"
+     ],
+     "tui.altScreen.search": "ctrl+shift+f",
+     "tui.altScreen.searchNext": [
+      "enter",
+      "ctrl+g"
+     ],
+     "tui.altScreen.searchPrevious": [
+      "shift+enter",
+      "ctrl+shift+g"
+     ],
+     "tui.altScreen.searchClose": "escape",
+     "tui.altScreen.top": "home",
+     "tui.altScreen.bottom": "end",
+     "app.interrupt": "escape",
+     "app.clear": "ctrl+c",
+     "app.exit": "ctrl+d",
+     "app.suspend": "ctrl+z",
+     "app.thinking.cycle": "shift+tab",
+     "app.thinking.save": "ctrl+s",
+     "app.model.cycleForward": "ctrl+p",
+     "app.model.cycleBackward": "shift+ctrl+p",
+     "app.model.select": "ctrl+l",
+     "app.tools.expand": "ctrl+o",
+     "app.thinking.toggle": "ctrl+t",
+     "app.session.toggleNamedFilter": "ctrl+n",
+     "app.editor.external": "ctrl+g",
+     "app.message.copy": "ctrl+x",
+     "app.message.followUp": "alt+enter",
+     "app.message.dequeue": "alt+up",
+     "app.clipboard.pasteImage": "ctrl+v",
+     "app.session.new": [],
+     "app.session.tree": [],
+     "app.session.fork": [],
+     "app.session.resume": [],
+     "app.tree.foldOrUp": [
+      "alt+left",
+      "ctrl+left"
+     ],
+     "app.tree.unfoldOrDown": [
+      "alt+right",
+      "ctrl+right"
+     ],
+     "app.tree.editLabel": "shift+l",
+     "app.tree.toggleLabelTimestamp": "shift+t",
+     "app.session.togglePath": "ctrl+p",
+     "app.session.toggleSort": "ctrl+s",
+     "app.session.rename": "ctrl+r",
+     "app.session.delete": "ctrl+d",
+     "app.session.deleteNoninvasive": "ctrl+backspace",
+     "app.models.save": "ctrl+s",
+     "app.models.enableAll": "ctrl+a",
+     "app.models.clearAll": "ctrl+x",
+     "app.models.toggleProvider": "ctrl+p",
+     "app.models.reorderUp": "alt+up",
+     "app.models.reorderDown": "alt+down",
+     "app.tree.filter.default": "ctrl+d",
+     "app.tree.filter.noTools": "ctrl+t",
+     "app.tree.filter.userOnly": "ctrl+u",
+     "app.tree.filter.labeledOnly": "ctrl+l",
+     "app.tree.filter.all": "ctrl+a",
+     "app.tree.filter.cycleForward": "ctrl+o",
+     "app.tree.filter.cycleBackward": "shift+ctrl+o"
+    }
+   },
+   "afterReload": null,
+   "effectiveAfterSecondReload": {
+    "tui.editor.cursorUp": "up",
+    "tui.editor.cursorDown": "down",
+    "tui.editor.historyPrevious": [],
+    "tui.editor.historyNext": [],
+    "tui.editor.cursorLeft": [
+     "left",
+     "ctrl+b"
+    ],
+    "tui.editor.cursorRight": [
+     "right",
+     "ctrl+f"
+    ],
+    "tui.editor.cursorWordLeft": [
+     "alt+left",
+     "ctrl+left",
+     "alt+b"
+    ],
+    "tui.editor.cursorWordRight": [
+     "alt+right",
+     "ctrl+right",
+     "alt+f"
+    ],
+    "tui.editor.cursorLineStart": [
+     "home",
+     "ctrl+home",
+     "ctrl+a"
+    ],
+    "tui.editor.cursorLineEnd": [
+     "end",
+     "ctrl+end",
+     "ctrl+e"
+    ],
+    "tui.editor.jumpForward": "ctrl+]",
+    "tui.editor.jumpBackward": "ctrl+alt+]",
+    "tui.editor.pageUp": [
+     "pageUp",
+     "ctrl+pageUp"
+    ],
+    "tui.editor.pageDown": [
+     "pageDown",
+     "ctrl+pageDown"
+    ],
+    "tui.editor.deleteCharBackward": "backspace",
+    "tui.editor.deleteCharForward": [
+     "delete",
+     "ctrl+d"
+    ],
+    "tui.editor.deleteWordBackward": [
+     "ctrl+w",
+     "alt+backspace"
+    ],
+    "tui.editor.deleteWordForward": [
+     "alt+d",
+     "alt+delete"
+    ],
+    "tui.editor.deleteToLineStart": "ctrl+u",
+    "tui.editor.deleteToLineEnd": "ctrl+k",
+    "tui.editor.yank": "ctrl+y",
+    "tui.editor.yankPop": "alt+y",
+    "tui.editor.undo": "ctrl+-",
+    "tui.input.newLine": [
+     "shift+enter",
+     "ctrl+j"
+    ],
+    "tui.input.submit": "enter",
+    "tui.input.tab": "tab",
+    "tui.input.copy": "ctrl+c",
+    "tui.select.up": "up",
+    "tui.select.down": "down",
+    "tui.select.pageUp": "pageUp",
+    "tui.select.pageDown": "pageDown",
+    "tui.select.confirm": "enter",
+    "tui.select.cancel": [
+     "escape",
+     "ctrl+c"
+    ],
+    "tui.altScreen.pageUp": "pageUp",
+    "tui.altScreen.pageDown": "pageDown",
+    "tui.altScreen.halfPageUp": [],
+    "tui.altScreen.halfPageDown": [],
+    "tui.altScreen.lineUp": [],
+    "tui.altScreen.lineDown": [],
+    "tui.altScreen.previousPrompt": [
+     "ctrl+shift+up",
+     "ctrl+up"
+    ],
+    "tui.altScreen.nextPrompt": [
+     "ctrl+shift+down",
+     "ctrl+down"
+    ],
+    "tui.altScreen.search": "ctrl+shift+f",
+    "tui.altScreen.searchNext": [
+     "enter",
+     "ctrl+g"
+    ],
+    "tui.altScreen.searchPrevious": [
+     "shift+enter",
+     "ctrl+shift+g"
+    ],
+    "tui.altScreen.searchClose": "escape",
+    "tui.altScreen.top": "home",
+    "tui.altScreen.bottom": "end",
+    "app.interrupt": "escape",
+    "app.clear": "ctrl+c",
+    "app.exit": "ctrl+d",
+    "app.suspend": "ctrl+z",
+    "app.thinking.cycle": "shift+tab",
+    "app.thinking.save": "ctrl+s",
+    "app.model.cycleForward": "ctrl+p",
+    "app.model.cycleBackward": "shift+ctrl+p",
+    "app.model.select": "ctrl+l",
+    "app.tools.expand": "ctrl+o",
+    "app.thinking.toggle": "ctrl+t",
+    "app.session.toggleNamedFilter": "ctrl+n",
+    "app.editor.external": "ctrl+g",
+    "app.message.copy": "ctrl+x",
+    "app.message.followUp": "alt+enter",
+    "app.message.dequeue": "alt+up",
+    "app.clipboard.pasteImage": "ctrl+v",
+    "app.session.new": [],
+    "app.session.tree": [],
+    "app.session.fork": [],
+    "app.session.resume": [],
+    "app.tree.foldOrUp": [
+     "alt+left",
+     "ctrl+left"
+    ],
+    "app.tree.unfoldOrDown": [
+     "alt+right",
+     "ctrl+right"
+    ],
+    "app.tree.editLabel": "shift+l",
+    "app.tree.toggleLabelTimestamp": "shift+t",
+    "app.session.togglePath": "ctrl+p",
+    "app.session.toggleSort": "ctrl+s",
+    "app.session.rename": "ctrl+r",
+    "app.session.delete": "ctrl+d",
+    "app.session.deleteNoninvasive": "ctrl+backspace",
+    "app.models.save": "ctrl+s",
+    "app.models.enableAll": "ctrl+a",
+    "app.models.clearAll": "ctrl+x",
+    "app.models.toggleProvider": "ctrl+p",
+    "app.models.reorderUp": "alt+up",
+    "app.models.reorderDown": "alt+down",
+    "app.tree.filter.default": "ctrl+d",
+    "app.tree.filter.noTools": "ctrl+t",
+    "app.tree.filter.userOnly": "ctrl+u",
+    "app.tree.filter.labeledOnly": "ctrl+l",
+    "app.tree.filter.all": "ctrl+a",
+    "app.tree.filter.cycleForward": "ctrl+o",
+    "app.tree.filter.cycleBackward": "shift+ctrl+o"
+   }
+  },
+  {
+   "name": "invalid_json",
+   "before": {
+    "user": {},
+    "effective": {
+     "tui.editor.cursorUp": "up",
+     "tui.editor.cursorDown": "down",
+     "tui.editor.historyPrevious": [],
+     "tui.editor.historyNext": [],
+     "tui.editor.cursorLeft": [
+      "left",
+      "ctrl+b"
+     ],
+     "tui.editor.cursorRight": [
+      "right",
+      "ctrl+f"
+     ],
+     "tui.editor.cursorWordLeft": [
+      "alt+left",
+      "ctrl+left",
+      "alt+b"
+     ],
+     "tui.editor.cursorWordRight": [
+      "alt+right",
+      "ctrl+right",
+      "alt+f"
+     ],
+     "tui.editor.cursorLineStart": [
+      "home",
+      "ctrl+home",
+      "ctrl+a"
+     ],
+     "tui.editor.cursorLineEnd": [
+      "end",
+      "ctrl+end",
+      "ctrl+e"
+     ],
+     "tui.editor.jumpForward": "ctrl+]",
+     "tui.editor.jumpBackward": "ctrl+alt+]",
+     "tui.editor.pageUp": [
+      "pageUp",
+      "ctrl+pageUp"
+     ],
+     "tui.editor.pageDown": [
+      "pageDown",
+      "ctrl+pageDown"
+     ],
+     "tui.editor.deleteCharBackward": "backspace",
+     "tui.editor.deleteCharForward": [
+      "delete",
+      "ctrl+d"
+     ],
+     "tui.editor.deleteWordBackward": [
+      "ctrl+w",
+      "alt+backspace"
+     ],
+     "tui.editor.deleteWordForward": [
+      "alt+d",
+      "alt+delete"
+     ],
+     "tui.editor.deleteToLineStart": "ctrl+u",
+     "tui.editor.deleteToLineEnd": "ctrl+k",
+     "tui.editor.yank": "ctrl+y",
+     "tui.editor.yankPop": "alt+y",
+     "tui.editor.undo": "ctrl+-",
+     "tui.input.newLine": [
+      "shift+enter",
+      "ctrl+j"
+     ],
+     "tui.input.submit": "enter",
+     "tui.input.tab": "tab",
+     "tui.input.copy": "ctrl+c",
+     "tui.select.up": "up",
+     "tui.select.down": "down",
+     "tui.select.pageUp": "pageUp",
+     "tui.select.pageDown": "pageDown",
+     "tui.select.confirm": "enter",
+     "tui.select.cancel": [
+      "escape",
+      "ctrl+c"
+     ],
+     "tui.altScreen.pageUp": "pageUp",
+     "tui.altScreen.pageDown": "pageDown",
+     "tui.altScreen.halfPageUp": [],
+     "tui.altScreen.halfPageDown": [],
+     "tui.altScreen.lineUp": [],
+     "tui.altScreen.lineDown": [],
+     "tui.altScreen.previousPrompt": [
+      "ctrl+shift+up",
+      "ctrl+up"
+     ],
+     "tui.altScreen.nextPrompt": [
+      "ctrl+shift+down",
+      "ctrl+down"
+     ],
+     "tui.altScreen.search": "ctrl+shift+f",
+     "tui.altScreen.searchNext": [
+      "enter",
+      "ctrl+g"
+     ],
+     "tui.altScreen.searchPrevious": [
+      "shift+enter",
+      "ctrl+shift+g"
+     ],
+     "tui.altScreen.searchClose": "escape",
+     "tui.altScreen.top": "home",
+     "tui.altScreen.bottom": "end",
+     "app.interrupt": "escape",
+     "app.clear": "ctrl+c",
+     "app.exit": "ctrl+d",
+     "app.suspend": "ctrl+z",
+     "app.thinking.cycle": "shift+tab",
+     "app.thinking.save": "ctrl+s",
+     "app.model.cycleForward": "ctrl+p",
+     "app.model.cycleBackward": "shift+ctrl+p",
+     "app.model.select": "ctrl+l",
+     "app.tools.expand": "ctrl+o",
+     "app.thinking.toggle": "ctrl+t",
+     "app.session.toggleNamedFilter": "ctrl+n",
+     "app.editor.external": "ctrl+g",
+     "app.message.copy": "ctrl+x",
+     "app.message.followUp": "alt+enter",
+     "app.message.dequeue": "alt+up",
+     "app.clipboard.pasteImage": "ctrl+v",
+     "app.session.new": [],
+     "app.session.tree": [],
+     "app.session.fork": [],
+     "app.session.resume": [],
+     "app.tree.foldOrUp": [
+      "alt+left",
+      "ctrl+left"
+     ],
+     "app.tree.unfoldOrDown": [
+      "alt+right",
+      "ctrl+right"
+     ],
+     "app.tree.editLabel": "shift+l",
+     "app.tree.toggleLabelTimestamp": "shift+t",
+     "app.session.togglePath": "ctrl+p",
+     "app.session.toggleSort": "ctrl+s",
+     "app.session.rename": "ctrl+r",
+     "app.session.delete": "ctrl+d",
+     "app.session.deleteNoninvasive": "ctrl+backspace",
+     "app.models.save": "ctrl+s",
+     "app.models.enableAll": "ctrl+a",
+     "app.models.clearAll": "ctrl+x",
+     "app.models.toggleProvider": "ctrl+p",
+     "app.models.reorderUp": "alt+up",
+     "app.models.reorderDown": "alt+down",
+     "app.tree.filter.default": "ctrl+d",
+     "app.tree.filter.noTools": "ctrl+t",
+     "app.tree.filter.userOnly": "ctrl+u",
+     "app.tree.filter.labeledOnly": "ctrl+l",
+     "app.tree.filter.all": "ctrl+a",
+     "app.tree.filter.cycleForward": "ctrl+o",
+     "app.tree.filter.cycleBackward": "shift+ctrl+o"
+    }
+   },
+   "afterReload": {
+    "effective": {
+     "tui.editor.cursorUp": "up",
+     "tui.editor.cursorDown": "down",
+     "tui.editor.historyPrevious": [],
+     "tui.editor.historyNext": [],
+     "tui.editor.cursorLeft": [
+      "left",
+      "ctrl+b"
+     ],
+     "tui.editor.cursorRight": [
+      "right",
+      "ctrl+f"
+     ],
+     "tui.editor.cursorWordLeft": [
+      "alt+left",
+      "ctrl+left",
+      "alt+b"
+     ],
+     "tui.editor.cursorWordRight": [
+      "alt+right",
+      "ctrl+right",
+      "alt+f"
+     ],
+     "tui.editor.cursorLineStart": [
+      "home",
+      "ctrl+home",
+      "ctrl+a"
+     ],
+     "tui.editor.cursorLineEnd": [
+      "end",
+      "ctrl+end",
+      "ctrl+e"
+     ],
+     "tui.editor.jumpForward": "ctrl+]",
+     "tui.editor.jumpBackward": "ctrl+alt+]",
+     "tui.editor.pageUp": [
+      "pageUp",
+      "ctrl+pageUp"
+     ],
+     "tui.editor.pageDown": [
+      "pageDown",
+      "ctrl+pageDown"
+     ],
+     "tui.editor.deleteCharBackward": "backspace",
+     "tui.editor.deleteCharForward": [
+      "delete",
+      "ctrl+d"
+     ],
+     "tui.editor.deleteWordBackward": [
+      "ctrl+w",
+      "alt+backspace"
+     ],
+     "tui.editor.deleteWordForward": [
+      "alt+d",
+      "alt+delete"
+     ],
+     "tui.editor.deleteToLineStart": "ctrl+u",
+     "tui.editor.deleteToLineEnd": "ctrl+k",
+     "tui.editor.yank": "ctrl+y",
+     "tui.editor.yankPop": "alt+y",
+     "tui.editor.undo": "ctrl+-",
+     "tui.input.newLine": [
+      "shift+enter",
+      "ctrl+j"
+     ],
+     "tui.input.submit": "enter",
+     "tui.input.tab": "tab",
+     "tui.input.copy": "ctrl+c",
+     "tui.select.up": "up",
+     "tui.select.down": "down",
+     "tui.select.pageUp": "pageUp",
+     "tui.select.pageDown": "pageDown",
+     "tui.select.confirm": "enter",
+     "tui.select.cancel": [
+      "escape",
+      "ctrl+c"
+     ],
+     "tui.altScreen.pageUp": "pageUp",
+     "tui.altScreen.pageDown": "pageDown",
+     "tui.altScreen.halfPageUp": [],
+     "tui.altScreen.halfPageDown": [],
+     "tui.altScreen.lineUp": [],
+     "tui.altScreen.lineDown": [],
+     "tui.altScreen.previousPrompt": [
+      "ctrl+shift+up",
+      "ctrl+up"
+     ],
+     "tui.altScreen.nextPrompt": [
+      "ctrl+shift+down",
+      "ctrl+down"
+     ],
+     "tui.altScreen.search": "ctrl+shift+f",
+     "tui.altScreen.searchNext": [
+      "enter",
+      "ctrl+g"
+     ],
+     "tui.altScreen.searchPrevious": [
+      "shift+enter",
+      "ctrl+shift+g"
+     ],
+     "tui.altScreen.searchClose": "escape",
+     "tui.altScreen.top": "home",
+     "tui.altScreen.bottom": "end",
+     "app.interrupt": "escape",
+     "app.clear": "ctrl+shift+c",
+     "app.exit": "ctrl+d",
+     "app.suspend": "ctrl+z",
+     "app.thinking.cycle": "shift+tab",
+     "app.thinking.save": "ctrl+s",
+     "app.model.cycleForward": "ctrl+p",
+     "app.model.cycleBackward": "shift+ctrl+p",
+     "app.model.select": "ctrl+l",
+     "app.tools.expand": "ctrl+o",
+     "app.thinking.toggle": "ctrl+t",
+     "app.session.toggleNamedFilter": "ctrl+n",
+     "app.editor.external": "ctrl+g",
+     "app.message.copy": "ctrl+x",
+     "app.message.followUp": "alt+enter",
+     "app.message.dequeue": "alt+up",
+     "app.clipboard.pasteImage": "ctrl+v",
+     "app.session.new": [],
+     "app.session.tree": [],
+     "app.session.fork": [],
+     "app.session.resume": [],
+     "app.tree.foldOrUp": [
+      "alt+left",
+      "ctrl+left"
+     ],
+     "app.tree.unfoldOrDown": [
+      "alt+right",
+      "ctrl+right"
+     ],
+     "app.tree.editLabel": "shift+l",
+     "app.tree.toggleLabelTimestamp": "shift+t",
+     "app.session.togglePath": "ctrl+p",
+     "app.session.toggleSort": "ctrl+s",
+     "app.session.rename": "ctrl+r",
+     "app.session.delete": "ctrl+d",
+     "app.session.deleteNoninvasive": "ctrl+backspace",
+     "app.models.save": "ctrl+s",
+     "app.models.enableAll": "ctrl+a",
+     "app.models.clearAll": "ctrl+x",
+     "app.models.toggleProvider": "ctrl+p",
+     "app.models.reorderUp": "alt+up",
+     "app.models.reorderDown": "alt+down",
+     "app.tree.filter.default": "ctrl+d",
+     "app.tree.filter.noTools": "ctrl+t",
+     "app.tree.filter.userOnly": "ctrl+u",
+     "app.tree.filter.labeledOnly": "ctrl+l",
+     "app.tree.filter.all": "ctrl+a",
+     "app.tree.filter.cycleForward": "ctrl+o",
+     "app.tree.filter.cycleBackward": "shift+ctrl+o"
+    }
+   },
+   "effectiveAfterSecondReload": {
+    "tui.editor.cursorUp": "up",
+    "tui.editor.cursorDown": "down",
+    "tui.editor.historyPrevious": [],
+    "tui.editor.historyNext": [],
+    "tui.editor.cursorLeft": [
+     "left",
+     "ctrl+b"
+    ],
+    "tui.editor.cursorRight": [
+     "right",
+     "ctrl+f"
+    ],
+    "tui.editor.cursorWordLeft": [
+     "alt+left",
+     "ctrl+left",
+     "alt+b"
+    ],
+    "tui.editor.cursorWordRight": [
+     "alt+right",
+     "ctrl+right",
+     "alt+f"
+    ],
+    "tui.editor.cursorLineStart": [
+     "home",
+     "ctrl+home",
+     "ctrl+a"
+    ],
+    "tui.editor.cursorLineEnd": [
+     "end",
+     "ctrl+end",
+     "ctrl+e"
+    ],
+    "tui.editor.jumpForward": "ctrl+]",
+    "tui.editor.jumpBackward": "ctrl+alt+]",
+    "tui.editor.pageUp": [
+     "pageUp",
+     "ctrl+pageUp"
+    ],
+    "tui.editor.pageDown": [
+     "pageDown",
+     "ctrl+pageDown"
+    ],
+    "tui.editor.deleteCharBackward": "backspace",
+    "tui.editor.deleteCharForward": [
+     "delete",
+     "ctrl+d"
+    ],
+    "tui.editor.deleteWordBackward": [
+     "ctrl+w",
+     "alt+backspace"
+    ],
+    "tui.editor.deleteWordForward": [
+     "alt+d",
+     "alt+delete"
+    ],
+    "tui.editor.deleteToLineStart": "ctrl+u",
+    "tui.editor.deleteToLineEnd": "ctrl+k",
+    "tui.editor.yank": "ctrl+y",
+    "tui.editor.yankPop": "alt+y",
+    "tui.editor.undo": "ctrl+-",
+    "tui.input.newLine": [
+     "shift+enter",
+     "ctrl+j"
+    ],
+    "tui.input.submit": "enter",
+    "tui.input.tab": "tab",
+    "tui.input.copy": "ctrl+c",
+    "tui.select.up": "up",
+    "tui.select.down": "down",
+    "tui.select.pageUp": "pageUp",
+    "tui.select.pageDown": "pageDown",
+    "tui.select.confirm": "enter",
+    "tui.select.cancel": [
+     "escape",
+     "ctrl+c"
+    ],
+    "tui.altScreen.pageUp": "pageUp",
+    "tui.altScreen.pageDown": "pageDown",
+    "tui.altScreen.halfPageUp": [],
+    "tui.altScreen.halfPageDown": [],
+    "tui.altScreen.lineUp": [],
+    "tui.altScreen.lineDown": [],
+    "tui.altScreen.previousPrompt": [
+     "ctrl+shift+up",
+     "ctrl+up"
+    ],
+    "tui.altScreen.nextPrompt": [
+     "ctrl+shift+down",
+     "ctrl+down"
+    ],
+    "tui.altScreen.search": "ctrl+shift+f",
+    "tui.altScreen.searchNext": [
+     "enter",
+     "ctrl+g"
+    ],
+    "tui.altScreen.searchPrevious": [
+     "shift+enter",
+     "ctrl+shift+g"
+    ],
+    "tui.altScreen.searchClose": "escape",
+    "tui.altScreen.top": "home",
+    "tui.altScreen.bottom": "end",
+    "app.interrupt": "escape",
+    "app.clear": "ctrl+shift+c",
+    "app.exit": "ctrl+d",
+    "app.suspend": "ctrl+z",
+    "app.thinking.cycle": "shift+tab",
+    "app.thinking.save": "ctrl+s",
+    "app.model.cycleForward": "ctrl+p",
+    "app.model.cycleBackward": "shift+ctrl+p",
+    "app.model.select": "ctrl+l",
+    "app.tools.expand": "ctrl+o",
+    "app.thinking.toggle": "ctrl+t",
+    "app.session.toggleNamedFilter": "ctrl+n",
+    "app.editor.external": "ctrl+g",
+    "app.message.copy": "ctrl+x",
+    "app.message.followUp": "alt+enter",
+    "app.message.dequeue": "alt+up",
+    "app.clipboard.pasteImage": "ctrl+v",
+    "app.session.new": [],
+    "app.session.tree": [],
+    "app.session.fork": [],
+    "app.session.resume": [],
+    "app.tree.foldOrUp": [
+     "alt+left",
+     "ctrl+left"
+    ],
+    "app.tree.unfoldOrDown": [
+     "alt+right",
+     "ctrl+right"
+    ],
+    "app.tree.editLabel": "shift+l",
+    "app.tree.toggleLabelTimestamp": "shift+t",
+    "app.session.togglePath": "ctrl+p",
+    "app.session.toggleSort": "ctrl+s",
+    "app.session.rename": "ctrl+r",
+    "app.session.delete": "ctrl+d",
+    "app.session.deleteNoninvasive": "ctrl+backspace",
+    "app.models.save": "ctrl+s",
+    "app.models.enableAll": "ctrl+a",
+    "app.models.clearAll": "ctrl+x",
+    "app.models.toggleProvider": "ctrl+p",
+    "app.models.reorderUp": "alt+up",
+    "app.models.reorderDown": "alt+down",
+    "app.tree.filter.default": "ctrl+d",
+    "app.tree.filter.noTools": "ctrl+t",
+    "app.tree.filter.userOnly": "ctrl+u",
+    "app.tree.filter.labeledOnly": "ctrl+l",
+    "app.tree.filter.all": "ctrl+a",
+    "app.tree.filter.cycleForward": "ctrl+o",
+    "app.tree.filter.cycleBackward": "shift+ctrl+o"
+   }
+  },
+  {
+   "name": "not_an_object",
+   "before": {
+    "user": {},
+    "effective": {
+     "tui.editor.cursorUp": "up",
+     "tui.editor.cursorDown": "down",
+     "tui.editor.historyPrevious": [],
+     "tui.editor.historyNext": [],
+     "tui.editor.cursorLeft": [
+      "left",
+      "ctrl+b"
+     ],
+     "tui.editor.cursorRight": [
+      "right",
+      "ctrl+f"
+     ],
+     "tui.editor.cursorWordLeft": [
+      "alt+left",
+      "ctrl+left",
+      "alt+b"
+     ],
+     "tui.editor.cursorWordRight": [
+      "alt+right",
+      "ctrl+right",
+      "alt+f"
+     ],
+     "tui.editor.cursorLineStart": [
+      "home",
+      "ctrl+home",
+      "ctrl+a"
+     ],
+     "tui.editor.cursorLineEnd": [
+      "end",
+      "ctrl+end",
+      "ctrl+e"
+     ],
+     "tui.editor.jumpForward": "ctrl+]",
+     "tui.editor.jumpBackward": "ctrl+alt+]",
+     "tui.editor.pageUp": [
+      "pageUp",
+      "ctrl+pageUp"
+     ],
+     "tui.editor.pageDown": [
+      "pageDown",
+      "ctrl+pageDown"
+     ],
+     "tui.editor.deleteCharBackward": "backspace",
+     "tui.editor.deleteCharForward": [
+      "delete",
+      "ctrl+d"
+     ],
+     "tui.editor.deleteWordBackward": [
+      "ctrl+w",
+      "alt+backspace"
+     ],
+     "tui.editor.deleteWordForward": [
+      "alt+d",
+      "alt+delete"
+     ],
+     "tui.editor.deleteToLineStart": "ctrl+u",
+     "tui.editor.deleteToLineEnd": "ctrl+k",
+     "tui.editor.yank": "ctrl+y",
+     "tui.editor.yankPop": "alt+y",
+     "tui.editor.undo": "ctrl+-",
+     "tui.input.newLine": [
+      "shift+enter",
+      "ctrl+j"
+     ],
+     "tui.input.submit": "enter",
+     "tui.input.tab": "tab",
+     "tui.input.copy": "ctrl+c",
+     "tui.select.up": "up",
+     "tui.select.down": "down",
+     "tui.select.pageUp": "pageUp",
+     "tui.select.pageDown": "pageDown",
+     "tui.select.confirm": "enter",
+     "tui.select.cancel": [
+      "escape",
+      "ctrl+c"
+     ],
+     "tui.altScreen.pageUp": "pageUp",
+     "tui.altScreen.pageDown": "pageDown",
+     "tui.altScreen.halfPageUp": [],
+     "tui.altScreen.halfPageDown": [],
+     "tui.altScreen.lineUp": [],
+     "tui.altScreen.lineDown": [],
+     "tui.altScreen.previousPrompt": [
+      "ctrl+shift+up",
+      "ctrl+up"
+     ],
+     "tui.altScreen.nextPrompt": [
+      "ctrl+shift+down",
+      "ctrl+down"
+     ],
+     "tui.altScreen.search": "ctrl+shift+f",
+     "tui.altScreen.searchNext": [
+      "enter",
+      "ctrl+g"
+     ],
+     "tui.altScreen.searchPrevious": [
+      "shift+enter",
+      "ctrl+shift+g"
+     ],
+     "tui.altScreen.searchClose": "escape",
+     "tui.altScreen.top": "home",
+     "tui.altScreen.bottom": "end",
+     "app.interrupt": "escape",
+     "app.clear": "ctrl+c",
+     "app.exit": "ctrl+d",
+     "app.suspend": "ctrl+z",
+     "app.thinking.cycle": "shift+tab",
+     "app.thinking.save": "ctrl+s",
+     "app.model.cycleForward": "ctrl+p",
+     "app.model.cycleBackward": "shift+ctrl+p",
+     "app.model.select": "ctrl+l",
+     "app.tools.expand": "ctrl+o",
+     "app.thinking.toggle": "ctrl+t",
+     "app.session.toggleNamedFilter": "ctrl+n",
+     "app.editor.external": "ctrl+g",
+     "app.message.copy": "ctrl+x",
+     "app.message.followUp": "alt+enter",
+     "app.message.dequeue": "alt+up",
+     "app.clipboard.pasteImage": "ctrl+v",
+     "app.session.new": [],
+     "app.session.tree": [],
+     "app.session.fork": [],
+     "app.session.resume": [],
+     "app.tree.foldOrUp": [
+      "alt+left",
+      "ctrl+left"
+     ],
+     "app.tree.unfoldOrDown": [
+      "alt+right",
+      "ctrl+right"
+     ],
+     "app.tree.editLabel": "shift+l",
+     "app.tree.toggleLabelTimestamp": "shift+t",
+     "app.session.togglePath": "ctrl+p",
+     "app.session.toggleSort": "ctrl+s",
+     "app.session.rename": "ctrl+r",
+     "app.session.delete": "ctrl+d",
+     "app.session.deleteNoninvasive": "ctrl+backspace",
+     "app.models.save": "ctrl+s",
+     "app.models.enableAll": "ctrl+a",
+     "app.models.clearAll": "ctrl+x",
+     "app.models.toggleProvider": "ctrl+p",
+     "app.models.reorderUp": "alt+up",
+     "app.models.reorderDown": "alt+down",
+     "app.tree.filter.default": "ctrl+d",
+     "app.tree.filter.noTools": "ctrl+t",
+     "app.tree.filter.userOnly": "ctrl+u",
+     "app.tree.filter.labeledOnly": "ctrl+l",
+     "app.tree.filter.all": "ctrl+a",
+     "app.tree.filter.cycleForward": "ctrl+o",
+     "app.tree.filter.cycleBackward": "shift+ctrl+o"
+    }
+   },
+   "afterReload": {
+    "effective": {
+     "tui.editor.cursorUp": "up",
+     "tui.editor.cursorDown": "down",
+     "tui.editor.historyPrevious": [],
+     "tui.editor.historyNext": [],
+     "tui.editor.cursorLeft": [
+      "left",
+      "ctrl+b"
+     ],
+     "tui.editor.cursorRight": [
+      "right",
+      "ctrl+f"
+     ],
+     "tui.editor.cursorWordLeft": [
+      "alt+left",
+      "ctrl+left",
+      "alt+b"
+     ],
+     "tui.editor.cursorWordRight": [
+      "alt+right",
+      "ctrl+right",
+      "alt+f"
+     ],
+     "tui.editor.cursorLineStart": [
+      "home",
+      "ctrl+home",
+      "ctrl+a"
+     ],
+     "tui.editor.cursorLineEnd": [
+      "end",
+      "ctrl+end",
+      "ctrl+e"
+     ],
+     "tui.editor.jumpForward": "ctrl+]",
+     "tui.editor.jumpBackward": "ctrl+alt+]",
+     "tui.editor.pageUp": [
+      "pageUp",
+      "ctrl+pageUp"
+     ],
+     "tui.editor.pageDown": [
+      "pageDown",
+      "ctrl+pageDown"
+     ],
+     "tui.editor.deleteCharBackward": "backspace",
+     "tui.editor.deleteCharForward": [
+      "delete",
+      "ctrl+d"
+     ],
+     "tui.editor.deleteWordBackward": [
+      "ctrl+w",
+      "alt+backspace"
+     ],
+     "tui.editor.deleteWordForward": [
+      "alt+d",
+      "alt+delete"
+     ],
+     "tui.editor.deleteToLineStart": "ctrl+u",
+     "tui.editor.deleteToLineEnd": "ctrl+k",
+     "tui.editor.yank": "ctrl+y",
+     "tui.editor.yankPop": "alt+y",
+     "tui.editor.undo": "ctrl+-",
+     "tui.input.newLine": [
+      "shift+enter",
+      "ctrl+j"
+     ],
+     "tui.input.submit": "enter",
+     "tui.input.tab": "tab",
+     "tui.input.copy": "ctrl+c",
+     "tui.select.up": "up",
+     "tui.select.down": "down",
+     "tui.select.pageUp": "pageUp",
+     "tui.select.pageDown": "pageDown",
+     "tui.select.confirm": "enter",
+     "tui.select.cancel": [
+      "escape",
+      "ctrl+c"
+     ],
+     "tui.altScreen.pageUp": "pageUp",
+     "tui.altScreen.pageDown": "pageDown",
+     "tui.altScreen.halfPageUp": [],
+     "tui.altScreen.halfPageDown": [],
+     "tui.altScreen.lineUp": [],
+     "tui.altScreen.lineDown": [],
+     "tui.altScreen.previousPrompt": [
+      "ctrl+shift+up",
+      "ctrl+up"
+     ],
+     "tui.altScreen.nextPrompt": [
+      "ctrl+shift+down",
+      "ctrl+down"
+     ],
+     "tui.altScreen.search": "ctrl+shift+f",
+     "tui.altScreen.searchNext": [
+      "enter",
+      "ctrl+g"
+     ],
+     "tui.altScreen.searchPrevious": [
+      "shift+enter",
+      "ctrl+shift+g"
+     ],
+     "tui.altScreen.searchClose": "escape",
+     "tui.altScreen.top": "home",
+     "tui.altScreen.bottom": "end",
+     "app.interrupt": "escape",
+     "app.clear": "ctrl+shift+c",
+     "app.exit": "ctrl+d",
+     "app.suspend": "ctrl+z",
+     "app.thinking.cycle": "shift+tab",
+     "app.thinking.save": "ctrl+s",
+     "app.model.cycleForward": "ctrl+p",
+     "app.model.cycleBackward": "shift+ctrl+p",
+     "app.model.select": "ctrl+l",
+     "app.tools.expand": "ctrl+o",
+     "app.thinking.toggle": "ctrl+t",
+     "app.session.toggleNamedFilter": "ctrl+n",
+     "app.editor.external": "ctrl+g",
+     "app.message.copy": "ctrl+x",
+     "app.message.followUp": "alt+enter",
+     "app.message.dequeue": "alt+up",
+     "app.clipboard.pasteImage": "ctrl+v",
+     "app.session.new": [],
+     "app.session.tree": [],
+     "app.session.fork": [],
+     "app.session.resume": [],
+     "app.tree.foldOrUp": [
+      "alt+left",
+      "ctrl+left"
+     ],
+     "app.tree.unfoldOrDown": [
+      "alt+right",
+      "ctrl+right"
+     ],
+     "app.tree.editLabel": "shift+l",
+     "app.tree.toggleLabelTimestamp": "shift+t",
+     "app.session.togglePath": "ctrl+p",
+     "app.session.toggleSort": "ctrl+s",
+     "app.session.rename": "ctrl+r",
+     "app.session.delete": "ctrl+d",
+     "app.session.deleteNoninvasive": "ctrl+backspace",
+     "app.models.save": "ctrl+s",
+     "app.models.enableAll": "ctrl+a",
+     "app.models.clearAll": "ctrl+x",
+     "app.models.toggleProvider": "ctrl+p",
+     "app.models.reorderUp": "alt+up",
+     "app.models.reorderDown": "alt+down",
+     "app.tree.filter.default": "ctrl+d",
+     "app.tree.filter.noTools": "ctrl+t",
+     "app.tree.filter.userOnly": "ctrl+u",
+     "app.tree.filter.labeledOnly": "ctrl+l",
+     "app.tree.filter.all": "ctrl+a",
+     "app.tree.filter.cycleForward": "ctrl+o",
+     "app.tree.filter.cycleBackward": "shift+ctrl+o"
+    }
+   },
+   "effectiveAfterSecondReload": {
+    "tui.editor.cursorUp": "up",
+    "tui.editor.cursorDown": "down",
+    "tui.editor.historyPrevious": [],
+    "tui.editor.historyNext": [],
+    "tui.editor.cursorLeft": [
+     "left",
+     "ctrl+b"
+    ],
+    "tui.editor.cursorRight": [
+     "right",
+     "ctrl+f"
+    ],
+    "tui.editor.cursorWordLeft": [
+     "alt+left",
+     "ctrl+left",
+     "alt+b"
+    ],
+    "tui.editor.cursorWordRight": [
+     "alt+right",
+     "ctrl+right",
+     "alt+f"
+    ],
+    "tui.editor.cursorLineStart": [
+     "home",
+     "ctrl+home",
+     "ctrl+a"
+    ],
+    "tui.editor.cursorLineEnd": [
+     "end",
+     "ctrl+end",
+     "ctrl+e"
+    ],
+    "tui.editor.jumpForward": "ctrl+]",
+    "tui.editor.jumpBackward": "ctrl+alt+]",
+    "tui.editor.pageUp": [
+     "pageUp",
+     "ctrl+pageUp"
+    ],
+    "tui.editor.pageDown": [
+     "pageDown",
+     "ctrl+pageDown"
+    ],
+    "tui.editor.deleteCharBackward": "backspace",
+    "tui.editor.deleteCharForward": [
+     "delete",
+     "ctrl+d"
+    ],
+    "tui.editor.deleteWordBackward": [
+     "ctrl+w",
+     "alt+backspace"
+    ],
+    "tui.editor.deleteWordForward": [
+     "alt+d",
+     "alt+delete"
+    ],
+    "tui.editor.deleteToLineStart": "ctrl+u",
+    "tui.editor.deleteToLineEnd": "ctrl+k",
+    "tui.editor.yank": "ctrl+y",
+    "tui.editor.yankPop": "alt+y",
+    "tui.editor.undo": "ctrl+-",
+    "tui.input.newLine": [
+     "shift+enter",
+     "ctrl+j"
+    ],
+    "tui.input.submit": "enter",
+    "tui.input.tab": "tab",
+    "tui.input.copy": "ctrl+c",
+    "tui.select.up": "up",
+    "tui.select.down": "down",
+    "tui.select.pageUp": "pageUp",
+    "tui.select.pageDown": "pageDown",
+    "tui.select.confirm": "enter",
+    "tui.select.cancel": [
+     "escape",
+     "ctrl+c"
+    ],
+    "tui.altScreen.pageUp": "pageUp",
+    "tui.altScreen.pageDown": "pageDown",
+    "tui.altScreen.halfPageUp": [],
+    "tui.altScreen.halfPageDown": [],
+    "tui.altScreen.lineUp": [],
+    "tui.altScreen.lineDown": [],
+    "tui.altScreen.previousPrompt": [
+     "ctrl+shift+up",
+     "ctrl+up"
+    ],
+    "tui.altScreen.nextPrompt": [
+     "ctrl+shift+down",
+     "ctrl+down"
+    ],
+    "tui.altScreen.search": "ctrl+shift+f",
+    "tui.altScreen.searchNext": [
+     "enter",
+     "ctrl+g"
+    ],
+    "tui.altScreen.searchPrevious": [
+     "shift+enter",
+     "ctrl+shift+g"
+    ],
+    "tui.altScreen.searchClose": "escape",
+    "tui.altScreen.top": "home",
+    "tui.altScreen.bottom": "end",
+    "app.interrupt": "escape",
+    "app.clear": "ctrl+shift+c",
+    "app.exit": "ctrl+d",
+    "app.suspend": "ctrl+z",
+    "app.thinking.cycle": "shift+tab",
+    "app.thinking.save": "ctrl+s",
+    "app.model.cycleForward": "ctrl+p",
+    "app.model.cycleBackward": "shift+ctrl+p",
+    "app.model.select": "ctrl+l",
+    "app.tools.expand": "ctrl+o",
+    "app.thinking.toggle": "ctrl+t",
+    "app.session.toggleNamedFilter": "ctrl+n",
+    "app.editor.external": "ctrl+g",
+    "app.message.copy": "ctrl+x",
+    "app.message.followUp": "alt+enter",
+    "app.message.dequeue": "alt+up",
+    "app.clipboard.pasteImage": "ctrl+v",
+    "app.session.new": [],
+    "app.session.tree": [],
+    "app.session.fork": [],
+    "app.session.resume": [],
+    "app.tree.foldOrUp": [
+     "alt+left",
+     "ctrl+left"
+    ],
+    "app.tree.unfoldOrDown": [
+     "alt+right",
+     "ctrl+right"
+    ],
+    "app.tree.editLabel": "shift+l",
+    "app.tree.toggleLabelTimestamp": "shift+t",
+    "app.session.togglePath": "ctrl+p",
+    "app.session.toggleSort": "ctrl+s",
+    "app.session.rename": "ctrl+r",
+    "app.session.delete": "ctrl+d",
+    "app.session.deleteNoninvasive": "ctrl+backspace",
+    "app.models.save": "ctrl+s",
+    "app.models.enableAll": "ctrl+a",
+    "app.models.clearAll": "ctrl+x",
+    "app.models.toggleProvider": "ctrl+p",
+    "app.models.reorderUp": "alt+up",
+    "app.models.reorderDown": "alt+down",
+    "app.tree.filter.default": "ctrl+d",
+    "app.tree.filter.noTools": "ctrl+t",
+    "app.tree.filter.userOnly": "ctrl+u",
+    "app.tree.filter.labeledOnly": "ctrl+l",
+    "app.tree.filter.all": "ctrl+a",
+    "app.tree.filter.cycleForward": "ctrl+o",
+    "app.tree.filter.cycleBackward": "shift+ctrl+o"
+   }
+  },
+  {
+   "name": "array_values_dropped",
+   "before": {
+    "user": {
+     "app.clear": "ctrl+c"
+    },
+    "effective": {
+     "tui.editor.cursorUp": "up",
+     "tui.editor.cursorDown": "down",
+     "tui.editor.historyPrevious": [],
+     "tui.editor.historyNext": [],
+     "tui.editor.cursorLeft": [
+      "left",
+      "ctrl+b"
+     ],
+     "tui.editor.cursorRight": [
+      "right",
+      "ctrl+f"
+     ],
+     "tui.editor.cursorWordLeft": [
+      "alt+left",
+      "ctrl+left",
+      "alt+b"
+     ],
+     "tui.editor.cursorWordRight": [
+      "alt+right",
+      "ctrl+right",
+      "alt+f"
+     ],
+     "tui.editor.cursorLineStart": [
+      "home",
+      "ctrl+home",
+      "ctrl+a"
+     ],
+     "tui.editor.cursorLineEnd": [
+      "end",
+      "ctrl+end",
+      "ctrl+e"
+     ],
+     "tui.editor.jumpForward": "ctrl+]",
+     "tui.editor.jumpBackward": "ctrl+alt+]",
+     "tui.editor.pageUp": [
+      "pageUp",
+      "ctrl+pageUp"
+     ],
+     "tui.editor.pageDown": [
+      "pageDown",
+      "ctrl+pageDown"
+     ],
+     "tui.editor.deleteCharBackward": "backspace",
+     "tui.editor.deleteCharForward": [
+      "delete",
+      "ctrl+d"
+     ],
+     "tui.editor.deleteWordBackward": [
+      "ctrl+w",
+      "alt+backspace"
+     ],
+     "tui.editor.deleteWordForward": [
+      "alt+d",
+      "alt+delete"
+     ],
+     "tui.editor.deleteToLineStart": "ctrl+u",
+     "tui.editor.deleteToLineEnd": "ctrl+k",
+     "tui.editor.yank": "ctrl+y",
+     "tui.editor.yankPop": "alt+y",
+     "tui.editor.undo": "ctrl+-",
+     "tui.input.newLine": [
+      "shift+enter",
+      "ctrl+j"
+     ],
+     "tui.input.submit": "enter",
+     "tui.input.tab": "tab",
+     "tui.input.copy": "ctrl+c",
+     "tui.select.up": "up",
+     "tui.select.down": "down",
+     "tui.select.pageUp": "pageUp",
+     "tui.select.pageDown": "pageDown",
+     "tui.select.confirm": "enter",
+     "tui.select.cancel": [
+      "escape",
+      "ctrl+c"
+     ],
+     "tui.altScreen.pageUp": "pageUp",
+     "tui.altScreen.pageDown": "pageDown",
+     "tui.altScreen.halfPageUp": [],
+     "tui.altScreen.halfPageDown": [],
+     "tui.altScreen.lineUp": [],
+     "tui.altScreen.lineDown": [],
+     "tui.altScreen.previousPrompt": [
+      "ctrl+shift+up",
+      "ctrl+up"
+     ],
+     "tui.altScreen.nextPrompt": [
+      "ctrl+shift+down",
+      "ctrl+down"
+     ],
+     "tui.altScreen.search": "ctrl+shift+f",
+     "tui.altScreen.searchNext": [
+      "enter",
+      "ctrl+g"
+     ],
+     "tui.altScreen.searchPrevious": [
+      "shift+enter",
+      "ctrl+shift+g"
+     ],
+     "tui.altScreen.searchClose": "escape",
+     "tui.altScreen.top": "home",
+     "tui.altScreen.bottom": "end",
+     "app.interrupt": "escape",
+     "app.clear": "ctrl+c",
+     "app.exit": "ctrl+d",
+     "app.suspend": "ctrl+z",
+     "app.thinking.cycle": "shift+tab",
+     "app.thinking.save": "ctrl+s",
+     "app.model.cycleForward": "ctrl+p",
+     "app.model.cycleBackward": "shift+ctrl+p",
+     "app.model.select": "ctrl+l",
+     "app.tools.expand": "ctrl+o",
+     "app.thinking.toggle": "ctrl+t",
+     "app.session.toggleNamedFilter": "ctrl+n",
+     "app.editor.external": "ctrl+g",
+     "app.message.copy": "ctrl+x",
+     "app.message.followUp": "alt+enter",
+     "app.message.dequeue": "alt+up",
+     "app.clipboard.pasteImage": "ctrl+v",
+     "app.session.new": [],
+     "app.session.tree": [],
+     "app.session.fork": [],
+     "app.session.resume": [],
+     "app.tree.foldOrUp": [
+      "alt+left",
+      "ctrl+left"
+     ],
+     "app.tree.unfoldOrDown": [
+      "alt+right",
+      "ctrl+right"
+     ],
+     "app.tree.editLabel": "shift+l",
+     "app.tree.toggleLabelTimestamp": "shift+t",
+     "app.session.togglePath": "ctrl+p",
+     "app.session.toggleSort": "ctrl+s",
+     "app.session.rename": "ctrl+r",
+     "app.session.delete": "ctrl+d",
+     "app.session.deleteNoninvasive": "ctrl+backspace",
+     "app.models.save": "ctrl+s",
+     "app.models.enableAll": "ctrl+a",
+     "app.models.clearAll": "ctrl+x",
+     "app.models.toggleProvider": "ctrl+p",
+     "app.models.reorderUp": "alt+up",
+     "app.models.reorderDown": "alt+down",
+     "app.tree.filter.default": "ctrl+d",
+     "app.tree.filter.noTools": "ctrl+t",
+     "app.tree.filter.userOnly": "ctrl+u",
+     "app.tree.filter.labeledOnly": "ctrl+l",
+     "app.tree.filter.all": "ctrl+a",
+     "app.tree.filter.cycleForward": "ctrl+o",
+     "app.tree.filter.cycleBackward": "shift+ctrl+o"
+    }
+   },
+   "afterReload": {
+    "effective": {
+     "tui.editor.cursorUp": "up",
+     "tui.editor.cursorDown": "down",
+     "tui.editor.historyPrevious": [],
+     "tui.editor.historyNext": [],
+     "tui.editor.cursorLeft": [
+      "left",
+      "ctrl+b"
+     ],
+     "tui.editor.cursorRight": [
+      "right",
+      "ctrl+f"
+     ],
+     "tui.editor.cursorWordLeft": [
+      "alt+left",
+      "ctrl+left",
+      "alt+b"
+     ],
+     "tui.editor.cursorWordRight": [
+      "alt+right",
+      "ctrl+right",
+      "alt+f"
+     ],
+     "tui.editor.cursorLineStart": [
+      "home",
+      "ctrl+home",
+      "ctrl+a"
+     ],
+     "tui.editor.cursorLineEnd": [
+      "end",
+      "ctrl+end",
+      "ctrl+e"
+     ],
+     "tui.editor.jumpForward": "ctrl+]",
+     "tui.editor.jumpBackward": "ctrl+alt+]",
+     "tui.editor.pageUp": [
+      "pageUp",
+      "ctrl+pageUp"
+     ],
+     "tui.editor.pageDown": [
+      "pageDown",
+      "ctrl+pageDown"
+     ],
+     "tui.editor.deleteCharBackward": "backspace",
+     "tui.editor.deleteCharForward": [
+      "delete",
+      "ctrl+d"
+     ],
+     "tui.editor.deleteWordBackward": [
+      "ctrl+w",
+      "alt+backspace"
+     ],
+     "tui.editor.deleteWordForward": [
+      "alt+d",
+      "alt+delete"
+     ],
+     "tui.editor.deleteToLineStart": "ctrl+u",
+     "tui.editor.deleteToLineEnd": "ctrl+k",
+     "tui.editor.yank": "ctrl+y",
+     "tui.editor.yankPop": "alt+y",
+     "tui.editor.undo": "ctrl+-",
+     "tui.input.newLine": [
+      "shift+enter",
+      "ctrl+j"
+     ],
+     "tui.input.submit": "enter",
+     "tui.input.tab": "tab",
+     "tui.input.copy": "ctrl+c",
+     "tui.select.up": "up",
+     "tui.select.down": "down",
+     "tui.select.pageUp": "pageUp",
+     "tui.select.pageDown": "pageDown",
+     "tui.select.confirm": "enter",
+     "tui.select.cancel": [
+      "escape",
+      "ctrl+c"
+     ],
+     "tui.altScreen.pageUp": "pageUp",
+     "tui.altScreen.pageDown": "pageDown",
+     "tui.altScreen.halfPageUp": [],
+     "tui.altScreen.halfPageDown": [],
+     "tui.altScreen.lineUp": [],
+     "tui.altScreen.lineDown": [],
+     "tui.altScreen.previousPrompt": [
+      "ctrl+shift+up",
+      "ctrl+up"
+     ],
+     "tui.altScreen.nextPrompt": [
+      "ctrl+shift+down",
+      "ctrl+down"
+     ],
+     "tui.altScreen.search": "ctrl+shift+f",
+     "tui.altScreen.searchNext": [
+      "enter",
+      "ctrl+g"
+     ],
+     "tui.altScreen.searchPrevious": [
+      "shift+enter",
+      "ctrl+shift+g"
+     ],
+     "tui.altScreen.searchClose": "escape",
+     "tui.altScreen.top": "home",
+     "tui.altScreen.bottom": "end",
+     "app.interrupt": "escape",
+     "app.clear": "ctrl+shift+c",
+     "app.exit": "ctrl+d",
+     "app.suspend": "ctrl+z",
+     "app.thinking.cycle": "shift+tab",
+     "app.thinking.save": "ctrl+s",
+     "app.model.cycleForward": "ctrl+p",
+     "app.model.cycleBackward": "shift+ctrl+p",
+     "app.model.select": "ctrl+l",
+     "app.tools.expand": "ctrl+o",
+     "app.thinking.toggle": "ctrl+t",
+     "app.session.toggleNamedFilter": "ctrl+n",
+     "app.editor.external": "ctrl+g",
+     "app.message.copy": "ctrl+x",
+     "app.message.followUp": "alt+enter",
+     "app.message.dequeue": "alt+up",
+     "app.clipboard.pasteImage": "ctrl+v",
+     "app.session.new": [],
+     "app.session.tree": [],
+     "app.session.fork": [],
+     "app.session.resume": [],
+     "app.tree.foldOrUp": [
+      "alt+left",
+      "ctrl+left"
+     ],
+     "app.tree.unfoldOrDown": [
+      "alt+right",
+      "ctrl+right"
+     ],
+     "app.tree.editLabel": "shift+l",
+     "app.tree.toggleLabelTimestamp": "shift+t",
+     "app.session.togglePath": "ctrl+p",
+     "app.session.toggleSort": "ctrl+s",
+     "app.session.rename": "ctrl+r",
+     "app.session.delete": "ctrl+d",
+     "app.session.deleteNoninvasive": "ctrl+backspace",
+     "app.models.save": "ctrl+s",
+     "app.models.enableAll": "ctrl+a",
+     "app.models.clearAll": "ctrl+x",
+     "app.models.toggleProvider": "ctrl+p",
+     "app.models.reorderUp": "alt+up",
+     "app.models.reorderDown": "alt+down",
+     "app.tree.filter.default": "ctrl+d",
+     "app.tree.filter.noTools": "ctrl+t",
+     "app.tree.filter.userOnly": "ctrl+u",
+     "app.tree.filter.labeledOnly": "ctrl+l",
+     "app.tree.filter.all": "ctrl+a",
+     "app.tree.filter.cycleForward": "ctrl+o",
+     "app.tree.filter.cycleBackward": "shift+ctrl+o"
+    }
+   },
+   "effectiveAfterSecondReload": {
+    "tui.editor.cursorUp": "up",
+    "tui.editor.cursorDown": "down",
+    "tui.editor.historyPrevious": [],
+    "tui.editor.historyNext": [],
+    "tui.editor.cursorLeft": [
+     "left",
+     "ctrl+b"
+    ],
+    "tui.editor.cursorRight": [
+     "right",
+     "ctrl+f"
+    ],
+    "tui.editor.cursorWordLeft": [
+     "alt+left",
+     "ctrl+left",
+     "alt+b"
+    ],
+    "tui.editor.cursorWordRight": [
+     "alt+right",
+     "ctrl+right",
+     "alt+f"
+    ],
+    "tui.editor.cursorLineStart": [
+     "home",
+     "ctrl+home",
+     "ctrl+a"
+    ],
+    "tui.editor.cursorLineEnd": [
+     "end",
+     "ctrl+end",
+     "ctrl+e"
+    ],
+    "tui.editor.jumpForward": "ctrl+]",
+    "tui.editor.jumpBackward": "ctrl+alt+]",
+    "tui.editor.pageUp": [
+     "pageUp",
+     "ctrl+pageUp"
+    ],
+    "tui.editor.pageDown": [
+     "pageDown",
+     "ctrl+pageDown"
+    ],
+    "tui.editor.deleteCharBackward": "backspace",
+    "tui.editor.deleteCharForward": [
+     "delete",
+     "ctrl+d"
+    ],
+    "tui.editor.deleteWordBackward": [
+     "ctrl+w",
+     "alt+backspace"
+    ],
+    "tui.editor.deleteWordForward": [
+     "alt+d",
+     "alt+delete"
+    ],
+    "tui.editor.deleteToLineStart": "ctrl+u",
+    "tui.editor.deleteToLineEnd": "ctrl+k",
+    "tui.editor.yank": "ctrl+y",
+    "tui.editor.yankPop": "alt+y",
+    "tui.editor.undo": "ctrl+-",
+    "tui.input.newLine": [
+     "shift+enter",
+     "ctrl+j"
+    ],
+    "tui.input.submit": "enter",
+    "tui.input.tab": "tab",
+    "tui.input.copy": "ctrl+c",
+    "tui.select.up": "up",
+    "tui.select.down": "down",
+    "tui.select.pageUp": "pageUp",
+    "tui.select.pageDown": "pageDown",
+    "tui.select.confirm": "enter",
+    "tui.select.cancel": [
+     "escape",
+     "ctrl+c"
+    ],
+    "tui.altScreen.pageUp": "pageUp",
+    "tui.altScreen.pageDown": "pageDown",
+    "tui.altScreen.halfPageUp": [],
+    "tui.altScreen.halfPageDown": [],
+    "tui.altScreen.lineUp": [],
+    "tui.altScreen.lineDown": [],
+    "tui.altScreen.previousPrompt": [
+     "ctrl+shift+up",
+     "ctrl+up"
+    ],
+    "tui.altScreen.nextPrompt": [
+     "ctrl+shift+down",
+     "ctrl+down"
+    ],
+    "tui.altScreen.search": "ctrl+shift+f",
+    "tui.altScreen.searchNext": [
+     "enter",
+     "ctrl+g"
+    ],
+    "tui.altScreen.searchPrevious": [
+     "shift+enter",
+     "ctrl+shift+g"
+    ],
+    "tui.altScreen.searchClose": "escape",
+    "tui.altScreen.top": "home",
+    "tui.altScreen.bottom": "end",
+    "app.interrupt": "escape",
+    "app.clear": "ctrl+shift+c",
+    "app.exit": "ctrl+d",
+    "app.suspend": "ctrl+z",
+    "app.thinking.cycle": "shift+tab",
+    "app.thinking.save": "ctrl+s",
+    "app.model.cycleForward": "ctrl+p",
+    "app.model.cycleBackward": "shift+ctrl+p",
+    "app.model.select": "ctrl+l",
+    "app.tools.expand": "ctrl+o",
+    "app.thinking.toggle": "ctrl+t",
+    "app.session.toggleNamedFilter": "ctrl+n",
+    "app.editor.external": "ctrl+g",
+    "app.message.copy": "ctrl+x",
+    "app.message.followUp": "alt+enter",
+    "app.message.dequeue": "alt+up",
+    "app.clipboard.pasteImage": "ctrl+v",
+    "app.session.new": [],
+    "app.session.tree": [],
+    "app.session.fork": [],
+    "app.session.resume": [],
+    "app.tree.foldOrUp": [
+     "alt+left",
+     "ctrl+left"
+    ],
+    "app.tree.unfoldOrDown": [
+     "alt+right",
+     "ctrl+right"
+    ],
+    "app.tree.editLabel": "shift+l",
+    "app.tree.toggleLabelTimestamp": "shift+t",
+    "app.session.togglePath": "ctrl+p",
+    "app.session.toggleSort": "ctrl+s",
+    "app.session.rename": "ctrl+r",
+    "app.session.delete": "ctrl+d",
+    "app.session.deleteNoninvasive": "ctrl+backspace",
+    "app.models.save": "ctrl+s",
+    "app.models.enableAll": "ctrl+a",
+    "app.models.clearAll": "ctrl+x",
+    "app.models.toggleProvider": "ctrl+p",
+    "app.models.reorderUp": "alt+up",
+    "app.models.reorderDown": "alt+down",
+    "app.tree.filter.default": "ctrl+d",
+    "app.tree.filter.noTools": "ctrl+t",
+    "app.tree.filter.userOnly": "ctrl+u",
+    "app.tree.filter.labeledOnly": "ctrl+l",
+    "app.tree.filter.all": "ctrl+a",
+    "app.tree.filter.cycleForward": "ctrl+o",
+    "app.tree.filter.cycleBackward": "shift+ctrl+o"
+   }
+  }
+ ]
+}

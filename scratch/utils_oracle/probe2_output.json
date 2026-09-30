@@ -1,0 +1,54 @@
+{
+ "win32": {
+  "resolve": [
+   "x:\\",
+   "x:\\y\\z",
+   "C:\\a\\b",
+   "C:\\a\\b",
+   "C:\\a\\b\\c",
+   "\\\\s\\s\\a\\b",
+   "C:\\Users\\13063\\Desktop\\code\\agent work\\pi-rust\\scratch\\utils_oracle\\b",
+   "D:\\b",
+   "C:\\b",
+   "C:\\b",
+   "D:\\c",
+   "C:\\c",
+   "C:\\a\\b",
+   "C:\\Users\\13063\\Desktop\\code\\agent work\\pi-rust\\scratch\\utils_oracle\\x\\y",
+   "\\\\s\\s\\y",
+   "C:\\x",
+   "C:\\x\\y",
+   "\\\\?\\C:\\a\\b",
+   "\\\\s\\s\\c",
+   "C:\\b",
+   "C:\\b",
+   "C:\\Users\\13063\\Desktop\\code\\agent work\\pi-rust\\scratch\\utils_oracle\\a",
+   "C:\\c",
+   "C:\\c"
+  ],
+  "relative": [
+   "b",
+   "c",
+   "b",
+   "..",
+   "",
+   ""
+  ],
+  "join": [
+   "C:\\x\\y",
+   "C:\\a\\b",
+   ".",
+   "a",
+   "C:\\a\\b\\",
+   "C:\\a"
+  ],
+  "normalize": [
+   "C:x",
+   "C:x\\",
+   "\\\\s\\s\\a\\",
+   "C:\\a\\b\\",
+   "x\\",
+   "C:\\y\\"
+  ]
+ }
+}

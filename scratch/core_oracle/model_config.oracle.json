@@ -1,0 +1,610 @@
+{
+ "fixtures": {
+  "valid_minimal": {
+   "input": {
+    "providers": {
+     "openai": {
+      "models": [
+       {
+        "id": "gpt"
+       }
+      ]
+     }
+    }
+   },
+   "error": null,
+   "providerIds": [
+    "openai"
+   ],
+   "providerJson": null,
+   "providerAJson": null,
+   "providerZetaJson": null
+  },
+  "provider_id_order": {
+   "input": {
+    "providers": {
+     "zeta": {
+      "models": [
+       {
+        "id": "z1"
+       }
+      ]
+     },
+     "alpha": {
+      "models": [
+       {
+        "id": "a1"
+       }
+      ]
+     },
+     "middle": {
+      "models": [
+       {
+        "id": "m1"
+       }
+      ]
+     }
+    }
+   },
+   "error": null,
+   "providerIds": [
+    "zeta",
+    "alpha",
+    "middle"
+   ],
+   "providerJson": null,
+   "providerAJson": null,
+   "providerZetaJson": "{\"models\":[{\"id\":\"z1\"}]}"
+  },
+  "provider_full": {
+   "input": {
+    "providers": {
+     "p": {
+      "name": "Provider",
+      "baseUrl": "https://api.example.com/v1",
+      "apiKey": "sk-test",
+      "api": "openai-completions",
+      "oauth": "radius",
+      "headers": {
+       "x-a": "1"
+      },
+      "models": [
+       {
+        "id": "full-model",
+        "name": "Full Model",
+        "api": "openai-completions",
+        "baseUrl": "https://alt.example.com",
+        "reasoning": true,
+        "thinkingLevelMap": {
+         "low": null,
+         "high": "high"
+        },
+        "input": [
+         "text",
+         "image"
+        ],
+        "cost": {
+         "input": 1,
+         "output": 2,
+         "cacheRead": 0.5,
+         "cacheWrite": 1.25,
+         "tiers": [
+          {
+           "inputTokensAbove": 1000,
+           "input": 0.5,
+           "output": 1,
+           "cacheRead": 0.25,
+           "cacheWrite": 0.6
+          }
+         ]
+        },
+        "contextWindow": 128000,
+        "maxTokens": 8192,
+        "samplingParams": {
+         "temperature": 0.7
+        },
+        "headers": {
+         "x-m": "m"
+        },
+        "compat": {
+         "supportsStore": true,
+         "thinkingFormat": "openai"
+        }
+       }
+      ],
+      "modelOverrides": {
+       "o-model": {
+        "reasoning": false,
+        "contextWindow": 4096
+       }
+      },
+      "authHeader": true
+     }
+    }
+   },
+   "error": null,
+   "providerIds": [
+    "p"
+   ],
+   "providerJson": "{\"name\":\"Provider\",\"baseUrl\":\"https://api.example.com/v1\",\"apiKey\":\"sk-test\",\"api\":\"openai-completions\",\"oauth\":\"radius\",\"headers\":{\"x-a\":\"1\"},\"models\":[{\"id\":\"full-model\",\"name\":\"Full Model\",\"api\":\"openai-completions\",\"baseUrl\":\"https://alt.example.com\",\"reasoning\":true,\"thinkingLevelMap\":{\"low\":null,\"high\":\"high\"},\"input\":[\"text\",\"image\"],\"cost\":{\"input\":1,\"output\":2,\"cacheRead\":0.5,\"cacheWrite\":1.25,\"tiers\":[{\"inputTokensAbove\":1000,\"input\":0.5,\"output\":1,\"cacheRead\":0.25,\"cacheWrite\":0.6}]},\"contextWindow\":128000,\"maxTokens\":8192,\"samplingParams\":{\"temperature\":0.7},\"headers\":{\"x-m\":\"m\"},\"compat\":{\"supportsStore\":true,\"thinkingFormat\":\"openai\"}}],\"modelOverrides\":{\"o-model\":{\"reasoning\":false,\"contextWindow\":4096}},\"authHeader\":true}",
+   "providerAJson": null,
+   "providerZetaJson": null
+  },
+  "anthropic_compat": {
+   "input": {
+    "providers": {
+     "a": {
+      "api": "anthropic-messages",
+      "compat": {
+       "supportsCacheControlOnTools": true,
+       "allowedFallbackModels": [
+        {
+         "provider": "p2",
+         "model": "m2",
+         "cost": {
+          "input": 1,
+          "output": 2,
+          "cacheRead": 0.5,
+          "cacheWrite": 0.25
+         }
+        }
+       ]
+      }
+     }
+    }
+   },
+   "error": null,
+   "providerIds": [
+    "a"
+   ],
+   "providerJson": null,
+   "providerAJson": "{\"api\":\"anthropic-messages\",\"compat\":{\"supportsCacheControlOnTools\":true,\"allowedFallbackModels\":[{\"provider\":\"p2\",\"model\":\"m2\",\"cost\":{\"input\":1,\"output\":2,\"cacheRead\":0.5,\"cacheWrite\":0.25}}]}}",
+   "providerZetaJson": null
+  },
+  "missing_providers": {
+   "input": {},
+   "error": "Invalid models.json schema:\n  - providers: must have required properties providers\n\nFile: C:\\Users\\13063\\AppData\\Local\\Temp\\pi-model-config-oracle-missing_providers-2k0JmE\\models.json",
+   "providerIds": [],
+   "providerJson": null,
+   "providerAJson": null,
+   "providerZetaJson": null
+  },
+  "providers_null": {
+   "input": {
+    "providers": null
+   },
+   "error": "Invalid models.json schema:\n  - providers: must be object\n\nFile: C:\\Users\\13063\\AppData\\Local\\Temp\\pi-model-config-oracle-providers_null-HAPzO8\\models.json",
+   "providerIds": [],
+   "providerJson": null,
+   "providerAJson": null,
+   "providerZetaJson": null
+  },
+  "model_missing_id": {
+   "input": {
+    "providers": {
+     "p": {
+      "models": [
+       {
+        "name": "no-id"
+       }
+      ]
+     }
+    }
+   },
+   "error": "Invalid models.json schema:\n  - providers.p.models.0.id: must have required properties id\n\nFile: C:\\Users\\13063\\AppData\\Local\\Temp\\pi-model-config-oracle-model_missing_id-LwjtDt\\models.json",
+   "providerIds": [],
+   "providerJson": null,
+   "providerAJson": null,
+   "providerZetaJson": null
+  },
+  "model_bad_id_type": {
+   "input": {
+    "providers": {
+     "p": {
+      "models": [
+       {
+        "id": 42
+       }
+      ]
+     }
+    }
+   },
+   "error": "Invalid models.json schema:\n  - providers.p.models.0.id: must be string\n\nFile: C:\\Users\\13063\\AppData\\Local\\Temp\\pi-model-config-oracle-model_bad_id_type-4obpAr\\models.json",
+   "providerIds": [],
+   "providerJson": null,
+   "providerAJson": null,
+   "providerZetaJson": null
+  },
+  "compat_bad_thinking_format": {
+   "input": {
+    "providers": {
+     "p": {
+      "models": [
+       {
+        "id": "m",
+        "compat": {
+         "thinkingFormat": "bogus"
+        }
+       }
+      ]
+     }
+    }
+   },
+   "error": null,
+   "providerIds": [
+    "p"
+   ],
+   "providerJson": "{\"models\":[{\"id\":\"m\",\"compat\":{\"thinkingFormat\":\"bogus\"}}]}",
+   "providerAJson": null,
+   "providerZetaJson": null
+  },
+  "fallback_models_too_many": {
+   "input": {
+    "providers": {
+     "a": {
+      "compat": {
+       "allowedFallbackModels": [
+        {
+         "provider": "p",
+         "model": "m",
+         "cost": {
+          "input": 1,
+          "output": 2,
+          "cacheRead": 0.5,
+          "cacheWrite": 0.25
+         }
+        },
+        {
+         "provider": "p",
+         "model": "m",
+         "cost": {
+          "input": 1,
+          "output": 2,
+          "cacheRead": 0.5,
+          "cacheWrite": 0.25
+         }
+        },
+        {
+         "provider": "p",
+         "model": "m",
+         "cost": {
+          "input": 1,
+          "output": 2,
+          "cacheRead": 0.5,
+          "cacheWrite": 0.25
+         }
+        },
+        {
+         "provider": "p",
+         "model": "m",
+         "cost": {
+          "input": 1,
+          "output": 2,
+          "cacheRead": 0.5,
+          "cacheWrite": 0.25
+         }
+        }
+       ]
+      }
+     }
+    }
+   },
+   "error": null,
+   "providerIds": [
+    "a"
+   ],
+   "providerJson": null,
+   "providerAJson": "{\"compat\":{\"allowedFallbackModels\":[{\"provider\":\"p\",\"model\":\"m\",\"cost\":{\"input\":1,\"output\":2,\"cacheRead\":0.5,\"cacheWrite\":0.25}},{\"provider\":\"p\",\"model\":\"m\",\"cost\":{\"input\":1,\"output\":2,\"cacheRead\":0.5,\"cacheWrite\":0.25}},{\"provider\":\"p\",\"model\":\"m\",\"cost\":{\"input\":1,\"output\":2,\"cacheRead\":0.5,\"cacheWrite\":0.25}},{\"provider\":\"p\",\"model\":\"m\",\"cost\":{\"input\":1,\"output\":2,\"cacheRead\":0.5,\"cacheWrite\":0.25}}]}}",
+   "providerZetaJson": null
+  },
+  "empty_provider_name": {
+   "input": {
+    "providers": {
+     "p": {
+      "name": ""
+     }
+    }
+   },
+   "error": "Invalid models.json schema:\n  - providers.p.name: must not have fewer than 1 characters\n\nFile: C:\\Users\\13063\\AppData\\Local\\Temp\\pi-model-config-oracle-empty_provider_name-SzDRjX\\models.json",
+   "providerIds": [],
+   "providerJson": null,
+   "providerAJson": null,
+   "providerZetaJson": null
+  },
+  "bad_input_union": {
+   "input": {
+    "providers": {
+     "p": {
+      "models": [
+       {
+        "id": "m",
+        "input": [
+         "text",
+         "audio"
+        ]
+       }
+      ]
+     }
+    }
+   },
+   "error": "Invalid models.json schema:\n  - providers.p.models.0.input.1: must be equal to constant\n  - providers.p.models.0.input.1: must be equal to constant\n  - providers.p.models.0.input.1: must match a schema in anyOf\n\nFile: C:\\Users\\13063\\AppData\\Local\\Temp\\pi-model-config-oracle-bad_input_union-RkIY78\\models.json",
+   "providerIds": [],
+   "providerJson": null,
+   "providerAJson": null,
+   "providerZetaJson": null
+  },
+  "bad_oauth": {
+   "input": {
+    "providers": {
+     "p": {
+      "oauth": "google"
+     }
+    }
+   },
+   "error": "Invalid models.json schema:\n  - providers.p.oauth: must be equal to constant\n\nFile: C:\\Users\\13063\\AppData\\Local\\Temp\\pi-model-config-oracle-bad_oauth-yvz6cn\\models.json",
+   "providerIds": [],
+   "providerJson": null,
+   "providerAJson": null,
+   "providerZetaJson": null
+  },
+  "compat_not_object": {
+   "input": {
+    "providers": {
+     "p": {
+      "models": [
+       {
+        "id": "m",
+        "compat": 42
+       }
+      ]
+     }
+    }
+   },
+   "error": "Invalid models.json schema:\n  - providers.p.models.0.compat: must be object\n  - providers.p.models.0.compat: must be object\n  - providers.p.models.0.compat: must be object\n  - providers.p.models.0.compat: must match a schema in anyOf\n\nFile: C:\\Users\\13063\\AppData\\Local\\Temp\\pi-model-config-oracle-compat_not_object-6Ai6FO\\models.json",
+   "providerIds": [],
+   "providerJson": null,
+   "providerAJson": null,
+   "providerZetaJson": null
+  },
+  "cost_bad_input_type": {
+   "input": {
+    "providers": {
+     "p": {
+      "models": [
+       {
+        "id": "m",
+        "cost": {
+         "input": "x",
+         "output": 1,
+         "cacheRead": 0,
+         "cacheWrite": 0
+        }
+       }
+      ]
+     }
+    }
+   },
+   "error": "Invalid models.json schema:\n  - providers.p.models.0.cost.input: must be number\n\nFile: C:\\Users\\13063\\AppData\\Local\\Temp\\pi-model-config-oracle-cost_bad_input_type-aj1yOR\\models.json",
+   "providerIds": [],
+   "providerJson": null,
+   "providerAJson": null,
+   "providerZetaJson": null
+  },
+  "context_window_string": {
+   "input": {
+    "providers": {
+     "p": {
+      "models": [
+       {
+        "id": "m",
+        "contextWindow": "5"
+       }
+      ]
+     }
+    }
+   },
+   "error": "Invalid models.json schema:\n  - providers.p.models.0.contextWindow: must be number\n\nFile: C:\\Users\\13063\\AppData\\Local\\Temp\\pi-model-config-oracle-context_window_string-GGMB6U\\models.json",
+   "providerIds": [],
+   "providerJson": null,
+   "providerAJson": null,
+   "providerZetaJson": null
+  },
+  "headers_bad_value": {
+   "input": {
+    "providers": {
+     "p": {
+      "headers": {
+       "a": 1
+      }
+     }
+    }
+   },
+   "error": "Invalid models.json schema:\n  - providers.p.headers.a: must be string\n\nFile: C:\\Users\\13063\\AppData\\Local\\Temp\\pi-model-config-oracle-headers_bad_value-owlYBP\\models.json",
+   "providerIds": [],
+   "providerJson": null,
+   "providerAJson": null,
+   "providerZetaJson": null
+  },
+  "model_override_bad_reasoning": {
+   "input": {
+    "providers": {
+     "p": {
+      "modelOverrides": {
+       "o-model": {
+        "reasoning": "yes"
+       }
+      }
+     }
+    }
+   },
+   "error": "Invalid models.json schema:\n  - providers.p.modelOverrides.o-model.reasoning: must be boolean\n\nFile: C:\\Users\\13063\\AppData\\Local\\Temp\\pi-model-config-oracle-model_override_bad_reasoning-G5LAjK\\models.json",
+   "providerIds": [],
+   "providerJson": null,
+   "providerAJson": null,
+   "providerZetaJson": null
+  },
+  "thinking_level_map_bad": {
+   "input": {
+    "providers": {
+     "p": {
+      "models": [
+       {
+        "id": "m",
+        "thinkingLevelMap": {
+         "low": 3
+        }
+       }
+      ]
+     }
+    }
+   },
+   "error": "Invalid models.json schema:\n  - providers.p.models.0.thinkingLevelMap.low: must be string\n  - providers.p.models.0.thinkingLevelMap.low: must be null\n  - providers.p.models.0.thinkingLevelMap.low: must match a schema in anyOf\n\nFile: C:\\Users\\13063\\AppData\\Local\\Temp\\pi-model-config-oracle-thinking_level_map_bad-EOpbFR\\models.json",
+   "providerIds": [],
+   "providerJson": null,
+   "providerAJson": null,
+   "providerZetaJson": null
+  },
+  "tier_missing_all_required": {
+   "input": {
+    "providers": {
+     "p": {
+      "models": [
+       {
+        "id": "m",
+        "cost": {
+         "input": 1,
+         "output": 1,
+         "cacheRead": 1,
+         "cacheWrite": 1,
+         "tiers": [
+          {}
+         ]
+        }
+       }
+      ]
+     }
+    }
+   },
+   "error": "Invalid models.json schema:\n  - providers.p.models.0.cost.tiers.0.inputTokensAbove: must have required properties inputTokensAbove, input, output, cacheRead, cacheWrite\n\nFile: C:\\Users\\13063\\AppData\\Local\\Temp\\pi-model-config-oracle-tier_missing_all_required-Sb4y9y\\models.json",
+   "providerIds": [],
+   "providerJson": null,
+   "providerAJson": null,
+   "providerZetaJson": null
+  },
+  "providers_array": {
+   "input": {
+    "providers": []
+   },
+   "error": "Invalid models.json schema:\n  - providers: must be object\n\nFile: C:\\Users\\13063\\AppData\\Local\\Temp\\pi-model-config-oracle-providers_array-MnqXJy\\models.json",
+   "providerIds": [],
+   "providerJson": null,
+   "providerAJson": null,
+   "providerZetaJson": null
+  },
+  "provider_not_object": {
+   "input": {
+    "providers": {
+     "p": 42
+    }
+   },
+   "error": "Invalid models.json schema:\n  - providers.p: must be object\n\nFile: C:\\Users\\13063\\AppData\\Local\\Temp\\pi-model-config-oracle-provider_not_object-nhCJAO\\models.json",
+   "providerIds": [],
+   "providerJson": null,
+   "providerAJson": null,
+   "providerZetaJson": null
+  },
+  "models_not_array": {
+   "input": {
+    "providers": {
+     "p": {
+      "models": {}
+     }
+    }
+   },
+   "error": "Invalid models.json schema:\n  - providers.p.models: must be array\n\nFile: C:\\Users\\13063\\AppData\\Local\\Temp\\pi-model-config-oracle-models_not_array-kDMsrQ\\models.json",
+   "providerIds": [],
+   "providerJson": null,
+   "providerAJson": null,
+   "providerZetaJson": null
+  },
+  "empty_model_id": {
+   "input": {
+    "providers": {
+     "p": {
+      "models": [
+       {
+        "id": ""
+       }
+      ]
+     }
+    }
+   },
+   "error": "Invalid models.json schema:\n  - providers.p.models.0.id: must not have fewer than 1 characters\n\nFile: C:\\Users\\13063\\AppData\\Local\\Temp\\pi-model-config-oracle-empty_model_id-VRjj60\\models.json",
+   "providerIds": [],
+   "providerJson": null,
+   "providerAJson": null,
+   "providerZetaJson": null
+  },
+  "multi_error_order": {
+   "input": {
+    "providers": {
+     "p": {
+      "apiKey": 42,
+      "models": [
+       {
+        "id": ""
+       },
+       {
+        "id": 9
+       }
+      ]
+     }
+    }
+   },
+   "error": "Invalid models.json schema:\n  - providers.p.apiKey: must be string\n  - providers.p.models.0.id: must not have fewer than 1 characters\n  - providers.p.models.1.id: must be string\n\nFile: C:\\Users\\13063\\AppData\\Local\\Temp\\pi-model-config-oracle-multi_error_order-O860oG\\models.json",
+   "providerIds": [],
+   "providerJson": null,
+   "providerAJson": null,
+   "providerZetaJson": null
+  },
+  "null_optional_number": {
+   "input": {
+    "providers": {
+     "p": {
+      "models": [
+       {
+        "id": "m",
+        "contextWindow": null
+       }
+      ]
+     }
+    }
+   },
+   "error": "Invalid models.json schema:\n  - providers.p.models.0.contextWindow: must be number\n\nFile: C:\\Users\\13063\\AppData\\Local\\Temp\\pi-model-config-oracle-null_optional_number-GL0mAI\\models.json",
+   "providerIds": [],
+   "providerJson": null,
+   "providerAJson": null,
+   "providerZetaJson": null
+  },
+  "jsonc_with_bom": {
+   "rawInput": "﻿{\n // comment\n \"providers\": { \"p\": { \"name\": \"N\", } },\n}",
+   "error": null,
+   "providerIds": [
+    "p"
+   ],
+   "providerJson": "{\"name\":\"N\"}"
+  },
+  "malformed_json": {
+   "rawInput": "{ nope",
+   "errorPrefix": "Failed to parse models.json: Expected property name or '}' in JSON at position 2 (line 1 column 3)"
+  },
+  "missing_file": {
+   "error": null,
+   "providerIds": []
+  },
+  "undefined_path": {
+   "error": null,
+   "providerIds": []
+  }
+ }
+}

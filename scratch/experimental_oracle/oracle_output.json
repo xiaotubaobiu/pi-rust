@@ -1,0 +1,50 @@
+{
+  "encodeControlLine": [
+    "{\"type\":\"shutdown\"}\n",
+    "{\"type\":\"session_demand\",\"serverConnectionId\":\"server-generation-1\",\"requestId\":\"req-1\",\"attachmentId\":\"att-1\",\"attached\":true}\n",
+    "{\"type\":\"worker_ready\",\"token\":\"worker-token\",\"sessionKey\":\"/tmp/session-1.jsonl\",\"sessionId\":\"session-1\",\"pid\":123,\"metadata\":{\"id\":\"session-1\",\"createdAt\":1,\"storageVersion\":1,\"cwd\":\"/tmp\",\"path\":\"/tmp/session-1.jsonl\",\"modifiedAt\":1,\"parentSessionId\":\"parent-9\"},\"pluginManifestPaths\":[\"/tmp/plugin/chord-facets.json\"]}\n",
+    "{\"type\":\"operation_response\",\"token\":\"worker-token\",\"sessionKey\":\"/tmp/session-1.jsonl\",\"response\":{\"type\":\"operation_result\",\"requestId\":\"req-2\",\"scope\":{\"serverConnectionId\":\"server-generation-1\",\"attachmentId\":\"att-1\"},\"result\":{\"accepted\":true}}}\n",
+    "{\"type\":\"operation\",\"requestId\":\"req-3\",\"scope\":{\"serverConnectionId\":\"server-generation-1\",\"attachmentId\":\"att-2\"},\"call\":{\"serviceId\":\"test.session\",\"instance\":{\"key\":\"k\",\"generation\":2},\"member\":\"run\",\"args\":[\"Hello\",3,null,{\"nested\":true}]}}\n",
+    "{\"type\":\"peer_registered\",\"peerId\":\"worker-abc\",\"serverConnectionId\":\"srv-1\"}\n",
+    "{\"type\":\"peer_registered\",\"peerId\":\"worker-abc\"}\n",
+    "{\"type\":\"server_registered\",\"serverConnectionId\":\"srv-1\",\"peers\":[\"a\",\"b\"]}\n"
+  ],
+  "tooLarge": "Internal control message is too large",
+  "roles": [
+    "coordinator",
+    "server",
+    "session-worker"
+  ],
+  "roleError": "Unsupported internal process role: bogus",
+  "lifecycleDelay": [
+    42,
+    7,
+    0
+  ],
+  "lifecycleDelayError": "__ENV_X must be a non-negative safe integer",
+  "lifecycleDelayError2": "__ENV_X must be a non-negative safe integer",
+  "keys": [
+    "server-generation-1\u0000attachment-1",
+    "srv\u0000att\u0000sub"
+  ],
+  "aliasOrder": [
+    "@earendil-works/pi-agent-core/node",
+    "@earendil-works/pi-agent-core",
+    "@earendil-works/legacy.js",
+    "@earendil-works/chord",
+    "@earendil-works/pi-*",
+    "@earendil-works/dir"
+  ],
+  "matches": [
+    "",
+    null,
+    "server",
+    null,
+    ""
+  ],
+  "aliasResolution": [
+    [
+      "packages/pi-server/src/index.ts"
+    ]
+  ]
+}

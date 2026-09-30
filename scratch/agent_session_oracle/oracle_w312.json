@@ -1,0 +1,14 @@
+{
+  "stats_plain": "{\"assistantMessages\":1,\"contextUsage\":{\"contextWindow\":128000,\"percent\":0.15625,\"tokens\":200},\"cost\":0,\"sessionFile\":\"/s/session.jsonl\",\"sessionId\":\"fixed-session-id\",\"tokens\":{\"cacheRead\":0,\"cacheWrite\":0,\"input\":200,\"output\":0,\"total\":200},\"toolCalls\":0,\"toolResults\":0,\"totalMessages\":2,\"userMessages\":1}",
+  "stats_compacted_unknown": "{\"assistantMessages\":2,\"contextUsage\":{\"contextWindow\":128000,\"percent\":null,\"tokens\":null},\"cost\":0,\"sessionFile\":\"/s/session.jsonl\",\"sessionId\":\"fixed-session-id\",\"tokens\":{\"cacheRead\":0,\"cacheWrite\":0,\"input\":375000,\"output\":0,\"total\":375000},\"toolCalls\":0,\"toolResults\":0,\"totalMessages\":5,\"userMessages\":3}",
+  "stats_compacted_known": "{\"assistantMessages\":3,\"contextUsage\":{\"contextWindow\":128000,\"percent\":19.53125,\"tokens\":25000},\"cost\":0,\"sessionFile\":\"/s/session.jsonl\",\"sessionId\":\"fixed-session-id\",\"tokens\":{\"cacheRead\":0,\"cacheWrite\":0,\"input\":400000,\"output\":0,\"total\":400000},\"toolCalls\":0,\"toolResults\":0,\"totalMessages\":6,\"userMessages\":3}",
+  "stats_summaries": "{\"assistantMessages\":0,\"contextUsage\":{\"contextWindow\":128000,\"percent\":null,\"tokens\":null},\"cost\":3,\"sessionFile\":\"/s/session.jsonl\",\"sessionId\":\"fixed-session-id\",\"tokens\":{\"cacheRead\":90,\"cacheWrite\":120,\"input\":30,\"output\":60,\"total\":300},\"toolCalls\":0,\"toolResults\":1,\"totalMessages\":2,\"userMessages\":1}",
+  "fork_plain": "[{\"entryId\":\"e1\",\"text\":\"hello\"}]",
+  "fork_compacted": "[{\"entryId\":\"e1\",\"text\":\"first\"},{\"entryId\":\"e3\",\"text\":\"second\"},{\"entryId\":\"e6\",\"text\":\"third\"}]",
+  "last_assistant_text": "\"final answer\"",
+  "target_decision": "{\"assistant\":{\"newLeafId\":\"e2\"},\"customMessage\":{\"editorText\":\"custom text\",\"newLeafId\":\"e2\"},\"nestedUser\":{\"editorText\":\"second\",\"newLeafId\":\"e2\"},\"rootUser\":{\"editorText\":\"hello\",\"newLeafId\":null}}",
+  "retry_delays": "[1,2,4,5,5,5,5]",
+  "retry_delays_default_cap": "[1,128,60000,60000,60000]",
+  "jsonl_bytes": "{\"type\":\"session\",\"version\":3,\"id\":\"fixed-session-id\",\"timestamp\":\"2026-01-01T00:00:00.000Z\",\"cwd\":\"/fixed/cwd\"}\n{\"type\":\"message\",\"id\":\"e1\",\"parentId\":null,\"timestamp\":\"2026-01-01T00:00:00.000Z\",\"message\":{\"role\":\"user\",\"content\":\"hello\",\"timestamp\":1}}\n{\"type\":\"message\",\"id\":\"e2\",\"parentId\":\"e1\",\"timestamp\":\"2026-01-01T00:00:01.000Z\",\"message\":{\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"hi\"}],\"api\":\"anthropic-messages\",\"provider\":\"anthropic\",\"model\":\"claude-4-5\",\"usage\":{\"input\":200,\"output\":0,\"cacheRead\":0,\"cacheWrite\":0,\"totalTokens\":200,\"cost\":{\"input\":0,\"output\":0,\"cacheRead\":0,\"cacheWrite\":0,\"total\":0}},\"stopReason\":\"stop\",\"timestamp\":2}}\n",
+  "jsonl_path": "pi-oracle-export.jsonl"
+}

@@ -1,0 +1,3009 @@
+{
+ "strip_ansi_compat": [
+  {
+   "input": "plain",
+   "got": "plain",
+   "reference": "plain"
+  },
+  {
+   "input": "a\u001b[31mred\u001b[0mz",
+   "got": "aredz",
+   "reference": "aredz"
+  },
+  {
+   "input": "a\u001b]8;;https://example.com\u0007link\u001b]8;;\u0007z",
+   "got": "alinkz",
+   "reference": "alinkz"
+  },
+  {
+   "input": "a\u001b]unterminated",
+   "got": "anterminated",
+   "reference": "anterminated"
+  },
+  {
+   "input": "a\u001b]funterminated",
+   "got": "aunterminated",
+   "reference": "aunterminated"
+  },
+  {
+   "input": "a\u001bPabc\u001b\\z",
+   "got": "aabc\u001b\\z",
+   "reference": "aabc\u001b\\z"
+  },
+  {
+   "input": "a\u001b^abc\u0007z",
+   "got": "a\u001b^abc\u0007z",
+   "reference": "a\u001b^abc\u0007z"
+  },
+  {
+   "input": "a\u001b_abcz",
+   "got": "a\u001b_abcz",
+   "reference": "a\u001b_abcz"
+  },
+  {
+   "input": "aabcz",
+   "got": "aabcz",
+   "reference": "aabcz"
+  },
+  {
+   "input": "aabcz",
+   "got": "aabcz",
+   "reference": "aabcz"
+  },
+  {
+   "input": "a31mred",
+   "got": "ared",
+   "reference": "ared"
+  },
+  {
+   "input": "a\u001b(0x",
+   "got": "ax",
+   "reference": "ax"
+  },
+  {
+   "input": "a\u001b*0x",
+   "got": "a\u001b*0x",
+   "reference": "a\u001b*0x"
+  },
+  {
+   "input": "a\u001b+c",
+   "got": "a\u001b+c",
+   "reference": "a\u001b+c"
+  },
+  {
+   "input": "a\u001b/0x",
+   "got": "a\u001b/0x",
+   "reference": "a\u001b/0x"
+  },
+  {
+   "input": "a\u001bcok",
+   "got": "aok",
+   "reference": "aok"
+  },
+  {
+   "input": "a\u001b\\ok",
+   "got": "a\u001b\\ok",
+   "reference": "a\u001b\\ok"
+  },
+  {
+   "input": "x\u001bay",
+   "got": "x\u001bay",
+   "reference": "x\u001bay"
+  },
+  {
+   "input": "xay",
+   "got": "xay",
+   "reference": "xay"
+  },
+  {
+   "input": "x\u001baay",
+   "got": "x\u001baay",
+   "reference": "x\u001baay"
+  },
+  {
+   "input": "x\u001ba1y",
+   "got": "x\u001ba1y",
+   "reference": "x\u001ba1y"
+  },
+  {
+   "input": "x\u001ba[y",
+   "got": "x\u001ba[y",
+   "reference": "x\u001ba[y"
+  },
+  {
+   "input": "x\u001ba)y",
+   "got": "x\u001ba)y",
+   "reference": "x\u001ba)y"
+  },
+  {
+   "input": "x\u001bamy",
+   "got": "x\u001bamy",
+   "reference": "x\u001bamy"
+  },
+  {
+   "input": "x\u001ba\\y",
+   "got": "x\u001ba\\y",
+   "reference": "x\u001ba\\y"
+  },
+  {
+   "input": "x\u001bay",
+   "got": "x\u001ba",
+   "reference": "x\u001ba"
+  },
+  {
+   "input": "x\u001bay",
+   "got": "x\u001bay",
+   "reference": "x\u001bay"
+  },
+  {
+   "input": "x\u001bfy",
+   "got": "xy",
+   "reference": "xy"
+  },
+  {
+   "input": "xfy",
+   "got": "xy",
+   "reference": "xy"
+  },
+  {
+   "input": "x\u001bfay",
+   "got": "xay",
+   "reference": "xay"
+  },
+  {
+   "input": "x\u001bf1y",
+   "got": "x1y",
+   "reference": "x1y"
+  },
+  {
+   "input": "x\u001bf[y",
+   "got": "x[y",
+   "reference": "x[y"
+  },
+  {
+   "input": "x\u001bf)y",
+   "got": "x)y",
+   "reference": "x)y"
+  },
+  {
+   "input": "x\u001bfmy",
+   "got": "xmy",
+   "reference": "xmy"
+  },
+  {
+   "input": "x\u001bf\\y",
+   "got": "x\\y",
+   "reference": "x\\y"
+  },
+  {
+   "input": "x\u001bfy",
+   "got": "x",
+   "reference": "x"
+  },
+  {
+   "input": "x\u001bfy",
+   "got": "xy",
+   "reference": "xy"
+  },
+  {
+   "input": "x\u001b0y",
+   "got": "x",
+   "reference": "x"
+  },
+  {
+   "input": "x0y",
+   "got": "x",
+   "reference": "x"
+  },
+  {
+   "input": "x\u001b0ay",
+   "got": "xay",
+   "reference": "xay"
+  },
+  {
+   "input": "x\u001b01y",
+   "got": "x",
+   "reference": "x"
+  },
+  {
+   "input": "x\u001b0[y",
+   "got": "x[y",
+   "reference": "x[y"
+  },
+  {
+   "input": "x\u001b0)y",
+   "got": "x)y",
+   "reference": "x)y"
+  },
+  {
+   "input": "x\u001b0my",
+   "got": "xy",
+   "reference": "xy"
+  },
+  {
+   "input": "x\u001b0\\y",
+   "got": "x\\y",
+   "reference": "x\\y"
+  },
+  {
+   "input": "x\u001b0y",
+   "got": "x",
+   "reference": "x"
+  },
+  {
+   "input": "x\u001b0y",
+   "got": "xy",
+   "reference": "xy"
+  },
+  {
+   "input": "x\u001b1y",
+   "got": "x",
+   "reference": "x"
+  },
+  {
+   "input": "x1y",
+   "got": "x",
+   "reference": "x"
+  },
+  {
+   "input": "x\u001b1ay",
+   "got": "xay",
+   "reference": "xay"
+  },
+  {
+   "input": "x\u001b11y",
+   "got": "x",
+   "reference": "x"
+  },
+  {
+   "input": "x\u001b1[y",
+   "got": "x[y",
+   "reference": "x[y"
+  },
+  {
+   "input": "x\u001b1)y",
+   "got": "x)y",
+   "reference": "x)y"
+  },
+  {
+   "input": "x\u001b1my",
+   "got": "xy",
+   "reference": "xy"
+  },
+  {
+   "input": "x\u001b1\\y",
+   "got": "x\\y",
+   "reference": "x\\y"
+  },
+  {
+   "input": "x\u001b1y",
+   "got": "x",
+   "reference": "x"
+  },
+  {
+   "input": "x\u001b1y",
+   "got": "xy",
+   "reference": "xy"
+  },
+  {
+   "input": "x\u001b;y",
+   "got": "x",
+   "reference": "x"
+  },
+  {
+   "input": "x;y",
+   "got": "x",
+   "reference": "x"
+  },
+  {
+   "input": "x\u001b;ay",
+   "got": "x\u001b;ay",
+   "reference": "x\u001b;ay"
+  },
+  {
+   "input": "x\u001b;1y",
+   "got": "x",
+   "reference": "x"
+  },
+  {
+   "input": "x\u001b;[y",
+   "got": "x",
+   "reference": "x"
+  },
+  {
+   "input": "x\u001b;)y",
+   "got": "x",
+   "reference": "x"
+  },
+  {
+   "input": "x\u001b;my",
+   "got": "xy",
+   "reference": "xy"
+  },
+  {
+   "input": "x\u001b;\\y",
+   "got": "x\u001b;\\y",
+   "reference": "x\u001b;\\y"
+  },
+  {
+   "input": "x\u001b;y",
+   "got": "x\u001b;",
+   "reference": "x\u001b;"
+  },
+  {
+   "input": "x\u001b;y",
+   "got": "x\u001b;y",
+   "reference": "x\u001b;y"
+  },
+  {
+   "input": "x\u001b:y",
+   "got": "x\u001b:y",
+   "reference": "x\u001b:y"
+  },
+  {
+   "input": "x:y",
+   "got": "x:y",
+   "reference": "x:y"
+  },
+  {
+   "input": "x\u001b:ay",
+   "got": "x\u001b:ay",
+   "reference": "x\u001b:ay"
+  },
+  {
+   "input": "x\u001b:1y",
+   "got": "x\u001b:1y",
+   "reference": "x\u001b:1y"
+  },
+  {
+   "input": "x\u001b:[y",
+   "got": "x\u001b:[y",
+   "reference": "x\u001b:[y"
+  },
+  {
+   "input": "x\u001b:)y",
+   "got": "x\u001b:)y",
+   "reference": "x\u001b:)y"
+  },
+  {
+   "input": "x\u001b:my",
+   "got": "x\u001b:my",
+   "reference": "x\u001b:my"
+  },
+  {
+   "input": "x\u001b:\\y",
+   "got": "x\u001b:\\y",
+   "reference": "x\u001b:\\y"
+  },
+  {
+   "input": "x\u001b:y",
+   "got": "x\u001b:",
+   "reference": "x\u001b:"
+  },
+  {
+   "input": "x\u001b:y",
+   "got": "x\u001b:y",
+   "reference": "x\u001b:y"
+  },
+  {
+   "input": "x\u001b[y",
+   "got": "x",
+   "reference": "x"
+  },
+  {
+   "input": "x[y",
+   "got": "x",
+   "reference": "x"
+  },
+  {
+   "input": "x\u001b[ay",
+   "got": "x\u001b[ay",
+   "reference": "x\u001b[ay"
+  },
+  {
+   "input": "x\u001b[1y",
+   "got": "x",
+   "reference": "x"
+  },
+  {
+   "input": "x\u001b[[y",
+   "got": "x",
+   "reference": "x"
+  },
+  {
+   "input": "x\u001b[)y",
+   "got": "x",
+   "reference": "x"
+  },
+  {
+   "input": "x\u001b[my",
+   "got": "xy",
+   "reference": "xy"
+  },
+  {
+   "input": "x\u001b[\\y",
+   "got": "x\u001b[\\y",
+   "reference": "x\u001b[\\y"
+  },
+  {
+   "input": "x\u001b[y",
+   "got": "x\u001b[",
+   "reference": "x\u001b["
+  },
+  {
+   "input": "x\u001b[y",
+   "got": "x\u001b[y",
+   "reference": "x\u001b[y"
+  },
+  {
+   "input": "x\u001b]y",
+   "got": "x",
+   "reference": "x"
+  },
+  {
+   "input": "x]y",
+   "got": "x",
+   "reference": "x"
+  },
+  {
+   "input": "x\u001b]ay",
+   "got": "x\u001b]ay",
+   "reference": "x\u001b]ay"
+  },
+  {
+   "input": "x\u001b]1y",
+   "got": "x",
+   "reference": "x"
+  },
+  {
+   "input": "x\u001b][y",
+   "got": "x",
+   "reference": "x"
+  },
+  {
+   "input": "x\u001b])y",
+   "got": "x",
+   "reference": "x"
+  },
+  {
+   "input": "x\u001b]my",
+   "got": "xy",
+   "reference": "xy"
+  },
+  {
+   "input": "x\u001b]\\y",
+   "got": "x\u001b]\\y",
+   "reference": "x\u001b]\\y"
+  },
+  {
+   "input": "x\u001b]y",
+   "got": "x\u001b]",
+   "reference": "x\u001b]"
+  },
+  {
+   "input": "x\u001b]y",
+   "got": "x\u001b]y",
+   "reference": "x\u001b]y"
+  },
+  {
+   "input": "x\u001b(y",
+   "got": "x",
+   "reference": "x"
+  },
+  {
+   "input": "x(y",
+   "got": "x",
+   "reference": "x"
+  },
+  {
+   "input": "x\u001b(ay",
+   "got": "x\u001b(ay",
+   "reference": "x\u001b(ay"
+  },
+  {
+   "input": "x\u001b(1y",
+   "got": "x",
+   "reference": "x"
+  },
+  {
+   "input": "x\u001b([y",
+   "got": "x",
+   "reference": "x"
+  },
+  {
+   "input": "x\u001b()y",
+   "got": "x",
+   "reference": "x"
+  },
+  {
+   "input": "x\u001b(my",
+   "got": "xy",
+   "reference": "xy"
+  },
+  {
+   "input": "x\u001b(\\y",
+   "got": "x\u001b(\\y",
+   "reference": "x\u001b(\\y"
+  },
+  {
+   "input": "x\u001b(y",
+   "got": "x\u001b(",
+   "reference": "x\u001b("
+  },
+  {
+   "input": "x\u001b(y",
+   "got": "x\u001b(y",
+   "reference": "x\u001b(y"
+  },
+  {
+   "input": "x\u001b)y",
+   "got": "x",
+   "reference": "x"
+  },
+  {
+   "input": "x)y",
+   "got": "x",
+   "reference": "x"
+  },
+  {
+   "input": "x\u001b)ay",
+   "got": "x\u001b)ay",
+   "reference": "x\u001b)ay"
+  },
+  {
+   "input": "x\u001b)1y",
+   "got": "x",
+   "reference": "x"
+  },
+  {
+   "input": "x\u001b)[y",
+   "got": "x",
+   "reference": "x"
+  },
+  {
+   "input": "x\u001b))y",
+   "got": "x",
+   "reference": "x"
+  },
+  {
+   "input": "x\u001b)my",
+   "got": "xy",
+   "reference": "xy"
+  },
+  {
+   "input": "x\u001b)\\y",
+   "got": "x\u001b)\\y",
+   "reference": "x\u001b)\\y"
+  },
+  {
+   "input": "x\u001b)y",
+   "got": "x\u001b)",
+   "reference": "x\u001b)"
+  },
+  {
+   "input": "x\u001b)y",
+   "got": "x\u001b)y",
+   "reference": "x\u001b)y"
+  },
+  {
+   "input": "x\u001b#y",
+   "got": "x",
+   "reference": "x"
+  },
+  {
+   "input": "x#y",
+   "got": "x",
+   "reference": "x"
+  },
+  {
+   "input": "x\u001b#ay",
+   "got": "x\u001b#ay",
+   "reference": "x\u001b#ay"
+  },
+  {
+   "input": "x\u001b#1y",
+   "got": "x",
+   "reference": "x"
+  },
+  {
+   "input": "x\u001b#[y",
+   "got": "x",
+   "reference": "x"
+  },
+  {
+   "input": "x\u001b#)y",
+   "got": "x",
+   "reference": "x"
+  },
+  {
+   "input": "x\u001b#my",
+   "got": "xy",
+   "reference": "xy"
+  },
+  {
+   "input": "x\u001b#\\y",
+   "got": "x\u001b#\\y",
+   "reference": "x\u001b#\\y"
+  },
+  {
+   "input": "x\u001b#y",
+   "got": "x\u001b#",
+   "reference": "x\u001b#"
+  },
+  {
+   "input": "x\u001b#y",
+   "got": "x\u001b#y",
+   "reference": "x\u001b#y"
+  },
+  {
+   "input": "x\u001b?y",
+   "got": "x",
+   "reference": "x"
+  },
+  {
+   "input": "x?y",
+   "got": "x",
+   "reference": "x"
+  },
+  {
+   "input": "x\u001b?ay",
+   "got": "x\u001b?ay",
+   "reference": "x\u001b?ay"
+  },
+  {
+   "input": "x\u001b?1y",
+   "got": "x",
+   "reference": "x"
+  },
+  {
+   "input": "x\u001b?[y",
+   "got": "x",
+   "reference": "x"
+  },
+  {
+   "input": "x\u001b?)y",
+   "got": "x",
+   "reference": "x"
+  },
+  {
+   "input": "x\u001b?my",
+   "got": "xy",
+   "reference": "xy"
+  },
+  {
+   "input": "x\u001b?\\y",
+   "got": "x\u001b?\\y",
+   "reference": "x\u001b?\\y"
+  },
+  {
+   "input": "x\u001b?y",
+   "got": "x\u001b?",
+   "reference": "x\u001b?"
+  },
+  {
+   "input": "x\u001b?y",
+   "got": "x\u001b?y",
+   "reference": "x\u001b?y"
+  },
+  {
+   "input": "x\u001bmy",
+   "got": "xy",
+   "reference": "xy"
+  },
+  {
+   "input": "xmy",
+   "got": "xy",
+   "reference": "xy"
+  },
+  {
+   "input": "x\u001bmay",
+   "got": "xay",
+   "reference": "xay"
+  },
+  {
+   "input": "x\u001bm1y",
+   "got": "x1y",
+   "reference": "x1y"
+  },
+  {
+   "input": "x\u001bm[y",
+   "got": "x[y",
+   "reference": "x[y"
+  },
+  {
+   "input": "x\u001bm)y",
+   "got": "x)y",
+   "reference": "x)y"
+  },
+  {
+   "input": "x\u001bmmy",
+   "got": "xmy",
+   "reference": "xmy"
+  },
+  {
+   "input": "x\u001bm\\y",
+   "got": "x\\y",
+   "reference": "x\\y"
+  },
+  {
+   "input": "x\u001bmy",
+   "got": "x",
+   "reference": "x"
+  },
+  {
+   "input": "x\u001bmy",
+   "got": "xy",
+   "reference": "xy"
+  },
+  {
+   "input": "x\u001bPy",
+   "got": "xy",
+   "reference": "xy"
+  },
+  {
+   "input": "xPy",
+   "got": "xy",
+   "reference": "xy"
+  },
+  {
+   "input": "x\u001bPay",
+   "got": "xay",
+   "reference": "xay"
+  },
+  {
+   "input": "x\u001bP1y",
+   "got": "x1y",
+   "reference": "x1y"
+  },
+  {
+   "input": "x\u001bP[y",
+   "got": "x[y",
+   "reference": "x[y"
+  },
+  {
+   "input": "x\u001bP)y",
+   "got": "x)y",
+   "reference": "x)y"
+  },
+  {
+   "input": "x\u001bPmy",
+   "got": "xmy",
+   "reference": "xmy"
+  },
+  {
+   "input": "x\u001bP\\y",
+   "got": "x\\y",
+   "reference": "x\\y"
+  },
+  {
+   "input": "x\u001bPy",
+   "got": "x",
+   "reference": "x"
+  },
+  {
+   "input": "x\u001bPy",
+   "got": "xy",
+   "reference": "xy"
+  },
+  {
+   "input": "x\u001b_y",
+   "got": "x\u001b_y",
+   "reference": "x\u001b_y"
+  },
+  {
+   "input": "x_y",
+   "got": "x_y",
+   "reference": "x_y"
+  },
+  {
+   "input": "x\u001b_ay",
+   "got": "x\u001b_ay",
+   "reference": "x\u001b_ay"
+  },
+  {
+   "input": "x\u001b_1y",
+   "got": "x\u001b_1y",
+   "reference": "x\u001b_1y"
+  },
+  {
+   "input": "x\u001b_[y",
+   "got": "x\u001b_[y",
+   "reference": "x\u001b_[y"
+  },
+  {
+   "input": "x\u001b_)y",
+   "got": "x\u001b_)y",
+   "reference": "x\u001b_)y"
+  },
+  {
+   "input": "x\u001b_my",
+   "got": "x\u001b_my",
+   "reference": "x\u001b_my"
+  },
+  {
+   "input": "x\u001b_\\y",
+   "got": "x\u001b_\\y",
+   "reference": "x\u001b_\\y"
+  },
+  {
+   "input": "x\u001b_y",
+   "got": "x\u001b_",
+   "reference": "x\u001b_"
+  },
+  {
+   "input": "x\u001b_y",
+   "got": "x\u001b_y",
+   "reference": "x\u001b_y"
+  },
+  {
+   "input": "x\u001b\\y",
+   "got": "x\u001b\\y",
+   "reference": "x\u001b\\y"
+  },
+  {
+   "input": "x\\y",
+   "got": "x\\y",
+   "reference": "x\\y"
+  },
+  {
+   "input": "x\u001b\\ay",
+   "got": "x\u001b\\ay",
+   "reference": "x\u001b\\ay"
+  },
+  {
+   "input": "x\u001b\\1y",
+   "got": "x\u001b\\1y",
+   "reference": "x\u001b\\1y"
+  },
+  {
+   "input": "x\u001b\\[y",
+   "got": "x\u001b\\[y",
+   "reference": "x\u001b\\[y"
+  },
+  {
+   "input": "x\u001b\\)y",
+   "got": "x\u001b\\)y",
+   "reference": "x\u001b\\)y"
+  },
+  {
+   "input": "x\u001b\\my",
+   "got": "x\u001b\\my",
+   "reference": "x\u001b\\my"
+  },
+  {
+   "input": "x\u001b\\\\y",
+   "got": "x\u001b\\\\y",
+   "reference": "x\u001b\\\\y"
+  },
+  {
+   "input": "x\u001b\\y",
+   "got": "x\u001b\\",
+   "reference": "x\u001b\\"
+  },
+  {
+   "input": "x\u001b\\y",
+   "got": "x\u001b\\y",
+   "reference": "x\u001b\\y"
+  },
+  {
+   "input": "x\u001b\u0007y",
+   "got": "x\u001b\u0007y",
+   "reference": "x\u001b\u0007y"
+  },
+  {
+   "input": "x\u0007y",
+   "got": "x\u0007y",
+   "reference": "x\u0007y"
+  },
+  {
+   "input": "x\u001b\u0007ay",
+   "got": "x\u001b\u0007ay",
+   "reference": "x\u001b\u0007ay"
+  },
+  {
+   "input": "x\u001b\u00071y",
+   "got": "x\u001b\u00071y",
+   "reference": "x\u001b\u00071y"
+  },
+  {
+   "input": "x\u001b\u0007[y",
+   "got": "x\u001b\u0007[y",
+   "reference": "x\u001b\u0007[y"
+  },
+  {
+   "input": "x\u001b\u0007)y",
+   "got": "x\u001b\u0007)y",
+   "reference": "x\u001b\u0007)y"
+  },
+  {
+   "input": "x\u001b\u0007my",
+   "got": "x\u001b\u0007my",
+   "reference": "x\u001b\u0007my"
+  },
+  {
+   "input": "x\u001b\u0007\\y",
+   "got": "x\u001b\u0007\\y",
+   "reference": "x\u001b\u0007\\y"
+  },
+  {
+   "input": "x\u001b\u0007y",
+   "got": "x\u001b\u0007",
+   "reference": "x\u001b\u0007"
+  },
+  {
+   "input": "x\u001b\u0007y",
+   "got": "x\u001b\u0007y",
+   "reference": "x\u001b\u0007y"
+  },
+  {
+   "input": "x\u001b\u001by",
+   "got": "x\u001b",
+   "reference": "x\u001b"
+  },
+  {
+   "input": "x\u001by",
+   "got": "x",
+   "reference": "x"
+  },
+  {
+   "input": "x\u001b\u001bay",
+   "got": "x\u001b\u001bay",
+   "reference": "x\u001b\u001bay"
+  },
+  {
+   "input": "x\u001b\u001b1y",
+   "got": "x\u001b",
+   "reference": "x\u001b"
+  },
+  {
+   "input": "x\u001b\u001b[y",
+   "got": "x\u001b",
+   "reference": "x\u001b"
+  },
+  {
+   "input": "x\u001b\u001b)y",
+   "got": "x\u001b",
+   "reference": "x\u001b"
+  },
+  {
+   "input": "x\u001b\u001bmy",
+   "got": "x\u001by",
+   "reference": "x\u001by"
+  },
+  {
+   "input": "x\u001b\u001b\\y",
+   "got": "x\u001b\u001b\\y",
+   "reference": "x\u001b\u001b\\y"
+  },
+  {
+   "input": "x\u001b\u001by",
+   "got": "x\u001b\u001b",
+   "reference": "x\u001b\u001b"
+  },
+  {
+   "input": "x\u001b\u001by",
+   "got": "x\u001b\u001by",
+   "reference": "x\u001b\u001by"
+  },
+  {
+   "input": "x\u001by",
+   "got": "x\u001b",
+   "reference": "x\u001b"
+  },
+  {
+   "input": "xy",
+   "got": "x",
+   "reference": "x"
+  },
+  {
+   "input": "x\u001bay",
+   "got": "x\u001bay",
+   "reference": "x\u001bay"
+  },
+  {
+   "input": "x\u001b1y",
+   "got": "x\u001b",
+   "reference": "x\u001b"
+  },
+  {
+   "input": "x\u001b[y",
+   "got": "x\u001b",
+   "reference": "x\u001b"
+  },
+  {
+   "input": "x\u001b)y",
+   "got": "x\u001b",
+   "reference": "x\u001b"
+  },
+  {
+   "input": "x\u001bmy",
+   "got": "x\u001by",
+   "reference": "x\u001by"
+  },
+  {
+   "input": "x\u001b\\y",
+   "got": "x\u001b\\y",
+   "reference": "x\u001b\\y"
+  },
+  {
+   "input": "x\u001by",
+   "got": "x\u001b",
+   "reference": "x\u001b"
+  },
+  {
+   "input": "x\u001by",
+   "got": "x\u001by",
+   "reference": "x\u001by"
+  },
+  {
+   "input": "x\u001by",
+   "got": "x\u001by",
+   "reference": "x\u001by"
+  },
+  {
+   "input": "xy",
+   "got": "xy",
+   "reference": "xy"
+  },
+  {
+   "input": "x\u001bay",
+   "got": "x\u001bay",
+   "reference": "x\u001bay"
+  },
+  {
+   "input": "x\u001b1y",
+   "got": "x\u001b1y",
+   "reference": "x\u001b1y"
+  },
+  {
+   "input": "x\u001b[y",
+   "got": "x\u001b[y",
+   "reference": "x\u001b[y"
+  },
+  {
+   "input": "x\u001b)y",
+   "got": "x\u001b)y",
+   "reference": "x\u001b)y"
+  },
+  {
+   "input": "x\u001bmy",
+   "got": "x\u001bmy",
+   "reference": "x\u001bmy"
+  },
+  {
+   "input": "x\u001b\\y",
+   "got": "x\u001b\\y",
+   "reference": "x\u001b\\y"
+  },
+  {
+   "input": "x\u001by",
+   "got": "x\u001b",
+   "reference": "x\u001b"
+  },
+  {
+   "input": "x\u001by",
+   "got": "x\u001by",
+   "reference": "x\u001by"
+  },
+  {
+   "input": "x\u001by",
+   "got": "x\u001by",
+   "reference": "x\u001by"
+  },
+  {
+   "input": "xy",
+   "got": "xy",
+   "reference": "xy"
+  },
+  {
+   "input": "x\u001bay",
+   "got": "x\u001bay",
+   "reference": "x\u001bay"
+  },
+  {
+   "input": "x\u001b1y",
+   "got": "x\u001b1y",
+   "reference": "x\u001b1y"
+  },
+  {
+   "input": "x\u001b[y",
+   "got": "x\u001b[y",
+   "reference": "x\u001b[y"
+  },
+  {
+   "input": "x\u001b)y",
+   "got": "x\u001b)y",
+   "reference": "x\u001b)y"
+  },
+  {
+   "input": "x\u001bmy",
+   "got": "x\u001bmy",
+   "reference": "x\u001bmy"
+  },
+  {
+   "input": "x\u001b\\y",
+   "got": "x\u001b\\y",
+   "reference": "x\u001b\\y"
+  },
+  {
+   "input": "x\u001by",
+   "got": "x\u001b",
+   "reference": "x\u001b"
+  },
+  {
+   "input": "x\u001by",
+   "got": "x\u001by",
+   "reference": "x\u001by"
+  },
+  {
+   "input": "x\u001by",
+   "got": "x\u001by",
+   "reference": "x\u001by"
+  },
+  {
+   "input": "xy",
+   "got": "xy",
+   "reference": "xy"
+  },
+  {
+   "input": "x\u001bay",
+   "got": "x\u001bay",
+   "reference": "x\u001bay"
+  },
+  {
+   "input": "x\u001b1y",
+   "got": "x\u001b1y",
+   "reference": "x\u001b1y"
+  },
+  {
+   "input": "x\u001b[y",
+   "got": "x\u001b[y",
+   "reference": "x\u001b[y"
+  },
+  {
+   "input": "x\u001b)y",
+   "got": "x\u001b)y",
+   "reference": "x\u001b)y"
+  },
+  {
+   "input": "x\u001bmy",
+   "got": "x\u001bmy",
+   "reference": "x\u001bmy"
+  },
+  {
+   "input": "x\u001b\\y",
+   "got": "x\u001b\\y",
+   "reference": "x\u001b\\y"
+  },
+  {
+   "input": "x\u001by",
+   "got": "x\u001b",
+   "reference": "x\u001b"
+  },
+  {
+   "input": "x\u001by",
+   "got": "x\u001by",
+   "reference": "x\u001by"
+  }
+ ],
+ "strip_ansi_extra": {
+  "tool_output": "aredlinkz",
+  "bom_and_color": "﻿J"
+ },
+ "strip_json_comments": [
+  {
+   "input": "{\"a\":1}",
+   "got": "{\"a\":1}"
+  },
+  {
+   "input": "{\n  // comment\n  \"a\": 1, // trailing\n}",
+   "got": "{\n  \n  \"a\": 1 \n}"
+  },
+  {
+   "input": "{\"a\": \"http://x\", \"b\": \"//not-a-comment\"}",
+   "got": "{\"a\": \"http://x\", \"b\": \"//not-a-comment\"}"
+  },
+  {
+   "input": "{\"a\": [1, 2,],\"b\": {\"c\": 3,}}",
+   "got": "{\"a\": [1, 2],\"b\": {\"c\": 3}}"
+  },
+  {
+   "input": "{\"keep\": \"comma, inside\", \"url\": \"a://b,c\"}",
+   "got": "{\"keep\": \"comma, inside\", \"url\": \"a://b,c\"}"
+  },
+  {
+   "input": "[1,2 , ]",
+   "got": "[1,2  ]"
+  },
+  {
+   "input": "{\"re\": \"a\\\\\", \"s\": \"x\"} // end",
+   "got": "{\"re\": \"a\\\\\", \"s\": \"x\"} "
+  },
+  {
+   "input": "{ \"a\" : 1 }",
+   "got": "{ \"a\" : 1 }"
+  },
+  {
+   "input": "{\"brace\": \"}\", \"arr\": \"]\"}",
+   "got": "{\"brace\": \"}\", \"arr\": \"]\"}"
+  },
+  {
+   "input": ",\"\\\"quoted\\\"\": 1}",
+   "got": ",\"\\\"quoted\\\"\": 1}"
+  },
+  {
+   "input": "{\"a\": \"x\\\r\ny\"} // after raw-CR escape",
+   "got": "{\"a\": \"x\\\r\ny\"} "
+  },
+  {
+   "input": "{\"a\": \"x\\\\ y\"} // after raw-U+2028 escape",
+   "got": "{\"a\": \"x\\\\ y\"} "
+  },
+  {
+   "input": "[1 /* c */, 2]\t\n ,\t]",
+   "got": "[1 /* c */, 2]\t\n \t]"
+  }
+ ],
+ "normalize_windows_shell_path": [
+  {
+   "input": "/c/Users/example/project",
+   "got": "C:\\Users\\example\\project"
+  },
+  {
+   "input": "/cygdrive/d/work",
+   "got": "D:\\work"
+  },
+  {
+   "input": "/mnt/e/source",
+   "got": "E:\\source"
+  },
+  {
+   "input": "/c",
+   "got": "C:\\"
+  },
+  {
+   "input": "/C",
+   "got": "C:\\"
+  },
+  {
+   "input": "C:/Users/example",
+   "got": "C:/Users/example"
+  },
+  {
+   "input": "C:\\Users\\example",
+   "got": "C:\\Users\\example"
+  },
+  {
+   "input": "//server/share/file",
+   "got": "//server/share/file"
+  },
+  {
+   "input": "/c/Users\\example",
+   "got": "/c/Users\\example"
+  },
+  {
+   "input": "relative/file",
+   "got": "relative/file"
+  },
+  {
+   "input": "/tmp/file",
+   "got": "/tmp/file"
+  },
+  {
+   "input": "/",
+   "got": "/"
+  },
+  {
+   "input": "//",
+   "got": "//"
+  },
+  {
+   "input": "",
+   "got": ""
+  },
+  {
+   "input": "/x",
+   "got": "X:\\"
+  },
+  {
+   "input": "/mnt/",
+   "got": "/mnt/"
+  },
+  {
+   "input": "/cygdrive/",
+   "got": "/cygdrive/"
+  }
+ ],
+ "normalize_path": {
+  "platform": "win32",
+  "win32": [
+   {
+    "input": "  spaced  ",
+    "options": {
+     "trim": true
+    },
+    "got": "spaced"
+   },
+   {
+    "input": " x - ?",
+    "options": {
+     "normalizeUnicodeSpaces": true
+    },
+    "got": " x - ?"
+   },
+   {
+    "input": "@file.txt",
+    "options": {
+     "stripAtPrefix": true
+    },
+    "got": "file.txt"
+   },
+   {
+    "input": "@file.txt",
+    "options": {},
+    "got": "@file.txt"
+   },
+   {
+    "input": "~",
+    "options": {
+     "homeDir": "C:\\Users\\oracle"
+    },
+    "got": "C:\\Users\\oracle"
+   },
+   {
+    "input": "~/file.txt",
+    "options": {
+     "homeDir": "C:\\Users\\oracle"
+    },
+    "got": "C:\\Users\\oracle\\file.txt"
+   },
+   {
+    "input": "~\\file.txt",
+    "options": {
+     "homeDir": "C:\\Users\\oracle"
+    },
+    "got": "C:\\Users\\oracle\\file.txt"
+   },
+   {
+    "input": "~",
+    "options": {
+     "homeDir": "C:\\Users\\oracle",
+     "expandTilde": false
+    },
+    "got": "~"
+   },
+   {
+    "input": "~draft.md",
+    "options": {
+     "homeDir": "C:\\Users\\oracle"
+    },
+    "got": "~draft.md"
+   },
+   {
+    "input": "file:///C:/dir/file.txt",
+    "options": {},
+    "got": "C:\\dir\\file.txt"
+   },
+   {
+    "input": "file:///C:/dir/file%20with%20spaces.txt",
+    "options": {},
+    "got": "C:\\dir\\file with spaces.txt"
+   },
+   {
+    "input": "file:///dir/file.txt",
+    "options": {},
+    "error": "TypeError: File URL path must be absolute"
+   },
+   {
+    "input": "file:///C:/bad/%E0%A4%A",
+    "options": {},
+    "error": "URIError: URI malformed"
+   },
+   {
+    "input": "/c/Users/example",
+    "options": {
+     "homeDir": "C:\\Users\\oracle"
+    },
+    "got": "C:\\Users\\example"
+   },
+   {
+    "input": "~/proj",
+    "options": {
+     "homeDir": "C:\\home\\me"
+    },
+    "got": "C:\\home\\me\\proj"
+   }
+  ],
+  "posix": [
+   {
+    "input": "  spaced  ",
+    "options": {
+     "trim": true
+    },
+    "got": "spaced"
+   },
+   {
+    "input": " x - ?",
+    "options": {
+     "normalizeUnicodeSpaces": true
+    },
+    "got": " x - ?"
+   },
+   {
+    "input": "@file.txt",
+    "options": {
+     "stripAtPrefix": true
+    },
+    "got": "file.txt"
+   },
+   {
+    "input": "@file.txt",
+    "options": {},
+    "got": "@file.txt"
+   },
+   {
+    "input": "~",
+    "options": {
+     "homeDir": "C:\\Users\\oracle"
+    },
+    "got": "C:\\Users\\oracle"
+   },
+   {
+    "input": "~/file.txt",
+    "options": {
+     "homeDir": "C:\\Users\\oracle"
+    },
+    "got": "C:\\Users\\oracle\\file.txt"
+   },
+   {
+    "input": "~\\file.txt",
+    "options": {
+     "homeDir": "C:\\Users\\oracle"
+    },
+    "got": "~\\file.txt"
+   },
+   {
+    "input": "~",
+    "options": {
+     "homeDir": "C:\\Users\\oracle",
+     "expandTilde": false
+    },
+    "got": "~"
+   },
+   {
+    "input": "~draft.md",
+    "options": {
+     "homeDir": "C:\\Users\\oracle"
+    },
+    "got": "~draft.md"
+   },
+   {
+    "input": "file:///C:/dir/file.txt",
+    "options": {},
+    "got": "C:\\dir\\file.txt"
+   },
+   {
+    "input": "file:///C:/dir/file%20with%20spaces.txt",
+    "options": {},
+    "got": "C:\\dir\\file with spaces.txt"
+   },
+   {
+    "input": "file:///dir/file.txt",
+    "options": {},
+    "error": "TypeError: File URL path must be absolute"
+   },
+   {
+    "input": "file:///C:/bad/%E0%A4%A",
+    "options": {},
+    "error": "URIError: URI malformed"
+   },
+   {
+    "input": "/c/Users/example",
+    "options": {
+     "homeDir": "C:\\Users\\oracle"
+    },
+    "got": "/c/Users/example"
+   },
+   {
+    "input": "~/proj",
+    "options": {
+     "homeDir": "C:\\home\\me"
+    },
+    "got": "C:\\home\\me\\proj"
+   }
+  ]
+ },
+ "is_local_path": [
+  {
+   "input": "my-package",
+   "got": true
+  },
+  {
+   "input": "./foo",
+   "got": true
+  },
+  {
+   "input": "file:///tmp/foo",
+   "got": true
+  },
+  {
+   "input": "npm:package",
+   "got": false
+  },
+  {
+   "input": "git://repo",
+   "got": false
+  },
+  {
+   "input": "https://example.com",
+   "got": false
+  },
+  {
+   "input": "http://example.com",
+   "got": false
+  },
+  {
+   "input": "ssh://git@host/repo",
+   "got": false
+  },
+  {
+   "input": "github:user/repo",
+   "got": false
+  },
+  {
+   "input": "  npm:package  ",
+   "got": false
+  },
+  {
+   "input": "NPM:package",
+   "got": true
+  },
+  {
+   "input": "",
+   "got": true
+  }
+ ],
+ "resolve_path": [
+  {
+   "input": "subdir/file.txt",
+   "base": "C:\\base",
+   "got": "C:\\base\\subdir\\file.txt"
+  },
+  {
+   "input": "C:/Users/example",
+   "base": "D:\\work",
+   "got": "C:\\Users\\example"
+  },
+  {
+   "input": "C:\\Users\\example",
+   "base": "D:\\work",
+   "got": "C:\\Users\\example"
+  },
+  {
+   "input": "\\foo\\bar",
+   "base": "C:\\work",
+   "got": "C:\\foo\\bar"
+  },
+  {
+   "input": "\\foo\\bar",
+   "base": "D:\\work",
+   "got": "C:\\foo\\bar"
+  },
+  {
+   "input": "/mnt/c/Users/example",
+   "base": "D:\\work",
+   "got": "C:\\Users\\example"
+  },
+  {
+   "input": "/c/Users/example",
+   "base": "D:\\work",
+   "got": "C:\\Users\\example"
+  },
+  {
+   "input": "file:///C:/dir/file.txt",
+   "base": "D:\\work",
+   "got": "C:\\dir\\file.txt"
+  },
+  {
+   "input": "file:///dir/file.txt",
+   "base": "D:\\work",
+   "error": "TypeError: File URL path must be absolute"
+  },
+  {
+   "input": "~/file.txt",
+   "base": "D:\\work",
+   "got": "C:\\Users\\13063\\file.txt"
+  },
+  {
+   "input": "~other/file",
+   "base": "D:\\work",
+   "got": "D:\\work\\~other\\file"
+  },
+  {
+   "input": "a/../b/./c.txt",
+   "base": "C:\\base",
+   "got": "C:\\base\\b\\c.txt"
+  },
+  {
+   "input": "",
+   "base": "C:\\base",
+   "got": "C:\\base"
+  },
+  {
+   "input": "file:///%E0%A4%A",
+   "base": "C:\\base",
+   "error": "URIError: URI malformed"
+  },
+  {
+   "input": "/C:/Users/13063/dir/SKILL.md",
+   "base": "E:\\project",
+   "got": "C:\\C:\\Users\\13063\\dir\\SKILL.md"
+  },
+  {
+   "input": "with space/x.txt",
+   "base": "C:\\my dir",
+   "got": "C:\\my dir\\with space\\x.txt"
+  },
+  {
+   "input": "C:",
+   "base": "D:\\work",
+   "got": "C:\\Users\\13063\\Desktop\\code\\agent work\\pi-rust\\scratch\\utils_oracle"
+  },
+  {
+   "input": "..\\up.txt",
+   "base": "C:\\base\\sub",
+   "got": "C:\\base\\up.txt"
+  }
+ ],
+ "cwd_relative_path": [
+  {
+   "fp": "C:\\base\\sub\\file.txt",
+   "cwd": "C:\\base",
+   "got": "sub\\file.txt"
+  },
+  {
+   "fp": "C:\\other\\file.txt",
+   "cwd": "C:\\base"
+  },
+  {
+   "fp": "C:\\base",
+   "cwd": "C:\\base",
+   "got": "."
+  },
+  {
+   "fp": "C:\\base\\..config\\AGENTS.md",
+   "cwd": "C:\\base",
+   "got": "..config\\AGENTS.md"
+  },
+  {
+   "fp": "C:\\base\\..\\AGENTS.md",
+   "cwd": "C:\\base"
+  },
+  {
+   "fp": "D:\\x",
+   "cwd": "C:\\base"
+  },
+  {
+   "fp": "C:\\base\\a\\b.txt",
+   "cwd": "c:\\base",
+   "got": "a\\b.txt"
+  }
+ ],
+ "format_relative": [
+  {
+   "fp": "C:\\base\\sub\\file.txt",
+   "cwd": "C:\\base",
+   "got": "sub/file.txt"
+  },
+  {
+   "fp": "C:\\other\\file.txt",
+   "cwd": "C:\\base",
+   "got": "C:/other/file.txt"
+  },
+  {
+   "fp": "C:\\base",
+   "cwd": "C:\\base",
+   "got": "."
+  },
+  {
+   "fp": "C:\\base\\..config\\AGENTS.md",
+   "cwd": "C:\\base",
+   "got": "..config/AGENTS.md"
+  },
+  {
+   "fp": "C:\\base\\..\\AGENTS.md",
+   "cwd": "C:\\base",
+   "got": "C:/AGENTS.md"
+  },
+  {
+   "fp": "D:\\x",
+   "cwd": "C:\\base",
+   "got": "D:/x"
+  },
+  {
+   "fp": "C:\\base\\a\\b.txt",
+   "cwd": "c:\\base",
+   "got": "a/b.txt"
+  }
+ ],
+ "node_path": {
+  "win32": {
+   "resolve": [
+    "C:\\base",
+    "C:\\base\\sub\\file.txt",
+    "C:\\foo\\bar",
+    "C:\\mnt\\c\\x",
+    "C:\\",
+    "C:\\b",
+    "C:\\b",
+    "C:\\",
+    "\\\\server\\share\\x",
+    "\\\\server\\share\\x",
+    "C:\\Users\\13063\\Desktop\\code\\agent work\\pi-rust\\scratch\\utils_oracle\\x",
+    "C:\\Users\\13063\\Desktop\\code\\agent work\\pi-rust\\scratch\\utils_oracle\\y",
+    "C:\\Users\\13063\\Desktop\\code\\agent work\\pi-rust\\scratch\\utils_oracle\\x",
+    "C:\\Users\\13063\\Desktop\\code\\agent work\\pi-rust\\scratch\\utils_oracle",
+    "c:\\A\\B",
+    "C:\\a\\b\\c",
+    "C:\\b",
+    "C:\\b",
+    "C:\\a\\c",
+    "C:\\a\\b",
+    "C:\\x",
+    "C:\\",
+    "\\\\?\\C:\\x",
+    "\\\\?\\UNC\\server\\share",
+    "C:\\c",
+    "C:\\Users\\13063\\Desktop\\code\\agent work\\pi-rust\\scratch\\utils_oracle\\d1\\d2",
+    "C:\\",
+    "C:\\s",
+    "C:\\s",
+    "C:\\",
+    "Z:\\x\\z",
+    "x:\\y",
+    "C:\\Users\\13063\\Desktop\\code\\agent work\\pi-rust\\scratch\\utils_oracle\\1:\\x",
+    "C:\\a b\\c d",
+    "C:\\c\\Users\\example",
+    "C:\\cygdrive\\d",
+    "C:\\a\\b",
+    "C:\\a",
+    "C:\\",
+    "C:\\a\\b\\c\\e",
+    "C:\\Users\\13063\\Desktop\\code\\agent work\\pi-rust\\scratch\\utils_oracle\\.a",
+    "C:\\a\\:\\b",
+    "C:\\a\\b\\c",
+    "C:\\Users\\13063\\Desktop\\code\\agent work\\pi-rust\\scratch\\utils_oracle\\nul\\x",
+    "C:\\c\\d",
+    "\\\\..\\..\\c"
+   ],
+   "isAbsolute": [
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    false,
+    false,
+    false,
+    false,
+    true,
+    true,
+    false,
+    false,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    false,
+    true,
+    true,
+    true,
+    true,
+    true,
+    false,
+    false,
+    true,
+    true,
+    true,
+    true,
+    false,
+    true,
+    true,
+    false,
+    true,
+    true,
+    false,
+    true,
+    true
+   ],
+   "relative": [
+    "..\\c",
+    "..\\c",
+    "D:\\b",
+    "..",
+    "..\\..",
+    "..\\..\\..\\..\\..\\..\\..\\..",
+    "",
+    "",
+    "..\\b",
+    "..\\a\\c",
+    "..\\c",
+    "..\\c",
+    "b",
+    "z",
+    "..\\..\\..\\..\\..\\..\\..\\..\\a",
+    "",
+    "..\\..",
+    "a",
+    "",
+    "..\\..\\..\\..\\b"
+   ],
+   "join": [
+    "C:.",
+    "C:\\x",
+    "x",
+    "..\\x",
+    "C:\\",
+    "\\\\s\\s\\x",
+    "C:.",
+    "a\\c",
+    "\\a\\b\\",
+    "C:\\a\\c\\",
+    "a",
+    "b",
+    "C:\\C:\\"
+   ],
+   "normalize": [
+    "C:\\",
+    "C:\\x\\",
+    "\\\\s\\s\\x",
+    "C:x",
+    "\\a\\b\\",
+    "a\\c",
+    ".",
+    "a",
+    "..",
+    "..\\..\\a",
+    "\\",
+    "..\\b",
+    "C:\\c"
+   ]
+  },
+  "posix": {
+   "resolve": [
+    "/Users/13063/Desktop/code/agent work/pi-rust/scratch/utils_oracle/C:\\base",
+    "/Users/13063/Desktop/code/agent work/pi-rust/scratch/utils_oracle/C:/base/sub/file.txt",
+    "/Users/13063/Desktop/code/agent work/pi-rust/scratch/utils_oracle/\\foo\\bar",
+    "/mnt/c/x",
+    "/Users/13063/Desktop/code/agent work/pi-rust/scratch/utils_oracle/C:\\",
+    "/Users/13063/Desktop/code/agent work/pi-rust/scratch/utils_oracle/C:\\a\\..\\b",
+    "/b",
+    "/Users/13063/Desktop/code/agent work/pi-rust/scratch/utils_oracle",
+    "/server/share/x",
+    "/Users/13063/Desktop/code/agent work/pi-rust/scratch/utils_oracle/\\\\server\\share/x",
+    "/Users/13063/Desktop/code/agent work/pi-rust/scratch/utils_oracle/C:x",
+    "/Users/13063/Desktop/code/agent work/pi-rust/scratch/utils_oracle/C:./y",
+    "/Users/13063/Desktop/code/agent work/pi-rust/scratch/utils_oracle/C:/x",
+    "/Users/13063/Desktop/code/agent work/pi-rust/scratch/utils_oracle",
+    "/Users/13063/Desktop/code/agent work/pi-rust/scratch/utils_oracle/c:\\A/B",
+    "/Users/13063/Desktop/code/agent work/pi-rust/scratch/utils_oracle/C:\\a/b/c",
+    "/Users/13063/Desktop/code/agent work/pi-rust/scratch/utils_oracle/a/C:\\b",
+    "/Users/13063/Desktop/code/agent work/pi-rust/scratch/utils_oracle/C:\\b",
+    "/Users/13063/Desktop/code/agent work/pi-rust/scratch/utils_oracle/C:\\a\\b/..\\c",
+    "/Users/13063/Desktop/code/agent work/pi-rust/scratch/utils_oracle/\\a/b",
+    "/x",
+    "/Users/13063/Desktop/code/agent work/pi-rust/scratch/utils_oracle/C:\\a\\/\\",
+    "/Users/13063/Desktop/code/agent work/pi-rust/scratch/utils_oracle/\\\\?\\C:\\x",
+    "/Users/13063/Desktop/code/agent work/pi-rust/scratch/utils_oracle/\\\\?\\UNC\\server\\share",
+    "/Users/13063/Desktop/code/agent work/pi-rust/scratch/utils_oracle/C:\\a\\b\\..\\..\\c",
+    "/Users/13063/Desktop/code/agent work/pi-rust/scratch/utils_oracle/d1/d2",
+    "/Users/13063/Desktop/code/agent work/pi-rust/scratch/utils_oracle/\\\\",
+    "/Users/13063/Desktop/code/agent work/pi-rust/scratch/utils_oracle/\\\\s",
+    "/Users/13063/Desktop/code/agent work/pi-rust/scratch/utils_oracle/\\\\s\\",
+    "/Users/13063/Desktop/code/agent work/pi-rust/scratch/utils_oracle/C:\\",
+    "/Users/13063/Desktop/code/agent work/pi-rust/scratch/utils_oracle/Z:\\x\\y\\..\\z",
+    "/Users/13063/Desktop/code/agent work/pi-rust/scratch/utils_oracle/x:/y",
+    "/Users/13063/Desktop/code/agent work/pi-rust/scratch/utils_oracle/1:\\x",
+    "/Users/13063/Desktop/code/agent work/pi-rust/scratch/utils_oracle/C:\\a b/c d",
+    "/c/Users/example",
+    "/cygdrive/d",
+    "/Users/13063/Desktop/code/agent work/pi-rust/scratch/utils_oracle/C:\\.\\a\\./b",
+    "/Users/13063/Desktop/code/agent work/pi-rust/scratch/C:\\a",
+    "/Users/13063/Desktop/code/agent work/pi-rust/scratch/utils_oracle/C:\\/..\\",
+    "/Users/13063/Desktop/code/agent work/pi-rust/scratch/utils_oracle/C:\\a\\b\\c/e",
+    "/Users/13063/Desktop/code/agent work/pi-rust/scratch/utils_oracle/C:.a",
+    "/Users/13063/Desktop/code/agent work/pi-rust/scratch/utils_oracle/C:\\a\\:/b",
+    "/a/b/c",
+    "/Users/13063/Desktop/code/agent work/pi-rust/scratch/utils_oracle/nul/x",
+    "/c/d",
+    "/Users/13063/Desktop/code/agent work/pi-rust/scratch/utils_oracle/\\\\..\\..\\c"
+   ],
+   "isAbsolute": [
+    false,
+    false,
+    false,
+    true,
+    false,
+    false,
+    true,
+    false,
+    true,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    true,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    true,
+    true,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    true,
+    false,
+    false,
+    false
+   ],
+   "relative": [
+    "../C:\\a\\c",
+    "../c:\\a\\c",
+    "../D:\\b",
+    "../\\a",
+    "../C:\\a",
+    "../C:\\",
+    "",
+    "../C:\\a",
+    "../\\\\s\\s\\b",
+    "../C:\\a\\c",
+    "../c",
+    "../c",
+    "b",
+    "../c:\\x\\y\\..\\z",
+    "C:\\a",
+    "",
+    "../C:\\",
+    "a",
+    "",
+    "../C:\\b"
+   ],
+   "join": [
+    "C:",
+    "C:\\/x",
+    "x",
+    "../x",
+    ".",
+    "\\\\s\\s/x",
+    ".",
+    "a\\b/..\\c",
+    "/a/b/",
+    "C:\\a\\\\b\\..\\c\\",
+    "a",
+    "b",
+    "C:\\/C:\\"
+   ],
+   "normalize": [
+    "C:\\",
+    "C:\\x\\",
+    "\\\\s\\s\\x",
+    "C:x",
+    "/a/b/",
+    "a\\b\\..\\c",
+    ".",
+    "a\\.",
+    "..",
+    "..\\..\\a",
+    "/",
+    "../b",
+    "C:\\a\\b\\..\\..\\c"
+   ]
+  }
+ },
+ "frontmatter": [
+  {
+   "input": "---\nname: \"skill-name\"\ndescription: 'A desc'\nfoo-bar: value\n---\n\nBody text",
+   "frontmatter": {
+    "name": "skill-name",
+    "description": "A desc",
+    "foo-bar": "value"
+   },
+   "body": "Body text"
+  },
+  {
+   "input": "---\r\nname: test\r\n---\r\nLine one\r\nLine two",
+   "frontmatter": {
+    "name": "test"
+   },
+   "body": "Line one\nLine two"
+  },
+  {
+   "input": "---\nfoo: [bar\n---\nBody",
+   "error": "YAMLParseError: Flow sequence in block collection must be sufficiently indented and end with a ] at line 1, column 10:\n\nfoo: [bar\n         ^\n"
+  },
+  {
+   "input": "---\ndescription: |\n  Line one\n  Line two\n---\n\nBody",
+   "frontmatter": {
+    "description": "Line one\nLine two\n"
+   },
+   "body": "Body"
+  },
+  {
+   "input": "Just text\nsecond line",
+   "frontmatter": {},
+   "body": "Just text\nsecond line"
+  },
+  {
+   "input": "---\nname: test\nBody without terminator",
+   "frontmatter": {},
+   "body": "---\nname: test\nBody without terminator"
+  },
+  {
+   "input": "---\n# just a comment\n---\nBody",
+   "frontmatter": {},
+   "body": "Body"
+  },
+  {
+   "input": "---\nkey: value\n---\n\nBody\n",
+   "frontmatter": {
+    "key": "value"
+   },
+   "body": "Body"
+  },
+  {
+   "input": "\n  No frontmatter body  \n",
+   "frontmatter": {},
+   "body": "\n  No frontmatter body  \n"
+  },
+  {
+   "input": "---\nnum: 42\nflag: true\nnothing: null\nlist: [1, 2]\n---\nBody",
+   "frontmatter": {
+    "num": 42,
+    "flag": true,
+    "nothing": null,
+    "list": [
+     1,
+     2
+    ]
+   },
+   "body": "Body"
+  },
+  {
+   "input": "---\nempty:\n---\nBody",
+   "frontmatter": {
+    "empty": null
+   },
+   "body": "Body"
+  },
+  {
+   "input": "﻿---\nname: bom\n---\nBom body",
+   "frontmatter": {
+    "name": "bom"
+   },
+   "body": "Bom body"
+  },
+  {
+   "input": "---\nname: bomstrip\n---\nBody",
+   "frontmatter": {
+    "name": "bomstrip"
+   },
+   "body": "Body"
+  },
+  {
+   "input": "---",
+   "frontmatter": {},
+   "body": "---"
+  },
+  {
+   "input": "---\n---",
+   "frontmatter": {},
+   "body": ""
+  },
+  {
+   "input": "---\nkey: 'quoted # not comment'\n---\n",
+   "frontmatter": {
+    "key": "quoted # not comment"
+   },
+   "body": ""
+  }
+ ],
+ "strip_frontmatter": [
+  {
+   "input": "---\nname: \"skill-name\"\ndescription: 'A desc'\nfoo-bar: value\n---\n\nBody text",
+   "got": "Body text"
+  },
+  {
+   "input": "---\r\nname: test\r\n---\r\nLine one\r\nLine two",
+   "got": "Line one\nLine two"
+  },
+  {
+   "input": "---\nfoo: [bar\n---\nBody",
+   "error": "YAMLParseError: Flow sequence in block collection must be sufficiently indented and end with a ] at line 1, column 10:\n\nfoo: [bar\n         ^\n"
+  },
+  {
+   "input": "---\ndescription: |\n  Line one\n  Line two\n---\n\nBody",
+   "got": "Body"
+  },
+  {
+   "input": "Just text\nsecond line",
+   "got": "Just text\nsecond line"
+  },
+  {
+   "input": "---\nname: test\nBody without terminator",
+   "got": "---\nname: test\nBody without terminator"
+  },
+  {
+   "input": "---\n# just a comment\n---\nBody",
+   "got": "Body"
+  },
+  {
+   "input": "---\nkey: value\n---\n\nBody\n",
+   "got": "Body"
+  },
+  {
+   "input": "\n  No frontmatter body  \n",
+   "got": "\n  No frontmatter body  \n"
+  },
+  {
+   "input": "---\nnum: 42\nflag: true\nnothing: null\nlist: [1, 2]\n---\nBody",
+   "got": "Body"
+  },
+  {
+   "input": "---\nempty:\n---\nBody",
+   "got": "Body"
+  },
+  {
+   "input": "﻿---\nname: bom\n---\nBom body",
+   "got": "Bom body"
+  },
+  {
+   "input": "---\nname: bomstrip\n---\nBody",
+   "got": "Body"
+  },
+  {
+   "input": "---",
+   "got": "---"
+  },
+  {
+   "input": "---\n---",
+   "got": ""
+  },
+  {
+   "input": "---\nkey: 'quoted # not comment'\n---\n",
+   "got": ""
+  }
+ ],
+ "parse_git_url": [
+  {
+   "source": "https://github.com/user/repo",
+   "got": {
+    "type": "git",
+    "repo": "https://github.com/user/repo",
+    "host": "github.com",
+    "path": "user/repo",
+    "pinned": false
+   }
+  },
+  {
+   "source": "ssh://git@github.com/user/repo",
+   "got": {
+    "type": "git",
+    "repo": "ssh://git@github.com/user/repo",
+    "host": "github.com",
+    "path": "user/repo",
+    "pinned": false
+   }
+  },
+  {
+   "source": "https://github.com/user/repo@v1.0.0",
+   "got": {
+    "type": "git",
+    "repo": "https://github.com/user/repo",
+    "host": "github.com",
+    "path": "user/repo",
+    "ref": "v1.0.0",
+    "pinned": true
+   }
+  },
+  {
+   "source": "git:git@github.com:user/repo",
+   "got": {
+    "type": "git",
+    "repo": "git@github.com:user/repo",
+    "host": "github.com",
+    "path": "user/repo",
+    "pinned": false
+   }
+  },
+  {
+   "source": "git:github.com/user/repo",
+   "got": {
+    "type": "git",
+    "repo": "https://github.com/user/repo",
+    "host": "github.com",
+    "path": "user/repo",
+    "pinned": false
+   }
+  },
+  {
+   "source": "git:git@github.com:user/repo@v1.0.0",
+   "got": {
+    "type": "git",
+    "repo": "git@github.com:user/repo",
+    "host": "github.com",
+    "path": "user/repo",
+    "ref": "v1.0.0",
+    "pinned": true
+   }
+  },
+  {
+   "source": "git:git@evil.example:../../victim/repo",
+   "got": null
+  },
+  {
+   "source": "https://evil.example/..%2F..%2Fvictim/repo",
+   "got": null
+  },
+  {
+   "source": "https://evil.example/..%2F..%2Fvictim/repo%",
+   "got": null
+  },
+  {
+   "source": "git:git@evil.example:/absolute/repo",
+   "got": null
+  },
+  {
+   "source": "git:git@evil.example:user\\repo/name",
+   "got": null
+  },
+  {
+   "source": "git:git@evil.example:user/repo\u0000name",
+   "got": null
+  },
+  {
+   "source": "git@github.com:user/repo",
+   "got": null
+  },
+  {
+   "source": "github.com/user/repo",
+   "got": null
+  },
+  {
+   "source": "user/repo",
+   "got": null
+  },
+  {
+   "source": "git:user/repo",
+   "got": {
+    "type": "git",
+    "repo": "https://user/repo",
+    "host": "github.com",
+    "path": "user/repo",
+    "pinned": false
+   }
+  },
+  {
+   "source": "git:user/repo.git",
+   "got": {
+    "type": "git",
+    "repo": "https://user/repo.git",
+    "host": "github.com",
+    "path": "user/repo",
+    "pinned": false
+   }
+  },
+  {
+   "source": "https://github.com/user/repo.git",
+   "got": {
+    "type": "git",
+    "repo": "https://github.com/user/repo.git",
+    "host": "github.com",
+    "path": "user/repo",
+    "pinned": false
+   }
+  },
+  {
+   "source": "https://gitlab.com/group/sub/repo",
+   "got": {
+    "type": "git",
+    "repo": "https://gitlab.com/group/sub/repo",
+    "host": "gitlab.com",
+    "path": "group/sub/repo",
+    "pinned": false
+   }
+  },
+  {
+   "source": "git:gitlab.com/group/sub/repo",
+   "got": {
+    "type": "git",
+    "repo": "https://gitlab.com/group/sub/repo",
+    "host": "gitlab.com",
+    "path": "group/sub/repo",
+    "pinned": false
+   }
+  },
+  {
+   "source": "https://bitbucket.org/user/repo",
+   "got": {
+    "type": "git",
+    "repo": "https://bitbucket.org/user/repo",
+    "host": "bitbucket.org",
+    "path": "user/repo",
+    "pinned": false
+   }
+  },
+  {
+   "source": "git:github.com/user/repo#main",
+   "got": {
+    "type": "git",
+    "repo": "https://github.com/user/repo#main",
+    "host": "github.com",
+    "path": "user/repo",
+    "ref": "main",
+    "pinned": true
+   }
+  },
+  {
+   "source": "https://github.com/user/repo/tree",
+   "got": {
+    "type": "git",
+    "repo": "https://github.com/user/repo/tree",
+    "host": "github.com",
+    "path": "user/repo",
+    "ref": "undefined",
+    "pinned": true
+   }
+  },
+  {
+   "source": "https://github.com/user/repo/tree/main",
+   "got": {
+    "type": "git",
+    "repo": "https://github.com/user/repo/tree/main",
+    "host": "github.com",
+    "path": "user/repo",
+    "ref": "main",
+    "pinned": true
+   }
+  },
+  {
+   "source": "git:github.com/user/repo#",
+   "got": {
+    "type": "git",
+    "repo": "https://github.com/user/repo#",
+    "host": "github.com",
+    "path": "user/repo",
+    "pinned": false
+   }
+  },
+  {
+   "source": "  https://github.com/user/repo  ",
+   "got": {
+    "type": "git",
+    "repo": "https://github.com/user/repo",
+    "host": "github.com",
+    "path": "user/repo",
+    "pinned": false
+   }
+  },
+  {
+   "source": "git:  github.com/user/repo  ",
+   "got": {
+    "type": "git",
+    "repo": "https://github.com/user/repo",
+    "host": "github.com",
+    "path": "user/repo",
+    "pinned": false
+   }
+  },
+  {
+   "source": "git:github.com:user/repo",
+   "got": {
+    "type": "git",
+    "repo": "https://github.com:user/repo",
+    "host": "github.com",
+    "path": "user/repo",
+    "pinned": false
+   }
+  },
+  {
+   "source": "https://GitHub.com/User/Repo",
+   "got": {
+    "type": "git",
+    "repo": "https://GitHub.com/User/Repo",
+    "host": "github.com",
+    "path": "User/Repo",
+    "pinned": false
+   }
+  },
+  {
+   "source": "git:git@gitlab.com:group/repo@v2",
+   "got": {
+    "type": "git",
+    "repo": "git@gitlab.com:group/repo",
+    "host": "gitlab.com",
+    "path": "group/repo",
+    "ref": "v2",
+    "pinned": true
+   }
+  },
+  {
+   "source": "git:GitHub.com:user/repo",
+   "got": {
+    "type": "git",
+    "repo": "https://GitHub.com:user/repo",
+    "host": "github.com",
+    "path": "user/repo",
+    "pinned": false
+   }
+  },
+  {
+   "source": "git:git@github.com:user/repo#semver:^1.0.0",
+   "got": {
+    "type": "git",
+    "repo": "git@github.com:user/repo#semver:^1.0.0",
+    "host": "github.com",
+    "path": "user/repo",
+    "ref": "semver:^1.0.0",
+    "pinned": true
+   }
+  },
+  {
+   "source": "https://github.com/user/repo#feat/test",
+   "got": {
+    "type": "git",
+    "repo": "https://github.com/user/repo#feat/test",
+    "host": "github.com",
+    "path": "user/repo",
+    "ref": "feat/test",
+    "pinned": true
+   }
+  },
+  {
+   "source": "git:github.com/user/repo.GIT",
+   "got": {
+    "type": "git",
+    "repo": "https://github.com/user/repo.GIT",
+    "host": "github.com",
+    "path": "user/repo.GIT",
+    "pinned": false
+   }
+  },
+  {
+   "source": "https://github.com/user/repo/?q=1",
+   "got": {
+    "type": "git",
+    "repo": "https://github.com/user/repo/?q=1",
+    "host": "github.com",
+    "path": "user/repo",
+    "pinned": false
+   }
+  },
+  {
+   "source": "git:https://github.com/user/repo",
+   "got": {
+    "type": "git",
+    "repo": "https://github.com/user/repo",
+    "host": "github.com",
+    "path": "user/repo",
+    "pinned": false
+   }
+  }
+ ],
+ "hosted_from_url": [
+  {
+   "u": "github:user/repo",
+   "info": {
+    "domain": "github.com",
+    "user": "user",
+    "project": "repo",
+    "committish": null
+   }
+  },
+  {
+   "u": "github:user/repo#v1",
+   "info": {
+    "domain": "github.com",
+    "user": "user",
+    "project": "repo",
+    "committish": "v1"
+   }
+  },
+  {
+   "u": "https://github.com/user/repo",
+   "info": {
+    "domain": "github.com",
+    "user": "user",
+    "project": "repo",
+    "committish": ""
+   }
+  },
+  {
+   "u": "git@github.com:user/repo.git",
+   "info": {
+    "domain": "github.com",
+    "user": "user",
+    "project": "repo",
+    "committish": ""
+   }
+  },
+  {
+   "u": "www.github.com/user/repo",
+   "info": null
+  },
+  {
+   "u": "https://www.github.com/u/p",
+   "info": {
+    "domain": "github.com",
+    "user": "u",
+    "project": "p",
+    "committish": ""
+   }
+  }
+ ],
+ "detect_mime": [
+  {
+   "name": "jpeg",
+   "got": "image/jpeg"
+  },
+  {
+   "name": "jpeg_spiff",
+   "got": null
+  },
+  {
+   "name": "png",
+   "got": "image/png"
+  },
+  {
+   "name": "png_actl",
+   "got": null
+  },
+  {
+   "name": "png_no_ihdr",
+   "got": null
+  },
+  {
+   "name": "gif87",
+   "got": "image/gif"
+  },
+  {
+   "name": "gif89",
+   "got": "image/gif"
+  },
+  {
+   "name": "webp",
+   "got": "image/webp"
+  },
+  {
+   "name": "bmp",
+   "got": "image/bmp"
+  },
+  {
+   "name": "bmp12",
+   "got": null
+  },
+  {
+   "name": "bmp_bad_planes",
+   "got": null
+  },
+  {
+   "name": "bmp_bad_bpp",
+   "got": null
+  },
+  {
+   "name": "bmp_bad_offset",
+   "got": null
+  },
+  {
+   "name": "bmp_bad_size",
+   "got": null
+  },
+  {
+   "name": "bmp_short",
+   "got": null
+  },
+  {
+   "name": "empty",
+   "got": null
+  },
+  {
+   "name": "short_ffd8",
+   "got": null
+  },
+  {
+   "name": "text",
+   "got": null
+  }
+ ],
+ "exif_transforms": [
+  {
+   "orientation": 1,
+   "out_width": 3,
+   "out_height": 2,
+   "pixels": [
+    11,
+    48,
+    85,
+    122,
+    159,
+    196,
+    233,
+    14,
+    51,
+    88,
+    125,
+    162,
+    199,
+    236,
+    17,
+    54,
+    91,
+    128,
+    165,
+    202,
+    239,
+    20,
+    57,
+    94
+   ]
+  },
+  {
+   "orientation": 2,
+   "out_width": 3,
+   "out_height": 2,
+   "pixels": [
+    51,
+    88,
+    125,
+    162,
+    159,
+    196,
+    233,
+    14,
+    11,
+    48,
+    85,
+    122,
+    239,
+    20,
+    57,
+    94,
+    91,
+    128,
+    165,
+    202,
+    199,
+    236,
+    17,
+    54
+   ]
+  },
+  {
+   "orientation": 3,
+   "out_width": 3,
+   "out_height": 2,
+   "pixels": [
+    239,
+    20,
+    57,
+    94,
+    91,
+    128,
+    165,
+    202,
+    199,
+    236,
+    17,
+    54,
+    51,
+    88,
+    125,
+    162,
+    159,
+    196,
+    233,
+    14,
+    11,
+    48,
+    85,
+    122
+   ]
+  },
+  {
+   "orientation": 4,
+   "out_width": 3,
+   "out_height": 2,
+   "pixels": [
+    199,
+    236,
+    17,
+    54,
+    91,
+    128,
+    165,
+    202,
+    239,
+    20,
+    57,
+    94,
+    11,
+    48,
+    85,
+    122,
+    159,
+    196,
+    233,
+    14,
+    51,
+    88,
+    125,
+    162
+   ]
+  },
+  {
+   "orientation": 5,
+   "out_width": 3,
+   "out_height": 2,
+   "pixels": [
+    91,
+    128,
+    165,
+    202,
+    11,
+    48,
+    85,
+    122,
+    199,
+    236,
+    17,
+    54,
+    51,
+    88,
+    125,
+    162,
+    239,
+    20,
+    57,
+    94,
+    159,
+    196,
+    233,
+    14
+   ]
+  },
+  {
+   "orientation": 6,
+   "out_width": 3,
+   "out_height": 2,
+   "pixels": [
+    199,
+    236,
+    17,
+    54,
+    11,
+    48,
+    85,
+    122,
+    91,
+    128,
+    165,
+    202,
+    159,
+    196,
+    233,
+    14,
+    239,
+    20,
+    57,
+    94,
+    51,
+    88,
+    125,
+    162
+   ]
+  },
+  {
+   "orientation": 7,
+   "out_width": 3,
+   "out_height": 2,
+   "pixels": [
+    159,
+    196,
+    233,
+    14,
+    239,
+    20,
+    57,
+    94,
+    51,
+    88,
+    125,
+    162,
+    199,
+    236,
+    17,
+    54,
+    11,
+    48,
+    85,
+    122,
+    91,
+    128,
+    165,
+    202
+   ]
+  },
+  {
+   "orientation": 8,
+   "out_width": 3,
+   "out_height": 2,
+   "pixels": [
+    51,
+    88,
+    125,
+    162,
+    239,
+    20,
+    57,
+    94,
+    159,
+    196,
+    233,
+    14,
+    91,
+    128,
+    165,
+    202,
+    11,
+    48,
+    85,
+    122,
+    199,
+    236,
+    17,
+    54
+   ]
+  },
+  {
+   "orientation": 0,
+   "out_width": 3,
+   "out_height": 2,
+   "pixels": [
+    11,
+    48,
+    85,
+    122,
+    159,
+    196,
+    233,
+    14,
+    51,
+    88,
+    125,
+    162,
+    199,
+    236,
+    17,
+    54,
+    91,
+    128,
+    165,
+    202,
+    239,
+    20,
+    57,
+    94
+   ]
+  },
+  {
+   "orientation": 9,
+   "out_width": 3,
+   "out_height": 2,
+   "pixels": [
+    11,
+    48,
+    85,
+    122,
+    159,
+    196,
+    233,
+    14,
+    51,
+    88,
+    125,
+    162,
+    199,
+    236,
+    17,
+    54,
+    91,
+    128,
+    165,
+    202,
+    239,
+    20,
+    57,
+    94
+   ]
+  }
+ ],
+ "chalk_yellow": {
+  "0": "Deprecation warning: x",
+  "1": "\u001b[33mDeprecation warning: x\u001b[39m",
+  "2": "\u001b[33mDeprecation warning: x\u001b[39m",
+  "3": "\u001b[33mDeprecation warning: x\u001b[39m"
+ },
+ "node_path_relative_deep": {
+  "win32": [
+   "..\\c",
+   "..\\c",
+   "D:\\b",
+   "..",
+   "..\\..",
+   "..\\..\\..\\..\\..\\..\\..\\..\\..",
+   "",
+   "",
+   "..\\b",
+   "..\\a\\c",
+   "..\\c",
+   "..\\c",
+   "b",
+   "z",
+   "..\\..\\..\\..\\..\\..\\..\\..\\..\\a",
+   "",
+   "..\\..",
+   "a",
+   "",
+   "..\\..\\..\\..\\b"
+  ],
+  "posix": [
+   "../C:\\a\\c",
+   "../c:\\a\\c",
+   "../D:\\b",
+   "../\\a",
+   "../C:\\a",
+   "../C:\\",
+   "",
+   "../C:\\a",
+   "../\\\\s\\s\\b",
+   "../C:\\a\\c",
+   "../c",
+   "../c",
+   "b",
+   "../c:\\x\\y\\..\\z",
+   "C:\\a",
+   "",
+   "../C:\\",
+   "a",
+   "",
+   "../C:\\b"
+  ]
+ }
+}

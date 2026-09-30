@@ -1,0 +1,1291 @@
+{
+ "cache_ttl_ms": 300000,
+ "compute": [
+  {
+   "name": "accumulates_missed_tokens_and_cost",
+   "entries": [
+    {
+     "type": "message",
+     "id": "x",
+     "parentId": null,
+     "timestamp": "",
+     "message": {
+      "role": "assistant",
+      "content": [],
+      "api": "anthropic-messages",
+      "provider": "test",
+      "model": "test-model",
+      "usage": {
+       "input": 0,
+       "output": 10,
+       "cacheRead": 0,
+       "cacheWrite": 100000,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0.375,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 0
+     }
+    },
+    {
+     "type": "message",
+     "id": "x",
+     "parentId": null,
+     "timestamp": "",
+     "message": {
+      "role": "assistant",
+      "content": [],
+      "api": "anthropic-messages",
+      "provider": "test",
+      "model": "test-model",
+      "usage": {
+       "input": 0,
+       "output": 10,
+       "cacheRead": 100000,
+       "cacheWrite": 5000,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0.03,
+        "cacheWrite": 0.019,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 60000
+     }
+    },
+    {
+     "type": "message",
+     "id": "x",
+     "parentId": null,
+     "timestamp": "",
+     "message": {
+      "role": "assistant",
+      "content": [],
+      "api": "anthropic-messages",
+      "provider": "test",
+      "model": "test-model",
+      "usage": {
+       "input": 0,
+       "output": 10,
+       "cacheRead": 0,
+       "cacheWrite": 110000,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0.4125,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 120000
+     }
+    }
+   ],
+   "totals": {
+    "missedTokens": 105000,
+    "missedCost": 0.36224999999999996,
+    "missCount": 1
+   }
+  },
+  {
+   "name": "healthy_session",
+   "entries": [
+    {
+     "type": "message",
+     "id": "x",
+     "parentId": null,
+     "timestamp": "",
+     "message": {
+      "role": "assistant",
+      "content": [],
+      "api": "anthropic-messages",
+      "provider": "test",
+      "model": "test-model",
+      "usage": {
+       "input": 0,
+       "output": 10,
+       "cacheRead": 0,
+       "cacheWrite": 100000,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0.375,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 0
+     }
+    },
+    {
+     "type": "message",
+     "id": "x",
+     "parentId": null,
+     "timestamp": "",
+     "message": {
+      "role": "assistant",
+      "content": [],
+      "api": "anthropic-messages",
+      "provider": "test",
+      "model": "test-model",
+      "usage": {
+       "input": 0,
+       "output": 10,
+       "cacheRead": 100000,
+       "cacheWrite": 5000,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0.03,
+        "cacheWrite": 0.019,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 60000
+     }
+    }
+   ],
+   "totals": {
+    "missedTokens": 0,
+    "missedCost": 0,
+    "missCount": 0
+   }
+  },
+  {
+   "name": "skips_turn_after_compaction",
+   "entries": [
+    {
+     "type": "message",
+     "id": "x",
+     "parentId": null,
+     "timestamp": "",
+     "message": {
+      "role": "assistant",
+      "content": [],
+      "api": "anthropic-messages",
+      "provider": "test",
+      "model": "test-model",
+      "usage": {
+       "input": 0,
+       "output": 10,
+       "cacheRead": 0,
+       "cacheWrite": 100000,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0.375,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 0
+     }
+    },
+    {
+     "type": "compaction",
+     "id": "c",
+     "parentId": null,
+     "timestamp": ""
+    },
+    {
+     "type": "message",
+     "id": "x",
+     "parentId": null,
+     "timestamp": "",
+     "message": {
+      "role": "assistant",
+      "content": [],
+      "api": "anthropic-messages",
+      "provider": "test",
+      "model": "test-model",
+      "usage": {
+       "input": 0,
+       "output": 10,
+       "cacheRead": 0,
+       "cacheWrite": 20000,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0.075,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 0
+     }
+    }
+   ],
+   "totals": {
+    "missedTokens": 0,
+    "missedCost": 0,
+    "missCount": 0
+   }
+  },
+  {
+   "name": "skips_turn_after_branch_summary",
+   "entries": [
+    {
+     "type": "message",
+     "id": "x",
+     "parentId": null,
+     "timestamp": "",
+     "message": {
+      "role": "assistant",
+      "content": [],
+      "api": "anthropic-messages",
+      "provider": "test",
+      "model": "test-model",
+      "usage": {
+       "input": 0,
+       "output": 10,
+       "cacheRead": 0,
+       "cacheWrite": 100000,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0.375,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 0
+     }
+    },
+    {
+     "type": "branch_summary",
+     "id": "b",
+     "parentId": null,
+     "timestamp": ""
+    },
+    {
+     "type": "message",
+     "id": "x",
+     "parentId": null,
+     "timestamp": "",
+     "message": {
+      "role": "assistant",
+      "content": [],
+      "api": "anthropic-messages",
+      "provider": "test",
+      "model": "test-model",
+      "usage": {
+       "input": 0,
+       "output": 10,
+       "cacheRead": 0,
+       "cacheWrite": 20000,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0.075,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 0
+     }
+    }
+   ],
+   "totals": {
+    "missedTokens": 0,
+    "missedCost": 0,
+    "missCount": 0
+   }
+  },
+  {
+   "name": "counts_model_switch_misses",
+   "entries": [
+    {
+     "type": "message",
+     "id": "x",
+     "parentId": null,
+     "timestamp": "",
+     "message": {
+      "role": "assistant",
+      "content": [],
+      "api": "anthropic-messages",
+      "provider": "test",
+      "model": "test-model",
+      "usage": {
+       "input": 0,
+       "output": 10,
+       "cacheRead": 0,
+       "cacheWrite": 100000,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0.375,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 0
+     }
+    },
+    {
+     "type": "message",
+     "id": "x",
+     "parentId": null,
+     "timestamp": "",
+     "message": {
+      "role": "assistant",
+      "content": [],
+      "api": "anthropic-messages",
+      "provider": "test",
+      "model": "other-model",
+      "usage": {
+       "input": 0,
+       "output": 10,
+       "cacheRead": 0,
+       "cacheWrite": 100000,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0.375,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 0
+     }
+    }
+   ],
+   "totals": {
+    "missedTokens": 100000,
+    "missedCost": 0.345,
+    "missCount": 1
+   }
+  },
+  {
+   "name": "skips_providers_without_cache_activity",
+   "entries": [
+    {
+     "type": "message",
+     "id": "x",
+     "parentId": null,
+     "timestamp": "",
+     "message": {
+      "role": "assistant",
+      "content": [],
+      "api": "anthropic-messages",
+      "provider": "test",
+      "model": "test-model",
+      "usage": {
+       "input": 100000,
+       "output": 10,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 0
+     }
+    },
+    {
+     "type": "message",
+     "id": "x",
+     "parentId": null,
+     "timestamp": "",
+     "message": {
+      "role": "assistant",
+      "content": [],
+      "api": "anthropic-messages",
+      "provider": "test",
+      "model": "test-model",
+      "usage": {
+       "input": 110000,
+       "output": 10,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 0
+     }
+    }
+   ],
+   "totals": {
+    "missedTokens": 0,
+    "missedCost": 0,
+    "missCount": 0
+   }
+  },
+  {
+   "name": "noise_floor_exact_1024_not_counted",
+   "entries": [
+    {
+     "type": "message",
+     "id": "x",
+     "parentId": null,
+     "timestamp": "",
+     "message": {
+      "role": "assistant",
+      "content": [],
+      "api": "anthropic-messages",
+      "provider": "test",
+      "model": "test-model",
+      "usage": {
+       "input": 10,
+       "output": 10,
+       "cacheRead": 0,
+       "cacheWrite": 105000,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0.39,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 0
+     }
+    },
+    {
+     "type": "message",
+     "id": "x",
+     "parentId": null,
+     "timestamp": "",
+     "message": {
+      "role": "assistant",
+      "content": [],
+      "api": "anthropic-messages",
+      "provider": "test",
+      "model": "test-model",
+      "usage": {
+       "input": 10,
+       "output": 10,
+       "cacheRead": 103986,
+       "cacheWrite": 2000,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0.31,
+        "cacheWrite": 0.0074,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 0
+     }
+    }
+   ],
+   "totals": {
+    "missedTokens": 0,
+    "missedCost": 0,
+    "missCount": 0
+   }
+  },
+  {
+   "name": "noise_floor_1025_counted",
+   "entries": [
+    {
+     "type": "message",
+     "id": "x",
+     "parentId": null,
+     "timestamp": "",
+     "message": {
+      "role": "assistant",
+      "content": [],
+      "api": "anthropic-messages",
+      "provider": "test",
+      "model": "test-model",
+      "usage": {
+       "input": 10,
+       "output": 10,
+       "cacheRead": 0,
+       "cacheWrite": 105000,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0.39,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 0
+     }
+    },
+    {
+     "type": "message",
+     "id": "x",
+     "parentId": null,
+     "timestamp": "",
+     "message": {
+      "role": "assistant",
+      "content": [],
+      "api": "anthropic-messages",
+      "provider": "test",
+      "model": "test-model",
+      "usage": {
+       "input": 10,
+       "output": 10,
+       "cacheRead": 103985,
+       "cacheWrite": 2000,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0.31,
+        "cacheWrite": 0.0074,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 0
+     }
+    }
+   ],
+   "totals": {
+    "missedTokens": 1025,
+    "missedCost": 0.0007179026490856769,
+    "missCount": 1
+   }
+  },
+  {
+   "name": "first_turn_only",
+   "entries": [
+    {
+     "type": "message",
+     "id": "x",
+     "parentId": null,
+     "timestamp": "",
+     "message": {
+      "role": "assistant",
+      "content": [],
+      "api": "anthropic-messages",
+      "provider": "test",
+      "model": "test-model",
+      "usage": {
+       "input": 0,
+       "output": 10,
+       "cacheRead": 0,
+       "cacheWrite": 100000,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0.375,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 0
+     }
+    }
+   ],
+   "totals": {
+    "missedTokens": 0,
+    "missedCost": 0,
+    "missCount": 0
+   }
+  },
+  {
+   "name": "zero_prompt_tokens",
+   "entries": [
+    {
+     "type": "message",
+     "id": "x",
+     "parentId": null,
+     "timestamp": "",
+     "message": {
+      "role": "assistant",
+      "content": [],
+      "api": "anthropic-messages",
+      "provider": "test",
+      "model": "test-model",
+      "usage": {
+       "input": 0,
+       "output": 10,
+       "cacheRead": 0,
+       "cacheWrite": 100000,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0.375,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 0
+     }
+    },
+    {
+     "type": "message",
+     "id": "x",
+     "parentId": null,
+     "timestamp": "",
+     "message": {
+      "role": "assistant",
+      "content": [],
+      "api": "anthropic-messages",
+      "provider": "test",
+      "model": "test-model",
+      "usage": {
+       "input": 0,
+       "output": 10,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 0
+     }
+    }
+   ],
+   "totals": {
+    "missedTokens": 0,
+    "missedCost": 0,
+    "missCount": 0
+   }
+  },
+  {
+   "name": "total_miss_on_reporting_provider_uses_model_price",
+   "entries": [
+    {
+     "type": "message",
+     "id": "x",
+     "parentId": null,
+     "timestamp": "",
+     "message": {
+      "role": "assistant",
+      "content": [],
+      "api": "anthropic-messages",
+      "provider": "test",
+      "model": "test-model",
+      "usage": {
+       "input": 0,
+       "output": 10,
+       "cacheRead": 0,
+       "cacheWrite": 100000,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0.375,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 0
+     }
+    },
+    {
+     "type": "message",
+     "id": "x",
+     "parentId": null,
+     "timestamp": "",
+     "message": {
+      "role": "assistant",
+      "content": [],
+      "api": "anthropic-messages",
+      "provider": "test",
+      "model": "test-model",
+      "usage": {
+       "input": 0,
+       "output": 10,
+       "cacheRead": 100000,
+       "cacheWrite": 5000,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0.03,
+        "cacheWrite": 0.019,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 60000
+     }
+    },
+    {
+     "type": "message",
+     "id": "x",
+     "parentId": null,
+     "timestamp": "",
+     "message": {
+      "role": "assistant",
+      "content": [],
+      "api": "anthropic-messages",
+      "provider": "test",
+      "model": "test-model",
+      "usage": {
+       "input": 105000,
+       "output": 10,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0.39375,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 120000
+     }
+    }
+   ],
+   "totals": {
+    "missedTokens": 105000,
+    "missedCost": 0.36225,
+    "missCount": 1
+   }
+  }
+ ],
+ "collect": [
+  {
+   "name": "maps_misses_by_reference",
+   "entries": [
+    {
+     "type": "message",
+     "id": "x",
+     "parentId": null,
+     "timestamp": "",
+     "message": {
+      "role": "assistant",
+      "content": [],
+      "api": "anthropic-messages",
+      "provider": "test",
+      "model": "test-model",
+      "usage": {
+       "input": 0,
+       "output": 10,
+       "cacheRead": 0,
+       "cacheWrite": 100000,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0.375,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 0
+     }
+    },
+    {
+     "type": "message",
+     "id": "x",
+     "parentId": null,
+     "timestamp": "",
+     "message": {
+      "role": "assistant",
+      "content": [],
+      "api": "anthropic-messages",
+      "provider": "test",
+      "model": "test-model",
+      "usage": {
+       "input": 0,
+       "output": 10,
+       "cacheRead": 100000,
+       "cacheWrite": 5000,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0.03,
+        "cacheWrite": 0.019,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 60000
+     }
+    },
+    {
+     "type": "message",
+     "id": "x",
+     "parentId": null,
+     "timestamp": "",
+     "message": {
+      "role": "assistant",
+      "content": [],
+      "api": "anthropic-messages",
+      "provider": "test",
+      "model": "test-model",
+      "usage": {
+       "input": 0,
+       "output": 10,
+       "cacheRead": 0,
+       "cacheWrite": 110000,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0.4125,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 120000
+     }
+    }
+   ],
+   "size": 1,
+   "missedTokens": [
+    105000
+   ]
+  },
+  {
+   "name": "empty",
+   "entries": [],
+   "size": 0,
+   "missedTokens": []
+  }
+ ],
+ "detect": [
+  {
+   "name": "miss_with_idle_time",
+   "entries": [
+    {
+     "type": "message",
+     "id": "x",
+     "parentId": null,
+     "timestamp": "",
+     "message": {
+      "role": "assistant",
+      "content": [],
+      "api": "anthropic-messages",
+      "provider": "test",
+      "model": "test-model",
+      "usage": {
+       "input": 0,
+       "output": 10,
+       "cacheRead": 0,
+       "cacheWrite": 100000,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0.375,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 0
+     }
+    },
+    {
+     "type": "message",
+     "id": "x",
+     "parentId": null,
+     "timestamp": "",
+     "message": {
+      "role": "assistant",
+      "content": [],
+      "api": "anthropic-messages",
+      "provider": "test",
+      "model": "test-model",
+      "usage": {
+       "input": 0,
+       "output": 10,
+       "cacheRead": 100000,
+       "cacheWrite": 5000,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0.03,
+        "cacheWrite": 0.019,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 60000
+     }
+    }
+   ],
+   "message": {
+    "role": "assistant",
+    "content": [],
+    "api": "anthropic-messages",
+    "provider": "test",
+    "model": "test-model",
+    "usage": {
+     "input": 0,
+     "output": 10,
+     "cacheRead": 0,
+     "cacheWrite": 110000,
+     "totalTokens": 0,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0.4125,
+      "total": 0
+     }
+    },
+    "stopReason": "stop",
+    "timestamp": 600000
+   },
+   "miss": {
+    "missedTokens": 105000,
+    "missedCost": 0.36224999999999996,
+    "idleMs": 540000,
+    "modelChanged": false
+   }
+  },
+  {
+   "name": "flags_model_switch",
+   "entries": [
+    {
+     "type": "message",
+     "id": "x",
+     "parentId": null,
+     "timestamp": "",
+     "message": {
+      "role": "assistant",
+      "content": [],
+      "api": "anthropic-messages",
+      "provider": "test",
+      "model": "test-model",
+      "usage": {
+       "input": 0,
+       "output": 10,
+       "cacheRead": 0,
+       "cacheWrite": 100000,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0.375,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 0
+     }
+    },
+    {
+     "type": "message",
+     "id": "x",
+     "parentId": null,
+     "timestamp": "",
+     "message": {
+      "role": "assistant",
+      "content": [],
+      "api": "anthropic-messages",
+      "provider": "test",
+      "model": "test-model",
+      "usage": {
+       "input": 0,
+       "output": 10,
+       "cacheRead": 100000,
+       "cacheWrite": 5000,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0.03,
+        "cacheWrite": 0.019,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 60000
+     }
+    }
+   ],
+   "message": {
+    "role": "assistant",
+    "content": [],
+    "api": "anthropic-messages",
+    "provider": "test",
+    "model": "other-model",
+    "usage": {
+     "input": 0,
+     "output": 10,
+     "cacheRead": 0,
+     "cacheWrite": 110000,
+     "totalTokens": 0,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0.4125,
+      "total": 0
+     }
+    },
+    "stopReason": "stop",
+    "timestamp": 120000
+   },
+   "miss": {
+    "missedTokens": 105000,
+    "missedCost": 0.36224999999999996,
+    "idleMs": 60000,
+    "modelChanged": true
+   }
+  },
+  {
+   "name": "healthy_turn_undefined",
+   "entries": [
+    {
+     "type": "message",
+     "id": "x",
+     "parentId": null,
+     "timestamp": "",
+     "message": {
+      "role": "assistant",
+      "content": [],
+      "api": "anthropic-messages",
+      "provider": "test",
+      "model": "test-model",
+      "usage": {
+       "input": 0,
+       "output": 10,
+       "cacheRead": 0,
+       "cacheWrite": 100000,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0.375,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 0
+     }
+    },
+    {
+     "type": "message",
+     "id": "x",
+     "parentId": null,
+     "timestamp": "",
+     "message": {
+      "role": "assistant",
+      "content": [],
+      "api": "anthropic-messages",
+      "provider": "test",
+      "model": "test-model",
+      "usage": {
+       "input": 0,
+       "output": 10,
+       "cacheRead": 100000,
+       "cacheWrite": 5000,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0.03,
+        "cacheWrite": 0.019,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 60000
+     }
+    }
+   ],
+   "message": {
+    "role": "assistant",
+    "content": [],
+    "api": "anthropic-messages",
+    "provider": "test",
+    "model": "test-model",
+    "usage": {
+     "input": 0,
+     "output": 10,
+     "cacheRead": 105000,
+     "cacheWrite": 2000,
+     "totalTokens": 0,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0.0315,
+      "cacheWrite": 0.0075,
+      "total": 0
+     }
+    },
+    "stopReason": "stop",
+    "timestamp": 120000
+   },
+   "miss": null
+  },
+  {
+   "name": "first_turn_undefined",
+   "entries": [],
+   "message": {
+    "role": "assistant",
+    "content": [],
+    "api": "anthropic-messages",
+    "provider": "test",
+    "model": "test-model",
+    "usage": {
+     "input": 0,
+     "output": 10,
+     "cacheRead": 0,
+     "cacheWrite": 100000,
+     "totalTokens": 0,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0.375,
+      "total": 0
+     }
+    },
+    "stopReason": "stop",
+    "timestamp": 0
+   },
+   "miss": null
+  },
+  {
+   "name": "negative_idle_clamped_to_zero",
+   "entries": [
+    {
+     "type": "message",
+     "id": "x",
+     "parentId": null,
+     "timestamp": "",
+     "message": {
+      "role": "assistant",
+      "content": [],
+      "api": "anthropic-messages",
+      "provider": "test",
+      "model": "test-model",
+      "usage": {
+       "input": 0,
+       "output": 10,
+       "cacheRead": 0,
+       "cacheWrite": 100000,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0.375,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 0
+     }
+    },
+    {
+     "type": "message",
+     "id": "x",
+     "parentId": null,
+     "timestamp": "",
+     "message": {
+      "role": "assistant",
+      "content": [],
+      "api": "anthropic-messages",
+      "provider": "test",
+      "model": "test-model",
+      "usage": {
+       "input": 0,
+       "output": 10,
+       "cacheRead": 100000,
+       "cacheWrite": 5000,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0.03,
+        "cacheWrite": 0.019,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 60000
+     }
+    }
+   ],
+   "message": {
+    "role": "assistant",
+    "content": [],
+    "api": "anthropic-messages",
+    "provider": "test",
+    "model": "test-model",
+    "usage": {
+     "input": 0,
+     "output": 10,
+     "cacheRead": 90000,
+     "cacheWrite": 2000,
+     "totalTokens": 0,
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0.027,
+      "cacheWrite": 0.005,
+      "total": 0
+     }
+    },
+    "stopReason": "stop",
+    "timestamp": 30000
+   },
+   "miss": {
+    "missedTokens": 2000,
+    "missedCost": 0.0044,
+    "idleMs": 0,
+    "modelChanged": false
+   }
+  }
+ ]
+}

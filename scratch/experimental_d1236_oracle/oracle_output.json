@@ -1,0 +1,65 @@
+{
+	"registerPeerLine": "{\"type\":\"register_peer\",\"protocol\":3,\"peerId\":\"worker-1\"}\n",
+	"sendWorkerReady": "{\"type\":\"send\",\"to\":\"server\",\"payload\":{\"type\":\"worker_ready\",\"token\":\"worker-token\",\"sessionKey\":\"/tmp/session-1.jsonl\",\"sessionId\":\"session-1\",\"pid\":123,\"metadata\":{\"id\":\"session-1\",\"createdAt\":1,\"storageVersion\":1,\"cwd\":\"/tmp\",\"path\":\"/tmp/session-1.jsonl\",\"modifiedAt\":1,\"parentSessionId\":\"parent-9\"},\"pluginManifestPaths\":[\"/tmp/plugin/chord-facets.json\"]}}\n",
+	"sendWorkerFailed": "{\"type\":\"send\",\"to\":\"server\",\"payload\":{\"type\":\"worker_failed\",\"token\":\"worker-token\",\"sessionKey\":\"/tmp/session-1.jsonl\",\"message\":\"Session worker received invalid options\"}}\n",
+	"sendDemandApplied": "{\"type\":\"send\",\"to\":\"server\",\"payload\":{\"type\":\"demand_applied\",\"token\":\"worker-token\",\"sessionKey\":\"/tmp/session-1.jsonl\",\"requestId\":\"req-1\",\"attachmentId\":\"att-1\",\"attached\":true}}\n",
+	"sessionKeyEncoded": "L3RtcC9zZXNzaW9uLTEuanNvbmw",
+	"sessionKey": "/tmp/session-1.jsonl",
+	"lenientDecodeInvalidChar": "i�",
+	"readCommandsErrors": {
+		"invalidJson": "Session worker received invalid control JSON",
+		"invalidWorkerMessage": "Coordinator sent an invalid worker message"
+	},
+	"optionsValidation": {
+		"none": "Session worker requires one options argument",
+		"two": "Session worker requires one options argument",
+		"invalidJson": "Session worker received invalid options",
+		"relativePaths": "Session worker received invalid options",
+		"providerWithoutModel": "Session worker received invalid options",
+		"accepts": null
+	},
+	"aggregateMessages": {
+		"cleanup": "Session worker cleanup failed",
+		"disposeFacets": "Failed to dispose Session facets",
+		"reloadCleanup": "Session plugin reload and cleanup failed",
+		"startupCleanup": "Session facets failed to start and clean up"
+	},
+	"serverError": {
+		"name": "ServerError",
+		"code": "service_not_found",
+		"message": "boom"
+	},
+	"plainOperationError": "Session worker operation failed: boom",
+	"controlCalls": {
+		"unsubscribeCall": {
+			"serviceId": "$chord.service",
+			"member": "unsubscribe",
+			"args": [
+				"sub-9"
+			]
+		},
+		"unsubscribeWire": "{\"serviceId\":\"$chord.service\",\"member\":\"unsubscribe\",\"args\":[\"sub-9\"]}\n",
+		"subscribeCall": {
+			"serviceId": "$chord.service",
+			"member": "subscribe",
+			"args": [
+				"sub-1",
+				"test.session",
+				"singleton"
+			]
+		},
+		"decodeSubscribe": {
+			"type": "subscribe",
+			"subscriptionId": "sub-1",
+			"serviceId": "test.session",
+			"mode": "singleton"
+		},
+		"decodeUnsubscribe": {
+			"type": "unsubscribe",
+			"subscriptionId": "sub-9"
+		},
+		"decodeCatalogue": {
+			"type": "catalogue"
+		}
+	}
+}

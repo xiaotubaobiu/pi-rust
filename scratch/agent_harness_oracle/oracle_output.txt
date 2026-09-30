@@ -1,0 +1,21 @@
+{"type":"run_start","runId":"op-1","startedAt":100,"lane":"main"}
+{"type":"lane_created","lane":"main","at":null}
+{"type":"value_update","value":"session_name","name":"named"}
+{"type":"value_update","value":"entry_label","targetId":"e1"}
+{"type":"config_update","property":"streamOptions","value":{"timeoutMs":123},"previous":{}}
+{"type":"config_update","property":"steeringMode","value":"one-at-a-time","previous":"all"}
+{"type":"config_update","property":"tools"}
+{"type":"config_update","lane":"main","property":"model","value":{"provider":"faux","modelId":"faux-2"},"previous":{"modelId":"faux-1","provider":"faux"}}
+{"type":"fault","code":"harness_fault","message":"AgentHarness storage or invariant fault"}
+{"type":"handler_error","kind":"hook","hook":"before_run","error":"boom","lane":"main"}
+{"type":"handler_error","kind":"event","event":"message_update","error":"listener panicked","stack":"Error: listener panicked"}
+{"type":"operation_abort","operationId":"op-1","steer":[],"followUp":[],"lane":"main"}
+{"type":"navigation_start","lane":"main","runId":"op-1","targetId":"e3","startedAt":100}
+{"type":"tool_start","lane":"main","runId":"op-1","turnId":"t1","toolCallId":"c1","toolName":"read","args":{"path":"a"}}
+{"type":"tool_update","lane":"main","runId":"op-1","turnId":"t1","toolCallId":"c1","toolName":"read","partialResult":{"content":[{"type":"text","text":"partial"}]},"recovery":true}
+{"type":"tool_end","lane":"main","runId":"op-1","turnId":"t1","toolCallId":"c1","toolName":"read","result":{"content":[{"type":"text","text":"done"}]},"isError":false,"terminate":false}
+{"type":"run_suspend","lane":"main","runId":"op-1","deferred":{"provider":"faux","modelId":"faux-1","api":"faux-api","id":"resp-1"},"poll":2,"recovery":true}
+{"type":"usage","lane":"main","row":{"id":"u1","seq":1,"usage":{"input":1,"output":2,"cacheRead":0,"cacheWrite":0,"totalTokens":3,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}},"adjustment":true},"totals":{"input":1,"output":2,"cacheRead":0,"cacheWrite":0,"totalTokens":3,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}}}
+{"type":"queue_update","lane":"main","queues":[{"type":"message","entryId":"q1","kind":"steer","message":{"role":"user","content":"hi","timestamp":1}}]}
+{"type":"retry_scheduled","lane":"main","runId":"op-1","step":"assistant","attempt":1,"maxAttempts":3,"delayMs":1000,"notBefore":1100,"errorMessage":"rate limited"}
+{"type":"navigation_end","lane":"main","runId":"op-1","status":"completed","fromTipId":"e1","tipId":"e3","endedAt":200}

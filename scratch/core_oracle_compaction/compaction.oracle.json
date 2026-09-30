@@ -1,0 +1,1021 @@
+{
+ "constants": {
+  "summarizationSystemPrompt": "You are a context summarization assistant. Your task is to read a conversation between a user and an AI assistant, then produce a structured summary following the exact format specified.\n\nDo NOT continue the conversation. Do NOT respond to any questions in the conversation. ONLY output the structured summary.",
+  "defaultSettings": {
+   "enabled": true,
+   "reserveTokens": 16384,
+   "keepRecentTokens": 20000
+  }
+ },
+ "fileOps": {
+  "opsJson": "{\"edited\":[\"src/c.ts\"],\"read\":[\"src/a.ts\",\"src/e.ts\"],\"written\":[\"src/b.ts\"]}",
+  "lists": {
+   "readFiles": [
+    "src/a.ts",
+    "src/e.ts"
+   ],
+   "modifiedFiles": [
+    "src/b.ts",
+    "src/c.ts"
+   ]
+  },
+  "listsJson": "{\"modifiedFiles\":[\"src/b.ts\",\"src/c.ts\"],\"readFiles\":[\"src/a.ts\",\"src/e.ts\"]}",
+  "formattedBoth": "\n\n<read-files>\nREADME.md\nsrc/a.ts\n</read-files>\n\n<modified-files>\nsrc/b.ts\nsrc/c.ts\n</modified-files>",
+  "formattedRead": "\n\n<read-files>\nonly-read.txt\n</read-files>",
+  "formattedModified": "\n\n<modified-files>\nchanged.txt\n</modified-files>",
+  "formattedNone": ""
+ },
+ "serialize": {
+  "longToolResult": "[Tool result]: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n\n[... 3000 more characters truncated]",
+  "shortToolResult": "[Tool result]: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "exactBoundary": "[Tool result]: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "overBoundary": "[Tool result]: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n\n[... 1 more characters truncated]",
+  "userAndAssistantLong": "[User]: yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy\n\n[Assistant]: yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy",
+  "assistantThinkingToolCalls": "[Assistant thinking]: Thought A\n\n[Assistant]: Answer\n\n[Assistant tool calls]: read(path=\"a.txt\"); edit(a=1, b=\"x\")",
+  "emptyUserContentSkipped": "[User]: visible",
+  "joinedWithBlankLines": "[User]: one\n\n[Tool result]: out\n\n[User]: two",
+  "empty": ""
+ },
+ "tokenCalc": {
+  "calculate": [
+   1800,
+   0,
+   555
+  ]
+ },
+ "lastAssistantUsage": {
+  "last_non_aborted": {
+   "input": 200,
+   "output": 100,
+   "cacheRead": 0,
+   "cacheWrite": 0,
+   "totalTokens": 300,
+   "cost": {
+    "input": 0,
+    "output": 0,
+    "cacheRead": 0,
+    "cacheWrite": 0,
+    "total": 0
+   }
+  },
+  "skips_aborted": {
+   "input": 100,
+   "output": 50,
+   "cacheRead": 0,
+   "cacheWrite": 0,
+   "totalTokens": 150,
+   "cost": {
+    "input": 0,
+    "output": 0,
+    "cacheRead": 0,
+    "cacheWrite": 0,
+    "total": 0
+   }
+  },
+  "skips_all_zero": {
+   "input": 100,
+   "output": 50,
+   "cacheRead": 0,
+   "cacheWrite": 0,
+   "totalTokens": 150,
+   "cost": {
+    "input": 0,
+    "output": 0,
+    "cacheRead": 0,
+    "cacheWrite": 0,
+    "total": 0
+   }
+  },
+  "error_stop_skipped": {
+   "input": 400,
+   "output": 40,
+   "cacheRead": 0,
+   "cacheWrite": 0,
+   "totalTokens": 440,
+   "cost": {
+    "input": 0,
+    "output": 0,
+    "cacheRead": 0,
+    "cacheWrite": 0,
+    "total": 0
+   }
+  },
+  "no_assistant": null,
+  "includes_non_message_entries": {
+   "input": 111,
+   "output": 11,
+   "cacheRead": 0,
+   "cacheWrite": 0,
+   "totalTokens": 122,
+   "cost": {
+    "input": 0,
+    "output": 0,
+    "cacheRead": 0,
+    "cacheWrite": 0,
+    "total": 0
+   }
+  }
+ },
+ "estimateContextTokens": {
+  "anchored": {
+   "tokens": 156,
+   "usageTokens": 150,
+   "trailingTokens": 6,
+   "lastUsageIndex": 1
+  },
+  "anchoredJson": "{\"lastUsageIndex\":1,\"tokens\":156,\"trailingTokens\":6,\"usageTokens\":150}",
+  "noUsage": {
+   "tokens": 2,
+   "usageTokens": 0,
+   "trailingTokens": 2,
+   "lastUsageIndex": null
+  },
+  "empty": {
+   "tokens": 0,
+   "usageTokens": 0,
+   "trailingTokens": 0,
+   "lastUsageIndex": null
+  }
+ },
+ "estimateTokens": {
+  "userString": 2,
+  "userBlocks": 1202,
+  "assistantBlocks": 8,
+  "toolResult": 1202,
+  "bashExecution": 4,
+  "branchSummary": 2,
+  "compactionSummary": 1,
+  "custom": 2,
+  "system": 0
+ },
+ "shouldCompact": [
+  true,
+  false,
+  false,
+  false,
+  false,
+  true
+ ],
+ "findCutPoint": {
+  "token_diff": {
+   "firstKeptEntryIndex": 7,
+   "turnStartIndex": 6,
+   "isSplitTurn": true
+  },
+  "no_valid_cut_points": {
+   "firstKeptEntryIndex": 0,
+   "turnStartIndex": -1,
+   "isSplitTurn": false
+  },
+  "all_fit": {
+   "firstKeptEntryIndex": 0,
+   "turnStartIndex": -1,
+   "isSplitTurn": false
+  },
+  "split_turn": {
+   "firstKeptEntryIndex": 3,
+   "turnStartIndex": 2,
+   "isSplitTurn": true
+  },
+  "tiny_budget_custom": {
+   "firstKeptEntryIndex": 3,
+   "turnStartIndex": 2,
+   "isSplitTurn": true
+  },
+  "custom_fits": {
+   "firstKeptEntryIndex": 2,
+   "turnStartIndex": -1,
+   "isSplitTurn": false
+  },
+  "metadata_back_scan": {
+   "firstKeptEntryIndex": 2,
+   "turnStartIndex": 0,
+   "isSplitTurn": true
+  },
+  "tool_results_never_cut": {
+   "firstKeptEntryIndex": 3,
+   "turnStartIndex": -1,
+   "isSplitTurn": false
+  },
+  "zero_keep_budget": {
+   "firstKeptEntryIndex": 3,
+   "turnStartIndex": 2,
+   "isSplitTurn": true
+  },
+  "range_limited": {
+   "firstKeptEntryIndex": 10,
+   "turnStartIndex": -1,
+   "isSplitTurn": false
+  }
+ },
+ "findTurnStartIndex": {
+  "mid_turn": 2,
+  "at_user": 2,
+  "before_start": -1,
+  "first_entry": 0,
+  "custom_entry_is_turn_start": 2
+ },
+ "prepareCompaction": {
+  "system_messages_skipped": {
+   "firstKeptEntryId": "t-2",
+   "isSplitTurn": true,
+   "tokensBefore": 150,
+   "previousSummary": null,
+   "summarizeRoles": [],
+   "summarizeJson": "[]",
+   "turnPrefixRoles": [
+    "user"
+   ],
+   "turnPrefixJson": "[{\"content\":\"one long turn\",\"role\":\"user\",\"timestamp\":1767337445678}]",
+   "fileOpsJson": "{\"edited\":[],\"read\":[],\"written\":[]}",
+   "settings": {
+    "enabled": true,
+    "reserveTokens": 16384,
+    "keepRecentTokens": 1
+   }
+  },
+  "system_entry_ids": {
+   "system": "t-0",
+   "user": "t-1",
+   "assistant": "t-2"
+  },
+  "fits_returns_undefined": null,
+  "window_moves": {
+   "firstKeptEntryId": "t-7",
+   "isSplitTurn": false,
+   "tokensBefore": 10000,
+   "previousSummary": "First summary",
+   "summarizedText": "user msg 2 - kept by compaction1 user msg 2 - kept by compaction1 user msg 2 - kept by compaction1 user msg 2 - kept by compaction1 user msg 2 - kept by compaction1 user msg 2 - kept by compaction1 user msg 2 - kept by compaction1 user msg 2 - kept by compaction1 user msg 2 - kept by compaction1 user msg 2 - kept by compaction1 user msg 2 - kept by compaction1 user msg 2 - kept by compaction1 \nassistant msg 2 assistant msg 2 assistant msg 2 assistant msg 2 assistant msg 2 assistant msg 2 assistant msg 2 assistant msg 2 assistant msg 2 assistant msg 2 assistant msg 2 assistant msg 2 \nuser msg 3 - kept by compaction1 user msg 3 - kept by compaction1 user msg 3 - kept by compaction1 user msg 3 - kept by compaction1 user msg 3 - kept by compaction1 user msg 3 - kept by compaction1 user msg 3 - kept by compaction1 user msg 3 - kept by compaction1 user msg 3 - kept by compaction1 user msg 3 - kept by compaction1 user msg 3 - kept by compaction1 user msg 3 - kept by compaction1 \nassistant msg 3 assistant msg 3 assistant msg 3 assistant msg 3 assistant msg 3 assistant msg 3 assistant msg 3 assistant msg 3 assistant msg 3 assistant msg 3 assistant msg 3 assistant msg 3 ",
+   "turnPrefixText": "",
+   "summarizeRoles": [
+    "user",
+    "assistant",
+    "user",
+    "assistant"
+   ],
+   "fileOpsJson": "{\"edited\":[],\"read\":[],\"written\":[]}"
+  },
+  "window_moves_entry_ids": {
+   "u1": "t-0",
+   "a1": "t-1",
+   "u2": "t-2",
+   "a2": "t-3",
+   "u3": "t-4",
+   "a3": "t-5",
+   "compaction": "t-6",
+   "u4": "t-7",
+   "a4": "t-8"
+  },
+  "trailing_compaction_undefined": null,
+  "empty_session_undefined": null,
+  "file_details_accumulate": {
+   "firstKeptEntryId": "t-3",
+   "isSplitTurn": false,
+   "tokensBefore": 10000,
+   "previousSummary": "History summary",
+   "summarizeRoles": [
+    "user",
+    "assistant"
+   ],
+   "fileOpsJson": "{\"edited\":[\"both.txt\",\"prev-modified.txt\"],\"read\":[\"both.txt\",\"from-calls.txt\",\"prev-read-1.txt\",\"prev-read-2.txt\"],\"written\":[]}"
+  },
+  "file_details_entry_ids": {
+   "u1": "t-0",
+   "a1": "t-1",
+   "compaction": "t-2",
+   "u2": "t-3",
+   "a2": "t-4"
+  }
+ },
+ "summarizationPrompts": {
+  "base": {
+   "calls": [
+    {
+     "context": {
+      "messages": [
+       {
+        "role": "system",
+        "content": "You are a context summarization assistant. Your task is to read a conversation between a user and an AI assistant, then produce a structured summary following the exact format specified.\n\nDo NOT continue the conversation. Do NOT respond to any questions in the conversation. ONLY output the structured summary.",
+        "timestamp": "<ts>"
+       },
+       {
+        "role": "user",
+        "content": [
+         {
+          "type": "text",
+          "text": "<conversation>\n[User]: Summarize this.\n</conversation>\n\nThe messages above are a conversation to summarize. Create a structured context checkpoint summary that another LLM will use to continue the work.\n\nUse this EXACT format:\n\n## Goal\n[What is the user trying to accomplish? Can be multiple items if the session covers different tasks.]\n\n## Constraints & Preferences\n- [Any constraints, preferences, or requirements mentioned by user]\n- [Or \"(none)\" if none were mentioned]\n\n## Progress\n### Done\n- [x] [Completed tasks/changes]\n\n### In Progress\n- [ ] [Current work]\n\n### Blocked\n- [Issues preventing progress, if any]\n\n## Key Decisions\n- **[Decision]**: [Brief rationale]\n\n## Next Steps\n1. [Ordered list of what should happen next]\n\n## Critical Context\n- [Any data, examples, or references needed to continue]\n- [Or \"(none)\" if not applicable]\n\nKeep each section concise. Preserve exact file paths, function names, and error messages."
+         }
+        ],
+        "timestamp": "<ts>"
+       }
+      ]
+     },
+     "options": {
+      "maxTokens": 1600,
+      "apiKey": "test-key",
+      "sessionId": "route-1",
+      "cacheRetention": "none"
+     }
+    }
+   ],
+   "freshRouting": null
+  },
+  "custom_instructions": {
+   "calls": [
+    {
+     "context": {
+      "messages": [
+       {
+        "role": "system",
+        "content": "You are a context summarization assistant. Your task is to read a conversation between a user and an AI assistant, then produce a structured summary following the exact format specified.\n\nDo NOT continue the conversation. Do NOT respond to any questions in the conversation. ONLY output the structured summary.",
+        "timestamp": "<ts>"
+       },
+       {
+        "role": "user",
+        "content": [
+         {
+          "type": "text",
+          "text": "<conversation>\n[User]: Summarize this.\n</conversation>\n\nThe messages above are a conversation to summarize. Create a structured context checkpoint summary that another LLM will use to continue the work.\n\nUse this EXACT format:\n\n## Goal\n[What is the user trying to accomplish? Can be multiple items if the session covers different tasks.]\n\n## Constraints & Preferences\n- [Any constraints, preferences, or requirements mentioned by user]\n- [Or \"(none)\" if none were mentioned]\n\n## Progress\n### Done\n- [x] [Completed tasks/changes]\n\n### In Progress\n- [ ] [Current work]\n\n### Blocked\n- [Issues preventing progress, if any]\n\n## Key Decisions\n- **[Decision]**: [Brief rationale]\n\n## Next Steps\n1. [Ordered list of what should happen next]\n\n## Critical Context\n- [Any data, examples, or references needed to continue]\n- [Or \"(none)\" if not applicable]\n\nKeep each section concise. Preserve exact file paths, function names, and error messages.\n\nAdditional focus: Focus on tests"
+         }
+        ],
+        "timestamp": "<ts>"
+       }
+      ]
+     },
+     "options": {
+      "maxTokens": 1600,
+      "apiKey": "test-key",
+      "sessionId": "<uuid-v7>",
+      "cacheRetention": "none"
+     }
+    }
+   ],
+   "freshRouting": null
+  },
+  "previous_summary": {
+   "calls": [
+    {
+     "context": {
+      "messages": [
+       {
+        "role": "system",
+        "content": "You are a context summarization assistant. Your task is to read a conversation between a user and an AI assistant, then produce a structured summary following the exact format specified.\n\nDo NOT continue the conversation. Do NOT respond to any questions in the conversation. ONLY output the structured summary.",
+        "timestamp": "<ts>"
+       },
+       {
+        "role": "user",
+        "content": [
+         {
+          "type": "text",
+          "text": "<conversation>\n[User]: Summarize this.\n</conversation>\n\n<previous-summary>\nprevious checkpoint\n</previous-summary>\n\nThe messages above are NEW conversation messages to incorporate into the existing summary provided in <previous-summary> tags.\n\nUpdate the existing structured summary with new information. RULES:\n- PRESERVE all existing information from the previous summary\n- ADD new progress, decisions, and context from the new messages\n- UPDATE the Progress section: move items from \"In Progress\" to \"Done\" when completed\n- UPDATE \"Next Steps\" based on what was accomplished\n- PRESERVE exact file paths, function names, and error messages\n- If something is no longer relevant, you may remove it\n\nUse this EXACT format:\n\n## Goal\n[Preserve existing goals, add new ones if the task expanded]\n\n## Constraints & Preferences\n- [Preserve existing, add new ones discovered]\n\n## Progress\n### Done\n- [x] [Include previously done items AND newly completed items]\n\n### In Progress\n- [ ] [Current work - update based on progress]\n\n### Blocked\n- [Current blockers - remove if resolved]\n\n## Key Decisions\n- **[Decision]**: [Brief rationale] (preserve all previous, add new)\n\n## Next Steps\n1. [Update based on current state]\n\n## Critical Context\n- [Preserve important context, add new if needed]\n\nKeep each section concise. Preserve exact file paths, function names, and error messages."
+         }
+        ],
+        "timestamp": "<ts>"
+       }
+      ]
+     },
+     "options": {
+      "maxTokens": 1600,
+      "apiKey": "test-key",
+      "sessionId": "<uuid-v7>",
+      "cacheRetention": "none"
+     }
+    }
+   ],
+   "freshRouting": null
+  },
+  "thinking_medium_reasoning_model": {
+   "calls": [
+    {
+     "context": {
+      "messages": [
+       {
+        "role": "system",
+        "content": "You are a context summarization assistant. Your task is to read a conversation between a user and an AI assistant, then produce a structured summary following the exact format specified.\n\nDo NOT continue the conversation. Do NOT respond to any questions in the conversation. ONLY output the structured summary.",
+        "timestamp": "<ts>"
+       },
+       {
+        "role": "user",
+        "content": [
+         {
+          "type": "text",
+          "text": "<conversation>\n[User]: Summarize this.\n</conversation>\n\nThe messages above are a conversation to summarize. Create a structured context checkpoint summary that another LLM will use to continue the work.\n\nUse this EXACT format:\n\n## Goal\n[What is the user trying to accomplish? Can be multiple items if the session covers different tasks.]\n\n## Constraints & Preferences\n- [Any constraints, preferences, or requirements mentioned by user]\n- [Or \"(none)\" if none were mentioned]\n\n## Progress\n### Done\n- [x] [Completed tasks/changes]\n\n### In Progress\n- [ ] [Current work]\n\n### Blocked\n- [Issues preventing progress, if any]\n\n## Key Decisions\n- **[Decision]**: [Brief rationale]\n\n## Next Steps\n1. [Ordered list of what should happen next]\n\n## Critical Context\n- [Any data, examples, or references needed to continue]\n- [Or \"(none)\" if not applicable]\n\nKeep each section concise. Preserve exact file paths, function names, and error messages."
+         }
+        ],
+        "timestamp": "<ts>"
+       }
+      ]
+     },
+     "options": {
+      "maxTokens": 1600,
+      "apiKey": "test-key",
+      "sessionId": "<uuid-v7>",
+      "reasoning": "medium",
+      "cacheRetention": "none"
+     }
+    }
+   ],
+   "freshRouting": null
+  },
+  "thinking_off_reasoning_model": {
+   "calls": [
+    {
+     "context": {
+      "messages": [
+       {
+        "role": "system",
+        "content": "You are a context summarization assistant. Your task is to read a conversation between a user and an AI assistant, then produce a structured summary following the exact format specified.\n\nDo NOT continue the conversation. Do NOT respond to any questions in the conversation. ONLY output the structured summary.",
+        "timestamp": "<ts>"
+       },
+       {
+        "role": "user",
+        "content": [
+         {
+          "type": "text",
+          "text": "<conversation>\n[User]: Summarize this.\n</conversation>\n\nThe messages above are a conversation to summarize. Create a structured context checkpoint summary that another LLM will use to continue the work.\n\nUse this EXACT format:\n\n## Goal\n[What is the user trying to accomplish? Can be multiple items if the session covers different tasks.]\n\n## Constraints & Preferences\n- [Any constraints, preferences, or requirements mentioned by user]\n- [Or \"(none)\" if none were mentioned]\n\n## Progress\n### Done\n- [x] [Completed tasks/changes]\n\n### In Progress\n- [ ] [Current work]\n\n### Blocked\n- [Issues preventing progress, if any]\n\n## Key Decisions\n- **[Decision]**: [Brief rationale]\n\n## Next Steps\n1. [Ordered list of what should happen next]\n\n## Critical Context\n- [Any data, examples, or references needed to continue]\n- [Or \"(none)\" if not applicable]\n\nKeep each section concise. Preserve exact file paths, function names, and error messages."
+         }
+        ],
+        "timestamp": "<ts>"
+       }
+      ]
+     },
+     "options": {
+      "maxTokens": 1600,
+      "apiKey": "test-key",
+      "sessionId": "<uuid-v7>",
+      "cacheRetention": "none"
+     }
+    }
+   ],
+   "freshRouting": null
+  },
+  "thinking_medium_non_reasoning_model": {
+   "calls": [
+    {
+     "context": {
+      "messages": [
+       {
+        "role": "system",
+        "content": "You are a context summarization assistant. Your task is to read a conversation between a user and an AI assistant, then produce a structured summary following the exact format specified.\n\nDo NOT continue the conversation. Do NOT respond to any questions in the conversation. ONLY output the structured summary.",
+        "timestamp": "<ts>"
+       },
+       {
+        "role": "user",
+        "content": [
+         {
+          "type": "text",
+          "text": "<conversation>\n[User]: Summarize this.\n</conversation>\n\nThe messages above are a conversation to summarize. Create a structured context checkpoint summary that another LLM will use to continue the work.\n\nUse this EXACT format:\n\n## Goal\n[What is the user trying to accomplish? Can be multiple items if the session covers different tasks.]\n\n## Constraints & Preferences\n- [Any constraints, preferences, or requirements mentioned by user]\n- [Or \"(none)\" if none were mentioned]\n\n## Progress\n### Done\n- [x] [Completed tasks/changes]\n\n### In Progress\n- [ ] [Current work]\n\n### Blocked\n- [Issues preventing progress, if any]\n\n## Key Decisions\n- **[Decision]**: [Brief rationale]\n\n## Next Steps\n1. [Ordered list of what should happen next]\n\n## Critical Context\n- [Any data, examples, or references needed to continue]\n- [Or \"(none)\" if not applicable]\n\nKeep each section concise. Preserve exact file paths, function names, and error messages."
+         }
+        ],
+        "timestamp": "<ts>"
+       }
+      ]
+     },
+     "options": {
+      "maxTokens": 1600,
+      "apiKey": "test-key",
+      "sessionId": "<uuid-v7>",
+      "cacheRetention": "none"
+     }
+    }
+   ],
+   "freshRouting": null
+  },
+  "max_tokens_clamped_to_model": {
+   "calls": [
+    {
+     "context": {
+      "messages": [
+       {
+        "role": "system",
+        "content": "You are a context summarization assistant. Your task is to read a conversation between a user and an AI assistant, then produce a structured summary following the exact format specified.\n\nDo NOT continue the conversation. Do NOT respond to any questions in the conversation. ONLY output the structured summary.",
+        "timestamp": "<ts>"
+       },
+       {
+        "role": "user",
+        "content": [
+         {
+          "type": "text",
+          "text": "<conversation>\n[User]: Summarize this.\n</conversation>\n\nThe messages above are a conversation to summarize. Create a structured context checkpoint summary that another LLM will use to continue the work.\n\nUse this EXACT format:\n\n## Goal\n[What is the user trying to accomplish? Can be multiple items if the session covers different tasks.]\n\n## Constraints & Preferences\n- [Any constraints, preferences, or requirements mentioned by user]\n- [Or \"(none)\" if none were mentioned]\n\n## Progress\n### Done\n- [x] [Completed tasks/changes]\n\n### In Progress\n- [ ] [Current work]\n\n### Blocked\n- [Issues preventing progress, if any]\n\n## Key Decisions\n- **[Decision]**: [Brief rationale]\n\n## Next Steps\n1. [Ordered list of what should happen next]\n\n## Critical Context\n- [Any data, examples, or references needed to continue]\n- [Or \"(none)\" if not applicable]\n\nKeep each section concise. Preserve exact file paths, function names, and error messages."
+         }
+        ],
+        "timestamp": "<ts>"
+       }
+      ]
+     },
+     "options": {
+      "maxTokens": 128000,
+      "apiKey": "test-key",
+      "sessionId": "<uuid-v7>",
+      "cacheRetention": "none"
+     }
+    }
+   ],
+   "freshRouting": null
+  },
+  "fresh_routing_session": {
+   "calls": [],
+   "freshRouting": {
+    "count": 2,
+    "distinct": true,
+    "allV7": true
+   }
+  },
+  "headers_and_env": {
+   "calls": [
+    {
+     "context": {
+      "messages": [
+       {
+        "role": "system",
+        "content": "You are a context summarization assistant. Your task is to read a conversation between a user and an AI assistant, then produce a structured summary following the exact format specified.\n\nDo NOT continue the conversation. Do NOT respond to any questions in the conversation. ONLY output the structured summary.",
+        "timestamp": "<ts>"
+       },
+       {
+        "role": "user",
+        "content": [
+         {
+          "type": "text",
+          "text": "<conversation>\n[User]: Summarize this.\n</conversation>\n\nThe messages above are a conversation to summarize. Create a structured context checkpoint summary that another LLM will use to continue the work.\n\nUse this EXACT format:\n\n## Goal\n[What is the user trying to accomplish? Can be multiple items if the session covers different tasks.]\n\n## Constraints & Preferences\n- [Any constraints, preferences, or requirements mentioned by user]\n- [Or \"(none)\" if none were mentioned]\n\n## Progress\n### Done\n- [x] [Completed tasks/changes]\n\n### In Progress\n- [ ] [Current work]\n\n### Blocked\n- [Issues preventing progress, if any]\n\n## Key Decisions\n- **[Decision]**: [Brief rationale]\n\n## Next Steps\n1. [Ordered list of what should happen next]\n\n## Critical Context\n- [Any data, examples, or references needed to continue]\n- [Or \"(none)\" if not applicable]\n\nKeep each section concise. Preserve exact file paths, function names, and error messages."
+         }
+        ],
+        "timestamp": "<ts>"
+       }
+      ]
+     },
+     "options": {
+      "maxTokens": 1600,
+      "apiKey": "test-key",
+      "headers": {
+       "x-trace": "t1"
+      },
+      "env": {
+       "REGION": "eu"
+      },
+      "sessionId": "<uuid-v7>",
+      "cacheRetention": "none"
+     }
+    }
+   ],
+   "freshRouting": null
+  }
+ },
+ "completeSummarizationOptionPreservation": {
+  "call": {
+   "context": {
+    "messages": [
+     {
+      "role": "system",
+      "content": "Summarize",
+      "timestamp": "<ts>"
+     }
+    ]
+   },
+   "options": {
+    "sessionId": "current-routing-session",
+    "cacheRetention": "none",
+    "toolChoice": "auto",
+    "maxTokens": 999
+   }
+  }
+ },
+ "summarizationFailures": {
+  "direct": {
+   "error": "Summarization failed: socket closed",
+   "errorNoMessage": "Summarization failed: Unknown error",
+   "length": "Summarization failed: generation hit the token cap and the summary is incomplete",
+   "ok": null,
+   "branchLabel": "Branch summarization failed: socket closed",
+   "turnPrefixLabel": "Turn prefix summarization failed: generation hit the token cap and the summary is incomplete"
+  },
+  "thrown": {
+   "tool_call": "Summarization attempted to call a tool",
+   "length": "Summarization failed: generation hit the token cap and the summary is incomplete",
+   "split_turn_tool_call": "Turn prefix summarization attempted to call a tool",
+   "split_turn_length": "Turn prefix summarization failed: generation hit the token cap and the summary is incomplete"
+  }
+ },
+ "compactPlain": {
+  "calls": [
+   {
+    "context": {
+     "messages": [
+      {
+       "role": "system",
+       "content": "You are a context summarization assistant. Your task is to read a conversation between a user and an AI assistant, then produce a structured summary following the exact format specified.\n\nDo NOT continue the conversation. Do NOT respond to any questions in the conversation. ONLY output the structured summary.",
+       "timestamp": "<ts>"
+      },
+      {
+       "role": "user",
+       "content": [
+        {
+         "type": "text",
+         "text": "<conversation>\n[User]: history\n\n[Assistant]: reply\n</conversation>\n\nThe messages above are a conversation to summarize. Create a structured context checkpoint summary that another LLM will use to continue the work.\n\nUse this EXACT format:\n\n## Goal\n[What is the user trying to accomplish? Can be multiple items if the session covers different tasks.]\n\n## Constraints & Preferences\n- [Any constraints, preferences, or requirements mentioned by user]\n- [Or \"(none)\" if none were mentioned]\n\n## Progress\n### Done\n- [x] [Completed tasks/changes]\n\n### In Progress\n- [ ] [Current work]\n\n### Blocked\n- [Issues preventing progress, if any]\n\n## Key Decisions\n- **[Decision]**: [Brief rationale]\n\n## Next Steps\n1. [Ordered list of what should happen next]\n\n## Critical Context\n- [Any data, examples, or references needed to continue]\n- [Or \"(none)\" if not applicable]\n\nKeep each section concise. Preserve exact file paths, function names, and error messages."
+        }
+       ],
+       "timestamp": "<ts>"
+      }
+     ]
+    },
+    "options": {
+     "maxTokens": 1600,
+     "apiKey": "test-key",
+     "sessionId": "<uuid-v7>",
+     "cacheRetention": "none"
+    }
+   }
+  ],
+  "resultJson": "{\"details\":{\"modifiedFiles\":[\"a.txt\"],\"readFiles\":[\"b.txt\"]},\"firstKeptEntryId\":\"entry-keep\",\"summary\":\"## Goal\\nPlain summary\\n\\n<read-files>\\nb.txt\\n</read-files>\\n\\n<modified-files>\\na.txt\\n</modified-files>\",\"tokensBefore\":4321,\"usage\":{\"cacheRead\":0,\"cacheWrite\":0,\"cost\":{\"cacheRead\":0,\"cacheWrite\":0,\"input\":0,\"output\":0,\"total\":0},\"input\":10,\"output\":10,\"totalTokens\":20}}"
+ },
+ "compactSplitTurn": {
+  "calls": [
+   {
+    "context": {
+     "messages": [
+      {
+       "role": "system",
+       "content": "You are a context summarization assistant. Your task is to read a conversation between a user and an AI assistant, then produce a structured summary following the exact format specified.\n\nDo NOT continue the conversation. Do NOT respond to any questions in the conversation. ONLY output the structured summary.",
+       "timestamp": "<ts>"
+      },
+      {
+       "role": "user",
+       "content": [
+        {
+         "type": "text",
+         "text": "<conversation>\n[User]: history\n</conversation>\n\n<previous-summary>\nprior checkpoint\n</previous-summary>\n\nThe messages above are NEW conversation messages to incorporate into the existing summary provided in <previous-summary> tags.\n\nUpdate the existing structured summary with new information. RULES:\n- PRESERVE all existing information from the previous summary\n- ADD new progress, decisions, and context from the new messages\n- UPDATE the Progress section: move items from \"In Progress\" to \"Done\" when completed\n- UPDATE \"Next Steps\" based on what was accomplished\n- PRESERVE exact file paths, function names, and error messages\n- If something is no longer relevant, you may remove it\n\nUse this EXACT format:\n\n## Goal\n[Preserve existing goals, add new ones if the task expanded]\n\n## Constraints & Preferences\n- [Preserve existing, add new ones discovered]\n\n## Progress\n### Done\n- [x] [Include previously done items AND newly completed items]\n\n### In Progress\n- [ ] [Current work - update based on progress]\n\n### Blocked\n- [Current blockers - remove if resolved]\n\n## Key Decisions\n- **[Decision]**: [Brief rationale] (preserve all previous, add new)\n\n## Next Steps\n1. [Update based on current state]\n\n## Critical Context\n- [Preserve important context, add new if needed]\n\nKeep each section concise. Preserve exact file paths, function names, and error messages."
+        }
+       ],
+       "timestamp": "<ts>"
+      }
+     ]
+    },
+    "options": {
+     "maxTokens": 1600,
+     "apiKey": "test-key",
+     "sessionId": "<uuid-v7>",
+     "cacheRetention": "none"
+    }
+   },
+   {
+    "context": {
+     "messages": [
+      {
+       "role": "system",
+       "content": "You are a context summarization assistant. Your task is to read a conversation between a user and an AI assistant, then produce a structured summary following the exact format specified.\n\nDo NOT continue the conversation. Do NOT respond to any questions in the conversation. ONLY output the structured summary.",
+       "timestamp": "<ts>"
+      },
+      {
+       "role": "user",
+       "content": [
+        {
+         "type": "text",
+         "text": "<conversation>\n[User]: prefix question\n</conversation>\n\nThis is the PREFIX of a turn that was too large to keep. The SUFFIX (recent work) is retained.\n\nSummarize the prefix to provide context for the retained suffix:\n\n## Original Request\n[What did the user ask for in this turn?]\n\n## Early Progress\n- [Key decisions and work done in the prefix]\n\n## Context for Suffix\n- [Information needed to understand the retained recent work]\n\nBe concise. Focus on what's needed to understand the kept suffix."
+        }
+       ],
+       "timestamp": "<ts>"
+      }
+     ]
+    },
+    "options": {
+     "maxTokens": 1000,
+     "apiKey": "test-key",
+     "sessionId": "<uuid-v7>",
+     "cacheRetention": "none"
+    }
+   }
+  ],
+  "resultJson": "{\"details\":{\"modifiedFiles\":[],\"readFiles\":[]},\"firstKeptEntryId\":\"entry-keep\",\"summary\":\"## Goal\\nHistory summary\\n\\n---\\n\\n**Turn Context (split turn):**\\n\\n## Goal\\nPrefix summary\",\"tokensBefore\":777,\"usage\":{\"cacheRead\":0,\"cacheWrite\":0,\"cacheWrite1h\":12,\"cost\":{\"cacheRead\":0,\"cacheWrite\":0,\"input\":0,\"output\":0,\"total\":0},\"input\":130,\"output\":65,\"reasoning\":7,\"totalTokens\":195}}"
+ },
+ "compactSplitTurnEmptyHistory": {
+  "calls": [
+   {
+    "context": {
+     "messages": [
+      {
+       "role": "system",
+       "content": "You are a context summarization assistant. Your task is to read a conversation between a user and an AI assistant, then produce a structured summary following the exact format specified.\n\nDo NOT continue the conversation. Do NOT respond to any questions in the conversation. ONLY output the structured summary.",
+       "timestamp": "<ts>"
+      },
+      {
+       "role": "user",
+       "content": [
+        {
+         "type": "text",
+         "text": "<conversation>\n[User]: prefix question\n</conversation>\n\nThis is the PREFIX of a turn that was too large to keep. The SUFFIX (recent work) is retained.\n\nSummarize the prefix to provide context for the retained suffix:\n\n## Original Request\n[What did the user ask for in this turn?]\n\n## Early Progress\n- [Key decisions and work done in the prefix]\n\n## Context for Suffix\n- [Information needed to understand the retained recent work]\n\nBe concise. Focus on what's needed to understand the kept suffix."
+        }
+       ],
+       "timestamp": "<ts>"
+      }
+     ]
+    },
+    "options": {
+     "maxTokens": 1000,
+     "apiKey": "test-key",
+     "sessionId": "<uuid-v7>",
+     "cacheRetention": "none"
+    }
+   }
+  ],
+  "resultJson": "{\"details\":{\"modifiedFiles\":[],\"readFiles\":[]},\"firstKeptEntryId\":\"entry-keep\",\"summary\":\"previous checkpoint\\n\\n---\\n\\n**Turn Context (split turn):**\\n\\n## Goal\\nPrefix only\",\"tokensBefore\":100,\"usage\":{\"cacheRead\":0,\"cacheWrite\":0,\"cost\":{\"cacheRead\":0,\"cacheWrite\":0,\"input\":0,\"output\":0,\"total\":0},\"input\":10,\"output\":10,\"totalTokens\":20}}"
+ },
+ "turnPrefixOptions": {
+  "options": {
+   "maxTokens": 1000,
+   "apiKey": "test-key",
+   "sessionId": "<uuid-v7>",
+   "cacheRetention": "none"
+  }
+ },
+ "branchSummary": {
+  "default": {
+   "calls": [
+    {
+     "context": {
+      "messages": [
+       {
+        "role": "system",
+        "content": "You are a context summarization assistant. Your task is to read a conversation between a user and an AI assistant, then produce a structured summary following the exact format specified.\n\nDo NOT continue the conversation. Do NOT respond to any questions in the conversation. ONLY output the structured summary.",
+        "timestamp": "<ts>"
+       },
+       {
+        "role": "user",
+        "content": [
+         {
+          "type": "text",
+          "text": "<conversation>\n[User]: Abandoned request\n</conversation>\n\nCreate a structured summary of this conversation branch for context when returning later.\n\nUse this EXACT format:\n\n## Goal\n[What was the user trying to accomplish in this branch?]\n\n## Constraints & Preferences\n- [Any constraints, preferences, or requirements mentioned]\n- [Or \"(none)\" if none were mentioned]\n\n## Progress\n### Done\n- [x] [Completed tasks/changes]\n\n### In Progress\n- [ ] [Work that was started but not finished]\n\n### Blocked\n- [Issues preventing progress, if any]\n\n## Key Decisions\n- **[Decision]**: [Brief rationale]\n\n## Next Steps\n1. [What should happen next to continue this work]\n\nKeep each section concise. Preserve exact file paths, function names, and error messages."
+         }
+        ],
+        "timestamp": "<ts>"
+       }
+      ]
+     },
+     "options": {
+      "apiKey": "test-key",
+      "maxTokens": 4096,
+      "cacheRetention": "none",
+      "sessionId": "<uuid-v7>"
+     }
+    }
+   ],
+   "resultJson": "{\"modifiedFiles\":[],\"readFiles\":[],\"summary\":\"The user explored a different conversation branch before returning here.\\nSummary of that exploration:\\n\\nsummary body\",\"usage\":{\"cacheRead\":0,\"cacheWrite\":0,\"cost\":{\"cacheRead\":0,\"cacheWrite\":0,\"input\":0,\"output\":0,\"total\":0},\"input\":10,\"output\":10,\"totalTokens\":20}}"
+  },
+  "clamped": {
+   "calls": [
+    {
+     "context": {
+      "messages": [
+       {
+        "role": "system",
+        "content": "You are a context summarization assistant. Your task is to read a conversation between a user and an AI assistant, then produce a structured summary following the exact format specified.\n\nDo NOT continue the conversation. Do NOT respond to any questions in the conversation. ONLY output the structured summary.",
+        "timestamp": "<ts>"
+       },
+       {
+        "role": "user",
+        "content": [
+         {
+          "type": "text",
+          "text": "<conversation>\n[User]: Abandoned request\n</conversation>\n\nCreate a structured summary of this conversation branch for context when returning later.\n\nUse this EXACT format:\n\n## Goal\n[What was the user trying to accomplish in this branch?]\n\n## Constraints & Preferences\n- [Any constraints, preferences, or requirements mentioned]\n- [Or \"(none)\" if none were mentioned]\n\n## Progress\n### Done\n- [x] [Completed tasks/changes]\n\n### In Progress\n- [ ] [Work that was started but not finished]\n\n### Blocked\n- [Issues preventing progress, if any]\n\n## Key Decisions\n- **[Decision]**: [Brief rationale]\n\n## Next Steps\n1. [What should happen next to continue this work]\n\nKeep each section concise. Preserve exact file paths, function names, and error messages."
+         }
+        ],
+        "timestamp": "<ts>"
+       }
+      ]
+     },
+     "options": {
+      "apiKey": "test-key",
+      "maxTokens": 1024,
+      "cacheRetention": "none",
+      "sessionId": "<uuid-v7>"
+     }
+    }
+   ],
+   "resultJson": "{\"modifiedFiles\":[],\"readFiles\":[],\"summary\":\"The user explored a different conversation branch before returning here.\\nSummary of that exploration:\\n\\nsummary body\",\"usage\":{\"cacheRead\":0,\"cacheWrite\":0,\"cost\":{\"cacheRead\":0,\"cacheWrite\":0,\"input\":0,\"output\":0,\"total\":0},\"input\":10,\"output\":10,\"totalTokens\":20}}"
+  },
+  "tool_call": {
+   "calls": [
+    {
+     "context": {
+      "messages": [
+       {
+        "role": "system",
+        "content": "You are a context summarization assistant. Your task is to read a conversation between a user and an AI assistant, then produce a structured summary following the exact format specified.\n\nDo NOT continue the conversation. Do NOT respond to any questions in the conversation. ONLY output the structured summary.",
+        "timestamp": "<ts>"
+       },
+       {
+        "role": "user",
+        "content": [
+         {
+          "type": "text",
+          "text": "<conversation>\n[User]: Abandoned request\n</conversation>\n\nCreate a structured summary of this conversation branch for context when returning later.\n\nUse this EXACT format:\n\n## Goal\n[What was the user trying to accomplish in this branch?]\n\n## Constraints & Preferences\n- [Any constraints, preferences, or requirements mentioned]\n- [Or \"(none)\" if none were mentioned]\n\n## Progress\n### Done\n- [x] [Completed tasks/changes]\n\n### In Progress\n- [ ] [Work that was started but not finished]\n\n### Blocked\n- [Issues preventing progress, if any]\n\n## Key Decisions\n- **[Decision]**: [Brief rationale]\n\n## Next Steps\n1. [What should happen next to continue this work]\n\nKeep each section concise. Preserve exact file paths, function names, and error messages."
+         }
+        ],
+        "timestamp": "<ts>"
+       }
+      ]
+     },
+     "options": {
+      "apiKey": "test-key",
+      "maxTokens": 4096,
+      "cacheRetention": "none",
+      "sessionId": "<uuid-v7>"
+     }
+    }
+   ],
+   "resultJson": "{\"error\":\"Branch summarization attempted to call a tool\"}"
+  },
+  "length": {
+   "calls": [
+    {
+     "context": {
+      "messages": [
+       {
+        "role": "system",
+        "content": "You are a context summarization assistant. Your task is to read a conversation between a user and an AI assistant, then produce a structured summary following the exact format specified.\n\nDo NOT continue the conversation. Do NOT respond to any questions in the conversation. ONLY output the structured summary.",
+        "timestamp": "<ts>"
+       },
+       {
+        "role": "user",
+        "content": [
+         {
+          "type": "text",
+          "text": "<conversation>\n[User]: Abandoned request\n</conversation>\n\nCreate a structured summary of this conversation branch for context when returning later.\n\nUse this EXACT format:\n\n## Goal\n[What was the user trying to accomplish in this branch?]\n\n## Constraints & Preferences\n- [Any constraints, preferences, or requirements mentioned]\n- [Or \"(none)\" if none were mentioned]\n\n## Progress\n### Done\n- [x] [Completed tasks/changes]\n\n### In Progress\n- [ ] [Work that was started but not finished]\n\n### Blocked\n- [Issues preventing progress, if any]\n\n## Key Decisions\n- **[Decision]**: [Brief rationale]\n\n## Next Steps\n1. [What should happen next to continue this work]\n\nKeep each section concise. Preserve exact file paths, function names, and error messages."
+         }
+        ],
+        "timestamp": "<ts>"
+       }
+      ]
+     },
+     "options": {
+      "apiKey": "test-key",
+      "maxTokens": 4096,
+      "cacheRetention": "none",
+      "sessionId": "<uuid-v7>"
+     }
+    }
+   ],
+   "resultJson": "{\"error\":\"Branch summarization failed: generation hit the token cap and the summary is incomplete\"}"
+  },
+  "aborted": {
+   "calls": [
+    {
+     "context": {
+      "messages": [
+       {
+        "role": "system",
+        "content": "You are a context summarization assistant. Your task is to read a conversation between a user and an AI assistant, then produce a structured summary following the exact format specified.\n\nDo NOT continue the conversation. Do NOT respond to any questions in the conversation. ONLY output the structured summary.",
+        "timestamp": "<ts>"
+       },
+       {
+        "role": "user",
+        "content": [
+         {
+          "type": "text",
+          "text": "<conversation>\n[User]: Abandoned request\n</conversation>\n\nCreate a structured summary of this conversation branch for context when returning later.\n\nUse this EXACT format:\n\n## Goal\n[What was the user trying to accomplish in this branch?]\n\n## Constraints & Preferences\n- [Any constraints, preferences, or requirements mentioned]\n- [Or \"(none)\" if none were mentioned]\n\n## Progress\n### Done\n- [x] [Completed tasks/changes]\n\n### In Progress\n- [ ] [Work that was started but not finished]\n\n### Blocked\n- [Issues preventing progress, if any]\n\n## Key Decisions\n- **[Decision]**: [Brief rationale]\n\n## Next Steps\n1. [What should happen next to continue this work]\n\nKeep each section concise. Preserve exact file paths, function names, and error messages."
+         }
+        ],
+        "timestamp": "<ts>"
+       }
+      ]
+     },
+     "options": {
+      "maxTokens": 4096,
+      "cacheRetention": "none",
+      "sessionId": "<uuid-v7>"
+     }
+    }
+   ],
+   "resultJson": "{\"aborted\":true}"
+  },
+  "empty": {
+   "calls": [],
+   "resultJson": "{\"summary\":\"No content to summarize\"}"
+  },
+  "custom_instructions": {
+   "calls": [
+    {
+     "context": {
+      "messages": [
+       {
+        "role": "system",
+        "content": "You are a context summarization assistant. Your task is to read a conversation between a user and an AI assistant, then produce a structured summary following the exact format specified.\n\nDo NOT continue the conversation. Do NOT respond to any questions in the conversation. ONLY output the structured summary.",
+        "timestamp": "<ts>"
+       },
+       {
+        "role": "user",
+        "content": [
+         {
+          "type": "text",
+          "text": "<conversation>\n[User]: Abandoned request\n</conversation>\n\nCreate a structured summary of this conversation branch for context when returning later.\n\nUse this EXACT format:\n\n## Goal\n[What was the user trying to accomplish in this branch?]\n\n## Constraints & Preferences\n- [Any constraints, preferences, or requirements mentioned]\n- [Or \"(none)\" if none were mentioned]\n\n## Progress\n### Done\n- [x] [Completed tasks/changes]\n\n### In Progress\n- [ ] [Work that was started but not finished]\n\n### Blocked\n- [Issues preventing progress, if any]\n\n## Key Decisions\n- **[Decision]**: [Brief rationale]\n\n## Next Steps\n1. [What should happen next to continue this work]\n\nKeep each section concise. Preserve exact file paths, function names, and error messages.\n\nAdditional focus: Talk about the API"
+         }
+        ],
+        "timestamp": "<ts>"
+       }
+      ]
+     },
+     "options": {
+      "apiKey": "test-key",
+      "maxTokens": 4096,
+      "cacheRetention": "none",
+      "sessionId": "<uuid-v7>"
+     }
+    }
+   ],
+   "resultJson": "{\"modifiedFiles\":[],\"readFiles\":[],\"summary\":\"The user explored a different conversation branch before returning here.\\nSummary of that exploration:\\n\\nfocused\",\"usage\":{\"cacheRead\":0,\"cacheWrite\":0,\"cost\":{\"cacheRead\":0,\"cacheWrite\":0,\"input\":0,\"output\":0,\"total\":0},\"input\":10,\"output\":10,\"totalTokens\":20}}"
+  },
+  "replace_instructions": {
+   "calls": [
+    {
+     "context": {
+      "messages": [
+       {
+        "role": "system",
+        "content": "You are a context summarization assistant. Your task is to read a conversation between a user and an AI assistant, then produce a structured summary following the exact format specified.\n\nDo NOT continue the conversation. Do NOT respond to any questions in the conversation. ONLY output the structured summary.",
+        "timestamp": "<ts>"
+       },
+       {
+        "role": "user",
+        "content": [
+         {
+          "type": "text",
+          "text": "<conversation>\n[User]: Abandoned request\n</conversation>\n\nOnly list files"
+         }
+        ],
+        "timestamp": "<ts>"
+       }
+      ]
+     },
+     "options": {
+      "apiKey": "test-key",
+      "maxTokens": 4096,
+      "cacheRetention": "none",
+      "sessionId": "<uuid-v7>"
+     }
+    }
+   ],
+   "resultJson": "{\"modifiedFiles\":[],\"readFiles\":[],\"summary\":\"The user explored a different conversation branch before returning here.\\nSummary of that exploration:\\n\\nreplaced\",\"usage\":{\"cacheRead\":0,\"cacheWrite\":0,\"cost\":{\"cacheRead\":0,\"cacheWrite\":0,\"input\":0,\"output\":0,\"total\":0},\"input\":10,\"output\":10,\"totalTokens\":20}}"
+  },
+  "file_details": {
+   "calls": [
+    {
+     "context": {
+      "messages": [
+       {
+        "role": "system",
+        "content": "You are a context summarization assistant. Your task is to read a conversation between a user and an AI assistant, then produce a structured summary following the exact format specified.\n\nDo NOT continue the conversation. Do NOT respond to any questions in the conversation. ONLY output the structured summary.",
+        "timestamp": "<ts>"
+       },
+       {
+        "role": "user",
+        "content": [
+         {
+          "type": "text",
+          "text": "<conversation>\n[User]: Abandoned request\n\n[User]: The following is a summary of a branch that this conversation came back from:\n\n<summary>\nEarlier exploration notes</summary>\n\n[Assistant tool calls]: edit(path=\"edited-now.txt\")\n</conversation>\n\nCreate a structured summary of this conversation branch for context when returning later.\n\nUse this EXACT format:\n\n## Goal\n[What was the user trying to accomplish in this branch?]\n\n## Constraints & Preferences\n- [Any constraints, preferences, or requirements mentioned]\n- [Or \"(none)\" if none were mentioned]\n\n## Progress\n### Done\n- [x] [Completed tasks/changes]\n\n### In Progress\n- [ ] [Work that was started but not finished]\n\n### Blocked\n- [Issues preventing progress, if any]\n\n## Key Decisions\n- **[Decision]**: [Brief rationale]\n\n## Next Steps\n1. [What should happen next to continue this work]\n\nKeep each section concise. Preserve exact file paths, function names, and error messages."
+         }
+        ],
+        "timestamp": "<ts>"
+       }
+      ]
+     },
+     "options": {
+      "apiKey": "test-key",
+      "maxTokens": 4096,
+      "cacheRetention": "none",
+      "sessionId": "<uuid-v7>"
+     }
+    }
+   ],
+   "resultJson": "{\"modifiedFiles\":[\"edited-now.txt\",\"kept-modified.txt\",\"shared.txt\"],\"readFiles\":[\"kept-read.txt\"],\"summary\":\"The user explored a different conversation branch before returning here.\\nSummary of that exploration:\\n\\nbranch summary text\\n\\n<read-files>\\nkept-read.txt\\n</read-files>\\n\\n<modified-files>\\nedited-now.txt\\nkept-modified.txt\\nshared.txt\\n</modified-files>\",\"usage\":{\"cacheRead\":0,\"cacheWrite\":0,\"cost\":{\"cacheRead\":0,\"cacheWrite\":0,\"input\":0,\"output\":0,\"total\":0},\"input\":10,\"output\":10,\"totalTokens\":20}}"
+  }
+ },
+ "prepareBranchEntries": {
+  "unlimited": {
+   "roles": [
+    "user",
+    "assistant",
+    "user",
+    "assistant"
+   ],
+   "totalTokens": 400
+  },
+  "keeps_recent": {
+   "roles": [
+    "user",
+    "assistant"
+   ],
+   "totalTokens": 200
+  },
+  "summary_squeeze": {
+   "roles": [
+    "compactionSummary"
+   ],
+   "totalTokens": 75
+  },
+  "file_ops_collected": {
+   "roles": [
+    "assistant",
+    "compactionSummary"
+   ],
+   "fileOpsJson": "{\"edited\":[],\"read\":[\"budget-read.txt\"],\"written\":[\"budget-write.txt\"]}"
+  }
+ }
+}

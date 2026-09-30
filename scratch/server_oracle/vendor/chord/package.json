@@ -1,0 +1,9 @@
+{
+  "name": "@earendil-works/chord",
+  "version": "0.0.0-local-oracle",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./context": "./src/context/index.ts"
+  }
+}

@@ -1,0 +1,733 @@
+{
+	"help/install": {
+		"handled": true,
+		"exitCode": 0,
+		"exitCalled": null,
+		"stdout": [
+			"Usage:\n  pi install <source> [-l] [--approve|--no-approve]\n\nInstall a package and add it to settings.\n\nOptions:\n  -l, --local       Install project-locally (.pi/settings.json)\n  -a, --approve     Trust project-local files for this command\n  -na, --no-approve Ignore project-local files for this command\n\nExamples:\n  pi install npm:@foo/bar\n  pi install git:github.com/user/repo\n  pi install git:git@github.com:user/repo\n  pi install https://github.com/user/repo\n  pi install ssh://git@github.com/user/repo\n  pi install ./local/path\n"
+		],
+		"stderr": []
+	},
+	"help/install-h": {
+		"handled": true,
+		"exitCode": 0,
+		"exitCalled": null,
+		"stdout": [
+			"Usage:\n  pi install <source> [-l] [--approve|--no-approve]\n\nInstall a package and add it to settings.\n\nOptions:\n  -l, --local       Install project-locally (.pi/settings.json)\n  -a, --approve     Trust project-local files for this command\n  -na, --no-approve Ignore project-local files for this command\n\nExamples:\n  pi install npm:@foo/bar\n  pi install git:github.com/user/repo\n  pi install git:git@github.com:user/repo\n  pi install https://github.com/user/repo\n  pi install ssh://git@github.com/user/repo\n  pi install ./local/path\n"
+		],
+		"stderr": []
+	},
+	"help/remove": {
+		"handled": true,
+		"exitCode": 0,
+		"exitCalled": null,
+		"stdout": [
+			"Usage:\n  pi remove <source> [-l] [--approve|--no-approve]\n\nRemove a package and its source from settings.\nAlias: pi uninstall <source> [-l]\n\nOptions:\n  -l, --local       Remove from project settings (.pi/settings.json)\n  -a, --approve     Trust project-local files for this command\n  -na, --no-approve Ignore project-local files for this command\n\nExamples:\n  pi remove npm:@foo/bar\n  pi uninstall npm:@foo/bar\n"
+		],
+		"stderr": []
+	},
+	"help/remove-h": {
+		"handled": true,
+		"exitCode": 0,
+		"exitCalled": null,
+		"stdout": [
+			"Usage:\n  pi remove <source> [-l] [--approve|--no-approve]\n\nRemove a package and its source from settings.\nAlias: pi uninstall <source> [-l]\n\nOptions:\n  -l, --local       Remove from project settings (.pi/settings.json)\n  -a, --approve     Trust project-local files for this command\n  -na, --no-approve Ignore project-local files for this command\n\nExamples:\n  pi remove npm:@foo/bar\n  pi uninstall npm:@foo/bar\n"
+		],
+		"stderr": []
+	},
+	"help/update": {
+		"handled": true,
+		"exitCode": 0,
+		"exitCalled": null,
+		"stdout": [
+			"Usage:\n  pi update [source|self|pi] [--self|--extensions|--models|--all] [--extension <source>] [--approve|--no-approve] [--force]\n\nUpdate pi, installed packages, or model catalogs.\n\nOptions:\n  --self                  Update pi only (default when no target is given)\n  --extensions            Update installed packages only\n  --models                Refresh model catalogs only\n  --all                   Update pi and installed packages\n  --extension <source>    Update one package only\n  -a, --approve           Trust project-local files for this command\n  -na, --no-approve       Ignore project-local files for this command\n  --force                 Reinstall pi even if the current version is latest\n\nShort forms:\n  pi update                Update pi only\n  pi update --all          Update pi and all extensions\n  pi update --models       Refresh model catalogs only\n  pi update <source>       Update one package\n  pi update pi             Update pi only (self works as alias to pi)\n"
+		],
+		"stderr": []
+	},
+	"help/update-h": {
+		"handled": true,
+		"exitCode": 0,
+		"exitCalled": null,
+		"stdout": [
+			"Usage:\n  pi update [source|self|pi] [--self|--extensions|--models|--all] [--extension <source>] [--approve|--no-approve] [--force]\n\nUpdate pi, installed packages, or model catalogs.\n\nOptions:\n  --self                  Update pi only (default when no target is given)\n  --extensions            Update installed packages only\n  --models                Refresh model catalogs only\n  --all                   Update pi and installed packages\n  --extension <source>    Update one package only\n  -a, --approve           Trust project-local files for this command\n  -na, --no-approve       Ignore project-local files for this command\n  --force                 Reinstall pi even if the current version is latest\n\nShort forms:\n  pi update                Update pi only\n  pi update --all          Update pi and all extensions\n  pi update --models       Refresh model catalogs only\n  pi update <source>       Update one package\n  pi update pi             Update pi only (self works as alias to pi)\n"
+		],
+		"stderr": []
+	},
+	"help/list": {
+		"handled": true,
+		"exitCode": 0,
+		"exitCalled": null,
+		"stdout": [
+			"Usage:\n  pi list [--approve|--no-approve]\n\nList installed packages from user and project settings.\n\nOptions:\n  -a, --approve      Trust project-local files for this command\n  -na, --no-approve  Ignore project-local files for this command\n"
+		],
+		"stderr": []
+	},
+	"help/list-h": {
+		"handled": true,
+		"exitCode": 0,
+		"exitCalled": null,
+		"stdout": [
+			"Usage:\n  pi list [--approve|--no-approve]\n\nList installed packages from user and project settings.\n\nOptions:\n  -a, --approve      Trust project-local files for this command\n  -na, --no-approve  Ignore project-local files for this command\n"
+		],
+		"stderr": []
+	},
+	"help/config": {
+		"handled": true,
+		"exitCode": 0,
+		"exitCalled": null,
+		"stdout": [
+			"Usage:\n  pi config [-l] [--approve|--no-approve]\n\nOpen the resource configuration TUI to enable or disable package resources.\nWithout -l, starts in global settings (~/.pi/agent/settings.json).\nPress Tab in the TUI to switch between global and project-local modes.\n\nOptions:\n  -l, --local       Edit project overrides (.pi/settings.json)\n  -a, --approve     Trust project-local files for this command with -l\n  -na, --no-approve Ignore project-local files for this command with -l\n"
+		],
+		"stderr": []
+	},
+	"help/config-h": {
+		"handled": true,
+		"exitCode": 0,
+		"exitCalled": null,
+		"stdout": [
+			"Usage:\n  pi config [-l] [--approve|--no-approve]\n\nOpen the resource configuration TUI to enable or disable package resources.\nWithout -l, starts in global settings (~/.pi/agent/settings.json).\nPress Tab in the TUI to switch between global and project-local modes.\n\nOptions:\n  -l, --local       Edit project overrides (.pi/settings.json)\n  -a, --approve     Trust project-local files for this command with -l\n  -na, --no-approve Ignore project-local files for this command with -l\n"
+		],
+		"stderr": []
+	},
+	"errors/install": {
+		"handled": true,
+		"exitCode": 1,
+		"exitCalled": null,
+		"stdout": [],
+		"stderr": [
+			"Missing install source.",
+			"Usage: pi install <source> [-l] [--approve|--no-approve]"
+		]
+	},
+	"errors/install --bogus": {
+		"handled": true,
+		"exitCode": 1,
+		"exitCalled": null,
+		"stdout": [],
+		"stderr": [
+			"Unknown option --bogus for \"install\".",
+			"Use \"pi --help\" or \"pi install <source> [-l] [--approve|--no-approve]\"."
+		]
+	},
+	"errors/install -x": {
+		"handled": true,
+		"exitCode": 1,
+		"exitCalled": null,
+		"stdout": [],
+		"stderr": [
+			"Unknown option -x for \"install\".",
+			"Use \"pi --help\" or \"pi install <source> [-l] [--approve|--no-approve]\"."
+		]
+	},
+	"errors/install --extension": {
+		"handled": true,
+		"exitCode": 1,
+		"exitCalled": null,
+		"stdout": [],
+		"stderr": [
+			"Unknown option --extension for \"install\".",
+			"Use \"pi --help\" or \"pi install <source> [-l] [--approve|--no-approve]\"."
+		]
+	},
+	"errors/install a b": {
+		"handled": true,
+		"exitCode": 1,
+		"exitCalled": null,
+		"stdout": [],
+		"stderr": [
+			"Unexpected argument b.",
+			"Usage: pi install <source> [-l] [--approve|--no-approve]"
+		]
+	},
+	"errors/remove": {
+		"handled": true,
+		"exitCode": 1,
+		"exitCalled": null,
+		"stdout": [],
+		"stderr": [
+			"Missing remove source.",
+			"Usage: pi remove <source> [-l] [--approve|--no-approve]"
+		]
+	},
+	"errors/remove --all": {
+		"handled": true,
+		"exitCode": 1,
+		"exitCalled": null,
+		"stdout": [],
+		"stderr": [
+			"Unknown option --all for \"remove\".",
+			"Use \"pi --help\" or \"pi remove <source> [-l] [--approve|--no-approve]\"."
+		]
+	},
+	"errors/remove --self": {
+		"handled": true,
+		"exitCode": 1,
+		"exitCalled": null,
+		"stdout": [],
+		"stderr": [
+			"Unknown option --self for \"remove\".",
+			"Use \"pi --help\" or \"pi remove <source> [-l] [--approve|--no-approve]\"."
+		]
+	},
+	"errors/remove --models": {
+		"handled": true,
+		"exitCode": 1,
+		"exitCalled": null,
+		"stdout": [],
+		"stderr": [
+			"Unknown option --models for \"remove\".",
+			"Use \"pi --help\" or \"pi remove <source> [-l] [--approve|--no-approve]\"."
+		]
+	},
+	"errors/remove npm:x npm:y": {
+		"handled": true,
+		"exitCode": 1,
+		"exitCalled": null,
+		"stdout": [],
+		"stderr": [
+			"Unexpected argument npm:y.",
+			"Usage: pi remove <source> [-l] [--approve|--no-approve]"
+		]
+	},
+	"errors/remove --extension": {
+		"handled": true,
+		"exitCode": 1,
+		"exitCalled": null,
+		"stdout": [],
+		"stderr": [
+			"Unknown option --extension for \"remove\".",
+			"Use \"pi --help\" or \"pi remove <source> [-l] [--approve|--no-approve]\"."
+		]
+	},
+	"errors/remove --extension value": {
+		"handled": true,
+		"exitCode": 1,
+		"exitCalled": null,
+		"stdout": [],
+		"stderr": [
+			"Unknown option --extension for \"remove\".",
+			"Use \"pi --help\" or \"pi remove <source> [-l] [--approve|--no-approve]\"."
+		]
+	},
+	"errors/list --force": {
+		"handled": true,
+		"exitCode": 1,
+		"exitCalled": null,
+		"stdout": [],
+		"stderr": [
+			"Unknown option --force for \"list\".",
+			"Use \"pi --help\" or \"pi list [--approve|--no-approve]\"."
+		]
+	},
+	"errors/list extra": {
+		"handled": true,
+		"exitCode": 0,
+		"exitCalled": null,
+		"stdout": [
+			"No packages installed."
+		],
+		"stderr": []
+	},
+	"errors/update -l": {
+		"handled": true,
+		"exitCode": 1,
+		"exitCalled": null,
+		"stdout": [],
+		"stderr": [
+			"Unknown option -l for \"update\".",
+			"Use \"pi --help\" or \"pi update [source|self|pi] [--self|--extensions|--models|--all] [--extension <source>] [--approve|--no-approve] [--force]\"."
+		]
+	},
+	"errors/update --local": {
+		"handled": true,
+		"exitCode": 1,
+		"exitCalled": null,
+		"stdout": [],
+		"stderr": [
+			"Unknown option --local for \"update\".",
+			"Use \"pi --help\" or \"pi update [source|self|pi] [--self|--extensions|--models|--all] [--extension <source>] [--approve|--no-approve] [--force]\"."
+		]
+	},
+	"errors/update --all --self": {
+		"handled": true,
+		"exitCode": 1,
+		"exitCalled": null,
+		"stdout": [],
+		"stderr": [
+			"--all cannot be combined with --self, --extensions, --models, or --extension",
+			"Usage: pi update [source|self|pi] [--self|--extensions|--models|--all] [--extension <source>] [--approve|--no-approve] [--force]"
+		]
+	},
+	"errors/update --all --extensions": {
+		"handled": true,
+		"exitCode": 1,
+		"exitCalled": null,
+		"stdout": [],
+		"stderr": [
+			"--all cannot be combined with --self, --extensions, --models, or --extension",
+			"Usage: pi update [source|self|pi] [--self|--extensions|--models|--all] [--extension <source>] [--approve|--no-approve] [--force]"
+		]
+	},
+	"errors/update --all --models": {
+		"handled": true,
+		"exitCode": 1,
+		"exitCalled": null,
+		"stdout": [],
+		"stderr": [
+			"--all cannot be combined with --self, --extensions, --models, or --extension",
+			"Usage: pi update [source|self|pi] [--self|--extensions|--models|--all] [--extension <source>] [--approve|--no-approve] [--force]"
+		]
+	},
+	"errors/update --all --extension x": {
+		"handled": true,
+		"exitCode": 1,
+		"exitCalled": null,
+		"stdout": [],
+		"stderr": [
+			"--all cannot be combined with --self, --extensions, --models, or --extension",
+			"Usage: pi update [source|self|pi] [--self|--extensions|--models|--all] [--extension <source>] [--approve|--no-approve] [--force]"
+		]
+	},
+	"errors/update --all positional": {
+		"handled": true,
+		"exitCode": 1,
+		"exitCalled": null,
+		"stdout": [],
+		"stderr": [
+			"--all cannot be combined with a positional source",
+			"Usage: pi update [source|self|pi] [--self|--extensions|--models|--all] [--extension <source>] [--approve|--no-approve] [--force]"
+		]
+	},
+	"errors/update --models --self": {
+		"handled": true,
+		"exitCode": 1,
+		"exitCalled": null,
+		"stdout": [],
+		"stderr": [
+			"--models cannot be combined with --self, --extensions, --all, or --extension",
+			"Usage: pi update [source|self|pi] [--self|--extensions|--models|--all] [--extension <source>] [--approve|--no-approve] [--force]"
+		]
+	},
+	"errors/update --models --extensions": {
+		"handled": true,
+		"exitCode": 1,
+		"exitCalled": null,
+		"stdout": [],
+		"stderr": [
+			"--models cannot be combined with --self, --extensions, --all, or --extension",
+			"Usage: pi update [source|self|pi] [--self|--extensions|--models|--all] [--extension <source>] [--approve|--no-approve] [--force]"
+		]
+	},
+	"errors/update --models --all": {
+		"handled": true,
+		"exitCode": 1,
+		"exitCalled": null,
+		"stdout": [],
+		"stderr": [
+			"--all cannot be combined with --self, --extensions, --models, or --extension",
+			"Usage: pi update [source|self|pi] [--self|--extensions|--models|--all] [--extension <source>] [--approve|--no-approve] [--force]"
+		]
+	},
+	"errors/update --models --extension x": {
+		"handled": true,
+		"exitCode": 1,
+		"exitCalled": null,
+		"stdout": [],
+		"stderr": [
+			"--models cannot be combined with --self, --extensions, --all, or --extension",
+			"Usage: pi update [source|self|pi] [--self|--extensions|--models|--all] [--extension <source>] [--approve|--no-approve] [--force]"
+		]
+	},
+	"errors/update --models positional": {
+		"handled": true,
+		"exitCode": 1,
+		"exitCalled": null,
+		"stdout": [],
+		"stderr": [
+			"--models cannot be combined with a positional source",
+			"Usage: pi update [source|self|pi] [--self|--extensions|--models|--all] [--extension <source>] [--approve|--no-approve] [--force]"
+		]
+	},
+	"errors/update --extension": {
+		"handled": true,
+		"exitCode": 1,
+		"exitCalled": null,
+		"stdout": [],
+		"stderr": [
+			"Missing value for --extension.",
+			"Usage: pi update [source|self|pi] [--self|--extensions|--models|--all] [--extension <source>] [--approve|--no-approve] [--force]"
+		]
+	},
+	"errors/update --extension -x": {
+		"handled": true,
+		"exitCode": 1,
+		"exitCalled": null,
+		"stdout": [],
+		"stderr": [
+			"Unknown option -x for \"update\".",
+			"Use \"pi --help\" or \"pi update [source|self|pi] [--self|--extensions|--models|--all] [--extension <source>] [--approve|--no-approve] [--force]\"."
+		]
+	},
+	"errors/update --extension a --extension b": {
+		"handled": true,
+		"exitCode": 1,
+		"exitCalled": null,
+		"stdout": [],
+		"stderr": [
+			"--extension can only be provided once",
+			"Usage: pi update [source|self|pi] [--self|--extensions|--models|--all] [--extension <source>] [--approve|--no-approve] [--force]"
+		]
+	},
+	"errors/update --extension a --self": {
+		"handled": true,
+		"exitCode": 1,
+		"exitCalled": null,
+		"stdout": [],
+		"stderr": [
+			"--extension cannot be combined with --self, --extensions, or --all",
+			"Usage: pi update [source|self|pi] [--self|--extensions|--models|--all] [--extension <source>] [--approve|--no-approve] [--force]"
+		]
+	},
+	"errors/update --extension a --extensions": {
+		"handled": true,
+		"exitCode": 1,
+		"exitCalled": null,
+		"stdout": [],
+		"stderr": [
+			"--extension cannot be combined with --self, --extensions, or --all",
+			"Usage: pi update [source|self|pi] [--self|--extensions|--models|--all] [--extension <source>] [--approve|--no-approve] [--force]"
+		]
+	},
+	"errors/update --extension a --all": {
+		"handled": true,
+		"exitCode": 1,
+		"exitCalled": null,
+		"stdout": [],
+		"stderr": [
+			"--all cannot be combined with --self, --extensions, --models, or --extension",
+			"Usage: pi update [source|self|pi] [--self|--extensions|--models|--all] [--extension <source>] [--approve|--no-approve] [--force]"
+		]
+	},
+	"errors/update --extension a positional": {
+		"handled": true,
+		"exitCode": 1,
+		"exitCalled": null,
+		"stdout": [],
+		"stderr": [
+			"--extension cannot be combined with a positional source",
+			"Usage: pi update [source|self|pi] [--self|--extensions|--models|--all] [--extension <source>] [--approve|--no-approve] [--force]"
+		]
+	},
+	"errors/update src --self": {
+		"handled": true,
+		"exitCode": 1,
+		"exitCalled": null,
+		"stdout": [],
+		"stderr": [
+			"positional update targets cannot be combined with --self, --extensions, or --all",
+			"Usage: pi update [source|self|pi] [--self|--extensions|--models|--all] [--extension <source>] [--approve|--no-approve] [--force]"
+		]
+	},
+	"errors/update src --extensions": {
+		"handled": true,
+		"exitCode": 1,
+		"exitCalled": null,
+		"stdout": [],
+		"stderr": [
+			"positional update targets cannot be combined with --self, --extensions, or --all",
+			"Usage: pi update [source|self|pi] [--self|--extensions|--models|--all] [--extension <source>] [--approve|--no-approve] [--force]"
+		]
+	},
+	"errors/update src --all": {
+		"handled": true,
+		"exitCode": 1,
+		"exitCalled": null,
+		"stdout": [],
+		"stderr": [
+			"--all cannot be combined with a positional source",
+			"Usage: pi update [source|self|pi] [--self|--extensions|--models|--all] [--extension <source>] [--approve|--no-approve] [--force]"
+		]
+	},
+	"errors/uninstall": {
+		"handled": true,
+		"exitCode": 1,
+		"exitCalled": null,
+		"stdout": [],
+		"stderr": [
+			"Missing remove source.",
+			"Usage: pi remove <source> [-l] [--approve|--no-approve]"
+		]
+	},
+	"errors/config-unknown-option": {
+		"handled": true,
+		"exitCode": 1,
+		"exitCalled": null,
+		"stdout": [],
+		"stderr": [
+			"Unknown option --bogus for \"config\".",
+			"Use \"pi --help\" or \"pi config [-l] [--approve|--no-approve]\"."
+		]
+	},
+	"errors/config-unknown-short": {
+		"handled": true,
+		"exitCode": 1,
+		"exitCalled": null,
+		"stdout": [],
+		"stderr": [
+			"Unknown option -z for \"config\".",
+			"Use \"pi --help\" or \"pi config [-l] [--approve|--no-approve]\"."
+		]
+	},
+	"errors/config-unexpected-argument": {
+		"handled": true,
+		"exitCode": 1,
+		"exitCalled": null,
+		"stdout": [],
+		"stderr": [
+			"Unexpected argument positional.",
+			"Usage: pi config [-l] [--approve|--no-approve]"
+		]
+	},
+	"unhandled/bogus-command": {
+		"handled": false,
+		"exitCode": 0,
+		"exitCalled": null,
+		"stdout": [],
+		"stderr": []
+	},
+	"unhandled/empty": {
+		"handled": false,
+		"exitCode": 0,
+		"exitCalled": null,
+		"stdout": [],
+		"stderr": []
+	},
+	"flow/list-empty": {
+		"handled": true,
+		"exitCode": 0,
+		"exitCalled": null,
+		"stdout": [
+			"No packages installed."
+		],
+		"stderr": []
+	},
+	"flow/list-packages": {
+		"handled": true,
+		"exitCode": 0,
+		"exitCalled": null,
+		"stdout": [
+			"User packages:",
+			"  npm:user-pkg",
+			"    $T\\flow-list-packages\\agent\\npm\\node_modules\\user-pkg",
+			"  npm:filtered-pkg (filtered)",
+			"  git:github.com/user/repo",
+			"  ./missing-local"
+		],
+		"stderr": []
+	},
+	"flow/install-local-untrusted": {
+		"handled": true,
+		"exitCode": 1,
+		"exitCalled": null,
+		"stdout": [],
+		"stderr": [
+			"Project is not trusted. Use --approve to modify local package config."
+		]
+	},
+	"flow/remove-local-untrusted": {
+		"handled": true,
+		"exitCode": 1,
+		"exitCalled": null,
+		"stdout": [],
+		"stderr": [
+			"Project is not trusted. Use --approve to modify local package config."
+		]
+	},
+	"flow/remove-unknown-package": {
+		"handled": true,
+		"exitCode": 1,
+		"exitCalled": null,
+		"stdout": [
+			"Removing npm:not-installed...\n"
+		],
+		"stderr": [
+			"No matching package found for npm:not-installed"
+		]
+	},
+	"flow/update-suggestion-npm": {
+		"handled": true,
+		"exitCode": 1,
+		"exitCalled": null,
+		"stdout": [],
+		"stderr": [
+			"Error: No matching package found for example"
+		]
+	},
+	"flow/update-suggestion-git": {
+		"handled": true,
+		"exitCode": 1,
+		"exitCalled": null,
+		"stdout": [],
+		"stderr": [
+			"Error: No matching package found for github.com/example/repo"
+		]
+	},
+	"flow/update-models": {
+		"handled": true,
+		"exitCode": 0,
+		"exitCalled": null,
+		"stdout": [
+			"Model catalogs refreshed"
+		],
+		"stderr": []
+	},
+	"flow/update-self-uptodate": {
+		"handled": true,
+		"exitCode": 0,
+		"exitCalled": null,
+		"stdout": [
+			"Extensions are skipped. Run pi update --extensions to update extensions.",
+			"pi is already up to date (v0.85.1)"
+		],
+		"stderr": []
+	},
+	"flow/update-self-uptodate-explicit": {
+		"handled": true,
+		"exitCode": 0,
+		"exitCalled": null,
+		"stdout": [
+			"pi is already up to date (v0.85.1)"
+		],
+		"stderr": []
+	},
+	"flow/update-self-older-release": {
+		"handled": true,
+		"exitCode": 0,
+		"exitCalled": null,
+		"stdout": [
+			"pi is already up to date (v0.85.1)"
+		],
+		"stderr": []
+	},
+	"flow/update-self-newer-unmanaged": {
+		"handled": true,
+		"exitCode": 1,
+		"exitCalled": null,
+		"stdout": [],
+		"stderr": [
+			"pi self-update on Windows is only supported for npm and pnpm installs.",
+			"Detected install method: unknown. Update pi manually."
+		]
+	},
+	"flow/update-self-newer-note": {
+		"handled": true,
+		"exitCode": 1,
+		"exitCalled": null,
+		"stdout": [],
+		"stderr": [
+			"pi self-update on Windows is only supported for npm and pnpm installs.",
+			"Detected install method: unknown. Update pi manually."
+		]
+	},
+	"flow/update-managed-marker-missing": {
+		"handled": true,
+		"exitCode": 1,
+		"exitCalled": null,
+		"stdout": [],
+		"stderr": [
+			"Error: Managed install marker is missing or invalid: $T\\flow-update-managed-marker-missing\\install\\managed-install.json"
+		]
+	},
+	"flow/update-managed-force-rejected": {
+		"handled": true,
+		"exitCode": 1,
+		"exitCalled": null,
+		"stdout": [],
+		"stderr": [
+			"Managed pi installations do not support --force; rerun the installer to repair this installation."
+		]
+	},
+	"flow/update-managed-uptodate": {
+		"handled": true,
+		"exitCode": 0,
+		"exitCalled": null,
+		"stdout": [
+			"Extensions are skipped. Run pi update --extensions to update extensions.",
+			"pi is already up to date (v0.85.1)"
+		],
+		"stderr": []
+	},
+	"flow/update-managed-already-installed": {
+		"handled": true,
+		"exitCode": 1,
+		"exitCalled": null,
+		"stdout": [
+			"Extensions are skipped. Run pi update --extensions to update extensions.",
+			"Updating managed pi installation..."
+		],
+		"stderr": [
+			"Error: Managed Pi smoke test returned version ; expected 0.86.0."
+		]
+	},
+	"flow/update-managed-activate": {
+		"handled": true,
+		"exitCode": 1,
+		"exitCalled": null,
+		"stdout": [
+			"Extensions are skipped. Run pi update --extensions to update extensions.",
+			"Updating managed pi installation..."
+		],
+		"stderr": [
+			"Error: Managed Pi smoke test returned version ; expected 0.86.0."
+		]
+	},
+	"flow/update-managed-smoke-ok": {
+		"handled": true,
+		"exitCode": 0,
+		"exitCalled": null,
+		"stdout": [
+			"Extensions are skipped. Run pi update --extensions to update extensions.",
+			"Updating managed pi installation...",
+			"Updated pi from 0.85.1 to 0.86.0"
+		],
+		"stderr": []
+	},
+	"flow/install-spawn-failure": {
+		"handled": true,
+		"exitCode": 1,
+		"exitCalled": null,
+		"stdout": [
+			"Installing npm:nonexistent@1.0.0...\n"
+		],
+		"stderr": [
+			"Error: simulated npm install failure"
+		]
+	},
+	"flow/install-git-clone-failure": {
+		"handled": true,
+		"exitCode": 1,
+		"exitCalled": null,
+		"stdout": [
+			"Installing git:github.com/nonexistent/repo...\n"
+		],
+		"stderr": [
+			"Error: simulated git clone failure"
+		]
+	},
+	"flow/offline-list": {
+		"handled": true,
+		"exitCode": 0,
+		"exitCalled": null,
+		"stdout": [
+			"No packages installed."
+		],
+		"stderr": []
+	},
+	"flow/config-untrusted-nonlocal": {
+		"handled": true,
+		"exitCode": 0,
+		"exitCalled": 0,
+		"stdout": [],
+		"stderr": []
+	}
+}

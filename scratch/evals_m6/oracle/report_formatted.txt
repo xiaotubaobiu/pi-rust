@@ -1,0 +1,54 @@
+Documentation Eval Comparisons
+  tool access
+         Pairs  2/2 eligible
+     Pass rate  +50.0 pp (with 100.0%, without 50.0%)
+         Flags  treatment-saturated, flaky
+        Tokens  +0.0 (with 150.0, without 150.0, 2 pairs)
+         Tools  -0.5 (with 2.0, without 2.5, 2 pairs)
+       Latency  -100.0ms (with 900.0ms, without 1000.0ms, 2 pairs)
+     Est. cost  +$0.0000 (with $0.0100, without $0.0100, 2 pairs)
+  Operational totals
+    without_docs: 2 runs, 300 tokens, 5 tools, 2.00s, $0.0200 cost
+    with_docs: 2 runs, 300 tokens, 4 tools, 1.80s, $0.0200 cost
+---
+Documentation Eval Comparisons
+  tool access
+         Pairs  0/2 eligible
+     Pass rate  withheld because pairs are blocked
+        Tokens  unavailable
+         Tools  unavailable
+       Latency  unavailable
+     Est. cost  unavailable
+  Operational totals
+    without_docs: 2 runs, 300 tokens, 4 tools, 2.00s, $0.0200 cost
+    with_docs: 1 runs, 120 tokens, unavailable (0/1 measured), unavailable (0/1 measured), unavailable (0/1 measured)
+  Blocked pairs
+    tool access/create/fixture/model/run-1: with_docs: errored
+    tool access/create/fixture/model/run-2: with_docs: expected 1 observation, found 0
+---
+Documentation Eval Comparisons
+  tool access
+         Pairs  0/1 eligible
+     Pass rate  withheld because pairs are blocked
+        Tokens  unavailable
+         Tools  unavailable
+       Latency  unavailable
+     Est. cost  unavailable
+  Operational totals
+    without_docs: 2 runs, unavailable (0/2 measured), 4 tools, 2.00s, $0.0200 cost
+    with_docs: 1 runs, 0 tokens, 2 tools, 1.00s, $0.0100 cost
+  Blocked pairs
+    tool access/create/fixture/model/run-1: without_docs: expected 1 observation, found 2
+---
+Documentation Eval Comparisons
+  tool access
+         Pairs  1/1 eligible
+     Pass rate  +100.0 pp (with 100.0%, without 0.0%)
+         Flags  treatment-saturated
+        Tokens  +1.0 (with 2.0, without 1.0, 1 pairs)
+         Tools  +1.0 (with 1.0, without 0.0, 1 pairs)
+       Latency  +333.4ms (with 666.7ms, without 333.3ms, 1 pairs)
+     Est. cost  +$0.0001 (with $0.0003, without $0.0001, 1 pairs)
+  Operational totals
+    without_docs: 1 runs, 1 tokens, 0 tools, 0.33s, $0.0001 cost
+    with_docs: 1 runs, 2 tokens, 1 tools, 0.67s, $0.0003 cost

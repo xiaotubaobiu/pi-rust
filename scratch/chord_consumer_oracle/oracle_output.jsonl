@@ -1,0 +1,7 @@
+{"scenario":"consumer-singleton","value":["read:v1","read-after-unbind:service_stale_instance:Remote service test.consumer.counter binding is closed","read-after-rebind:v1","unknown:Remote service test.consumer.unknown is not allowlisted","local:Service test.facets.host-values is process-local","mode:Remote service test.consumer.counter is already used as singleton","disposed:true","disposed-use:Remote service binding is disposed"]}
+{"scenario":"consumer-duplicate-ids","value":["Remote service binding has duplicate service IDs"]}
+{"scenario":"consumer-keyed","value":["observed:one","observers:1"]}
+{"scenario":"facet-host","value":["setup projection","early-access:Facet projection service handles cannot be used while setting_up","setup source","setup host-values","activate source","activate projection","activated:value","local-use:Service test.facets.host-values is process-local","missing:Facet missing requires local/test.facets.source/singleton, but no facet provides it","cycle:Facet dependency cycle: first, second","reload-shape:Reloaded facet source must preserve its service requirements and provisions","dispose projection","dispose source"]}
+{"scenario":"facet-loaders","value":["load first","load second","facets:first,second","dispose second","dispose first"]}
+{"scenario":"replicated-state","value":{"value":7}}
+{"scenario":"short-hash-main","value":"0d6e4079e367"}

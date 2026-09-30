@@ -1,0 +1,261 @@
+{
+ "scenarios": [
+  {
+   "name": "runtime_stubs_throw",
+   "observed": [
+    "sendMessage: Extension runtime not initialized. Action methods cannot be called during extension loading.",
+    "appendEntry: Extension runtime not initialized. Action methods cannot be called during extension loading.",
+    "setSessionName: Extension runtime not initialized. Action methods cannot be called during extension loading.",
+    "getSessionName: Extension runtime not initialized. Action methods cannot be called during extension loading.",
+    "setLabel: Extension runtime not initialized. Action methods cannot be called during extension loading.",
+    "getActiveTools: Extension runtime not initialized. Action methods cannot be called during extension loading.",
+    "getAllTools: Extension runtime not initialized. Action methods cannot be called during extension loading.",
+    "setActiveTools: Extension runtime not initialized. Action methods cannot be called during extension loading.",
+    "getCommands: Extension runtime not initialized. Action methods cannot be called during extension loading.",
+    "getThinkingLevel: Extension runtime not initialized. Action methods cannot be called during extension loading.",
+    "setThinkingLevel: Extension runtime not initialized. Action methods cannot be called during extension loading.",
+    "refreshTools: ok",
+    "setModel: rejected: Extension runtime not initialized",
+    "flagValues: {}"
+   ]
+  },
+  {
+   "name": "runtime_invalidate_default_message",
+   "observed": {
+    "first": "This extension ctx is stale after session replacement or reload. Do not use a captured pi or command ctx after ctx.newSession(), ctx.fork(), ctx.switchSession(), or ctx.reload(). For newSession, fork, and switchSession, move post-replacement work into withSession and use the ctx passed to withSession. For reload, do not use the old ctx after await ctx.reload().",
+    "second": "This extension ctx is stale after session replacement or reload. Do not use a captured pi or command ctx after ctx.newSession(), ctx.fork(), ctx.switchSession(), or ctx.reload(). For newSession, fork, and switchSession, move post-replacement work into withSession and use the ctx passed to withSession. For reload, do not use the old ctx after await ctx.reload().",
+    "first_is_default": true
+   }
+  },
+  {
+   "name": "runtime_track_event_bus",
+   "observed": {
+    "callsAfterInvalidateAndUnsub": []
+   }
+  },
+  {
+   "name": "flag_default_mismatch",
+   "observed": {
+    "errors": [
+     {
+      "path": "<root>\\bad-flag-default.ts",
+      "error": "Failed to load extension: Invalid default for flag \"safe-mode\": expected boolean, got string"
+     }
+    ]
+   }
+  },
+  {
+   "name": "flag_default_mismatch_flagvalues",
+   "observed": {
+    "flagValues": {}
+   }
+  },
+  {
+   "name": "tool_parameter_schema_validation",
+   "observed": [
+    {
+     "label": "undefined",
+     "errors": [
+      {
+       "path": "<root>\\missing-params-undefined.ts",
+       "error": "Failed to load extension: Tool \"noop\" registered by extension \"<root>\\missing-params-undefined.ts\" must define an object parameter schema."
+      }
+     ]
+    },
+    {
+     "label": "array",
+     "errors": [
+      {
+       "path": "<root>\\missing-params-array.ts",
+       "error": "Failed to load extension: Tool \"noop\" registered by extension \"<root>\\missing-params-array.ts\" must define an object parameter schema."
+      }
+     ]
+    },
+    {
+     "label": "null",
+     "errors": [
+      {
+       "path": "<root>\\missing-params-null.ts",
+       "error": "Failed to load extension: Tool \"noop\" registered by extension \"<root>\\missing-params-null.ts\" must define an object parameter schema."
+      }
+     ]
+    },
+    {
+     "label": "string",
+     "errors": [
+      {
+       "path": "<root>\\missing-params-string.ts",
+       "error": "Failed to load extension: Tool \"noop\" registered by extension \"<root>\\missing-params-string.ts\" must define an object parameter schema."
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "name": "flag_lifecycle",
+   "observed": {
+    "duringLoad": {
+     "withDefault": true
+    },
+    "flagValuesDuringLoad": {},
+    "afterCommit": {
+     "withDefault": true,
+     "stringDefault": "dflt",
+     "noDefault": false
+    }
+   }
+  },
+  {
+   "name": "factory_throws",
+   "observed": {
+    "errors": [
+     {
+      "path": "<root>\\throws.ts",
+      "error": "Failed to load extension: Initialization failed!"
+     }
+    ]
+   }
+  },
+  {
+   "name": "non_factory_export",
+   "observed": {
+    "errors": [
+     {
+      "path": "<root>\\no-default.ts",
+      "error": "Extension does not export a valid factory function: <root>\\no-default.ts"
+     }
+    ]
+   }
+  },
+  {
+   "name": "provider_queueing",
+   "observed": {
+    "committed": [
+     {
+      "name": "kept-provider",
+      "extensionPath": "<inline>"
+     }
+    ],
+    "committedNative": [
+     {
+      "id": "native-provider",
+      "extensionPath": "<inline>"
+     }
+    ],
+    "discardRethrows": "discard me",
+    "busCalls": [
+     "ok",
+     "ok"
+    ]
+   }
+  },
+  {
+   "name": "failed_extension_api_inert",
+   "observed": [
+    "Extension \"<inline>\" failed to load and its API is no longer active.",
+    "Extension \"<inline>\" failed to load and its API is no longer active.",
+    "Extension \"<inline>\" failed to load and its API is no longer active."
+   ]
+  },
+  {
+   "name": "stale_extension_api",
+   "observed": [
+    "stale-after-replacement"
+   ]
+  },
+  {
+   "name": "source_info",
+   "observed": {
+    "inline": {
+     "path": "<inline>",
+     "source": "inline",
+     "scope": "temporary",
+     "origin": "top-level",
+     "baseDir": "<undefined>"
+    },
+    "local": {
+     "path": "<root>\\sub\\local.ts",
+     "source": "local",
+     "scope": "temporary",
+     "origin": "top-level",
+     "baseDir": "<root>\\sub"
+    }
+   }
+  },
+  {
+   "name": "read_pi_manifest",
+   "observed": {
+    "pi_extensions": {
+     "extensions": [
+      "./a.ts",
+      "b.js"
+     ],
+     "skills": [
+      "s"
+     ],
+     "prompts": [
+      "p"
+     ],
+     "themes": [
+      "t"
+     ]
+    },
+    "no_pi_field": null,
+    "pi_not_object": null,
+    "non_string_entries": {},
+    "empty_entries": {
+     "extensions": []
+    },
+    "non_array_entries": {},
+    "bom": {
+     "extensions": [
+      "bom.ts"
+     ]
+    },
+    "missing_file": null,
+    "bad_json": null
+   }
+  },
+  {
+   "name": "discovery_battery",
+   "observed": {
+    "mixed": {
+     "paths": [
+      "fixtures/mixed/extensions/bar.ts",
+      "fixtures/mixed/extensions/direct.ts",
+      "fixtures/mixed/extensions/foo.ts",
+      "fixtures/mixed/extensions/with-index/index.ts",
+      "fixtures/mixed/extensions/with-manifest/entry.ts"
+     ],
+     "errors": []
+    },
+    "manifests": {
+     "paths": [
+      "fixtures/manifests/extensions/multi/ext1.ts",
+      "fixtures/manifests/extensions/multi/ext2.ts",
+      "fixtures/manifests/extensions/no-pi-field/index.ts",
+      "fixtures/manifests/extensions/precedence/custom.ts",
+      "fixtures/manifests/extensions/skip-missing/exists.ts",
+      "fixtures/manifests/extensions/tilde/~entry.ts",
+      "fixtures/manifests/extensions/tilde/~/entry.ts"
+     ],
+     "errors": []
+    }
+   }
+  },
+  {
+   "name": "discover_pipeline",
+   "observed": {
+    "order": [
+     "project/.pi/extensions/local.ts",
+     "agent2/extensions/global.ts",
+     "project/explicit.ts",
+     "project/explicit-dir/index.ts"
+    ],
+    "errors": [
+     "project/relative-missing.ts"
+    ]
+   }
+  }
+ ]
+}

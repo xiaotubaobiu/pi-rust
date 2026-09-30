@@ -1,0 +1,8745 @@
+{
+	"scenarios": [
+		{
+			"name": "submit.empty",
+			"log": []
+		},
+		{
+			"name": "submit.settings",
+			"log": [
+				[
+					"cmd.showSettingsSelector"
+				],
+				[
+					"defaultEditor.setText",
+					""
+				]
+			]
+		},
+		{
+			"name": "submit.model.arg",
+			"log": [
+				[
+					"defaultEditor.setText",
+					""
+				],
+				[
+					"cmd.handleModelCommand",
+					"gpt-5"
+				]
+			]
+		},
+		{
+			"name": "submit.model.bare",
+			"log": [
+				[
+					"defaultEditor.setText",
+					""
+				],
+				[
+					"cmd.handleModelCommand",
+					"undefined"
+				]
+			]
+		},
+		{
+			"name": "submit.thinking.arg",
+			"log": [
+				[
+					"defaultEditor.setText",
+					""
+				],
+				[
+					"cmd.handleThinkingCommand",
+					"high"
+				]
+			]
+		},
+		{
+			"name": "submit.bash.normal",
+			"log": [
+				[
+					"defaultEditor.addToHistory",
+					"!ls -la"
+				],
+				[
+					"cmd.handleBashCommand",
+					"ls -la",
+					false
+				],
+				[
+					"defaultEditor.borderColor",
+					"color:thinkingMedium"
+				],
+				[
+					"ui.requestRender"
+				]
+			]
+		},
+		{
+			"name": "submit.bash.excluded",
+			"log": [
+				[
+					"defaultEditor.addToHistory",
+					"!!rm -rf /tmp/x"
+				],
+				[
+					"cmd.handleBashCommand",
+					"rm -rf /tmp/x",
+					true
+				],
+				[
+					"defaultEditor.borderColor",
+					"color:thinkingMedium"
+				],
+				[
+					"ui.requestRender"
+				]
+			]
+		},
+		{
+			"name": "submit.bash.bang-only-falls-through",
+			"log": [
+				[
+					"defaultEditor.addToHistory",
+					"!"
+				]
+			]
+		},
+		{
+			"name": "submit.bash.conflict",
+			"log": [
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;255;255;0mWarning: A bash command is already running. Press Esc to cancel it first.\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"defaultEditor.setText",
+					"!echo hi"
+				]
+			]
+		},
+		{
+			"name": "submit.normal.idle",
+			"log": [
+				[
+					"defaultEditor.addToHistory",
+					"hello world"
+				]
+			]
+		},
+		{
+			"name": "submit.normal.idle.no-callback-queues",
+			"log": [
+				[
+					"defaultEditor.addToHistory",
+					"queued for later"
+				]
+			]
+		},
+		{
+			"name": "submit.streaming.steer",
+			"log": [
+				[
+					"defaultEditor.addToHistory",
+					"mid-stream input"
+				],
+				[
+					"defaultEditor.setText",
+					""
+				],
+				[
+					"session.prompt",
+					"mid-stream input",
+					{
+						"streamingBehavior": "steer"
+					}
+				],
+				[
+					"Container.clear",
+					"pendingMessages"
+				],
+				[
+					"ui.requestRender"
+				]
+			]
+		},
+		{
+			"name": "submit.compacting.queues",
+			"log": [
+				[
+					"defaultEditor.addToHistory",
+					"hold this"
+				],
+				[
+					"defaultEditor.setText",
+					""
+				],
+				[
+					"Container.clear",
+					"pendingMessages"
+				],
+				[
+					"Container.addChild",
+					"pendingMessages",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"pendingMessages",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;102;102;102mSteering: hold this\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"pendingMessages",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;102;102;102m↳ Ctrl+C to edit all queued messages\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;102;102;102mQueued message for after compaction\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"ui.requestRender"
+				]
+			]
+		},
+		{
+			"name": "submit.compacting.extension-command",
+			"log": [
+				[
+					"defaultEditor.addToHistory",
+					"/extcmd run"
+				],
+				[
+					"defaultEditor.setText",
+					""
+				],
+				[
+					"session.prompt",
+					"/extcmd run"
+				]
+			]
+		},
+		{
+			"name": "submit.command.tail-not-recognized",
+			"log": [
+				[
+					"defaultEditor.addToHistory",
+					"/settingsfoo"
+				]
+			]
+		},
+		{
+			"name": "submit.share",
+			"log": [
+				[
+					"cmd.handleShareCommand"
+				],
+				[
+					"defaultEditor.setText",
+					""
+				]
+			]
+		},
+		{
+			"name": "submit.name.arg",
+			"log": [
+				[
+					"cmd.handleNameCommand",
+					"/name my session"
+				],
+				[
+					"defaultEditor.setText",
+					""
+				]
+			]
+		},
+		{
+			"name": "submit.bash.clears-bash-mode",
+			"log": [
+				[
+					"defaultEditor.addToHistory",
+					"!ls"
+				],
+				[
+					"cmd.handleBashCommand",
+					"ls",
+					false
+				],
+				[
+					"defaultEditor.borderColor",
+					"color:thinkingMedium"
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"final.isBashMode",
+					false
+				]
+			]
+		},
+		{
+			"name": "escape.streaming",
+			"log": [
+				[
+					"defaultEditor.onAction",
+					"app.clear",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.suspend",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.thinking.cycle",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.model.cycleForward",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.model.cycleBackward",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.model.select",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.tools.expand",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.thinking.toggle",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.editor.external",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.message.copy",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.message.followUp",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.message.dequeue",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.session.new",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.session.tree",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.session.fork",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.session.resume",
+					"handler"
+				],
+				[
+					"session.clearQueue",
+					{
+						"steering": [],
+						"followUp": []
+					}
+				],
+				[
+					"Container.clear",
+					"pendingMessages"
+				],
+				[
+					"agent.abort"
+				]
+			]
+		},
+		{
+			"name": "escape.bash-running",
+			"log": [
+				[
+					"defaultEditor.onAction",
+					"app.clear",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.suspend",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.thinking.cycle",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.model.cycleForward",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.model.cycleBackward",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.model.select",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.tools.expand",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.thinking.toggle",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.editor.external",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.message.copy",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.message.followUp",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.message.dequeue",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.session.new",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.session.tree",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.session.fork",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.session.resume",
+					"handler"
+				],
+				[
+					"session.abortBash"
+				]
+			]
+		},
+		{
+			"name": "escape.bash-mode",
+			"log": [
+				[
+					"defaultEditor.onAction",
+					"app.clear",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.suspend",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.thinking.cycle",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.model.cycleForward",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.model.cycleBackward",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.model.select",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.tools.expand",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.thinking.toggle",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.editor.external",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.message.copy",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.message.followUp",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.message.dequeue",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.session.new",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.session.tree",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.session.fork",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.session.resume",
+					"handler"
+				],
+				[
+					"defaultEditor.setText",
+					""
+				],
+				[
+					"defaultEditor.borderColor",
+					"color:thinkingMedium"
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"final.isBashMode",
+					false
+				]
+			]
+		},
+		{
+			"name": "escape.empty.once",
+			"log": [
+				[
+					"defaultEditor.onAction",
+					"app.clear",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.suspend",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.thinking.cycle",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.model.cycleForward",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.model.cycleBackward",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.model.select",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.tools.expand",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.thinking.toggle",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.editor.external",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.message.copy",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.message.followUp",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.message.dequeue",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.session.new",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.session.tree",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.session.fork",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.session.resume",
+					"handler"
+				]
+			]
+		},
+		{
+			"name": "escape.empty.double-fork",
+			"log": [
+				[
+					"defaultEditor.onAction",
+					"app.clear",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.suspend",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.thinking.cycle",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.model.cycleForward",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.model.cycleBackward",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.model.select",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.tools.expand",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.thinking.toggle",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.editor.external",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.message.copy",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.message.followUp",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.message.dequeue",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.session.new",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.session.tree",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.session.fork",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.session.resume",
+					"handler"
+				],
+				[
+					"cmd.showUserMessageSelector"
+				]
+			]
+		},
+		{
+			"name": "escape.empty.double-tree",
+			"log": [
+				[
+					"defaultEditor.onAction",
+					"app.clear",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.suspend",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.thinking.cycle",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.model.cycleForward",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.model.cycleBackward",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.model.select",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.tools.expand",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.thinking.toggle",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.editor.external",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.message.copy",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.message.followUp",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.message.dequeue",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.session.new",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.session.tree",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.session.fork",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.session.resume",
+					"handler"
+				],
+				[
+					"cmd.showTreeSelector"
+				]
+			]
+		},
+		{
+			"name": "escape.empty.double-none",
+			"log": [
+				[
+					"defaultEditor.onAction",
+					"app.clear",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.suspend",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.thinking.cycle",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.model.cycleForward",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.model.cycleBackward",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.model.select",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.tools.expand",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.thinking.toggle",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.editor.external",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.message.copy",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.message.followUp",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.message.dequeue",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.session.new",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.session.tree",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.session.fork",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.session.resume",
+					"handler"
+				]
+			]
+		},
+		{
+			"name": "escape.nonempty.idle",
+			"log": [
+				[
+					"defaultEditor.onAction",
+					"app.clear",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.suspend",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.thinking.cycle",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.model.cycleForward",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.model.cycleBackward",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.model.select",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.tools.expand",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.thinking.toggle",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.editor.external",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.message.copy",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.message.followUp",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.message.dequeue",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.session.new",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.session.tree",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.session.fork",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.session.resume",
+					"handler"
+				]
+			]
+		},
+		{
+			"name": "keyring.action-table",
+			"log": [
+				[
+					"defaultEditor.onAction",
+					"app.clear",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.suspend",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.thinking.cycle",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.model.cycleForward",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.model.cycleBackward",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.model.select",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.tools.expand",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.thinking.toggle",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.editor.external",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.message.copy",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.message.followUp",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.message.dequeue",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.session.new",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.session.tree",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.session.fork",
+					"handler"
+				],
+				[
+					"defaultEditor.onAction",
+					"app.session.resume",
+					"handler"
+				],
+				[
+					"actionHandlerNames",
+					[
+						"app.clear",
+						"app.editor.external",
+						"app.message.copy",
+						"app.message.dequeue",
+						"app.message.followUp",
+						"app.model.cycleBackward",
+						"app.model.cycleForward",
+						"app.model.select",
+						"app.session.fork",
+						"app.session.new",
+						"app.session.resume",
+						"app.session.tree",
+						"app.suspend",
+						"app.thinking.cycle",
+						"app.thinking.toggle",
+						"app.tools.expand"
+					]
+				]
+			]
+		},
+		{
+			"name": "ctrlc.first-clears",
+			"log": [
+				[
+					"defaultEditor.setText",
+					""
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"final.lastSigintTimeSet",
+					true
+				]
+			]
+		},
+		{
+			"name": "ctrlc.double-shuts-down",
+			"log": [
+				[
+					"defaultEditor.setText",
+					""
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"themeController.disableAutoSync"
+				],
+				[
+					"terminal.drainInput",
+					1000
+				],
+				[
+					"Container.clear",
+					"status"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					"undefined"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					"undefined"
+				],
+				[
+					"themeController.disableAutoSync"
+				],
+				[
+					"footer.dispose"
+				],
+				[
+					"footerDataProvider.dispose"
+				],
+				[
+					"ui.stop",
+					{
+						"preserveScreen": false
+					}
+				],
+				[
+					"runtimeHost.dispose"
+				],
+				[
+					"process.stdout.write",
+					"[2mTo resume this session:[22m pi --session abc123\n"
+				],
+				[
+					"process.exit",
+					0
+				]
+			]
+		},
+		{
+			"name": "ctrlc.second-late-clears",
+			"log": [
+				[
+					"defaultEditor.setText",
+					""
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"defaultEditor.setText",
+					""
+				],
+				[
+					"ui.requestRender"
+				]
+			]
+		},
+		{
+			"name": "ctrld.shuts-down",
+			"log": [
+				[
+					"themeController.disableAutoSync"
+				],
+				[
+					"terminal.drainInput",
+					1000
+				],
+				[
+					"Container.clear",
+					"status"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					"undefined"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					"undefined"
+				],
+				[
+					"themeController.disableAutoSync"
+				],
+				[
+					"footer.dispose"
+				],
+				[
+					"footerDataProvider.dispose"
+				],
+				[
+					"ui.stop",
+					{
+						"preserveScreen": false
+					}
+				],
+				[
+					"runtimeHost.dispose"
+				],
+				[
+					"process.stdout.write",
+					"[2mTo resume this session:[22m pi --session abc123\n"
+				],
+				[
+					"process.exit",
+					0
+				]
+			]
+		},
+		{
+			"name": "startup-submit",
+			"log": [
+				[
+					"defaultEditor.setText",
+					"early input"
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;102;102;102mStartup is still in progress\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"ui.requestRender"
+				]
+			]
+		},
+		{
+			"name": "ctrlz.win32",
+			"log": [
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;102;102;102mSuspend to background is not supported on Windows\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"ui.requestRender"
+				]
+			]
+		},
+		{
+			"name": "shutdown.graceful",
+			"log": [
+				[
+					"themeController.disableAutoSync"
+				],
+				[
+					"terminal.drainInput",
+					1000
+				],
+				[
+					"Container.clear",
+					"status"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					"undefined"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					"undefined"
+				],
+				[
+					"themeController.disableAutoSync"
+				],
+				[
+					"footer.dispose"
+				],
+				[
+					"footerDataProvider.dispose"
+				],
+				[
+					"ui.stop",
+					{
+						"preserveScreen": false
+					}
+				],
+				[
+					"runtimeHost.dispose"
+				],
+				[
+					"process.stdout.write",
+					"[2mTo resume this session:[22m pi --session abc123\n"
+				],
+				[
+					"process.exit",
+					0
+				]
+			]
+		},
+		{
+			"name": "shutdown.from-signal",
+			"log": [
+				[
+					"runtimeHost.dispose"
+				],
+				[
+					"themeController.disableAutoSync"
+				],
+				[
+					"terminal.drainInput",
+					1000
+				],
+				[
+					"Container.clear",
+					"status"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					"undefined"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					"undefined"
+				],
+				[
+					"themeController.disableAutoSync"
+				],
+				[
+					"footer.dispose"
+				],
+				[
+					"footerDataProvider.dispose"
+				],
+				[
+					"ui.stop",
+					{
+						"preserveScreen": false
+					}
+				],
+				[
+					"process.exit",
+					0
+				],
+				[
+					"themeController.disableAutoSync"
+				],
+				[
+					"terminal.drainInput",
+					1000
+				],
+				[
+					"Container.clear",
+					"status"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					"undefined"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					"undefined"
+				],
+				[
+					"themeController.disableAutoSync"
+				],
+				[
+					"footer.dispose"
+				],
+				[
+					"footerDataProvider.dispose"
+				],
+				[
+					"runtimeHost.dispose"
+				],
+				[
+					"process.stdout.write",
+					"[2mTo resume this session:[22m pi --session abc123\n"
+				],
+				[
+					"process.exit",
+					0
+				]
+			]
+		},
+		{
+			"name": "shutdown.resumed-session-no-command",
+			"log": [
+				[
+					"themeController.disableAutoSync"
+				],
+				[
+					"terminal.drainInput",
+					1000
+				],
+				[
+					"Container.clear",
+					"status"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					"undefined"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					"undefined"
+				],
+				[
+					"themeController.disableAutoSync"
+				],
+				[
+					"footer.dispose"
+				],
+				[
+					"footerDataProvider.dispose"
+				],
+				[
+					"ui.stop",
+					{
+						"preserveScreen": false
+					}
+				],
+				[
+					"runtimeHost.dispose"
+				],
+				[
+					"process.exit",
+					0
+				]
+			]
+		},
+		{
+			"name": "signals.register-and-unregister",
+			"log": [
+				[
+					"process.prependListener",
+					"SIGTERM",
+					"function"
+				],
+				[
+					"process.prependListener",
+					"SIGHUP",
+					"function"
+				],
+				[
+					"process.stdout.on"
+				],
+				[
+					"process.stderr.on"
+				],
+				[
+					"process.prependListener",
+					"uncaughtException",
+					"function"
+				],
+				[
+					"process.off",
+					"SIGTERM",
+					"function"
+				],
+				[
+					"process.off",
+					"SIGHUP",
+					"function"
+				],
+				[
+					"process.stdout.off"
+				],
+				[
+					"process.stderr.off"
+				],
+				[
+					"process.off",
+					"uncaughtException",
+					"function"
+				]
+			]
+		},
+		{
+			"name": "signals.dead-terminal-error-codes",
+			"log": [
+				[
+					"deadTerminal",
+					true,
+					true,
+					true,
+					false,
+					false,
+					false,
+					false
+				]
+			]
+		},
+		{
+			"name": "check-shutdown-requested.idle",
+			"log": [
+				[
+					"themeController.disableAutoSync"
+				],
+				[
+					"terminal.drainInput",
+					1000
+				],
+				[
+					"Container.clear",
+					"status"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					"undefined"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					"undefined"
+				],
+				[
+					"themeController.disableAutoSync"
+				],
+				[
+					"footer.dispose"
+				],
+				[
+					"footerDataProvider.dispose"
+				],
+				[
+					"ui.stop",
+					{
+						"preserveScreen": false
+					}
+				],
+				[
+					"runtimeHost.dispose"
+				],
+				[
+					"process.stdout.write",
+					"[2mTo resume this session:[22m pi --session abc123\n"
+				],
+				[
+					"process.exit",
+					0
+				]
+			]
+		},
+		{
+			"name": "queue.get-combines",
+			"log": [
+				[
+					"result",
+					{
+						"steering": [
+							"s1",
+							"s2",
+							"cs1"
+						],
+						"followUp": [
+							"f1",
+							"cf1"
+						]
+					}
+				]
+			]
+		},
+		{
+			"name": "queue.clear-all",
+			"log": [
+				[
+					"session.clearQueue",
+					{
+						"steering": [
+							"s1"
+						],
+						"followUp": [
+							"f1",
+							"f2"
+						]
+					}
+				],
+				[
+					"result",
+					{
+						"steering": [
+							"s1",
+							"cs1"
+						],
+						"followUp": [
+							"f1",
+							"f2"
+						]
+					}
+				],
+				[
+					"remaining",
+					0
+				]
+			]
+		},
+		{
+			"name": "queue.restore-to-editor",
+			"log": [
+				[
+					"session.clearQueue",
+					{
+						"steering": [
+							"s1"
+						],
+						"followUp": [
+							"f1"
+						]
+					}
+				],
+				[
+					"defaultEditor.setText",
+					"s1\n\ncs1\n\nf1\n\ncurrent draft"
+				],
+				[
+					"Container.clear",
+					"pendingMessages"
+				],
+				[
+					"count",
+					3
+				],
+				[
+					"editorText",
+					"s1\n\ncs1\n\nf1\n\ncurrent draft"
+				]
+			]
+		},
+		{
+			"name": "queue.restore-empty-abort",
+			"log": [
+				[
+					"session.clearQueue",
+					{
+						"steering": [],
+						"followUp": []
+					}
+				],
+				[
+					"Container.clear",
+					"pendingMessages"
+				],
+				[
+					"agent.abort"
+				],
+				[
+					"count",
+					0
+				]
+			]
+		},
+		{
+			"name": "queue.restore-abort-with-queue",
+			"log": [
+				[
+					"session.clearQueue",
+					{
+						"steering": [
+							"s1"
+						],
+						"followUp": []
+					}
+				],
+				[
+					"defaultEditor.setText",
+					"s1"
+				],
+				[
+					"Container.clear",
+					"pendingMessages"
+				],
+				[
+					"agent.abort"
+				],
+				[
+					"count",
+					1
+				]
+			]
+		},
+		{
+			"name": "queue.restore-skips-empty-current",
+			"log": [
+				[
+					"session.clearQueue",
+					{
+						"steering": [
+							"s1"
+						],
+						"followUp": []
+					}
+				],
+				[
+					"defaultEditor.setText",
+					"s1"
+				],
+				[
+					"Container.clear",
+					"pendingMessages"
+				],
+				[
+					"count",
+					1
+				],
+				[
+					"editorText",
+					"s1"
+				]
+			]
+		},
+		{
+			"name": "queue.dequeue-empty",
+			"log": [
+				[
+					"session.clearQueue",
+					{
+						"steering": [],
+						"followUp": []
+					}
+				],
+				[
+					"Container.clear",
+					"pendingMessages"
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;102;102;102mNo queued messages to restore\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"ui.requestRender"
+				]
+			]
+		},
+		{
+			"name": "queue.dequeue-restores",
+			"log": [
+				[
+					"session.clearQueue",
+					{
+						"steering": [
+							"s1",
+							"s2"
+						],
+						"followUp": [
+							"f1"
+						]
+					}
+				],
+				[
+					"defaultEditor.setText",
+					"s1\n\ns2\n\nf1"
+				],
+				[
+					"Container.clear",
+					"pendingMessages"
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;102;102;102mRestored 3 queued messages to editor\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"editorText",
+					"s1\n\ns2\n\nf1"
+				]
+			]
+		},
+		{
+			"name": "queue.compaction-message",
+			"log": [
+				[
+					"defaultEditor.addToHistory",
+					"queued text"
+				],
+				[
+					"defaultEditor.setText",
+					""
+				],
+				[
+					"Container.clear",
+					"pendingMessages"
+				],
+				[
+					"Container.addChild",
+					"pendingMessages",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"pendingMessages",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;102;102;102mSteering: queued text\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"pendingMessages",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;102;102;102m↳ Ctrl+C to edit all queued messages\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;102;102;102mQueued message for after compaction\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"queued",
+					[
+						{
+							"text": "queued text",
+							"mode": "steer"
+						}
+					]
+				],
+				[
+					"editorText",
+					""
+				]
+			]
+		},
+		{
+			"name": "queue.follow-up.streaming",
+			"log": [
+				[
+					"defaultEditor.addToHistory",
+					"follow up please"
+				],
+				[
+					"defaultEditor.setText",
+					""
+				],
+				[
+					"session.prompt",
+					"follow up please",
+					{
+						"streamingBehavior": "followUp"
+					}
+				],
+				[
+					"Container.clear",
+					"pendingMessages"
+				],
+				[
+					"ui.requestRender"
+				]
+			]
+		},
+		{
+			"name": "queue.follow-up.streaming-extension-command",
+			"log": [
+				[
+					"defaultEditor.addToHistory",
+					"/extcmd do"
+				],
+				[
+					"defaultEditor.setText",
+					""
+				],
+				[
+					"session.prompt",
+					"/extcmd do",
+					{
+						"streamingBehavior": "followUp"
+					}
+				],
+				[
+					"Container.clear",
+					"pendingMessages"
+				],
+				[
+					"ui.requestRender"
+				]
+			]
+		},
+		{
+			"name": "queue.follow-up.compacting",
+			"log": [
+				[
+					"defaultEditor.addToHistory",
+					"wait for me"
+				],
+				[
+					"defaultEditor.setText",
+					""
+				],
+				[
+					"Container.clear",
+					"pendingMessages"
+				],
+				[
+					"Container.addChild",
+					"pendingMessages",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"pendingMessages",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;102;102;102mFollow-up: wait for me\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"pendingMessages",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;102;102;102m↳ Ctrl+C to edit all queued messages\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;102;102;102mQueued message for after compaction\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"ui.requestRender"
+				]
+			]
+		},
+		{
+			"name": "queue.follow-up.compacting-extension-command",
+			"log": [
+				[
+					"defaultEditor.addToHistory",
+					"/extcmd do"
+				],
+				[
+					"defaultEditor.setText",
+					""
+				],
+				[
+					"session.prompt",
+					"/extcmd do"
+				]
+			]
+		},
+		{
+			"name": "queue.follow-up.idle-acts-as-submit",
+			"log": [
+				[
+					"defaultEditor.setText",
+					""
+				],
+				[
+					"defaultEditor.addToHistory",
+					"idle follow"
+				]
+			]
+		},
+		{
+			"name": "queue.follow-up.empty",
+			"log": []
+		},
+		{
+			"name": "queue.is-extension-command",
+			"log": [
+				[
+					"results",
+					true,
+					false,
+					false,
+					false
+				]
+			]
+		},
+		{
+			"name": "queue.flush.will-retry",
+			"log": [
+				[
+					"Container.clear",
+					"pendingMessages"
+				],
+				[
+					"session.prompt",
+					"/extcmd prep"
+				],
+				[
+					"session.followUp",
+					"real prompt"
+				],
+				[
+					"session.steer",
+					"steered"
+				],
+				[
+					"Container.clear",
+					"pendingMessages"
+				]
+			]
+		},
+		{
+			"name": "queue.flush.normal",
+			"log": [
+				[
+					"Container.clear",
+					"pendingMessages"
+				],
+				[
+					"session.prompt",
+					"/extcmd prep"
+				],
+				[
+					"session.prompt",
+					"real prompt",
+					{
+						"streamingBehavior": "followUp"
+					}
+				],
+				[
+					"session.steer",
+					"extra"
+				],
+				[
+					"session.followUp",
+					"extra2"
+				],
+				[
+					"Container.clear",
+					"pendingMessages"
+				]
+			]
+		},
+		{
+			"name": "queue.flush.all-extension-commands",
+			"log": [
+				[
+					"Container.clear",
+					"pendingMessages"
+				],
+				[
+					"session.prompt",
+					"/extcmd a"
+				],
+				[
+					"session.prompt",
+					"/extcmd b"
+				]
+			]
+		},
+		{
+			"name": "queue.flush.empty",
+			"log": []
+		},
+		{
+			"name": "queue.flush.prompt-error-restores",
+			"log": [
+				[
+					"Container.clear",
+					"pendingMessages"
+				],
+				[
+					"session.followUp",
+					"after"
+				],
+				[
+					"session.clearQueue",
+					{
+						"steering": [],
+						"followUp": []
+					}
+				],
+				[
+					"Container.clear",
+					"pendingMessages"
+				],
+				[
+					"Container.addChild",
+					"pendingMessages",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"pendingMessages",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;102;102;102mSteering: boom prompt\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"pendingMessages",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;102;102;102mFollow-up: after\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"pendingMessages",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;102;102;102m↳ Ctrl+C to edit all queued messages\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;204;102;102mError: Failed to send queued messages: prompt failed\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"Container.clear",
+					"pendingMessages"
+				],
+				[
+					"Container.addChild",
+					"pendingMessages",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"pendingMessages",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;102;102;102mSteering: boom prompt\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"pendingMessages",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;102;102;102mFollow-up: after\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"pendingMessages",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;102;102;102m↳ Ctrl+C to edit all queued messages\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"restored",
+					[
+						{
+							"text": "boom prompt",
+							"mode": "steer"
+						},
+						{
+							"text": "after",
+							"mode": "followUp"
+						}
+					]
+				]
+			]
+		},
+		{
+			"name": "queue.flush-pending-bash",
+			"log": [
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "BashStub",
+						"id": 1
+					}
+				],
+				[
+					"Container.addChild",
+					"pendingMessages",
+					{
+						"kind": "BashStub",
+						"id": 2
+					}
+				],
+				[
+					"Container.removeChild",
+					"pendingMessages",
+					{
+						"kind": "BashStub",
+						"id": 2
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "BashStub",
+						"id": 2
+					}
+				],
+				[
+					"pendingChildren",
+					0,
+					"chatChildren",
+					[
+						{
+							"kind": "BashStub",
+							"id": 1
+						},
+						{
+							"kind": "BashStub",
+							"id": 2
+						}
+					]
+				]
+			]
+		},
+		{
+			"name": "status.coalesce-consecutive",
+			"log": [
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;102;102;102mfirst\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"Text.setText",
+					"\u001b[38;2;102;102;102mfirst\u001b[39m",
+					"\u001b[38;2;102;102;102msecond\u001b[39m"
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"Text.setText",
+					"\u001b[38;2;102;102;102msecond\u001b[39m",
+					"\u001b[38;2;102;102;102mthird\u001b[39m"
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"children",
+					[
+						{
+							"height": 1
+						},
+						{
+							"text": "\u001b[38;2;102;102;102mthird\u001b[39m",
+							"paddingX": 1,
+							"paddingY": 0
+						}
+					]
+				]
+			]
+		},
+		{
+			"name": "status.not-coalesced-after-other",
+			"log": [
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;102;102;102mfirst\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Text",
+						"text": "user message",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;102;102;102msecond\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"children",
+					[
+						{
+							"height": 1
+						},
+						{
+							"text": "\u001b[38;2;102;102;102mfirst\u001b[39m",
+							"paddingX": 1,
+							"paddingY": 0
+						},
+						{
+							"text": "user message",
+							"paddingX": 1,
+							"paddingY": 0
+						},
+						{
+							"height": 1
+						},
+						{
+							"text": "\u001b[38;2;102;102;102msecond\u001b[39m",
+							"paddingX": 1,
+							"paddingY": 0
+						}
+					]
+				]
+			]
+		},
+		{
+			"name": "status.managed-tool",
+			"log": [
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;102;102;102mdownloading fd\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;255;255;0mWarning: checksum mismatch\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"children",
+					[
+						{
+							"height": 1
+						},
+						{
+							"text": "\u001b[38;2;102;102;102mdownloading fd\u001b[39m",
+							"paddingX": 1,
+							"paddingY": 0
+						},
+						{
+							"text": "\u001b[38;2;255;255;0mWarning: checksum mismatch\u001b[39m",
+							"paddingX": 1,
+							"paddingY": 0
+						}
+					]
+				]
+			]
+		},
+		{
+			"name": "status.error-and-warning",
+			"log": [
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;204;102;102mError: boom\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;255;255;0mWarning: careful\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"children",
+					[
+						{
+							"height": 1
+						},
+						{
+							"text": "\u001b[38;2;204;102;102mError: boom\u001b[39m",
+							"paddingX": 1,
+							"paddingY": 0
+						},
+						{
+							"height": 1
+						},
+						{
+							"text": "\u001b[38;2;255;255;0mWarning: careful\u001b[39m",
+							"paddingX": 1,
+							"paddingY": 0
+						}
+					]
+				]
+			]
+		},
+		{
+			"name": "status.clear-editor",
+			"log": [
+				[
+					"defaultEditor.setText",
+					""
+				],
+				[
+					"ui.requestRender"
+				]
+			]
+		},
+		{
+			"name": "status.new-version-notification",
+			"log": [
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "DynamicBorder",
+						"colorTag": "default"
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Text",
+						"text": "\u001b[1m\u001b[38;2;255;255;0mUpdate Available\u001b[39m\u001b[22m\n\u001b[38;2;128;128;128mNew version 9.9.9 is available. Run \u001b[39m\u001b[38;2;138;190;183mpi update\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Markdown",
+						"text": "Fixed stuff.",
+						"paddingX": 1
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;128;128;128mChangelog: \u001b[39m\u001b[38;2;138;190;183mhttps://pi.dev/changelog\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "DynamicBorder",
+						"colorTag": "default"
+					}
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"children",
+					[
+						{
+							"height": 1
+						},
+						{
+							"colorTag": "default"
+						},
+						{
+							"text": "\u001b[1m\u001b[38;2;255;255;0mUpdate Available\u001b[39m\u001b[22m\n\u001b[38;2;128;128;128mNew version 9.9.9 is available. Run \u001b[39m\u001b[38;2;138;190;183mpi update\u001b[39m",
+							"paddingX": 1,
+							"paddingY": 0
+						},
+						{
+							"height": 1
+						},
+						{
+							"text": "Fixed stuff.",
+							"paddingX": 1
+						},
+						{
+							"height": 1
+						},
+						{
+							"text": "\u001b[38;2;128;128;128mChangelog: \u001b[39m\u001b[38;2;138;190;183mhttps://pi.dev/changelog\u001b[39m",
+							"paddingX": 1,
+							"paddingY": 0
+						},
+						{
+							"colorTag": "default"
+						}
+					]
+				]
+			]
+		},
+		{
+			"name": "status.package-update-notification",
+			"log": [
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "DynamicBorder",
+						"colorTag": "default"
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Text",
+						"text": "\u001b[1m\u001b[38;2;255;255;0mPackage Updates Available\u001b[39m\u001b[22m\n\u001b[38;2;128;128;128mPackage updates are available. Run \u001b[39m\u001b[38;2;138;190;183mpi update --extensions\u001b[39m\n\u001b[38;2;128;128;128mPackages:\u001b[39m\n- ext-a\n- ext-b",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "DynamicBorder",
+						"colorTag": "default"
+					}
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"children",
+					[
+						{
+							"height": 1
+						},
+						{
+							"colorTag": "default"
+						},
+						{
+							"text": "\u001b[1m\u001b[38;2;255;255;0mPackage Updates Available\u001b[39m\u001b[22m\n\u001b[38;2;128;128;128mPackage updates are available. Run \u001b[39m\u001b[38;2;138;190;183mpi update --extensions\u001b[39m\n\u001b[38;2;128;128;128mPackages:\u001b[39m\n- ext-a\n- ext-b",
+							"paddingX": 1,
+							"paddingY": 0
+						},
+						{
+							"colorTag": "default"
+						}
+					]
+				]
+			]
+		},
+		{
+			"name": "event.turn-start",
+			"log": [
+				[
+					"footer.invalidate"
+				],
+				[
+					"new WorkingStatusIndicator",
+					{
+						"kind": "ui"
+					},
+					"Working",
+					"undefined",
+					"function"
+				],
+				[
+					"Container.clear",
+					"status"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					"undefined"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					"undefined"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					"undefined"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					{
+						"kind": "WorkingStatusIndicator"
+					}
+				],
+				[
+					"ui.requestRender"
+				]
+			]
+		},
+		{
+			"name": "event.turn-start.progress-setting",
+			"log": [
+				[
+					"footer.invalidate"
+				],
+				[
+					"terminal.setProgress",
+					true
+				],
+				[
+					"new WorkingStatusIndicator",
+					{
+						"kind": "ui"
+					},
+					"Working",
+					"undefined",
+					"function"
+				],
+				[
+					"Container.clear",
+					"status"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					"undefined"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					"undefined"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					"undefined"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					{
+						"kind": "WorkingStatusIndicator"
+					}
+				],
+				[
+					"ui.requestRender"
+				]
+			]
+		},
+		{
+			"name": "event.queue-update",
+			"log": [
+				[
+					"footer.invalidate"
+				],
+				[
+					"Container.clear",
+					"pendingMessages"
+				],
+				[
+					"ui.requestRender"
+				]
+			]
+		},
+		{
+			"name": "event.entry-appended-custom",
+			"log": [
+				[
+					"footer.invalidate"
+				],
+				[
+					"ui.requestRender"
+				]
+			]
+		},
+		{
+			"name": "event.entry-appended-message",
+			"log": [
+				[
+					"footer.invalidate"
+				]
+			]
+		},
+		{
+			"name": "event.session-info-changed",
+			"log": [
+				[
+					"footer.invalidate"
+				],
+				[
+					"terminal.setTitle",
+					"Pi - project"
+				],
+				[
+					"footer.invalidate"
+				],
+				[
+					"ui.requestRender"
+				]
+			]
+		},
+		{
+			"name": "event.thinking-level-changed",
+			"log": [
+				[
+					"footer.invalidate"
+				],
+				[
+					"footer.invalidate"
+				],
+				[
+					"defaultEditor.borderColor",
+					"color:thinkingMedium"
+				],
+				[
+					"ui.requestRender"
+				]
+			]
+		},
+		{
+			"name": "event.message-start-user",
+			"log": [
+				[
+					"footer.invalidate"
+				],
+				[
+					"new UserMessageComponent",
+					"hi",
+					{
+						"tag": "markdownTheme",
+						"codeBlockIndent": "  "
+					},
+					1,
+					[
+						{
+							"tag": "mermaid"
+						},
+						{
+							"tag": "extTransformer"
+						}
+					]
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "UserMessageComponent"
+					}
+				],
+				[
+					"Container.clear",
+					"pendingMessages"
+				],
+				[
+					"ui.requestRender"
+				]
+			]
+		},
+		{
+			"name": "event.message-start-assistant",
+			"log": [
+				[
+					"footer.invalidate"
+				],
+				[
+					"new AssistantMessageComponent",
+					"undefined",
+					false,
+					{
+						"tag": "markdownTheme",
+						"codeBlockIndent": "  "
+					},
+					"Thinking...",
+					1,
+					[
+						{
+							"tag": "mermaid"
+						},
+						{
+							"tag": "extTransformer"
+						}
+					]
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "AssistantMessageComponent"
+					}
+				],
+				[
+					"AssistantMessageComponent.updateContent",
+					{
+						"role": "assistant",
+						"content": [],
+						"stopReason": null
+					},
+					true
+				],
+				[
+					"ui.requestRender"
+				]
+			]
+		},
+		{
+			"name": "event.message-start-custom-display",
+			"log": [
+				[
+					"footer.invalidate"
+				],
+				[
+					"new CustomMessageComponent",
+					{
+						"role": "custom",
+						"customType": "widget",
+						"display": true,
+						"content": []
+					},
+					"undefined",
+					{
+						"tag": "markdownTheme",
+						"codeBlockIndent": "  "
+					},
+					1
+				],
+				[
+					"CustomMessageComponent.setExpanded",
+					false
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "CustomMessageComponent"
+					}
+				],
+				[
+					"ui.requestRender"
+				]
+			]
+		},
+		{
+			"name": "event.message-update-assistant",
+			"log": [
+				[
+					"footer.invalidate"
+				]
+			]
+		},
+		{
+			"name": "event.message-update-known-tool",
+			"log": [
+				[
+					"footer.invalidate"
+				],
+				[
+					"footer.invalidate"
+				]
+			]
+		},
+		{
+			"name": "event.message-end-success",
+			"log": [
+				[
+					"footer.invalidate"
+				],
+				[
+					"ui.requestRender"
+				]
+			]
+		},
+		{
+			"name": "event.message-end-with-streaming",
+			"log": [
+				[
+					"footer.invalidate"
+				],
+				[
+					"new AssistantMessageComponent",
+					"undefined",
+					false,
+					{
+						"tag": "markdownTheme",
+						"codeBlockIndent": "  "
+					},
+					"Thinking...",
+					1,
+					[
+						{
+							"tag": "mermaid"
+						},
+						{
+							"tag": "extTransformer"
+						}
+					]
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "AssistantMessageComponent"
+					}
+				],
+				[
+					"AssistantMessageComponent.updateContent",
+					{
+						"role": "assistant",
+						"content": [],
+						"stopReason": null
+					},
+					true
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"footer.invalidate"
+				],
+				[
+					"AssistantMessageComponent.updateContent",
+					{
+						"role": "assistant",
+						"content": [],
+						"stopReason": "stop"
+					},
+					false
+				],
+				[
+					"footer.invalidate"
+				],
+				[
+					"ui.requestRender"
+				]
+			]
+		},
+		{
+			"name": "event.message-end-aborted",
+			"log": [
+				[
+					"footer.invalidate"
+				],
+				[
+					"new AssistantMessageComponent",
+					"undefined",
+					false,
+					{
+						"tag": "markdownTheme",
+						"codeBlockIndent": "  "
+					},
+					"Thinking...",
+					1,
+					[
+						{
+							"tag": "mermaid"
+						}
+					]
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "AssistantMessageComponent"
+					}
+				],
+				[
+					"AssistantMessageComponent.updateContent",
+					{
+						"role": "assistant",
+						"content": [],
+						"stopReason": null
+					},
+					true
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"footer.invalidate"
+				],
+				[
+					"AssistantMessageComponent.updateContent",
+					{
+						"role": "assistant",
+						"content": [],
+						"stopReason": "aborted",
+						"errorMessage": "Aborted after 2 retry attempts"
+					},
+					false
+				],
+				[
+					"footer.invalidate"
+				],
+				[
+					"ui.requestRender"
+				]
+			]
+		},
+		{
+			"name": "event.message-end-user-ignored",
+			"log": [
+				[
+					"footer.invalidate"
+				]
+			]
+		},
+		{
+			"name": "event.bash-execution-update",
+			"log": [
+				[
+					"footer.invalidate"
+				]
+			]
+		},
+		{
+			"name": "event.tool-execution-start",
+			"log": [
+				[
+					"footer.invalidate"
+				],
+				[
+					"new ToolExecutionComponent",
+					"bash",
+					"t1",
+					{
+						"cmd": "ls"
+					},
+					{
+						"showImages": false,
+						"imageWidthCells": 20
+					},
+					{
+						"name": "bash",
+						"def": {
+							"name": "bash",
+							"builtIn": true
+						},
+						"via": "builtInRenderers"
+					},
+					{
+						"kind": "ui"
+					},
+					"/work/project"
+				],
+				[
+					"ToolExecutionComponent.setExpanded",
+					false
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "ToolExecutionComponent"
+					}
+				],
+				[
+					"ToolExecutionComponent.markExecutionStarted"
+				],
+				[
+					"ui.requestRender"
+				]
+			]
+		},
+		{
+			"name": "event.tool-execution-start-existing",
+			"log": [
+				[
+					"footer.invalidate"
+				],
+				[
+					"new ToolExecutionComponent",
+					"bash",
+					"t1",
+					{
+						"cmd": "ls"
+					},
+					{
+						"showImages": false,
+						"imageWidthCells": 20
+					},
+					{
+						"name": "bash",
+						"def": {
+							"name": "bash",
+							"builtIn": true
+						},
+						"via": "builtInRenderers"
+					},
+					{
+						"kind": "ui"
+					},
+					"/work/project"
+				],
+				[
+					"ToolExecutionComponent.setExpanded",
+					false
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "ToolExecutionComponent"
+					}
+				],
+				[
+					"ToolExecutionComponent.markExecutionStarted"
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"footer.invalidate"
+				],
+				[
+					"ToolExecutionComponent.markExecutionStarted"
+				],
+				[
+					"ui.requestRender"
+				]
+			]
+		},
+		{
+			"name": "event.tool-execution-update",
+			"log": [
+				[
+					"footer.invalidate"
+				],
+				[
+					"new ToolExecutionComponent",
+					"bash",
+					"t1",
+					{},
+					{
+						"showImages": false,
+						"imageWidthCells": 20
+					},
+					{
+						"name": "bash",
+						"def": {
+							"name": "bash",
+							"builtIn": true
+						},
+						"via": "builtInRenderers"
+					},
+					{
+						"kind": "ui"
+					},
+					"/work/project"
+				],
+				[
+					"ToolExecutionComponent.setExpanded",
+					false
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "ToolExecutionComponent"
+					}
+				],
+				[
+					"ToolExecutionComponent.markExecutionStarted"
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"footer.invalidate"
+				],
+				[
+					"ToolExecutionComponent.updateResult",
+					{
+						"content": [
+							{
+								"type": "text",
+								"text": "partial"
+							}
+						],
+						"isError": false
+					},
+					true
+				],
+				[
+					"ui.requestRender"
+				]
+			]
+		},
+		{
+			"name": "event.tool-execution-end",
+			"log": [
+				[
+					"footer.invalidate"
+				],
+				[
+					"new ToolExecutionComponent",
+					"bash",
+					"t1",
+					{},
+					{
+						"showImages": false,
+						"imageWidthCells": 20
+					},
+					{
+						"name": "bash",
+						"def": {
+							"name": "bash",
+							"builtIn": true
+						},
+						"via": "builtInRenderers"
+					},
+					{
+						"kind": "ui"
+					},
+					"/work/project"
+				],
+				[
+					"ToolExecutionComponent.setExpanded",
+					false
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "ToolExecutionComponent"
+					}
+				],
+				[
+					"ToolExecutionComponent.markExecutionStarted"
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"footer.invalidate"
+				],
+				[
+					"ToolExecutionComponent.updateResult",
+					{
+						"content": [
+							{
+								"type": "text",
+								"text": "done"
+							}
+						],
+						"isError": false
+					}
+				],
+				[
+					"ui.requestRender"
+				]
+			]
+		},
+		{
+			"name": "event.agent-start",
+			"log": [
+				[
+					"footer.invalidate"
+				]
+			]
+		},
+		{
+			"name": "event.agent-start-with-retry-handler",
+			"log": [
+				[
+					"footer.invalidate"
+				],
+				[
+					"onEscapeIsRetry",
+					true
+				],
+				[
+					"retryHandlerCleared",
+					true
+				]
+			]
+		},
+		{
+			"name": "event.agent-end",
+			"log": [
+				[
+					"footer.invalidate"
+				],
+				[
+					"ui.requestRender"
+				]
+			]
+		},
+		{
+			"name": "event.agent-end-clears-streaming",
+			"log": [
+				[
+					"footer.invalidate"
+				],
+				[
+					"new AssistantMessageComponent",
+					"undefined",
+					false,
+					{
+						"tag": "markdownTheme",
+						"codeBlockIndent": "  "
+					},
+					"Thinking...",
+					1,
+					[
+						{
+							"tag": "mermaid"
+						},
+						{
+							"tag": "extTransformer"
+						}
+					]
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "AssistantMessageComponent"
+					}
+				],
+				[
+					"AssistantMessageComponent.updateContent",
+					{
+						"role": "assistant",
+						"content": [],
+						"stopReason": null
+					},
+					true
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"footer.invalidate"
+				],
+				[
+					"Container.removeChild",
+					"chat",
+					{
+						"kind": "AssistantMessageComponent"
+					}
+				],
+				[
+					"ui.requestRender"
+				]
+			]
+		},
+		{
+			"name": "event.agent-settled",
+			"log": [
+				[
+					"footer.invalidate"
+				]
+			]
+		},
+		{
+			"name": "event.agent-settled-shutdown",
+			"log": [
+				[
+					"footer.invalidate"
+				],
+				[
+					"themeController.disableAutoSync"
+				],
+				[
+					"terminal.drainInput",
+					1000
+				],
+				[
+					"Container.clear",
+					"status"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					"undefined"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					"undefined"
+				],
+				[
+					"themeController.disableAutoSync"
+				],
+				[
+					"footer.dispose"
+				],
+				[
+					"footerDataProvider.dispose"
+				],
+				[
+					"ui.stop",
+					{
+						"preserveScreen": false
+					}
+				],
+				[
+					"runtimeHost.dispose"
+				],
+				[
+					"process.stdout.write",
+					"[2mTo resume this session:[22m pi --session abc123\n"
+				],
+				[
+					"process.exit",
+					0
+				]
+			]
+		},
+		{
+			"name": "event.compaction-start",
+			"log": [
+				[
+					"footer.invalidate"
+				],
+				[
+					"terminal.setProgress",
+					true
+				],
+				[
+					"new CompactionStatusIndicator",
+					{
+						"kind": "ui"
+					},
+					"threshold"
+				],
+				[
+					"Container.clear",
+					"status"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					"undefined"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					"undefined"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					"undefined"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					{
+						"kind": "CompactionStatusIndicator"
+					}
+				],
+				[
+					"ui.requestRender"
+				]
+			]
+		},
+		{
+			"name": "event.compaction-start-escapes-abort",
+			"log": [
+				[
+					"footer.invalidate"
+				],
+				[
+					"new CompactionStatusIndicator",
+					{
+						"kind": "ui"
+					},
+					"manual"
+				],
+				[
+					"Container.clear",
+					"status"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					"undefined"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					"undefined"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					"undefined"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					{
+						"kind": "CompactionStatusIndicator"
+					}
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"session.abortCompaction"
+				],
+				[
+					"onEscapeRestored",
+					false
+				]
+			]
+		},
+		{
+			"name": "event.compaction-end-success",
+			"log": [
+				[
+					"footer.invalidate"
+				],
+				[
+					"Container.clear",
+					"chat"
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"new CompactionSummaryMessageComponent",
+					{
+						"role": "compactionSummary",
+						"summary": "sum",
+						"tokensBefore": 100,
+						"timestamp": 1790604147438
+					},
+					{
+						"tag": "markdownTheme",
+						"codeBlockIndent": "  "
+					}
+				],
+				[
+					"CompactionSummaryMessageComponent.setExpanded",
+					false
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "CompactionSummaryMessageComponent"
+					}
+				],
+				[
+					"footer.invalidate"
+				],
+				[
+					"ui.requestRender"
+				]
+			]
+		},
+		{
+			"name": "event.compaction-end-aborted-manual",
+			"log": [
+				[
+					"footer.invalidate"
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;204;102;102mError: Compaction cancelled\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"ui.requestRender"
+				]
+			]
+		},
+		{
+			"name": "event.compaction-end-aborted-auto",
+			"log": [
+				[
+					"footer.invalidate"
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;102;102;102mAuto-compaction cancelled\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"ui.requestRender"
+				]
+			]
+		},
+		{
+			"name": "event.compaction-end-error-manual",
+			"log": [
+				[
+					"footer.invalidate"
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;204;102;102mError: compact failed\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"ui.requestRender"
+				]
+			]
+		},
+		{
+			"name": "event.compaction-end-error-auto",
+			"log": [
+				[
+					"footer.invalidate"
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;204;102;102mcompact failed\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"ui.requestRender"
+				]
+			]
+		},
+		{
+			"name": "event.compaction-end-flushes-queue",
+			"log": [
+				[
+					"footer.invalidate"
+				],
+				[
+					"Container.clear",
+					"pendingMessages"
+				],
+				[
+					"session.prompt",
+					"/extcmd after"
+				],
+				[
+					"ui.requestRender"
+				]
+			]
+		},
+		{
+			"name": "event.auto-retry-start",
+			"log": [
+				[
+					"footer.invalidate"
+				],
+				[
+					"new RetryStatusIndicator",
+					{
+						"kind": "ui"
+					},
+					2,
+					5,
+					1500
+				],
+				[
+					"Container.clear",
+					"status"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					"undefined"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					"undefined"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					"undefined"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					{
+						"kind": "RetryStatusIndicator"
+					}
+				],
+				[
+					"ui.requestRender"
+				]
+			]
+		},
+		{
+			"name": "event.auto-retry-start-escape-aborts",
+			"log": [
+				[
+					"footer.invalidate"
+				],
+				[
+					"new RetryStatusIndicator",
+					{
+						"kind": "ui"
+					},
+					1,
+					3,
+					100
+				],
+				[
+					"Container.clear",
+					"status"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					"undefined"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					"undefined"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					"undefined"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					{
+						"kind": "RetryStatusIndicator"
+					}
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"session.abortRetry"
+				],
+				[
+					"onEscapeRestored",
+					false
+				]
+			]
+		},
+		{
+			"name": "event.auto-retry-end-success",
+			"log": [
+				[
+					"footer.invalidate"
+				],
+				[
+					"ui.requestRender"
+				]
+			]
+		},
+		{
+			"name": "event.auto-retry-end-failure",
+			"log": [
+				[
+					"footer.invalidate"
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;204;102;102mError: Retry failed after 3 attempts: still failing\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"ui.requestRender"
+				]
+			]
+		},
+		{
+			"name": "event.summarization-retry-scheduled",
+			"log": [
+				[
+					"footer.invalidate"
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;204;102;102mError: sum failed\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"new RetryStatusIndicator",
+					{
+						"kind": "ui"
+					},
+					1,
+					2,
+					500
+				],
+				[
+					"Container.clear",
+					"status"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					"undefined"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					"undefined"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					"undefined"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					{
+						"kind": "RetryStatusIndicator"
+					}
+				],
+				[
+					"ui.requestRender"
+				]
+			]
+		},
+		{
+			"name": "event.summarization-retry-attempt-branch-summary",
+			"log": [
+				[
+					"footer.invalidate"
+				],
+				[
+					"new BranchSummaryStatusIndicator",
+					{
+						"kind": "ui"
+					}
+				],
+				[
+					"Container.clear",
+					"status"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					"undefined"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					"undefined"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					"undefined"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					{
+						"kind": "BranchSummaryStatusIndicator"
+					}
+				],
+				[
+					"ui.requestRender"
+				]
+			]
+		},
+		{
+			"name": "event.summarization-retry-attempt-compaction",
+			"log": [
+				[
+					"footer.invalidate"
+				],
+				[
+					"new CompactionStatusIndicator",
+					{
+						"kind": "ui"
+					},
+					"undefined"
+				],
+				[
+					"Container.clear",
+					"status"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					"undefined"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					"undefined"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					"undefined"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					{
+						"kind": "CompactionStatusIndicator"
+					}
+				],
+				[
+					"ui.requestRender"
+				]
+			]
+		},
+		{
+			"name": "event.summarization-retry-finished",
+			"log": [
+				[
+					"footer.invalidate"
+				],
+				[
+					"ui.requestRender"
+				]
+			]
+		},
+		{
+			"name": "event.uninitialized-inits-first",
+			"log": [
+				[
+					"cmd.init"
+				],
+				[
+					"footer.invalidate"
+				]
+			]
+		},
+		{
+			"name": "render.session-entries-compaction",
+			"log": [
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"new CompactionSummaryMessageComponent",
+					{
+						"role": "compactionSummary",
+						"summary": "current summary",
+						"tokensBefore": 200,
+						"timestamp": 1735776000000
+					},
+					{
+						"tag": "markdownTheme",
+						"codeBlockIndent": "  "
+					}
+				],
+				[
+					"CompactionSummaryMessageComponent.setExpanded",
+					false
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "CompactionSummaryMessageComponent"
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;255;255;0mCompaction: 100 tokens billed (~$0.13)\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"new CompactionSummaryMessageComponent",
+					{
+						"role": "compactionSummary",
+						"summary": "previous summary",
+						"tokensBefore": 100,
+						"timestamp": 1735689600000
+					},
+					{
+						"tag": "markdownTheme",
+						"codeBlockIndent": "  "
+					}
+				],
+				[
+					"CompactionSummaryMessageComponent.setExpanded",
+					false
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "CompactionSummaryMessageComponent"
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;255;255;0mCompaction: 10 tokens billed (~$0.01)\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"children",
+					[
+						{
+							"height": 1
+						},
+						{
+							"kind": "CompactionSummaryMessageComponent"
+						},
+						{
+							"height": 1
+						},
+						{
+							"text": "\u001b[38;2;255;255;0mCompaction: 100 tokens billed (~$0.13)\u001b[39m",
+							"paddingX": 1,
+							"paddingY": 0
+						},
+						{
+							"height": 1
+						},
+						{
+							"kind": "CompactionSummaryMessageComponent"
+						},
+						{
+							"height": 1
+						},
+						{
+							"text": "\u001b[38;2;255;255;0mCompaction: 10 tokens billed (~$0.01)\u001b[39m",
+							"paddingX": 1,
+							"paddingY": 0
+						}
+					]
+				]
+			]
+		},
+		{
+			"name": "render.add-compaction-cost-notice",
+			"log": [
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;255;255;0mCompaction: 100 tokens billed (~$0.13)\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;255;255;0mBranch summary: 100 tokens billed (~$0.13)\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"children",
+					[
+						{
+							"height": 1
+						},
+						{
+							"text": "\u001b[38;2;255;255;0mCompaction: 100 tokens billed (~$0.13)\u001b[39m",
+							"paddingX": 1,
+							"paddingY": 0
+						},
+						{
+							"height": 1
+						},
+						{
+							"text": "\u001b[38;2;255;255;0mBranch summary: 100 tokens billed (~$0.13)\u001b[39m",
+							"paddingX": 1,
+							"paddingY": 0
+						}
+					]
+				]
+			]
+		},
+		{
+			"name": "render.add-compaction-cost-notice-disabled",
+			"log": [
+				[
+					"children",
+					[]
+				]
+			]
+		},
+		{
+			"name": "render.add-message-user",
+			"log": [
+				[
+					"new UserMessageComponent",
+					"hello there",
+					{
+						"tag": "markdownTheme",
+						"codeBlockIndent": "  "
+					},
+					1,
+					[
+						{
+							"tag": "mermaid"
+						},
+						{
+							"tag": "extTransformer"
+						}
+					]
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "UserMessageComponent"
+					}
+				],
+				[
+					"children",
+					[
+						{
+							"kind": "UserMessageComponent"
+						}
+					]
+				]
+			]
+		},
+		{
+			"name": "render.add-message-user-with-skill-block",
+			"log": [
+				[
+					"new SkillInvocationMessageComponent",
+					{
+						"name": "review",
+						"location": "/skills/review.md",
+						"content": "skill body",
+						"userMessage": "please review"
+					},
+					{
+						"tag": "markdownTheme",
+						"codeBlockIndent": "  "
+					}
+				],
+				[
+					"SkillInvocationMessageComponent.setExpanded",
+					false
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "SkillInvocationMessageComponent"
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"new UserMessageComponent",
+					"please review",
+					{
+						"tag": "markdownTheme",
+						"codeBlockIndent": "  "
+					},
+					1,
+					[
+						{
+							"tag": "mermaid"
+						},
+						{
+							"tag": "extTransformer"
+						}
+					]
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "UserMessageComponent"
+					}
+				],
+				[
+					"defaultEditor.addToHistory",
+					"<skill name=\"review\" location=\"/skills/review.md\">\nskill body\n</skill>\n\nplease review"
+				],
+				[
+					"children",
+					[
+						{
+							"kind": "SkillInvocationMessageComponent"
+						},
+						{
+							"height": 1
+						},
+						{
+							"kind": "UserMessageComponent"
+						}
+					]
+				]
+			]
+		},
+		{
+			"name": "render.add-message-assistant",
+			"log": [
+				[
+					"new AssistantMessageComponent",
+					{
+						"role": "assistant",
+						"content": [],
+						"stopReason": "stop"
+					},
+					false,
+					{
+						"tag": "markdownTheme",
+						"codeBlockIndent": "  "
+					},
+					"Thinking...",
+					1,
+					[
+						{
+							"tag": "mermaid"
+						},
+						{
+							"tag": "extTransformer"
+						}
+					]
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "AssistantMessageComponent"
+					}
+				],
+				[
+					"children",
+					[
+						{
+							"kind": "AssistantMessageComponent"
+						}
+					]
+				]
+			]
+		},
+		{
+			"name": "render.add-message-bash-execution",
+			"log": [
+				[
+					"new BashExecutionComponent",
+					"ls -la",
+					{
+						"kind": "ui"
+					},
+					"undefined"
+				],
+				[
+					"BashExecutionComponent.appendOutput",
+					"file1\nfile2"
+				],
+				[
+					"BashExecutionComponent.setComplete",
+					0,
+					false,
+					"undefined",
+					"undefined"
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "BashExecutionComponent"
+					}
+				],
+				[
+					"children",
+					[
+						{
+							"kind": "BashExecutionComponent"
+						}
+					]
+				]
+			]
+		},
+		{
+			"name": "render.add-message-custom",
+			"log": [
+				[
+					"new CustomMessageComponent",
+					{
+						"role": "custom",
+						"customType": "widget",
+						"display": true,
+						"content": [],
+						"details": "undefined",
+						"timestamp": 1700000000000
+					},
+					"undefined",
+					{
+						"tag": "markdownTheme",
+						"codeBlockIndent": "  "
+					},
+					1
+				],
+				[
+					"CustomMessageComponent.setExpanded",
+					false
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "CustomMessageComponent"
+					}
+				],
+				[
+					"children",
+					[
+						{
+							"kind": "CustomMessageComponent"
+						}
+					]
+				]
+			]
+		},
+		{
+			"name": "render.add-message-custom-undisplayed",
+			"log": [
+				[
+					"children",
+					[]
+				]
+			]
+		},
+		{
+			"name": "render.add-message-compaction-summary",
+			"log": [
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"new CompactionSummaryMessageComponent",
+					{
+						"role": "compactionSummary",
+						"summary": "sum",
+						"tokensBefore": 100,
+						"timestamp": 1700000000000
+					},
+					{
+						"tag": "markdownTheme",
+						"codeBlockIndent": "  "
+					}
+				],
+				[
+					"CompactionSummaryMessageComponent.setExpanded",
+					false
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "CompactionSummaryMessageComponent"
+					}
+				],
+				[
+					"children",
+					[
+						{
+							"height": 1
+						},
+						{
+							"kind": "CompactionSummaryMessageComponent"
+						}
+					]
+				]
+			]
+		},
+		{
+			"name": "render.add-message-branch-summary",
+			"log": [
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"new BranchSummaryMessageComponent",
+					{
+						"role": "branchSummary",
+						"summary": "b-sum",
+						"fromId": "e1",
+						"timestamp": 1700000000000
+					},
+					{
+						"tag": "markdownTheme",
+						"codeBlockIndent": "  "
+					}
+				],
+				[
+					"BranchSummaryMessageComponent.setExpanded",
+					false
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "BranchSummaryMessageComponent"
+					}
+				],
+				[
+					"children",
+					[
+						{
+							"height": 1
+						},
+						{
+							"kind": "BranchSummaryMessageComponent"
+						}
+					]
+				]
+			]
+		},
+		{
+			"name": "render.add-message-system-and-toolresult",
+			"log": [
+				[
+					"children",
+					[]
+				]
+			]
+		},
+		{
+			"name": "render.initial-messages",
+			"log": [
+				[
+					"footer.invalidate"
+				],
+				[
+					"defaultEditor.borderColor",
+					"color:thinkingMedium"
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"new UserMessageComponent",
+					"first",
+					{
+						"tag": "markdownTheme",
+						"codeBlockIndent": "  "
+					},
+					1,
+					[
+						{
+							"tag": "mermaid"
+						}
+					]
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "UserMessageComponent"
+					}
+				],
+				[
+					"defaultEditor.addToHistory",
+					"first"
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;102;102;102mSession compacted 1 time\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"ui.requestRender"
+				]
+			]
+		},
+		{
+			"name": "render.project-trust-warning",
+			"log": [
+				[
+					"children",
+					[]
+				]
+			]
+		},
+		{
+			"name": "render.project-trust-warning-trusted",
+			"log": [
+				[
+					"children",
+					[]
+				]
+			]
+		},
+		{
+			"name": "render.user-message-text-extraction",
+			"log": [
+				[
+					"text",
+					"plain",
+					"ab",
+					""
+				]
+			]
+		},
+		{
+			"name": "render.custom-entry-no-renderer",
+			"log": [
+				[
+					"children",
+					[]
+				]
+			]
+		},
+		{
+			"name": "render.startup-notices-collapsed",
+			"log": [
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "DynamicBorder",
+						"colorTag": "default"
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Text",
+						"text": "Updated to v1.2.0. Use \u001b[1m/changelog\u001b[22m to view full changelog.",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "DynamicBorder",
+						"colorTag": "default"
+					}
+				],
+				[
+					"children",
+					[
+						{
+							"colorTag": "default"
+						},
+						{
+							"text": "Updated to v1.2.0. Use \u001b[1m/changelog\u001b[22m to view full changelog.",
+							"paddingX": 1,
+							"paddingY": 0
+						},
+						{
+							"colorTag": "default"
+						}
+					]
+				]
+			]
+		},
+		{
+			"name": "render.startup-notices-expanded",
+			"log": [
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "DynamicBorder",
+						"colorTag": "default"
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Text",
+						"text": "\u001b[1m\u001b[38;2;138;190;183mWhat's New\u001b[39m\u001b[22m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Markdown",
+						"text": "## [1.2.0]\n- entry",
+						"paddingX": 1
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "DynamicBorder",
+						"colorTag": "default"
+					}
+				],
+				[
+					"children",
+					[
+						{
+							"colorTag": "default"
+						},
+						{
+							"text": "\u001b[1m\u001b[38;2;138;190;183mWhat's New\u001b[39m\u001b[22m",
+							"paddingX": 1,
+							"paddingY": 0
+						},
+						{
+							"height": 1
+						},
+						{
+							"text": "## [1.2.0]\n- entry",
+							"paddingX": 1
+						},
+						{
+							"height": 1
+						},
+						{
+							"colorTag": "default"
+						}
+					]
+				]
+			]
+		},
+		{
+			"name": "render.startup-notices-none",
+			"log": [
+				[
+					"children",
+					[]
+				]
+			]
+		},
+		{
+			"name": "render.get-user-input-queues-first",
+			"log": [
+				[
+					"results",
+					"pending"
+				],
+				[
+					"first-two",
+					"q1",
+					"q2"
+				],
+				[
+					"third-pending",
+					true
+				],
+				[
+					"third",
+					"typed"
+				]
+			]
+		},
+		{
+			"name": "pure.quote-if-needed",
+			"log": [
+				[
+					"results",
+					"abc",
+					"a-b_c.d~e",
+					"''",
+					"'has space'",
+					"'it'\\''s'",
+					"a:b"
+				]
+			]
+		},
+		{
+			"name": "pure.resume-command",
+			"log": [
+				[
+					"default-dir",
+					"pi --session abc123"
+				],
+				[
+					"custom-dir",
+					"pi --session-dir '/custom dir/sessions' --session abc123"
+				],
+				[
+					"not-persisted",
+					null
+				],
+				[
+					"no-file",
+					null
+				]
+			]
+		},
+		{
+			"name": "pure.resume-command-no-tty",
+			"log": [
+				[
+					"result",
+					null
+				]
+			]
+		},
+		{
+			"name": "pure.anthropic-warning-and-keys",
+			"log": [
+				[
+					"results",
+					true,
+					false,
+					false,
+					true,
+					false,
+					false,
+					"Logged in. No llama.cpp models are loaded. Use /llama to load a model, then /model to select it.",
+					"Logged in. Use /model to select a loaded llama.cpp model, or /llama to manage models."
+				]
+			]
+		},
+		{
+			"name": "pure.login-provider-options",
+			"log": [
+				[
+					"grouped",
+					[
+						{
+							"id": "anthropic",
+							"name": "Anthropic",
+							"authTypes": [
+								"oauth",
+								"api_key"
+							]
+						},
+						{
+							"id": "openai",
+							"name": "OpenAI",
+							"authTypes": [
+								"oauth"
+							]
+						},
+						{
+							"id": "zai",
+							"name": "Z.ai",
+							"authTypes": [
+								"api_key"
+							]
+						}
+					]
+				],
+				[
+					"search",
+					"anthropic Anthropic undefined API key"
+				],
+				[
+					"desc",
+					"Anthropic · API key"
+				],
+				[
+					"search",
+					"x x undefined API key"
+				],
+				[
+					"desc",
+					"API key"
+				],
+				[
+					"search",
+					"zai Z.ai undefined API key"
+				],
+				[
+					"desc",
+					"Z.ai · API key"
+				]
+			]
+		},
+		{
+			"name": "pure.fuzzy-autocomplete-items",
+			"log": [
+				[
+					"match",
+					[
+						{
+							"value": "openai/gpt-5",
+							"label": "gpt-5",
+							"description": "openai"
+						}
+					]
+				],
+				[
+					"no-match",
+					null
+				]
+			]
+		},
+		{
+			"name": "pure.autocomplete-source-tag",
+			"log": [
+				[
+					"none",
+					null
+				],
+				[
+					"auto-user",
+					"u"
+				],
+				[
+					"local-project",
+					"p"
+				],
+				[
+					"cli-temporary",
+					"t"
+				],
+				[
+					"npm",
+					"p:npm:@scope/pkg"
+				],
+				[
+					"git",
+					"p"
+				],
+				[
+					"git-ref",
+					"p:git:gitlab.com/owner/repo#v2"
+				],
+				[
+					"other",
+					"t"
+				]
+			]
+		},
+		{
+			"name": "pure.prefix-autocomplete-description",
+			"log": [
+				[
+					"no-source",
+					"plain"
+				],
+				[
+					"with-source",
+					"[u] plain"
+				],
+				[
+					"empty-desc",
+					"[p]"
+				]
+			]
+		},
+		{
+			"name": "pure.builtin-command-conflict-diagnostics",
+			"log": [
+				[
+					"result",
+					[
+						{
+							"type": "warning",
+							"message": "Extension command '/model' conflicts with built-in interactive command. Skipping in autocomplete.",
+							"path": "/ext/a.ts"
+						},
+						{
+							"type": "warning",
+							"message": "Extension command '/settings' conflicts with built-in interactive command. Available as '/my-settings'.",
+							"path": "/ext/b.ts"
+						}
+					]
+				]
+			]
+		},
+		{
+			"name": "paths.short-path",
+			"log": [
+				[
+					"plain",
+					"~/proj/file.ts"
+				],
+				[
+					"home",
+					"~/file.ts"
+				],
+				[
+					"package",
+					"dist/ext/index.js"
+				],
+				[
+					"package-external-under-root",
+					"../pkg-other/ext.js"
+				],
+				[
+					"npm-source",
+					"x.ts"
+				],
+				[
+					"npm-source-no-match",
+					"/elsewhere/x.ts"
+				],
+				[
+					"no-source-info",
+					"/work/project/a/b.ts"
+				]
+			]
+		},
+		{
+			"name": "paths.compact-labels",
+			"log": [
+				[
+					"path",
+					"file.ts"
+				],
+				[
+					"path-empty-segments",
+					""
+				],
+				[
+					"package-source",
+					"@scope/pkg"
+				],
+				[
+					"package-source-git",
+					"o/r"
+				],
+				[
+					"package-source-bare",
+					"local"
+				],
+				[
+					"ext-label-package",
+					"@scope/pkg"
+				],
+				[
+					"ext-label-package-subdir",
+					"@scope/pkg:tools/run.js"
+				],
+				[
+					"ext-label-nonpackage",
+					"my.ts"
+				]
+			]
+		},
+		{
+			"name": "paths.compact-extension-labels",
+			"log": [
+				[
+					"labels",
+					[
+						"alpha.ts",
+						"beta",
+						"gamma",
+						"@scope/pkg",
+						"single.ts"
+					]
+				]
+			]
+		},
+		{
+			"name": "paths.display-source-info-and-scope",
+			"log": [
+				[
+					"undefined",
+					{
+						"label": "project",
+						"color": "muted"
+					}
+				],
+				[
+					"local-user",
+					{
+						"label": "user",
+						"color": "muted"
+					}
+				],
+				[
+					"local-project",
+					{
+						"label": "project",
+						"color": "muted"
+					}
+				],
+				[
+					"local-temporary",
+					{
+						"label": "path",
+						"scopeLabel": "temp",
+						"color": "muted"
+					}
+				],
+				[
+					"cli",
+					{
+						"label": "path",
+						"color": "muted"
+					}
+				],
+				[
+					"cli-temp",
+					{
+						"label": "path",
+						"scopeLabel": "temp",
+						"color": "muted"
+					}
+				],
+				[
+					"npm",
+					{
+						"label": "npm:pkg",
+						"scopeLabel": "project",
+						"color": "accent"
+					}
+				],
+				[
+					"scope",
+					"user",
+					"project",
+					"path",
+					"path",
+					"project"
+				]
+			]
+		},
+		{
+			"name": "paths.scope-groups",
+			"log": [
+				[
+					"groups",
+					[
+						{
+							"scope": "project",
+							"paths": [
+								{
+									"path": "/work/project/b.ts"
+								},
+								{
+									"path": "/work/project/a.ts"
+								}
+							],
+							"packages": {
+								"npm:p": [
+									{
+										"path": "/work/project/node_modules/p/extensions/e.js",
+										"sourceInfo": {
+											"baseDir": "/work/project/node_modules/p",
+											"source": "npm:p",
+											"scope": "project"
+										}
+									},
+									{
+										"path": "/work/project/node_modules/p/extensions/a.js",
+										"sourceInfo": {
+											"baseDir": "/work/project/node_modules/p",
+											"source": "npm:p",
+											"scope": "project"
+										}
+									}
+								]
+							}
+						},
+						{
+							"scope": "user",
+							"paths": [
+								{
+									"path": "/home/u/.pi/skills/s.md",
+									"sourceInfo": {
+										"scope": "user",
+										"source": "local"
+									}
+								}
+							],
+							"packages": {}
+						},
+						{
+							"scope": "path",
+							"paths": [
+								{
+									"path": "/tmp/x.ts",
+									"sourceInfo": {
+										"scope": "temporary",
+										"source": "cli"
+									}
+								}
+							],
+							"packages": {}
+						}
+					]
+				],
+				[
+					"formatted",
+					"  project\n    /work/project/a.ts\n    /work/project/b.ts\n    npm:p\n      /work/project/node_modules/p/extensions/a.js\n      /work/project/node_modules/p/extensions/e.js\n  user\n    /home/u/.pi/skills/s.md\n  path\n    /tmp/x.ts"
+				]
+			]
+		},
+		{
+			"name": "paths.find-source-info",
+			"log": [
+				[
+					"exact",
+					true
+				],
+				[
+					"parent",
+					{
+						"baseDir": "/work/project/node_modules/p",
+						"source": "npm:p",
+						"scope": "project"
+					}
+				],
+				[
+					"missing",
+					null
+				]
+			]
+		},
+		{
+			"name": "paths.format-path-with-source",
+			"log": [
+				[
+					"with-source",
+					"npm:p (project) ext.js"
+				],
+				[
+					"user-scope",
+					"user ~/.pi/x.md"
+				],
+				[
+					"temp-scope",
+					"path (temp) /tmp/y.md"
+				],
+				[
+					"no-source",
+					"/outside/path.md"
+				]
+			]
+		},
+		{
+			"name": "paths.format-diagnostics",
+			"log": [
+				[
+					"out",
+					"  \"review\" collision:\n    ✓ project /work/project/skills/a.md\n    ✗ /work/project/skills/other/review.md (skipped)\n    ✗ /work/project/skills/other/review.md (skipped)\n  project /work/project/skills/a.md\n    bad frontmatter\n  load failed"
+				]
+			]
+		},
+		{
+			"name": "paths.format-display-helpers",
+			"log": [
+				[
+					"display",
+					"~/x.ts"
+				],
+				[
+					"display-other",
+					"/var/x.ts"
+				],
+				[
+					"extension",
+					"~/pack/extensions"
+				],
+				[
+					"extension-js",
+					"/var/pack/extensions"
+				],
+				[
+					"context",
+					"AGENTS.md"
+				],
+				[
+					"context-absolute",
+					"C:\\outside\\AGENTS.md"
+				],
+				[
+					"startup-expansion",
+					false
+				]
+			]
+		},
+		{
+			"name": "paths.show-loaded-resources",
+			"log": [
+				[
+					"Container.clear",
+					"loadedResources"
+				],
+				[
+					"Container.addChild",
+					"loadedResources",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"loadedResources",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;240;198;116m[Context]\u001b[39m\n\u001b[38;2;102;102;102m  /work/project/AGENTS.md\u001b[39m",
+						"paddingX": 0,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"loadedResources",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"loadedResources",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;240;198;116m[Skills]\u001b[39m\n  \u001b[38;2;138;190;183mproject\u001b[39m\n\u001b[38;2;102;102;102m    /work/project/skills/review.md\u001b[39m\n    \u001b[38;2;129;162;190mnpm:p\u001b[39m\n\u001b[38;2;102;102;102m      skills/deploy.md\u001b[39m",
+						"paddingX": 0,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"loadedResources",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"loadedResources",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;240;198;116m[Extensions]\u001b[39m\n  \u001b[38;2;138;190;183mproject\u001b[39m\n\u001b[38;2;102;102;102m    /work/project/exts/one.ts\u001b[39m\n    \u001b[38;2;129;162;190mnpm:p\u001b[39m\n\u001b[38;2;102;102;102m      extensions\u001b[39m",
+						"paddingX": 0,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"loadedResources",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"loadedResources",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;240;198;116m[Themes]\u001b[39m\n  \u001b[38;2;138;190;183mproject\u001b[39m\n\u001b[38;2;102;102;102m    /work/project/themes/solarized.json\u001b[39m",
+						"paddingX": 0,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"loadedResources",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"loadedResources",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;255;255;0m[Skill conflicts]\u001b[39m\n\u001b[38;2;255;255;0m  \"review\" collision:\u001b[39m\n\u001b[38;2;102;102;102m    \u001b[38;2;181;189;104m✓\u001b[39m project /work/project/skills/review.md\u001b[39m\n\u001b[38;2;102;102;102m    \u001b[38;2;255;255;0m✗\u001b[39m project /work/project/skills/review.md (skipped)\u001b[39m",
+						"paddingX": 0,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"loadedResources",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"loadedResources",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;255;255;0m[Extension issues]\u001b[39m\n\u001b[38;2;204;102;102m  /work/project/exts/broken.ts\u001b[39m\n\u001b[38;2;204;102;102m    syntax error\u001b[39m\n\u001b[38;2;255;255;0m  /ext/x.ts\u001b[39m\n\u001b[38;2;255;255;0m    conflicting command\u001b[39m",
+						"paddingX": 0,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"loadedResources",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"children",
+					[
+						{
+							"height": 1
+						},
+						{
+							"text": "\u001b[38;2;240;198;116m[Context]\u001b[39m\n\u001b[38;2;102;102;102m  /work/project/AGENTS.md\u001b[39m",
+							"paddingX": 0,
+							"paddingY": 0,
+							"getCollapsedText": "function",
+							"getExpandedText": "function"
+						},
+						{
+							"height": 1
+						},
+						{
+							"text": "\u001b[38;2;240;198;116m[Skills]\u001b[39m\n  \u001b[38;2;138;190;183mproject\u001b[39m\n\u001b[38;2;102;102;102m    /work/project/skills/review.md\u001b[39m\n    \u001b[38;2;129;162;190mnpm:p\u001b[39m\n\u001b[38;2;102;102;102m      skills/deploy.md\u001b[39m",
+							"paddingX": 0,
+							"paddingY": 0,
+							"getCollapsedText": "function",
+							"getExpandedText": "function"
+						},
+						{
+							"height": 1
+						},
+						{
+							"text": "\u001b[38;2;240;198;116m[Extensions]\u001b[39m\n  \u001b[38;2;138;190;183mproject\u001b[39m\n\u001b[38;2;102;102;102m    /work/project/exts/one.ts\u001b[39m\n    \u001b[38;2;129;162;190mnpm:p\u001b[39m\n\u001b[38;2;102;102;102m      extensions\u001b[39m",
+							"paddingX": 0,
+							"paddingY": 0,
+							"getCollapsedText": "function",
+							"getExpandedText": "function"
+						},
+						{
+							"height": 1
+						},
+						{
+							"text": "\u001b[38;2;240;198;116m[Themes]\u001b[39m\n  \u001b[38;2;138;190;183mproject\u001b[39m\n\u001b[38;2;102;102;102m    /work/project/themes/solarized.json\u001b[39m",
+							"paddingX": 0,
+							"paddingY": 0,
+							"getCollapsedText": "function",
+							"getExpandedText": "function"
+						},
+						{
+							"height": 1
+						},
+						{
+							"text": "\u001b[38;2;255;255;0m[Skill conflicts]\u001b[39m\n\u001b[38;2;255;255;0m  \"review\" collision:\u001b[39m\n\u001b[38;2;102;102;102m    \u001b[38;2;181;189;104m✓\u001b[39m project /work/project/skills/review.md\u001b[39m\n\u001b[38;2;102;102;102m    \u001b[38;2;255;255;0m✗\u001b[39m project /work/project/skills/review.md (skipped)\u001b[39m",
+							"paddingX": 0,
+							"paddingY": 0
+						},
+						{
+							"height": 1
+						},
+						{
+							"text": "\u001b[38;2;255;255;0m[Extension issues]\u001b[39m\n\u001b[38;2;204;102;102m  /work/project/exts/broken.ts\u001b[39m\n\u001b[38;2;204;102;102m    syntax error\u001b[39m\n\u001b[38;2;255;255;0m  /ext/x.ts\u001b[39m\n\u001b[38;2;255;255;0m    conflicting command\u001b[39m",
+							"paddingX": 0,
+							"paddingY": 0
+						},
+						{
+							"height": 1
+						}
+					]
+				]
+			]
+		},
+		{
+			"name": "cycle.thinking-supported",
+			"log": [
+				[
+					"footer.invalidate"
+				],
+				[
+					"defaultEditor.borderColor",
+					"color:thinkingMedium"
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;102;102;102mThinking level: high\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"ui.requestRender"
+				]
+			]
+		},
+		{
+			"name": "cycle.thinking-unsupported",
+			"log": [
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;102;102;102mCurrent model does not support thinking\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"ui.requestRender"
+				]
+			]
+		},
+		{
+			"name": "cycle.model-success",
+			"log": [
+				[
+					"footer.invalidate"
+				],
+				[
+					"defaultEditor.borderColor",
+					"color:thinkingMedium"
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;102;102;102mSwitched to Claude\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;204;102;102mError: this.maybeWarnAboutAnthropicSubscriptionAuth is not a function\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"ui.requestRender"
+				]
+			]
+		},
+		{
+			"name": "cycle.model-success-thinking-off",
+			"log": [
+				[
+					"footer.invalidate"
+				],
+				[
+					"defaultEditor.borderColor",
+					"color:thinkingMedium"
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;102;102;102mSwitched to m1\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;204;102;102mError: this.maybeWarnAboutAnthropicSubscriptionAuth is not a function\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"ui.requestRender"
+				]
+			]
+		},
+		{
+			"name": "cycle.model-single-in-scope",
+			"log": [
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;102;102;102mOnly one model in scope\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"ui.requestRender"
+				]
+			]
+		},
+		{
+			"name": "cycle.model-single-available",
+			"log": [
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;102;102;102mOnly one model available\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"ui.requestRender"
+				]
+			]
+		},
+		{
+			"name": "cycle.model-error",
+			"log": [
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;204;102;102mError: no models\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"ui.requestRender"
+				]
+			]
+		},
+		{
+			"name": "cycle.model-custom-error",
+			"log": [
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;204;102;102mError: string error\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"ui.requestRender"
+				]
+			]
+		},
+		{
+			"name": "toggle.tool-output",
+			"log": [
+				[
+					"Container.addChild",
+					"chat",
+					"[object Object]"
+				],
+				[
+					"header.setExpanded",
+					true
+				],
+				[
+					"child.setExpanded",
+					true
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;102;102;102mTool output: expanded\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"header.setExpanded",
+					false
+				],
+				[
+					"child.setExpanded",
+					false
+				],
+				[
+					"Text.setText",
+					"\u001b[38;2;102;102;102mTool output: expanded\u001b[39m",
+					"\u001b[38;2;102;102;102mTool output: collapsed\u001b[39m"
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"final",
+					false
+				]
+			]
+		},
+		{
+			"name": "toggle.thinking-blocks",
+			"log": [
+				[
+					"Container.addChild",
+					"chat",
+					"[object Object]"
+				],
+				[
+					"settings.setHideThinkingBlock",
+					true
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;102;102;102mThinking blocks: hidden\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"final",
+					true
+				]
+			]
+		},
+		{
+			"name": "toggle.hidden-thinking-label",
+			"log": [
+				[
+					"Container.addChild",
+					"chat",
+					"[object Object]"
+				],
+				[
+					"streaming.setHiddenThinkingLabel",
+					"Eliding..."
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"streaming.setHiddenThinkingLabel",
+					"Thinking..."
+				],
+				[
+					"ui.requestRender"
+				]
+			]
+		},
+		{
+			"name": "working.visible-false",
+			"log": [
+				[
+					"ui.requestRender"
+				]
+			]
+		},
+		{
+			"name": "working.visible-true-while-streaming",
+			"log": [
+				[
+					"new WorkingStatusIndicator",
+					{
+						"kind": "ui"
+					},
+					"Working",
+					"undefined",
+					"function"
+				],
+				[
+					"Container.clear",
+					"status"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					"undefined"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					"undefined"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					"undefined"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					{
+						"kind": "WorkingStatusIndicator"
+					}
+				],
+				[
+					"ui.requestRender"
+				]
+			]
+		},
+		{
+			"name": "working.indicator-options",
+			"log": [
+				[
+					"ui.requestRender"
+				],
+				[
+					"ui.requestRender"
+				]
+			]
+		},
+		{
+			"name": "working.status-indicator-lifecycle",
+			"log": [
+				[
+					"Container.clear",
+					"status"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					"undefined"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					"undefined"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					"undefined"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					{
+						"kind": "working",
+						"dispose": "function",
+						"invalidate": "function",
+						"setMessage": "function",
+						"setIndicator": "function"
+					}
+				],
+				[
+					"indicator.dispose"
+				],
+				[
+					"Container.clear",
+					"status"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					"undefined"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					"undefined"
+				],
+				[
+					"children",
+					[]
+				]
+			]
+		},
+		{
+			"name": "working.show-working-indicator-non-embedded",
+			"log": [
+				[
+					"new WorkingStatusIndicator",
+					{
+						"kind": "ui"
+					},
+					"Working",
+					"undefined",
+					"undefined"
+				],
+				[
+					"Container.clear",
+					"status"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					"undefined"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					"undefined"
+				],
+				[
+					"Container.addChild",
+					"status",
+					{
+						"kind": "WorkingStatusIndicator"
+					}
+				],
+				[
+					"embedded",
+					false
+				],
+				[
+					"children",
+					[
+						{
+							"kind": "WorkingStatusIndicator"
+						}
+					]
+				]
+			]
+		},
+		{
+			"name": "working.editor-embedded",
+			"log": [
+				[
+					"Container.clear",
+					"status"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					"undefined"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					"undefined"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					"undefined"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					{
+						"kind": "working",
+						"dispose": "function",
+						"setMessage": "function"
+					}
+				],
+				[
+					"embedded",
+					true
+				]
+			]
+		},
+		{
+			"name": "extension.set-status",
+			"log": [
+				[
+					"footerDataProvider.setExtensionStatus",
+					"k1",
+					"text"
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"footerDataProvider.setExtensionStatus",
+					"k1",
+					"undefined"
+				],
+				[
+					"ui.requestRender"
+				]
+			]
+		},
+		{
+			"name": "wire.markdown-theme-and-transformers",
+			"log": [
+				[
+					"theme",
+					{
+						"tag": "markdownTheme",
+						"codeBlockIndent": "  "
+					}
+				],
+				[
+					"transformers",
+					[
+						{
+							"tag": "mermaid"
+						},
+						{
+							"tag": "extTransformer"
+						}
+					]
+				],
+				[
+					"toolDef",
+					{
+						"name": "bash",
+						"def": {
+							"name": "bash",
+							"builtIn": true
+						},
+						"via": "builtInRenderers"
+					}
+				]
+			]
+		},
+		{
+			"name": "wire.update-terminal-title",
+			"log": [
+				[
+					"terminal.setTitle",
+					"Pi - project"
+				],
+				[
+					"terminal.setTitle",
+					"Pi - named session - project"
+				]
+			]
+		},
+		{
+			"name": "wire.changelog-resumed-session",
+			"log": [
+				[
+					"result",
+					null
+				]
+			]
+		},
+		{
+			"name": "wire.changelog-fresh-install",
+			"log": [
+				[
+					"settings.setLastChangelogVersion",
+					"1.2.3"
+				],
+				[
+					"result",
+					null
+				]
+			]
+		},
+		{
+			"name": "wire.changelog-new-entries",
+			"log": [
+				[
+					"settings.setLastChangelogVersion",
+					"1.2.3"
+				],
+				[
+					"result",
+					"old\n\nolder"
+				]
+			]
+		},
+		{
+			"name": "wire.changelog-no-new-entries",
+			"log": [
+				[
+					"result",
+					null
+				]
+			]
+		},
+		{
+			"name": "wire.update-available-provider-count",
+			"log": [
+				[
+					"footerDataProvider.setAvailableProviderCount",
+					0
+				]
+			]
+		},
+		{
+			"name": "wire.autocomplete-provider",
+			"log": [
+				[
+					"new CombinedAutocompleteProvider",
+					[
+						{
+							"name": "model",
+							"description": "Switch AI model",
+							"argumentHint": "[term]",
+							"getArgumentCompletions": "function"
+						},
+						{
+							"name": "thinking",
+							"description": "Set thinking level",
+							"getArgumentCompletions": "function"
+						},
+						{
+							"name": "settings",
+							"description": "Open settings"
+						}
+					],
+					"/work/project",
+					"undefined"
+				],
+				[
+					"defaultEditor.setAutocompleteProvider",
+					"provider"
+				],
+				[
+					"wrappers-empty",
+					0
+				]
+			]
+		},
+		{
+			"name": "wire.base-autocomplete-provider",
+			"log": [
+				[
+					"new CombinedAutocompleteProvider",
+					[
+						{
+							"name": "model",
+							"description": "Switch AI model",
+							"argumentHint": "[term]",
+							"getArgumentCompletions": "function"
+						},
+						{
+							"name": "thinking",
+							"description": "Set thinking level",
+							"getArgumentCompletions": "function"
+						},
+						{
+							"name": "settings",
+							"description": "Open settings"
+						}
+					],
+					"/work/project",
+					"undefined"
+				],
+				[
+					"skillCommands",
+					{}
+				]
+			]
+		},
+		{
+			"name": "wire.tmux-check-disabled",
+			"log": [
+				[
+					"result",
+					null
+				]
+			]
+		},
+		{
+			"name": "wire.package-updates-offline",
+			"log": [
+				[
+					"new DefaultPackageManager",
+					{
+						"cwd": "/work/project",
+						"agentDir": "/home/u/.pi/agent",
+						"settingsManager": {
+							"getQuietStartup": "function",
+							"getShowTerminalProgress": "function",
+							"getDoubleEscapeAction": "function",
+							"getHideThinkingBlock": "function",
+							"getShowCacheMissNotices": "function",
+							"getCollapseChangelog": "function",
+							"getOutputPad": "function",
+							"getEditorPaddingX": "function",
+							"getAutocompleteMaxVisible": "function",
+							"getClearOnShrink": "function",
+							"getShowHardwareCursor": "function",
+							"getFullscreenScrollbar": "function",
+							"getFullscreenCopyOnSelect": "function",
+							"getFullscreenExitOutput": "function",
+							"getCodeBlockIndent": "function",
+							"getTerminalCapabilityOverrides": "function",
+							"getHttpIdleTimeoutMs": "function",
+							"getMermaidRenderingMode": "function",
+							"getEnableSkillCommands": "function",
+							"getLastChangelogVersion": "function",
+							"getShowImages": "function",
+							"getImageWidthCells": "function",
+							"isProjectTrusted": "function",
+							"getTheme": "function",
+							"setLastChangelogVersion": "function",
+							"setHideThinkingBlock": "function"
+						}
+					}
+				],
+				[
+					"result",
+					[
+						"pkg-a"
+					]
+				]
+			]
+		},
+		{
+			"name": "wire.package-updates-found",
+			"log": [
+				[
+					"new DefaultPackageManager",
+					{
+						"cwd": "/work/project",
+						"agentDir": "/home/u/.pi/agent",
+						"settingsManager": {
+							"getQuietStartup": "function",
+							"getShowTerminalProgress": "function",
+							"getDoubleEscapeAction": "function",
+							"getHideThinkingBlock": "function",
+							"getShowCacheMissNotices": "function",
+							"getCollapseChangelog": "function",
+							"getOutputPad": "function",
+							"getEditorPaddingX": "function",
+							"getAutocompleteMaxVisible": "function",
+							"getClearOnShrink": "function",
+							"getShowHardwareCursor": "function",
+							"getFullscreenScrollbar": "function",
+							"getFullscreenCopyOnSelect": "function",
+							"getFullscreenExitOutput": "function",
+							"getCodeBlockIndent": "function",
+							"getTerminalCapabilityOverrides": "function",
+							"getHttpIdleTimeoutMs": "function",
+							"getMermaidRenderingMode": "function",
+							"getEnableSkillCommands": "function",
+							"getLastChangelogVersion": "function",
+							"getShowImages": "function",
+							"getImageWidthCells": "function",
+							"isProjectTrusted": "function",
+							"getTheme": "function",
+							"setLastChangelogVersion": "function",
+							"setHideThinkingBlock": "function"
+						}
+					}
+				],
+				[
+					"result",
+					[
+						"pkg-a"
+					]
+				]
+			]
+		},
+		{
+			"name": "rebind.ordering",
+			"log": [
+				[
+					"setCapabilityOverrides",
+					{}
+				],
+				[
+					"configureHttpDispatcher",
+					30000
+				],
+				[
+					"footer.setSession",
+					"object"
+				],
+				[
+					"footer.setAutoCompactEnabled",
+					true
+				],
+				[
+					"footerDataProvider.setCwd",
+					"/work/project"
+				],
+				[
+					"ui.setShowHardwareCursor",
+					false
+				],
+				[
+					"ui.setClearOnShrink",
+					true
+				],
+				[
+					"defaultEditor.setPaddingX",
+					2
+				],
+				[
+					"defaultEditor.setAutocompleteMaxVisible",
+					6
+				],
+				[
+					"session.bindExtensions",
+					{
+						"uiContext": {
+							"select": "function",
+							"confirm": "function",
+							"input": "function",
+							"notify": "function",
+							"onTerminalInput": "function",
+							"setStatus": "function",
+							"setWorkingMessage": "function",
+							"setWorkingVisible": "function",
+							"setWorkingIndicator": "function",
+							"setHiddenThinkingLabel": "function",
+							"setWidget": "function",
+							"setFooter": "function",
+							"setHeader": "function",
+							"setTitle": "function",
+							"custom": "function",
+							"pasteToEditor": "function",
+							"setEditorText": "function",
+							"getEditorText": "function",
+							"editor": "function",
+							"addAutocompleteProvider": "function",
+							"setEditorComponent": "function",
+							"getEditorComponent": "function",
+							"theme": {
+								"name": "dark",
+								"fg": "function",
+								"bg": "function",
+								"bold": "function",
+								"italic": "function",
+								"getThinkingBorderColor": "function",
+								"getBashModeBorderColor": "function"
+							},
+							"getAllThemes": "function",
+							"getTheme": "function",
+							"setTheme": "function",
+							"getToolsExpanded": "function",
+							"setToolsExpanded": "function"
+						},
+						"mode": "tui",
+						"abortHandler": "function",
+						"commandContextActions": {
+							"waitForIdle": "function",
+							"newSession": "function",
+							"fork": "function",
+							"navigateTree": "function",
+							"switchSession": "function",
+							"reload": "function"
+						},
+						"shutdownHandler": "function",
+						"onError": "function"
+					}
+				],
+				[
+					"setRegisteredThemes",
+					[]
+				],
+				[
+					"new CombinedAutocompleteProvider",
+					[
+						{
+							"name": "model",
+							"description": "Switch AI model",
+							"argumentHint": "[term]",
+							"getArgumentCompletions": "function"
+						},
+						{
+							"name": "thinking",
+							"description": "Set thinking level",
+							"getArgumentCompletions": "function"
+						},
+						{
+							"name": "settings",
+							"description": "Open settings"
+						}
+					],
+					"/work/project",
+					"undefined"
+				],
+				[
+					"defaultEditor.setAutocompleteProvider",
+					"provider"
+				],
+				[
+					"Container.clear",
+					"loadedResources"
+				],
+				[
+					"session.subscribe"
+				],
+				[
+					"footerDataProvider.setAvailableProviderCount",
+					0
+				],
+				[
+					"defaultEditor.borderColor",
+					"color:thinkingMedium"
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"terminal.setTitle",
+					"Pi - project"
+				]
+			]
+		},
+		{
+			"name": "rebind.render-before-bind",
+			"log": [
+				[
+					"setCapabilityOverrides",
+					{}
+				],
+				[
+					"configureHttpDispatcher",
+					30000
+				],
+				[
+					"footer.setSession",
+					"object"
+				],
+				[
+					"footer.setAutoCompactEnabled",
+					true
+				],
+				[
+					"footerDataProvider.setCwd",
+					"/work/project"
+				],
+				[
+					"ui.setShowHardwareCursor",
+					false
+				],
+				[
+					"ui.setClearOnShrink",
+					true
+				],
+				[
+					"defaultEditor.setPaddingX",
+					2
+				],
+				[
+					"defaultEditor.setAutocompleteMaxVisible",
+					6
+				],
+				[
+					"Container.clear",
+					"loadedResources"
+				],
+				[
+					"Container.clear",
+					"chat"
+				],
+				[
+					"Container.clear",
+					"pendingMessages"
+				],
+				[
+					"footer.invalidate"
+				],
+				[
+					"defaultEditor.borderColor",
+					"color:thinkingMedium"
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"session.subscribe"
+				],
+				[
+					"session.bindExtensions",
+					{
+						"uiContext": {
+							"select": "function",
+							"confirm": "function",
+							"input": "function",
+							"notify": "function",
+							"onTerminalInput": "function",
+							"setStatus": "function",
+							"setWorkingMessage": "function",
+							"setWorkingVisible": "function",
+							"setWorkingIndicator": "function",
+							"setHiddenThinkingLabel": "function",
+							"setWidget": "function",
+							"setFooter": "function",
+							"setHeader": "function",
+							"setTitle": "function",
+							"custom": "function",
+							"pasteToEditor": "function",
+							"setEditorText": "function",
+							"getEditorText": "function",
+							"editor": "function",
+							"addAutocompleteProvider": "function",
+							"setEditorComponent": "function",
+							"getEditorComponent": "function",
+							"theme": {
+								"name": "dark",
+								"fg": "function",
+								"bg": "function",
+								"bold": "function",
+								"italic": "function",
+								"getThinkingBorderColor": "function",
+								"getBashModeBorderColor": "function"
+							},
+							"getAllThemes": "function",
+							"getTheme": "function",
+							"setTheme": "function",
+							"getToolsExpanded": "function",
+							"setToolsExpanded": "function"
+						},
+						"mode": "tui",
+						"abortHandler": "function",
+						"commandContextActions": {
+							"waitForIdle": "function",
+							"newSession": "function",
+							"fork": "function",
+							"navigateTree": "function",
+							"switchSession": "function",
+							"reload": "function"
+						},
+						"shutdownHandler": "function",
+						"onError": "function"
+					}
+				],
+				[
+					"setRegisteredThemes",
+					[]
+				],
+				[
+					"new CombinedAutocompleteProvider",
+					[
+						{
+							"name": "model",
+							"description": "Switch AI model",
+							"argumentHint": "[term]",
+							"getArgumentCompletions": "function"
+						},
+						{
+							"name": "thinking",
+							"description": "Set thinking level",
+							"getArgumentCompletions": "function"
+						},
+						{
+							"name": "settings",
+							"description": "Open settings"
+						}
+					],
+					"/work/project",
+					"undefined"
+				],
+				[
+					"defaultEditor.setAutocompleteProvider",
+					"provider"
+				],
+				[
+					"Container.clear",
+					"loadedResources"
+				],
+				[
+					"footerDataProvider.setAvailableProviderCount",
+					0
+				],
+				[
+					"defaultEditor.borderColor",
+					"color:thinkingMedium"
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"terminal.setTitle",
+					"Pi - project"
+				]
+			]
+		},
+		{
+			"name": "rebind.session-replaced-mid-bind",
+			"log": [
+				[
+					"setCapabilityOverrides",
+					{}
+				],
+				[
+					"configureHttpDispatcher",
+					30000
+				],
+				[
+					"footer.setSession",
+					"object"
+				],
+				[
+					"footer.setAutoCompactEnabled",
+					true
+				],
+				[
+					"footerDataProvider.setCwd",
+					"/work/project"
+				],
+				[
+					"ui.setShowHardwareCursor",
+					false
+				],
+				[
+					"ui.setClearOnShrink",
+					true
+				],
+				[
+					"defaultEditor.setPaddingX",
+					2
+				],
+				[
+					"defaultEditor.setAutocompleteMaxVisible",
+					6
+				],
+				[
+					"session.bindExtensions",
+					{
+						"uiContext": {
+							"select": "function",
+							"confirm": "function",
+							"input": "function",
+							"notify": "function",
+							"onTerminalInput": "function",
+							"setStatus": "function",
+							"setWorkingMessage": "function",
+							"setWorkingVisible": "function",
+							"setWorkingIndicator": "function",
+							"setHiddenThinkingLabel": "function",
+							"setWidget": "function",
+							"setFooter": "function",
+							"setHeader": "function",
+							"setTitle": "function",
+							"custom": "function",
+							"pasteToEditor": "function",
+							"setEditorText": "function",
+							"getEditorText": "function",
+							"editor": "function",
+							"addAutocompleteProvider": "function",
+							"setEditorComponent": "function",
+							"getEditorComponent": "function",
+							"theme": {
+								"name": "dark",
+								"fg": "function",
+								"bg": "function",
+								"bold": "function",
+								"italic": "function",
+								"getThinkingBorderColor": "function",
+								"getBashModeBorderColor": "function"
+							},
+							"getAllThemes": "function",
+							"getTheme": "function",
+							"setTheme": "function",
+							"getToolsExpanded": "function",
+							"setToolsExpanded": "function"
+						},
+						"mode": "tui",
+						"abortHandler": "function",
+						"commandContextActions": {
+							"waitForIdle": "function",
+							"newSession": "function",
+							"fork": "function",
+							"navigateTree": "function",
+							"switchSession": "function",
+							"reload": "function"
+						},
+						"shutdownHandler": "function",
+						"onError": "function"
+					}
+				],
+				[
+					"setRegisteredThemes",
+					[]
+				],
+				[
+					"new CombinedAutocompleteProvider",
+					[
+						{
+							"name": "model",
+							"description": "Switch AI model",
+							"argumentHint": "[term]",
+							"getArgumentCompletions": "function"
+						},
+						{
+							"name": "thinking",
+							"description": "Set thinking level",
+							"getArgumentCompletions": "function"
+						},
+						{
+							"name": "settings",
+							"description": "Open settings"
+						}
+					],
+					"/work/project",
+					"undefined"
+				],
+				[
+					"defaultEditor.setAutocompleteProvider",
+					"provider"
+				],
+				[
+					"Container.clear",
+					"loadedResources"
+				],
+				[
+					"session.subscribe"
+				],
+				[
+					"footerDataProvider.setAvailableProviderCount",
+					0
+				],
+				[
+					"defaultEditor.borderColor",
+					"color:thinkingMedium"
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"terminal.setTitle",
+					"Pi - project"
+				],
+				[
+					"same-session",
+					true
+				]
+			]
+		},
+		{
+			"name": "rebind.apply-runtime-settings",
+			"log": [
+				[
+					"setCapabilityOverrides",
+					{}
+				],
+				[
+					"configureHttpDispatcher",
+					30000
+				],
+				[
+					"footer.setSession",
+					"object"
+				],
+				[
+					"footer.setAutoCompactEnabled",
+					true
+				],
+				[
+					"footerDataProvider.setCwd",
+					"/work/project"
+				],
+				[
+					"ui.setShowHardwareCursor",
+					false
+				],
+				[
+					"ui.setClearOnShrink",
+					true
+				],
+				[
+					"defaultEditor.setPaddingX",
+					2
+				],
+				[
+					"defaultEditor.setAutocompleteMaxVisible",
+					6
+				]
+			]
+		},
+		{
+			"name": "rebind.render-current-state",
+			"log": [
+				[
+					"Container.clear",
+					"loadedResources"
+				],
+				[
+					"Container.clear",
+					"chat"
+				],
+				[
+					"Container.clear",
+					"pendingMessages"
+				],
+				[
+					"footer.invalidate"
+				],
+				[
+					"defaultEditor.borderColor",
+					"color:thinkingMedium"
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"queued",
+					0
+				]
+			]
+		},
+		{
+			"name": "rebind.fatal-runtime-error",
+			"log": [
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;204;102;102mError: Failed to fork session: boom\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"ui.requestRender"
+				]
+			]
+		},
+		{
+			"name": "rebind.bind-extensions",
+			"log": [
+				[
+					"session.bindExtensions",
+					{
+						"uiContext": {
+							"select": "function",
+							"confirm": "function",
+							"input": "function",
+							"notify": "function",
+							"onTerminalInput": "function",
+							"setStatus": "function",
+							"setWorkingMessage": "function",
+							"setWorkingVisible": "function",
+							"setWorkingIndicator": "function",
+							"setHiddenThinkingLabel": "function",
+							"setWidget": "function",
+							"setFooter": "function",
+							"setHeader": "function",
+							"setTitle": "function",
+							"custom": "function",
+							"pasteToEditor": "function",
+							"setEditorText": "function",
+							"getEditorText": "function",
+							"editor": "function",
+							"addAutocompleteProvider": "function",
+							"setEditorComponent": "function",
+							"getEditorComponent": "function",
+							"theme": {
+								"name": "dark",
+								"fg": "function",
+								"bg": "function",
+								"bold": "function",
+								"italic": "function",
+								"getThinkingBorderColor": "function",
+								"getBashModeBorderColor": "function"
+							},
+							"getAllThemes": "function",
+							"getTheme": "function",
+							"setTheme": "function",
+							"getToolsExpanded": "function",
+							"setToolsExpanded": "function"
+						},
+						"mode": "tui",
+						"abortHandler": "function",
+						"commandContextActions": {
+							"waitForIdle": "function",
+							"newSession": "function",
+							"fork": "function",
+							"navigateTree": "function",
+							"switchSession": "function",
+							"reload": "function"
+						},
+						"shutdownHandler": "function",
+						"onError": "function"
+					}
+				],
+				[
+					"setRegisteredThemes",
+					[]
+				],
+				[
+					"new CombinedAutocompleteProvider",
+					[
+						{
+							"name": "model",
+							"description": "Switch AI model",
+							"argumentHint": "[term]",
+							"getArgumentCompletions": "function"
+						},
+						{
+							"name": "thinking",
+							"description": "Set thinking level",
+							"getArgumentCompletions": "function"
+						},
+						{
+							"name": "settings",
+							"description": "Open settings"
+						}
+					],
+					"/work/project",
+					"undefined"
+				],
+				[
+					"defaultEditor.setAutocompleteProvider",
+					"provider"
+				],
+				[
+					"Container.clear",
+					"loadedResources"
+				]
+			]
+		},
+		{
+			"name": "rebind.bind-extensions-command-context",
+			"log": [
+				[
+					"session.bindExtensions",
+					{
+						"uiContext": {
+							"select": "function",
+							"confirm": "function",
+							"input": "function",
+							"notify": "function",
+							"onTerminalInput": "function",
+							"setStatus": "function",
+							"setWorkingMessage": "function",
+							"setWorkingVisible": "function",
+							"setWorkingIndicator": "function",
+							"setHiddenThinkingLabel": "function",
+							"setWidget": "function",
+							"setFooter": "function",
+							"setHeader": "function",
+							"setTitle": "function",
+							"custom": "function",
+							"pasteToEditor": "function",
+							"setEditorText": "function",
+							"getEditorText": "function",
+							"editor": "function",
+							"addAutocompleteProvider": "function",
+							"setEditorComponent": "function",
+							"getEditorComponent": "function",
+							"theme": {
+								"name": "dark",
+								"fg": "function",
+								"bg": "function",
+								"bold": "function",
+								"italic": "function",
+								"getThinkingBorderColor": "function",
+								"getBashModeBorderColor": "function"
+							},
+							"getAllThemes": "function",
+							"getTheme": "function",
+							"setTheme": "function",
+							"getToolsExpanded": "function",
+							"setToolsExpanded": "function"
+						},
+						"mode": "tui",
+						"abortHandler": "function",
+						"commandContextActions": {
+							"waitForIdle": "function",
+							"newSession": "function",
+							"fork": "function",
+							"navigateTree": "function",
+							"switchSession": "function",
+							"reload": "function"
+						},
+						"shutdownHandler": "function",
+						"onError": "function"
+					}
+				],
+				[
+					"setRegisteredThemes",
+					[]
+				],
+				[
+					"new CombinedAutocompleteProvider",
+					[
+						{
+							"name": "model",
+							"description": "Switch AI model",
+							"argumentHint": "[term]",
+							"getArgumentCompletions": "function"
+						},
+						{
+							"name": "thinking",
+							"description": "Set thinking level",
+							"getArgumentCompletions": "function"
+						},
+						{
+							"name": "settings",
+							"description": "Open settings"
+						}
+					],
+					"/work/project",
+					"undefined"
+				],
+				[
+					"defaultEditor.setAutocompleteProvider",
+					"provider"
+				],
+				[
+					"Container.clear",
+					"loadedResources"
+				]
+			]
+		},
+		{
+			"name": "extension.widgets",
+			"log": [
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Text",
+						"text": "line one",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Text",
+						"text": "line two",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.clear",
+					"widgetsAbove"
+				],
+				[
+					"Container.addChild",
+					"widgetsAbove",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"widgetsAbove",
+					"[object Object]"
+				],
+				[
+					"Container.clear",
+					"widgetsBelow"
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Text",
+						"text": "a",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.clear",
+					"widgetsAbove"
+				],
+				[
+					"Container.addChild",
+					"widgetsAbove",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"widgetsAbove",
+					"[object Object]"
+				],
+				[
+					"Container.clear",
+					"widgetsBelow"
+				],
+				[
+					"Container.addChild",
+					"widgetsBelow",
+					"[object Object]"
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"Container.clear",
+					"widgetsAbove"
+				],
+				[
+					"Container.addChild",
+					"widgetsAbove",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.clear",
+					"widgetsBelow"
+				],
+				[
+					"Container.addChild",
+					"widgetsBelow",
+					"[object Object]"
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Text",
+						"text": "b",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Text",
+						"text": "c",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Text",
+						"text": "d",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.clear",
+					"widgetsAbove"
+				],
+				[
+					"Container.addChild",
+					"widgetsAbove",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.clear",
+					"widgetsBelow"
+				],
+				[
+					"Container.addChild",
+					"widgetsBelow",
+					"[object Object]"
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"above",
+					{
+						"container": "widgetsAbove",
+						"children": [
+							{
+								"height": 1
+							}
+						]
+					}
+				],
+				[
+					"below",
+					{
+						"container": "widgetsBelow",
+						"children": [
+							{
+								"container": "container",
+								"children": [
+									{
+										"text": "b",
+										"paddingX": 1,
+										"paddingY": 0
+									},
+									{
+										"text": "c",
+										"paddingX": 1,
+										"paddingY": 0
+									},
+									{
+										"text": "d",
+										"paddingX": 1,
+										"paddingY": 0
+									}
+								]
+							}
+						]
+					}
+				]
+			]
+		},
+		{
+			"name": "extension.widgets-truncated",
+			"log": [
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Text",
+						"text": "line 0",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Text",
+						"text": "line 1",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Text",
+						"text": "line 2",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Text",
+						"text": "line 3",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Text",
+						"text": "line 4",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Text",
+						"text": "line 5",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Text",
+						"text": "line 6",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Text",
+						"text": "line 7",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Text",
+						"text": "line 8",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Text",
+						"text": "line 9",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;128;128;128m... (widget truncated)\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.clear",
+					"widgetsAbove"
+				],
+				[
+					"Container.addChild",
+					"widgetsAbove",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"widgetsAbove",
+					"[object Object]"
+				],
+				[
+					"Container.clear",
+					"widgetsBelow"
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"above",
+					{
+						"container": "widgetsAbove",
+						"children": [
+							{
+								"height": 1
+							},
+							{
+								"container": "container",
+								"children": [
+									{
+										"text": "line 0",
+										"paddingX": 1,
+										"paddingY": 0
+									},
+									{
+										"text": "line 1",
+										"paddingX": 1,
+										"paddingY": 0
+									},
+									{
+										"text": "line 2",
+										"paddingX": 1,
+										"paddingY": 0
+									},
+									{
+										"text": "line 3",
+										"paddingX": 1,
+										"paddingY": 0
+									},
+									{
+										"text": "line 4",
+										"paddingX": 1,
+										"paddingY": 0
+									},
+									{
+										"text": "line 5",
+										"paddingX": 1,
+										"paddingY": 0
+									},
+									{
+										"text": "line 6",
+										"paddingX": 1,
+										"paddingY": 0
+									},
+									{
+										"text": "line 7",
+										"paddingX": 1,
+										"paddingY": 0
+									},
+									{
+										"text": "line 8",
+										"paddingX": 1,
+										"paddingY": 0
+									},
+									{
+										"text": "line 9",
+										"paddingX": 1,
+										"paddingY": 0
+									},
+									{
+										"text": "\u001b[38;2;128;128;128m... (widget truncated)\u001b[39m",
+										"paddingX": 1,
+										"paddingY": 0
+									}
+								]
+							}
+						]
+					}
+				]
+			]
+		},
+		{
+			"name": "extension.widgets-cleared",
+			"log": [
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Text",
+						"text": "x",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.clear",
+					"widgetsAbove"
+				],
+				[
+					"Container.addChild",
+					"widgetsAbove",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"widgetsAbove",
+					"[object Object]"
+				],
+				[
+					"Container.clear",
+					"widgetsBelow"
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"Container.clear",
+					"widgetsAbove"
+				],
+				[
+					"Container.addChild",
+					"widgetsAbove",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.clear",
+					"widgetsBelow"
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"above",
+					{
+						"container": "widgetsAbove",
+						"children": [
+							{
+								"height": 1
+							}
+						]
+					}
+				]
+			]
+		},
+		{
+			"name": "extension.footer-swap",
+			"log": [
+				[
+					"Container.clear",
+					"footer"
+				],
+				[
+					"Container.addChild",
+					"footer",
+					{
+						"kind": "CustomFooter"
+					}
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"footerChildren",
+					{
+						"container": "footer",
+						"children": [
+							{
+								"kind": "CustomFooter"
+							}
+						]
+					}
+				],
+				[
+					"customFooter.dispose"
+				],
+				[
+					"Container.clear",
+					"footer"
+				],
+				[
+					"Container.addChild",
+					"footer",
+					"[object Object]"
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"footerChildren",
+					{
+						"container": "footer",
+						"children": [
+							{
+								"invalidate": "function",
+								"dispose": "function",
+								"setSession": "function",
+								"setAutoCompactEnabled": "function"
+							}
+						]
+					}
+				]
+			]
+		},
+		{
+			"name": "extension.header-swap",
+			"log": [
+				[
+					"Container.addChild",
+					"header",
+					{
+						"kind": "BuiltInHeader"
+					}
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"headerChildren",
+					{
+						"container": "header",
+						"children": [
+							{
+								"kind": "CustomHeader"
+							}
+						]
+					}
+				],
+				[
+					"customHeader.dispose"
+				],
+				[
+					"builtInHeader.setExpanded",
+					false
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"headerChildren",
+					{
+						"container": "header",
+						"children": [
+							{
+								"kind": "BuiltInHeader"
+							}
+						]
+					}
+				]
+			]
+		},
+		{
+			"name": "extension.header-before-init",
+			"log": []
+		},
+		{
+			"name": "extension.terminal-input-listeners",
+			"log": [
+				[
+					"ui.addInputListener",
+					"function"
+				],
+				[
+					"subscriptions",
+					1
+				],
+				[
+					"ui.removeInputListener"
+				],
+				[
+					"ui.addInputListener",
+					"function"
+				],
+				[
+					"ui.removeInputListener"
+				],
+				[
+					"subscriptions",
+					0
+				]
+			]
+		},
+		{
+			"name": "extension.custom-editor-swap",
+			"log": [
+				[
+					"Container.clear",
+					"editorContainer"
+				],
+				[
+					"customEditor.setText",
+					"saved text"
+				],
+				[
+					"customEditor.setPaddingX",
+					2
+				],
+				[
+					"customEditor.setAutocompleteMaxVisible",
+					6
+				],
+				[
+					"Container.addChild",
+					"editorContainer",
+					"[object Object]"
+				],
+				[
+					"ui.setFocus",
+					{
+						"_editorName": "<state>",
+						"_state": "<state>",
+						"onEscape": "function",
+						"onCtrlD": "function",
+						"onSubmit": "undefined",
+						"onChange": "undefined",
+						"onPasteImage": "function",
+						"onExtensionShortcut": "function",
+						"embedWorkingStatus": true,
+						"actionHandlers": {},
+						"getText": "function",
+						"getExpandedText": "function",
+						"setText": "function",
+						"addToHistory": "function",
+						"insertTextAtCursor": "function",
+						"handleInput": "function",
+						"setWorkingStatusIndicator": "function",
+						"setAutocompleteProvider": "function",
+						"setPaddingX": "function",
+						"getPaddingX": "function",
+						"setAutocompleteMaxVisible": "function",
+						"getAutocompleteMaxVisible": "function",
+						"onAction": "function"
+					}
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"editorIsCustom",
+					true
+				],
+				[
+					"customText",
+					"saved text"
+				],
+				[
+					"Container.clear",
+					"editorContainer"
+				],
+				[
+					"defaultEditor.setText",
+					"saved text"
+				],
+				[
+					"Container.addChild",
+					"editorContainer",
+					"[object Object]"
+				],
+				[
+					"ui.setFocus",
+					{
+						"_editorName": "<state>",
+						"_state": "<state>",
+						"onEscape": "undefined",
+						"onCtrlD": "undefined",
+						"onSubmit": "undefined",
+						"onChange": "undefined",
+						"onPasteImage": "undefined",
+						"onExtensionShortcut": "undefined",
+						"embedWorkingStatus": true,
+						"actionHandlers": {},
+						"getText": "function",
+						"getExpandedText": "function",
+						"setText": "function",
+						"addToHistory": "function",
+						"insertTextAtCursor": "function",
+						"handleInput": "function",
+						"setWorkingStatusIndicator": "function",
+						"setAutocompleteProvider": "function",
+						"setPaddingX": "function",
+						"getPaddingX": "function",
+						"setAutocompleteMaxVisible": "function",
+						"getAutocompleteMaxVisible": "function",
+						"onAction": "function"
+					}
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"editorIsDefault",
+					true
+				],
+				[
+					"defaultText",
+					"saved text"
+				]
+			]
+		},
+		{
+			"name": "extension.reset-ui",
+			"log": [
+				[
+					"ui.hideOverlay"
+				],
+				[
+					"Container.clear",
+					"footer"
+				],
+				[
+					"Container.addChild",
+					"footer",
+					"[object Object]"
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"Container.clear",
+					"widgetsAbove"
+				],
+				[
+					"Container.addChild",
+					"widgetsAbove",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.clear",
+					"widgetsBelow"
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"footerDataProvider.clearExtensionStatuses"
+				],
+				[
+					"footer.invalidate"
+				],
+				[
+					"Container.clear",
+					"editorContainer"
+				],
+				[
+					"defaultEditor.setText",
+					""
+				],
+				[
+					"Container.addChild",
+					"editorContainer",
+					"[object Object]"
+				],
+				[
+					"ui.setFocus",
+					{
+						"_editorName": "<state>",
+						"_state": "<state>",
+						"onEscape": "undefined",
+						"onCtrlD": "undefined",
+						"onSubmit": "undefined",
+						"onChange": "undefined",
+						"onPasteImage": "undefined",
+						"onExtensionShortcut": "undefined",
+						"embedWorkingStatus": true,
+						"actionHandlers": {},
+						"getText": "function",
+						"getExpandedText": "function",
+						"setText": "function",
+						"addToHistory": "function",
+						"insertTextAtCursor": "function",
+						"handleInput": "function",
+						"setWorkingStatusIndicator": "function",
+						"setAutocompleteProvider": "function",
+						"setPaddingX": "function",
+						"getPaddingX": "function",
+						"setAutocompleteMaxVisible": "function",
+						"getAutocompleteMaxVisible": "function",
+						"onAction": "function"
+					}
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"new CombinedAutocompleteProvider",
+					[
+						{
+							"name": "model",
+							"description": "Switch AI model",
+							"argumentHint": "[term]",
+							"getArgumentCompletions": "function"
+						},
+						{
+							"name": "thinking",
+							"description": "Set thinking level",
+							"getArgumentCompletions": "function"
+						},
+						{
+							"name": "settings",
+							"description": "Open settings"
+						}
+					],
+					"/work/project",
+					"undefined"
+				],
+				[
+					"defaultEditor.setAutocompleteProvider",
+					"provider"
+				],
+				[
+					"terminal.setTitle",
+					"Pi - project"
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"ui.requestRender"
+				]
+			]
+		},
+		{
+			"name": "extension.notify",
+			"log": [
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;102;102;102minfo msg\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;255;255;0mWarning: warn msg\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;204;102;102mError: error msg\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;102;102;102mdefault msg\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"children",
+					[
+						{
+							"height": 1
+						},
+						{
+							"text": "\u001b[38;2;102;102;102minfo msg\u001b[39m",
+							"paddingX": 1,
+							"paddingY": 0
+						},
+						{
+							"height": 1
+						},
+						{
+							"text": "\u001b[38;2;255;255;0mWarning: warn msg\u001b[39m",
+							"paddingX": 1,
+							"paddingY": 0
+						},
+						{
+							"height": 1
+						},
+						{
+							"text": "\u001b[38;2;204;102;102mError: error msg\u001b[39m",
+							"paddingX": 1,
+							"paddingY": 0
+						},
+						{
+							"height": 1
+						},
+						{
+							"text": "\u001b[38;2;102;102;102mdefault msg\u001b[39m",
+							"paddingX": 1,
+							"paddingY": 0
+						}
+					]
+				]
+			]
+		},
+		{
+			"name": "extension.error-with-stack",
+			"log": [
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;204;102;102mExtension \"/ext/a.ts\" error: boom\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"chat",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;102;102;102m  at f (/ext/a.ts:1:1)\u001b[39m\n\u001b[38;2;102;102;102m  at g (/ext/b.ts:2:2)\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"children",
+					[
+						{
+							"text": "\u001b[38;2;204;102;102mExtension \"/ext/a.ts\" error: boom\u001b[39m",
+							"paddingX": 1,
+							"paddingY": 0
+						},
+						{
+							"text": "\u001b[38;2;102;102;102m  at f (/ext/a.ts:1:1)\u001b[39m\n\u001b[38;2;102;102;102m  at g (/ext/b.ts:2:2)\u001b[39m",
+							"paddingX": 1,
+							"paddingY": 0
+						}
+					]
+				]
+			]
+		},
+		{
+			"name": "extension.selector-lifecycle",
+			"log": [
+				[
+					"selectorFactoryCalled"
+				],
+				[
+					"Container.clear",
+					"editorContainer"
+				],
+				[
+					"Container.addChild",
+					"editorContainer",
+					{
+						"kind": "SelectorStub"
+					}
+				],
+				[
+					"ui.setFocus",
+					{
+						"kind": "SelectorStub"
+					}
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"editorChildren",
+					{
+						"container": "editorContainer",
+						"children": [
+							{
+								"kind": "SelectorStub"
+							}
+						]
+					}
+				]
+			]
+		},
+		{
+			"name": "extension.selector-dispose-active",
+			"log": [
+				[
+					"Container.clear",
+					"editorContainer"
+				],
+				[
+					"Container.addChild",
+					"editorContainer",
+					{
+						"kind": "Selector1"
+					}
+				],
+				[
+					"ui.setFocus",
+					{
+						"kind": "Selector1"
+					}
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"selector1.dispose"
+				],
+				[
+					"Container.clear",
+					"editorContainer"
+				],
+				[
+					"Container.addChild",
+					"editorContainer",
+					{
+						"kind": "Selector2"
+					}
+				],
+				[
+					"ui.setFocus",
+					{
+						"kind": "Selector2"
+					}
+				],
+				[
+					"ui.requestRender"
+				],
+				[
+					"selector2.dispose"
+				],
+				[
+					"tokenCleared",
+					true
+				]
+			]
+		},
+		{
+			"name": "clipboard.paste-text",
+			"log": [
+				[
+					"defaultEditor.insertTextAtCursor",
+					"clip text"
+				],
+				[
+					"ui.requestRender"
+				]
+			]
+		},
+		{
+			"name": "clipboard.right-click-paste",
+			"log": [
+				[
+					"target.handleInput",
+					"\u001b[200~clip text\u001b[201~"
+				],
+				[
+					"ui.requestRender"
+				]
+			]
+		},
+		{
+			"name": "lifecycle.stop-regular",
+			"log": [
+				[
+					"Container.clear",
+					"status"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					"undefined"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					"undefined"
+				],
+				[
+					"themeController.disableAutoSync"
+				],
+				[
+					"footer.dispose"
+				],
+				[
+					"footerDataProvider.dispose"
+				],
+				[
+					"ui.stop",
+					{
+						"preserveScreen": false
+					}
+				],
+				[
+					"isInitialized",
+					false
+				]
+			]
+		},
+		{
+			"name": "lifecycle.stop-fullscreen-transcript",
+			"log": [
+				[
+					"switchResult",
+					false
+				],
+				[
+					"Container.clear",
+					"status"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					"undefined"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					"undefined"
+				],
+				[
+					"themeController.disableAutoSync"
+				],
+				[
+					"footer.dispose"
+				],
+				[
+					"footerDataProvider.dispose"
+				],
+				[
+					"renderer.hideOverlay"
+				],
+				[
+					"ui.stop",
+					{
+						"preserveScreen": true
+					}
+				],
+				[
+					"ui.setFocus",
+					null
+				],
+				[
+					"ui.clear"
+				],
+				[
+					"createInteractiveTui",
+					{
+						"tuiMode": "regular",
+						"showHardwareCursor": false,
+						"logDirectory": "/home/u/.pi/agent",
+						"terminal": {
+							"setProgress": "function",
+							"setTitle": "function",
+							"drainInput": "function"
+						},
+						"onRightClickPaste": "undefined",
+						"fullscreenCopyOnSelect": false
+					}
+				],
+				[
+					"ui.setClearOnShrink",
+					false
+				],
+				[
+					"ui.invalidate"
+				],
+				[
+					"ui.setFocus",
+					"undefined"
+				],
+				[
+					"ui.renderNow"
+				],
+				[
+					"ui.stop",
+					{
+						"preserveScreen": false
+					}
+				]
+			]
+		},
+		{
+			"name": "lifecycle.stop-idempotent-tui",
+			"log": [
+				[
+					"Container.clear",
+					"status"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					"undefined"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					"undefined"
+				],
+				[
+					"themeController.disableAutoSync"
+				],
+				[
+					"footer.dispose"
+				],
+				[
+					"footerDataProvider.dispose"
+				],
+				[
+					"ui.stop",
+					{
+						"preserveScreen": false
+					}
+				],
+				[
+					"isInitialized",
+					false
+				],
+				[
+					"Container.clear",
+					"status"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					"undefined"
+				],
+				[
+					"defaultEditor.setWorkingStatusIndicator",
+					"undefined"
+				],
+				[
+					"themeController.disableAutoSync"
+				],
+				[
+					"footer.dispose"
+				],
+				[
+					"footerDataProvider.dispose"
+				]
+			]
+		},
+		{
+			"name": "lifecycle.mount-interactive-tui",
+			"log": [
+				[
+					"renderer.addChild",
+					{
+						"container": "a",
+						"children": []
+					}
+				],
+				[
+					"renderer.addChild",
+					{
+						"container": "b",
+						"children": []
+					}
+				],
+				[
+					"rendererChildren",
+					0
+				]
+			]
+		},
+		{
+			"name": "lifecycle.subscribe-to-agent",
+			"log": [
+				[
+					"session.subscribe"
+				],
+				[
+					"unsubscribeSet",
+					true
+				],
+				[
+					"session.unsubscribe"
+				]
+			]
+		}
+	]
+}

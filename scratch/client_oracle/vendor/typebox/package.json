@@ -1,0 +1,9 @@
+{
+  "name": "typebox",
+  "version": "0.0.0-local-oracle",
+  "type": "module",
+  "exports": {
+    ".": "./index.mjs",
+    "./value": "./value.mjs"
+  }
+}

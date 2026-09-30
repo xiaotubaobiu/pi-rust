@@ -1,0 +1,276 @@
+{
+ "spinner_frames": {
+  "frames": [
+   [
+    "\u001b[?2026hHeader\u001b[0m\u001b]8;;\u0007\r\nWorking |\u001b[0m\u001b]8;;\u0007\r\nFooter\u001b[0m\u001b]8;;\u0007\u001b[?2026l",
+    "\u001b[?25l"
+   ],
+   [
+    "\u001b[?2026h\u001b[1A\r\u001b[2KWorking /\u001b[0m\u001b]8;;\u0007\u001b[?2026l",
+    "\u001b[?25l"
+   ],
+   [
+    "\u001b[?2026h\r\u001b[2KWorking -\u001b[0m\u001b]8;;\u0007\u001b[?2026l",
+    "\u001b[?25l"
+   ],
+   [
+    "\u001b[?2026h\r\u001b[2KWorking \\\u001b[0m\u001b]8;;\u0007\u001b[?2026l",
+    "\u001b[?25l"
+   ]
+  ]
+ },
+ "no_change_writes": [
+  "\u001b[?25l"
+ ],
+ "first_render": {
+  "writes": [
+   "\u001b[?25l",
+   "\u001b[?2026hLine 0\u001b[0m\u001b]8;;\u0007\r\nLine 1\u001b[0m\u001b]8;;\u0007\r\nLine 2\u001b[0m\u001b]8;;\u0007\u001b[?2026l",
+   "\u001b[?25l"
+  ],
+  "fullRedraws": 1
+ },
+ "stop_default_writes": [
+  " ",
+  "\u001b[1B",
+  "\r\n",
+  "\u001b[?25h"
+ ],
+ "render_after_stop_writes": [],
+ "stop_preserve_screen_writes": [
+  "\u001b[?25h"
+ ],
+ "nonadjacent_change_writes": [
+  "\u001b[?2026h\u001b[3A\r\u001b[2KCHANGED 1\u001b[0m\u001b]8;;\u0007\r\n\u001b[2KLine 2\u001b[0m\u001b]8;;\u0007\r\n\u001b[2KCHANGED 3\u001b[0m\u001b]8;;\u0007\u001b[?2026l",
+  "\u001b[?25l"
+ ],
+ "append_lines_writes": [
+  "\u001b[?2026h\u001b[1B\r\n\u001b[2KLine 5\u001b[0m\u001b]8;;\u0007\r\n\u001b[2KLine 6\u001b[0m\u001b]8;;\u0007\u001b[?2026l",
+  "\u001b[?25l"
+ ],
+ "delete_tail_lines_writes": [
+  "\u001b[?2026h\u001b[2A\r\u001b[1B\r\u001b[2K\u001b[1B\r\u001b[2K\u001b[2A\u001b[?2026l",
+  "\u001b[?25l"
+ ],
+ "shrink_then_change_writes": [
+  "\u001b[?2026h\u001b[3A\r\u001b[2KCHANGED\u001b[0m\u001b]8;;\u0007\r\n\u001b[2KLine 2\u001b[0m\u001b]8;;\u0007\r\n\u001b[2K\r\n\u001b[2K\u001b[2A\u001b[?2026l",
+  "\u001b[?25l"
+ ],
+ "first_line_change_writes": [
+  "\u001b[?2026h\u001b[2A\r\u001b[2KCHANGED\u001b[0m\u001b]8;;\u0007\r\n\u001b[2KLine 1\u001b[0m\u001b]8;;\u0007\u001b[?2026l",
+  "\u001b[?25l"
+ ],
+ "append_after_change_writes": [
+  "\u001b[?2026h\u001b[1B\r\n\u001b[2KLine 3\u001b[0m\u001b]8;;\u0007\u001b[?2026l",
+  "\u001b[?25l"
+ ],
+ "last_line_change_writes": [
+  "\u001b[?2026h\r\u001b[2KFINAL\u001b[0m\u001b]8;;\u0007\u001b[?2026l",
+  "\u001b[?25l"
+ ],
+ "shrink_to_empty_writes": [
+  "\u001b[?2026h\u001b[3A\r\r\u001b[2K\u001b[1B\r\u001b[2K\u001b[1B\r\u001b[2K\u001b[1B\r\u001b[2K\u001b[3A\u001b[?2026l",
+  "\u001b[?25l"
+ ],
+ "regrow_after_empty_writes": [
+  "\u001b[?2026hNew Line 0\u001b[0m\u001b]8;;\u0007\r\nNew Line 1\u001b[0m\u001b]8;;\u0007\u001b[?2026l",
+  "\u001b[?25l"
+ ],
+ "clear_on_shrink_writes": [
+  "\u001b[?2026h\u001b[2J\u001b[H\u001b[3JLine 0\u001b[0m\u001b]8;;\u0007\r\nLine 1\u001b[0m\u001b]8;;\u0007\u001b[?2026l",
+  "\u001b[?25l"
+ ],
+ "clear_on_shrink_delta": 1,
+ "clear_on_shrink_single_writes": [
+  "\u001b[?2026h\u001b[2J\u001b[H\u001b[3JOnly line\u001b[0m\u001b]8;;\u0007\u001b[?2026l",
+  "\u001b[?25l"
+ ],
+ "clear_on_shrink_empty_writes": [
+  "\u001b[?2026h\u001b[2J\u001b[H\u001b[3J\u001b[?2026l",
+  "\u001b[?25l"
+ ],
+ "clear_children_writes": [
+  "\u001b[?2026h\u001b[2A\r\r\u001b[2K\u001b[1B\r\u001b[2K\u001b[1B\r\u001b[2K\u001b[2A\u001b[?2026l",
+  "\u001b[?25l"
+ ],
+ "deleted_viewport_up_writes": [
+  "\u001b[?2026h\u001b[2J\u001b[H\u001b[3JLine 0\u001b[0m\u001b]8;;\u0007\r\nLine 1\u001b[0m\u001b]8;;\u0007\r\nLine 2\u001b[0m\u001b]8;;\u0007\r\nLine 3\u001b[0m\u001b]8;;\u0007\r\nLine 4\u001b[0m\u001b]8;;\u0007\r\nLine 5\u001b[0m\u001b]8;;\u0007\r\nLine 6\u001b[0m\u001b]8;;\u0007\u001b[?2026l",
+  "\u001b[?25l"
+ ],
+ "deleted_viewport_up_delta": 1,
+ "append_after_viewport_reset_writes": [
+  "\u001b[?2026h\u001b[4A\r\u001b[1B\r\u001b[2K\u001b[1B\r\u001b[2K\u001b[1B\r\u001b[2K\u001b[1B\r\u001b[2K\u001b[4A\u001b[?2026l",
+  "\u001b[?25l"
+ ],
+ "append_after_viewport_reset_delta": 0,
+ "transient_inflation_writes": [
+  "\u001b[?2026h\u001b[2J\u001b[H\u001b[3JChat 0\u001b[0m\u001b]8;;\u0007\r\nChat 1\u001b[0m\u001b]8;;\u0007\r\nChat 2\u001b[0m\u001b]8;;\u0007\r\nChat 3\u001b[0m\u001b]8;;\u0007\r\nChat 4\u001b[0m\u001b]8;;\u0007\r\nChat 5\u001b[0m\u001b]8;;\u0007\r\nChat 6\u001b[0m\u001b]8;;\u0007\r\nChat 7\u001b[0m\u001b]8;;\u0007\r\nChat 8\u001b[0m\u001b]8;;\u0007\r\nChat 9\u001b[0m\u001b]8;;\u0007\r\nChat 10\u001b[0m\u001b]8;;\u0007\r\nChat 11\u001b[0m\u001b]8;;\u0007\r\nEditor 0\u001b[0m\u001b]8;;\u0007\r\nEditor 1\u001b[0m\u001b]8;;\u0007\r\nEditor 2\u001b[0m\u001b]8;;\u0007\u001b[?2026l",
+  "\u001b[?25l"
+ ],
+ "transient_inflation_delta": 1,
+ "resize_width_writes": [
+  "\u001b[?2026h\u001b[2J\u001b[H\u001b[3JLine 0\u001b[0m\u001b]8;;\u0007\r\nLine 1\u001b[0m\u001b]8;;\u0007\r\nLine 2\u001b[0m\u001b]8;;\u0007\u001b[?2026l",
+  "\u001b[?25l"
+ ],
+ "resize_width_delta": 1,
+ "resize_height_writes": [
+  "\u001b[?2026h\u001b[2J\u001b[H\u001b[3JLine 0\u001b[0m\u001b]8;;\u0007\r\nLine 1\u001b[0m\u001b]8;;\u0007\r\nLine 2\u001b[0m\u001b]8;;\u0007\u001b[?2026l",
+  "\u001b[?25l"
+ ],
+ "resize_height_delta": 1,
+ "termux_resize_frames": {
+  "frames": [
+   [
+    "\u001b[?25l"
+   ],
+   [
+    "\u001b[?25l"
+   ],
+   [
+    "\u001b[?25l"
+   ],
+   [
+    "\u001b[?25l"
+   ]
+  ]
+ },
+ "termux_resize_delta": 0,
+ "cursor_marker_moved_writes": [
+  "\u001b[1B\u001b[5G",
+  "\u001b[?25l"
+ ],
+ "cursor_marker_visible_writes": [
+  "\u001b[1B\u001b[5G",
+  "\u001b[?25h"
+ ],
+ "styles_reset_writes": [
+  "\u001b[?25l",
+  "\u001b[?2026h\u001b[3mItalic\u001b[0m\u001b]8;;\u0007\r\nPlain\u001b[0m\u001b]8;;\u0007\u001b[?2026l",
+  "\u001b[?25l"
+ ],
+ "keyboard_preempt": {
+  "renderCountDelta": 1,
+  "lines": [
+   "typed"
+  ]
+ },
+ "bounded_full": {
+  "writeCount": 4,
+  "writeLengths": [
+   1048576,
+   1048576,
+   302896,
+   6
+  ],
+  "joinedLength": 2400054,
+  "joinedSha256": "2f6374e4e16d3a7eed173b16039396c70538e021917306601cef1f7ca2137f52",
+  "head": "\u001b[?2026h\u001b_Ga=T,f=100;AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+  "tail": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\u001b\\\u001b[?2026l\u001b[?25l",
+  "fullRedraws": 1
+ },
+ "bounded_diff": {
+  "writeCount": 4,
+  "writeLengths": [
+   1048576,
+   1048576,
+   302906,
+   6
+  ],
+  "joinedLength": 2400064,
+  "joinedSha256": "ac197f8d54cd3dbd9da6d444847979d16ad4d24fa01f228f8745a27075ad795f",
+  "head": "\u001b[?2026h\r\n\u001b[2K\u001b_Ga=T,f=100;AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+  "tail": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\u001b\\\u001b[?2026l\u001b[?25l",
+  "startsWithSync": true,
+  "endsWithSync": false,
+  "hasFullClear": false
+ },
+ "kitty_reserved_rows_diff": {
+  "writes": [
+   "\u001b[?2026h\r\n\u001b[2K\r\n\u001b[2K\u001b[1A\u001b_Ga=T,f=100,q=2,C=1,c=2,r=2,i=42;AAAA\u001b\\\u001b[1B\r\n\u001b[2Kafter\u001b[0m\u001b]8;;\u0007\u001b[?2026l",
+   "\u001b[?25l"
+  ]
+ },
+ "kitty_preclear_scroll": {
+  "writes": [
+   "\u001b[?2026h\u001b[2J\u001b[H\u001b[3Jbefore\u001b[0m\u001b]8;;\u0007\r\n\r\n\u001b[1A\u001b_Ga=T,f=100,q=2,C=1,c=2,r=2,i=42;AAAA\u001b\\\u001b[1B\r\nafter\u001b[0m\u001b]8;;\u0007\u001b[?2026l",
+   "\u001b[?25l"
+  ],
+  "delta": 1
+ },
+ "kitty_fullredraw_reserved": {
+  "writes": [
+   "\u001b[?2026h\u001b[2J\u001b[H\u001b[3Jl0\u001b[0m\u001b]8;;\u0007\r\nl1\u001b[0m\u001b]8;;\u0007\r\nl2\u001b[0m\u001b]8;;\u0007\r\nl3\u001b[0m\u001b]8;;\u0007\r\nl4\u001b[0m\u001b]8;;\u0007\r\n\r\n\r\n\u001b[2A\u001b_Ga=T,f=100,q=2,C=1,c=3,r=3,i=55;AAAA\u001b\\\u001b[2B\r\nafter\u001b[0m\u001b]8;;\u0007\u001b[?2026l",
+   "\u001b[?25l"
+  ],
+  "delta": 1
+ },
+ "kitty_taller_than_viewport": {
+  "writes": [
+   "\u001b[?2026h\u001b[2J\u001b[H\u001b[3Jbefore\u001b[0m\u001b]8;;\u0007\r\n\u001b_Ga=T,f=100,q=2,C=1,c=6,r=6,i=66;AAAA\u001b\\\r\n\u001b[0m\u001b]8;;\u0007\r\n\u001b[0m\u001b]8;;\u0007\r\n\u001b[0m\u001b]8;;\u0007\r\n\u001b[0m\u001b]8;;\u0007\r\n\u001b[0m\u001b]8;;\u0007\r\nafter\u001b[0m\u001b]8;;\u0007\u001b[?2026l",
+   "\u001b[?25l"
+  ],
+  "hasCursorUpPrefix": false
+ },
+ "kitty_delete_changed": {
+  "writes": "\u001b[?2026h\u001b_Ga=d,d=I,i=42,q=2\u001b\\\u001b[1A\r\u001b[2K\u001b_Ga=T,f=100,q=2,C=1,c=2,r=1,i=42;BBBB\u001b\\\r\n\u001b[2K\u001b[0m\u001b]8;;\u0007\u001b[?2026l\u001b[?25l",
+  "deleteIndex": 8,
+  "drawIndex": 38,
+  "deleteBeforeDraw": true
+ },
+ "kitty_reserved_row_change": {
+  "writes": "\u001b[?2026h\u001b_Ga=d,d=I,i=88,q=2\u001b\\\u001b[1A\r\u001b[2Kcovered\u001b[0m\u001b]8;;\u0007\r\n\u001b[2K\u001b_Ga=T,f=100,q=2,C=1,c=2,r=2,i=88;AAAA\u001b\\\u001b[?2026l\u001b[?25l",
+  "deleteIndex": 8,
+  "drawIndex": 61,
+  "deleteBeforeDraw": true,
+  "hasFullClear": false
+ },
+ "kitty_fullredraw_deletes_previous": {
+  "writes": "\u001b[?2026h\u001b_Ga=d,d=I,i=77,q=2\u001b\\\u001b[2J\u001b[H\u001b[3Jplain text\u001b[0m\u001b]8;;\u0007\u001b[?2026l\u001b[?25l",
+  "deleteIndex": 8,
+  "clearIndex": 29,
+  "deleteBeforeClear": true
+ },
+ "crash_dump_logdir": {
+  "message": "Rendered line 1 exceeds terminal width (60 > 40).\n\nThis is likely caused by a custom TUI component not truncating its output.\nUse visibleWidth() to measure and truncateToWidth() to truncate lines.\n\nDebug log written to: <LOG_DIR>\\pi-tui-crash.log",
+  "crashText": "Crash at <TS>\nTerminal width: 40\nLine 1 visible width: 60\n\n=== All rendered lines ===\n[0] (w=2) ok\u001b[0m\u001b]8;;\u0007\n[1] (w=60) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\u001b[0m\u001b]8;;\u0007\n",
+  "stopWrites": [
+   " ",
+   "\u001b[1B",
+   "\r\n",
+   "\u001b[?25h"
+  ],
+  "stopped": true
+ },
+ "crash_dump_tmpdir": {
+  "message": "Rendered line 1 exceeds terminal width (60 > 40).\n\nThis is likely caused by a custom TUI component not truncating its output.\nUse visibleWidth() to measure and truncateToWidth() to truncate lines.\n\nDebug log written to: <CRASH_DIR>\\pi-tui-crash.log",
+  "crashText": "Crash at <TS>\nTerminal width: 40\nLine 1 visible width: 60\n\n=== All rendered lines ===\n[0] (w=2) ok\u001b[0m\u001b]8;;\u0007\n[1] (w=60) xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\u001b[0m\u001b]8;;\u0007\n"
+ },
+ "debug_redraw_log": {
+  "logText": "[<TS>] fullRender: first render (prev=0, new=3, height=10)\n[<TS>] fullRender: terminal width changed (40 -> 60) (prev=3, new=3, height=10)\n[<TS>] fullRender: clearOnShrink (maxLinesRendered=3) (prev=3, new=1, height=10)\n"
+ },
+ "pi_tui_debug_dump": {
+  "fileNamePattern": true,
+  "content": "firstChanged: 1\nviewportTop: 0\ncursorRow: 2\nheight: 10\nlineDiff: -1\nhardwareCursorRow: 2\nrenderEnd: 1\nfinalCursorRow: 1\ncursorPos: null\nnewLines.length: 3\npreviousLines.length: 3\n\n=== newLines ===\n[\n  \"Header\\u001b[0m\\u001b]8;;\\u0007\",\n  \"Working /\\u001b[0m\\u001b]8;;\\u0007\",\n  \"Footer\\u001b[0m\\u001b]8;;\\u0007\"\n]\n\n=== previousLines ===\n[\n  \"Header\\u001b[0m\\u001b]8;;\\u0007\",\n  \"Working |\\u001b[0m\\u001b]8;;\\u0007\",\n  \"Footer\\u001b[0m\\u001b]8;;\\u0007\"\n]\n\n=== buffer ===\n[44 chars written in bounded chunks]"
+ },
+ "restore_render_state": {
+  "writes": [
+   "\u001b[?25l"
+  ]
+ },
+ "restore_render_state_images": {
+  "writes": [
+   "\u001b[?2026h\u001b[1A\r\u001b[2Kchanged\u001b[0m\u001b]8;;\u0007\u001b[?2026l",
+   "\u001b[?25l"
+  ]
+ },
+ "render_state_shape": {
+  "previousWidth": 40,
+  "previousHeight": 10,
+  "cursorRow": 1,
+  "hardwareCursorRow": 1,
+  "maxLinesRendered": 2,
+  "previousViewportTop": 0,
+  "previousLinesLength": 2,
+  "mode": "regular"
+ }
+}

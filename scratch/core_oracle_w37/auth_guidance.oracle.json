@@ -1,0 +1,7 @@
+{
+ "provider_login_help": "Use /login to log into a provider via OAuth or API key. See:\n  C:\\pi-oracle-w37-pkg\\docs\\providers.md\n  C:\\pi-oracle-w37-pkg\\docs\\models.md",
+ "no_models_available": "No models available. Use /login to log into a provider via OAuth or API key. See:\n  C:\\pi-oracle-w37-pkg\\docs\\providers.md\n  C:\\pi-oracle-w37-pkg\\docs\\models.md",
+ "no_model_selected": "No model selected.\n\nUse /login to log into a provider via OAuth or API key. See:\n  C:\\pi-oracle-w37-pkg\\docs\\providers.md\n  C:\\pi-oracle-w37-pkg\\docs\\models.md\n\nThen use /model to select a model.",
+ "no_api_key": "No API key found for anthropic.\n\nUse /login to log into a provider via OAuth or API key. See:\n  C:\\pi-oracle-w37-pkg\\docs\\providers.md\n  C:\\pi-oracle-w37-pkg\\docs\\models.md",
+ "no_api_key_unknown": "No API key found for the selected model.\n\nUse /login to log into a provider via OAuth or API key. See:\n  C:\\pi-oracle-w37-pkg\\docs\\providers.md\n  C:\\pi-oracle-w37-pkg\\docs\\models.md"
+}

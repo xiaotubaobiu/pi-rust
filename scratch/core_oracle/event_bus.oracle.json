@@ -1,0 +1,24 @@
+{
+ "trace": [
+  "A1:{\"n\":1}",
+  "A2:{\"n\":1}",
+  "A1:{\"n\":2}",
+  "A2:{\"n\":2}",
+  "B1:\"x\"",
+  "A2:{\"n\":3}",
+  "A2:{\"n\":4}",
+  "H:7",
+  "H:7",
+  "H:8",
+  "after-boom",
+  "errors>0: true",
+  "clear-done",
+  "noop-done",
+  "sync-after-emit",
+  "errors-after-tick: 2"
+ ],
+ "errors": [
+  "Event handler error (boom): Error: kaboom",
+  "Event handler error (async-err): Error: async-kaboom"
+ ]
+}

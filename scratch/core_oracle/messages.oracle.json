@@ -1,0 +1,189 @@
+{
+ "constants": {
+  "COMPACTION_SUMMARY_PREFIX": "The conversation history before this point was compacted into the following summary:\n\n<summary>\n",
+  "COMPACTION_SUMMARY_SUFFIX": "\n</summary>",
+  "BRANCH_SUMMARY_PREFIX": "The following is a summary of a branch that this conversation came back from:\n\n<summary>\n",
+  "BRANCH_SUMMARY_SUFFIX": "</summary>"
+ },
+ "bashTexts": [
+  {
+   "name": "no_output",
+   "msg": {
+    "role": "bashExecution",
+    "command": "ls",
+    "output": "",
+    "exitCode": 0,
+    "cancelled": false,
+    "truncated": false,
+    "timestamp": 1
+   },
+   "text": "Ran `ls`\n(no output)"
+  },
+  {
+   "name": "with_output",
+   "msg": {
+    "role": "bashExecution",
+    "command": "echo hi",
+    "output": "hi",
+    "exitCode": 0,
+    "cancelled": false,
+    "truncated": false,
+    "timestamp": 1
+   },
+   "text": "Ran `echo hi`\n```\nhi\n```"
+  },
+  {
+   "name": "multiline_output",
+   "msg": {
+    "role": "bashExecution",
+    "command": "cat f",
+    "output": "a\nb",
+    "exitCode": 0,
+    "cancelled": false,
+    "truncated": false,
+    "timestamp": 1
+   },
+   "text": "Ran `cat f`\n```\na\nb\n```"
+  },
+  {
+   "name": "cancelled",
+   "msg": {
+    "role": "bashExecution",
+    "command": "sleep 100",
+    "output": "partial",
+    "cancelled": true,
+    "truncated": false,
+    "timestamp": 1
+   },
+   "text": "Ran `sleep 100`\n```\npartial\n```\n\n(command cancelled)"
+  },
+  {
+   "name": "nonzero_exit",
+   "msg": {
+    "role": "bashExecution",
+    "command": "false",
+    "output": "",
+    "exitCode": 1,
+    "cancelled": false,
+    "truncated": false,
+    "timestamp": 1
+   },
+   "text": "Ran `false`\n(no output)\n\nCommand exited with code 1"
+  },
+  {
+   "name": "zero_exit_code_explicit",
+   "msg": {
+    "role": "bashExecution",
+    "command": "true",
+    "output": "",
+    "exitCode": 0,
+    "cancelled": false,
+    "truncated": false,
+    "timestamp": 1
+   },
+   "text": "Ran `true`\n(no output)"
+  },
+  {
+   "name": "null_exit_code",
+   "msg": {
+    "role": "bashExecution",
+    "command": "x",
+    "output": "",
+    "exitCode": null,
+    "cancelled": false,
+    "truncated": false,
+    "timestamp": 1
+   },
+   "text": "Ran `x`\n(no output)"
+  },
+  {
+   "name": "truncated_with_path",
+   "msg": {
+    "role": "bashExecution",
+    "command": "big",
+    "output": "lots",
+    "exitCode": 0,
+    "cancelled": false,
+    "truncated": true,
+    "fullOutputPath": "/tmp/out.txt",
+    "timestamp": 1
+   },
+   "text": "Ran `big`\n```\nlots\n```\n\n[Output truncated. Full output: /tmp/out.txt]"
+  },
+  {
+   "name": "truncated_without_path",
+   "msg": {
+    "role": "bashExecution",
+    "command": "big",
+    "output": "lots",
+    "exitCode": 0,
+    "cancelled": false,
+    "truncated": true,
+    "timestamp": 1
+   },
+   "text": "Ran `big`\n```\nlots\n```"
+  },
+  {
+   "name": "cancelled_and_nonzero",
+   "msg": {
+    "role": "bashExecution",
+    "command": "y",
+    "output": "",
+    "exitCode": 130,
+    "cancelled": true,
+    "truncated": false,
+    "timestamp": 1
+   },
+   "text": "Ran `y`\n(no output)\n\n(command cancelled)"
+  }
+ ],
+ "created": {
+  "branchMessage": {
+   "role": "branchSummary",
+   "summary": "We came back.",
+   "fromId": "node-42",
+   "timestamp": 1767323045678
+  },
+  "compactionMessage": {
+   "role": "compactionSummary",
+   "summary": "Earlier stuff.",
+   "tokensBefore": 12345,
+   "timestamp": 1767323045678
+  },
+  "customString": {
+   "role": "custom",
+   "customType": "my-plugin/status",
+   "content": "hello custom",
+   "display": true,
+   "timestamp": 1767323045678
+  },
+  "customBlocks": {
+   "role": "custom",
+   "customType": "my-plugin/rich",
+   "content": [
+    {
+     "type": "text",
+     "text": "rich"
+    }
+   ],
+   "display": false,
+   "details": {
+    "attempt": 2
+   },
+   "timestamp": 1767323045678
+  }
+ },
+ "convertedJson": "[{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"Ran `shown`\\n(no output)\\n\\nCommand exited with code 2\"}],\"timestamp\":12},{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"hello custom\"}],\"timestamp\":1767323045678},{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"rich\"}],\"timestamp\":1767323045678},{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"The following is a summary of a branch that this conversation came back from:\\n\\n<summary>\\nWe came back.</summary>\"}],\"timestamp\":1767323045678},{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"The conversation history before this point was compacted into the following summary:\\n\\n<summary>\\nEarlier stuff.\\n</summary>\"}],\"timestamp\":1767323045678},{\"role\":\"user\",\"content\":\"plain question\",\"timestamp\":1767337445000},{\"role\":\"assistant\",\"content\":[],\"api\":\"anthropic-messages\",\"provider\":\"anthropic\",\"model\":\"claude\",\"usage\":{\"input\":3,\"output\":4,\"cacheRead\":0,\"cacheWrite\":0,\"totalTokens\":7,\"cost\":{\"input\":0.1,\"output\":0.2,\"cacheRead\":0,\"cacheWrite\":0,\"total\":0.3}},\"stopReason\":\"stop\",\"timestamp\":1767337445678},{\"role\":\"system\",\"content\":\"be helpful\",\"timestamp\":1767337444000},{\"role\":\"toolResult\",\"toolCallId\":\"call_1\",\"toolName\":\"bash\",\"content\":[{\"type\":\"text\",\"text\":\"out\"}],\"isError\":false,\"timestamp\":1767337446000},{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"mystery\"}],\"timestamp\":13}]",
+ "convertedRoles": [
+  "user",
+  "user",
+  "user",
+  "user",
+  "user",
+  "user",
+  "assistant",
+  "system",
+  "toolResult",
+  "user"
+ ]
+}

@@ -1,0 +1,342 @@
+{
+ "snapshots": {},
+ "errors": {
+  "reload_invalid": [
+   {
+    "scope": "global",
+    "hasPath": true
+   }
+  ],
+  "initial_load": [
+   {
+    "scope": "global",
+    "hasPath": true
+   },
+   {
+    "scope": "project",
+    "hasPath": true
+   }
+  ],
+  "second_drain_empty": true,
+  "untrusted_write": "Project is not trusted; refusing to write project settings",
+  "http_idle_invalid": "Invalid httpIdleTimeoutMs setting: -1",
+  "set_http_idle_NaN": "Invalid httpIdleTimeoutMs setting: NaN",
+  "set_http_idle_-2.5": "Invalid httpIdleTimeoutMs setting: -2.5",
+  "override_reserveTokens_null": "Invalid compaction.modelOverrides[\"provider/family/model\"].reserveTokens setting: null. Expected a non-negative safe integer.",
+  "ordinary_reserveTokens_null": "Invalid compaction.reserveTokens setting: null. Expected a non-negative safe integer.",
+  "override_reserveTokens_-1": "Invalid compaction.modelOverrides[\"provider/family/model\"].reserveTokens setting: -1. Expected a non-negative safe integer.",
+  "ordinary_reserveTokens_-1": "Invalid compaction.reserveTokens setting: -1. Expected a non-negative safe integer.",
+  "override_reserveTokens_1.5": "Invalid compaction.modelOverrides[\"provider/family/model\"].reserveTokens setting: 1.5. Expected a non-negative safe integer.",
+  "ordinary_reserveTokens_1.5": "Invalid compaction.reserveTokens setting: 1.5. Expected a non-negative safe integer.",
+  "override_reserveTokens_\"400000\"": "Invalid compaction.modelOverrides[\"provider/family/model\"].reserveTokens setting: 400000. Expected a non-negative safe integer.",
+  "ordinary_reserveTokens_\"400000\"": "Invalid compaction.reserveTokens setting: 400000. Expected a non-negative safe integer.",
+  "override_reserveTokens_true": "Invalid compaction.modelOverrides[\"provider/family/model\"].reserveTokens setting: true. Expected a non-negative safe integer.",
+  "ordinary_reserveTokens_true": "Invalid compaction.reserveTokens setting: true. Expected a non-negative safe integer.",
+  "override_reserveTokens_{}": "Invalid compaction.modelOverrides[\"provider/family/model\"].reserveTokens setting: [object Object]. Expected a non-negative safe integer.",
+  "ordinary_reserveTokens_{}": "Invalid compaction.reserveTokens setting: [object Object]. Expected a non-negative safe integer.",
+  "override_reserveTokens_[]": "Invalid compaction.modelOverrides[\"provider/family/model\"].reserveTokens setting: . Expected a non-negative safe integer.",
+  "ordinary_reserveTokens_[]": "Invalid compaction.reserveTokens setting: . Expected a non-negative safe integer.",
+  "override_reserveTokens_9007199254740992": "Invalid compaction.modelOverrides[\"provider/family/model\"].reserveTokens setting: 9007199254740992. Expected a non-negative safe integer.",
+  "ordinary_reserveTokens_9007199254740992": "Invalid compaction.reserveTokens setting: 9007199254740992. Expected a non-negative safe integer.",
+  "runtime_override_reserveTokens_NaN": "Invalid compaction.modelOverrides[\"provider/family/model\"].reserveTokens setting: NaN. Expected a non-negative safe integer.",
+  "runtime_ordinary_reserveTokens_NaN": "Invalid compaction.reserveTokens setting: NaN. Expected a non-negative safe integer.",
+  "runtime_override_reserveTokens_Infinity": "Invalid compaction.modelOverrides[\"provider/family/model\"].reserveTokens setting: Infinity. Expected a non-negative safe integer.",
+  "runtime_ordinary_reserveTokens_Infinity": "Invalid compaction.reserveTokens setting: Infinity. Expected a non-negative safe integer.",
+  "runtime_override_reserveTokens_-Infinity": "Invalid compaction.modelOverrides[\"provider/family/model\"].reserveTokens setting: -Infinity. Expected a non-negative safe integer.",
+  "runtime_ordinary_reserveTokens_-Infinity": "Invalid compaction.reserveTokens setting: -Infinity. Expected a non-negative safe integer.",
+  "override_keepRecentTokens_null": "Invalid compaction.modelOverrides[\"provider/family/model\"].keepRecentTokens setting: null. Expected a non-negative safe integer.",
+  "ordinary_keepRecentTokens_null": "Invalid compaction.keepRecentTokens setting: null. Expected a non-negative safe integer.",
+  "override_keepRecentTokens_-1": "Invalid compaction.modelOverrides[\"provider/family/model\"].keepRecentTokens setting: -1. Expected a non-negative safe integer.",
+  "ordinary_keepRecentTokens_-1": "Invalid compaction.keepRecentTokens setting: -1. Expected a non-negative safe integer.",
+  "override_keepRecentTokens_1.5": "Invalid compaction.modelOverrides[\"provider/family/model\"].keepRecentTokens setting: 1.5. Expected a non-negative safe integer.",
+  "ordinary_keepRecentTokens_1.5": "Invalid compaction.keepRecentTokens setting: 1.5. Expected a non-negative safe integer.",
+  "override_keepRecentTokens_\"400000\"": "Invalid compaction.modelOverrides[\"provider/family/model\"].keepRecentTokens setting: 400000. Expected a non-negative safe integer.",
+  "ordinary_keepRecentTokens_\"400000\"": "Invalid compaction.keepRecentTokens setting: 400000. Expected a non-negative safe integer.",
+  "override_keepRecentTokens_true": "Invalid compaction.modelOverrides[\"provider/family/model\"].keepRecentTokens setting: true. Expected a non-negative safe integer.",
+  "ordinary_keepRecentTokens_true": "Invalid compaction.keepRecentTokens setting: true. Expected a non-negative safe integer.",
+  "override_keepRecentTokens_{}": "Invalid compaction.modelOverrides[\"provider/family/model\"].keepRecentTokens setting: [object Object]. Expected a non-negative safe integer.",
+  "ordinary_keepRecentTokens_{}": "Invalid compaction.keepRecentTokens setting: [object Object]. Expected a non-negative safe integer.",
+  "override_keepRecentTokens_[]": "Invalid compaction.modelOverrides[\"provider/family/model\"].keepRecentTokens setting: . Expected a non-negative safe integer.",
+  "ordinary_keepRecentTokens_[]": "Invalid compaction.keepRecentTokens setting: . Expected a non-negative safe integer.",
+  "override_keepRecentTokens_9007199254740992": "Invalid compaction.modelOverrides[\"provider/family/model\"].keepRecentTokens setting: 9007199254740992. Expected a non-negative safe integer.",
+  "ordinary_keepRecentTokens_9007199254740992": "Invalid compaction.keepRecentTokens setting: 9007199254740992. Expected a non-negative safe integer.",
+  "runtime_override_keepRecentTokens_NaN": "Invalid compaction.modelOverrides[\"provider/family/model\"].keepRecentTokens setting: NaN. Expected a non-negative safe integer.",
+  "runtime_ordinary_keepRecentTokens_NaN": "Invalid compaction.keepRecentTokens setting: NaN. Expected a non-negative safe integer.",
+  "runtime_override_keepRecentTokens_Infinity": "Invalid compaction.modelOverrides[\"provider/family/model\"].keepRecentTokens setting: Infinity. Expected a non-negative safe integer.",
+  "runtime_ordinary_keepRecentTokens_Infinity": "Invalid compaction.keepRecentTokens setting: Infinity. Expected a non-negative safe integer.",
+  "runtime_override_keepRecentTokens_-Infinity": "Invalid compaction.modelOverrides[\"provider/family/model\"].keepRecentTokens setting: -Infinity. Expected a non-negative safe integer.",
+  "runtime_ordinary_keepRecentTokens_-Infinity": "Invalid compaction.keepRecentTokens setting: -Infinity. Expected a non-negative safe integer.",
+  "entry_null": "Invalid compaction.modelOverrides[\"provider/family/model\"] setting: null. Expected an object.",
+  "entry_false": "Invalid compaction.modelOverrides[\"provider/family/model\"] setting: false. Expected an object.",
+  "entry_42": "Invalid compaction.modelOverrides[\"provider/family/model\"] setting: 42. Expected an object.",
+  "entry_\"invalid\"": "Invalid compaction.modelOverrides[\"provider/family/model\"] setting: invalid. Expected an object.",
+  "entry_[]": "Invalid compaction.modelOverrides[\"provider/family/model\"] setting: . Expected an object."
+ },
+ "bytes": {
+  "migrated_plus_write": "{\n  \"skills\": [\n    \"/a\",\n    \"/b\"\n  ],\n  \"retry\": {\n    \"enabled\": true,\n    \"provider\": {\n      \"maxRetryDelayMs\": 45000\n    }\n  },\n  \"theme\": \"dark\",\n  \"steeringMode\": \"all\",\n  \"transport\": \"websocket\",\n  \"enableSkillCommands\": false,\n  \"defaultThinkingLevel\": \"high\"\n}",
+  "preserve_enabled_models": "{\n  \"theme\": \"dark\",\n  \"defaultModel\": \"claude-sonnet\",\n  \"enabledModels\": [\n    \"claude-opus-4-5\",\n    \"gpt-5.2-codex\"\n  ],\n  \"defaultThinkingLevel\": \"high\"\n}",
+  "in_memory_wins_same_key": "{\n  \"theme\": \"dark\",\n  \"defaultThinkingLevel\": \"high\"\n}",
+  "nested_modified_persist": "{\n  \"compaction\": {\n    \"enabled\": false,\n    \"reserveTokens\": 1234,\n    \"modelOverrides\": {\n      \"p/m\": {\n        \"reserveTokens\": 1\n      }\n    }\n  },\n  \"theme\": \"dark\"\n}",
+  "undefined_drops_key": "{\n  \"theme\": \"dark\",\n  \"defaultThinkingLevel\": \"low\"\n}",
+  "theme_write": "{\n  \"theme\": \"solarized-light/tokyo-night\"\n}",
+  "untrusted_write_file": "{\"packages\":[\"npm:existing\"]}",
+  "project_first_write": "{\n  \"packages\": [\n    {\n      \"source\": \"npm:test-pkg\"\n    }\n  ]\n}",
+  "fullscreen_write": "{\n  \"uiMode\": \"fullscreen\",\n  \"fullscreenExitOutput\": \"resume-hint\",\n  \"fullscreenScrollbar\": \"hidden\",\n  \"fullscreenCopyOnSelect\": false\n}",
+  "output_pad_write": "{\n  \"fullscreenExitOutput\": \"nothing\",\n  \"fullscreenScrollbar\": \"sometimes\",\n  \"outputPad\": 0\n}",
+  "mermaid_write": "{\n  \"outputPad\": 2,\n  \"markdown\": {\n    \"mermaid\": \"final\"\n  }\n}",
+  "shell_prefix_preserved": "{\n  \"shellCommandPrefix\": \"shopt -s expand_aliases\",\n  \"theme\": \"light\"\n}",
+  "warnings_npm_write": "{\n  \"warnings\": {\n    \"anthropicExtraUsage\": false\n  },\n  \"npmCommand\": [\n    \"mise\",\n    \"exec\",\n    \"node@20\",\n    \"--\",\n    \"npm\"\n  ]\n}"
+ },
+ "values": {
+  "migrated_steering": "all",
+  "migrated_transport": "websocket",
+  "migrated_skills": [
+   "/a",
+   "/b"
+  ],
+  "migrated_enable_skill_commands": false,
+  "migrated_provider_retry": {
+   "maxRetryDelayMs": 45000
+  },
+  "packages": [
+   "npm:simple-pkg",
+   {
+    "source": "npm:shitty-extensions",
+    "extensions": [
+     "extensions/oracle.ts"
+    ],
+    "skills": []
+   }
+  ],
+  "extension_paths": [
+   "/local/ext.ts",
+   "./relative/ext.ts"
+  ],
+  "reload_theme": "light",
+  "reload_extensions": [
+   "/after.ts"
+  ],
+  "reload_default_model": "claude-sonnet",
+  "reload_keeps_theme": "dark",
+  "theme_slash_get": null,
+  "theme_slash_setting": "light/dark",
+  "untrusted_theme": "global",
+  "untrusted_project_settings": {},
+  "untrusted_flag": false,
+  "trusted_after_flip_theme": "project",
+  "trusted_after_flip_flag": true,
+  "untrusted_write_project_settings": {},
+  "project_trust_global_only": "always",
+  "project_trust_invalid": "ask",
+  "read_does_not_create_pi": true,
+  "read_global_theme": "dark",
+  "write_creates_pi": true,
+  "write_creates_file": true,
+  "term_overrides_clear": {
+   "images": null,
+   "trueColor": false,
+   "hyperlinks": false
+  },
+  "term_overrides_explicit": {
+   "images": "kitty",
+   "trueColor": true,
+   "hyperlinks": true
+  },
+  "term_overrides_auto": {},
+  "retry_defaults": {
+   "enabled": true,
+   "maxRetries": 3,
+   "baseDelayMs": 2000,
+   "maxAgentDelayMs": 60000
+  },
+  "retry_overrides": {
+   "enabled": true,
+   "maxRetries": 10,
+   "baseDelayMs": 500,
+   "maxAgentDelayMs": 5000
+  },
+  "http_idle_merged": 0,
+  "editor_configured_setting": "code --wait",
+  "editor_env_visual": "vim",
+  "editor_env_editor": "emacs",
+  "editor_platform_default": "notepad",
+  "tui_default": "regular",
+  "tui_persisted": "fullscreen",
+  "tui_file": "fullscreen",
+  "tui_invalid": "regular",
+  "tui_legacy_uimode": "regular",
+  "fullscreen_defaults": [
+   "transcript",
+   "auto",
+   true
+  ],
+  "fullscreen_invalid": [
+   "transcript",
+   "auto",
+   true
+  ],
+  "output_pad_default": 1,
+  "output_pad_zero": 0,
+  "output_pad_invalid": 1,
+  "mermaid_default": "streaming",
+  "mermaid_persisted": "final",
+  "mermaid_invalid": "streaming",
+  "shell_prefix": "shopt -s expand_aliases",
+  "default_tools_global": [
+   "read",
+   "bash"
+  ],
+  "default_tools_project": [
+   "grep"
+  ],
+  "default_tools_empty": [],
+  "default_tools_absent": null,
+  "compaction_defaults_plain": {
+   "enabled": true,
+   "reserveTokens": 16384,
+   "keepRecentTokens": 20000
+  },
+  "compaction_defaults_model": {
+   "enabled": true,
+   "reserveTokens": 16384,
+   "keepRecentTokens": 20000
+  },
+  "compaction_per_field": {
+   "enabled": true,
+   "reserveTokens": 400000,
+   "keepRecentTokens": 10000
+  },
+  "compaction_reserve_model": 400000,
+  "compaction_keep_model": 10000,
+  "compaction_no_model": {
+   "enabled": true,
+   "reserveTokens": 8192,
+   "keepRecentTokens": 10000
+  },
+  "compaction_after_override_keep": 30000,
+  "compaction_after_override_reserve": 400000,
+  "compaction_partial_override": {
+   "enabled": true,
+   "reserveTokens": 16384,
+   "keepRecentTokens": 1024
+  },
+  "compaction_exact_match": 400000,
+  "compaction_other_provider": {
+   "enabled": true,
+   "reserveTokens": 16384,
+   "keepRecentTokens": 20000
+  },
+  "compaction_other_id": {
+   "enabled": true,
+   "reserveTokens": 16384,
+   "keepRecentTokens": 20000
+  },
+  "compaction_case_id": {
+   "enabled": true,
+   "reserveTokens": 16384,
+   "keepRecentTokens": 20000
+  },
+  "compaction_project_merge": {
+   "enabled": true,
+   "reserveTokens": 400000,
+   "keepRecentTokens": 2000
+  },
+  "compaction_project_merge_other": {
+   "enabled": true,
+   "reserveTokens": 1024,
+   "keepRecentTokens": 4096
+  },
+  "compaction_after_reload_keep": 2000,
+  "compaction_untrusted_keep": 30000,
+  "compaction_toggle_keeps_enabled": true,
+  "compaction_after_toggle": {
+   "enabled": false,
+   "reserveTokens": 400000,
+   "keepRecentTokens": 20000
+  },
+  "compaction_zero": {
+   "enabled": true,
+   "reserveTokens": 0,
+   "keepRecentTokens": 0
+  },
+  "compaction_zero_override": {
+   "enabled": true,
+   "reserveTokens": 0,
+   "keepRecentTokens": 0
+  },
+  "empty_battery": {
+   "last_changelog_version": null,
+   "session_dir": null,
+   "default_provider": null,
+   "default_model": null,
+   "steering": "one-at-a-time",
+   "follow_up": "one-at-a-time",
+   "theme": null,
+   "theme_setting": null,
+   "transport": "auto",
+   "compaction_enabled": true,
+   "compaction_reserve": 16384,
+   "compaction_keep": 20000,
+   "branch_summary": {
+    "reserveTokens": 16384,
+    "skipPrompt": false
+   },
+   "branch_summary_skip": false,
+   "retry_enabled": true,
+   "retry_settings": {
+    "enabled": true,
+    "maxRetries": 3,
+    "baseDelayMs": 2000,
+    "maxAgentDelayMs": 60000
+   },
+   "provider_retry": {
+    "maxRetryDelayMs": 60000
+   },
+   "http_idle": 300000,
+   "websocket_connect": null,
+   "hide_thinking_block": false,
+   "show_cache_miss": false,
+   "quiet_startup": false,
+   "default_project_trust": "ask",
+   "shell_prefix": null,
+   "npm_command": null,
+   "collapse_changelog": false,
+   "install_telemetry": true,
+   "analytics": false,
+   "tracking_id": null,
+   "packages": [],
+   "extensions": [],
+   "skills": [],
+   "prompts": [],
+   "themes": [],
+   "skill_commands": true,
+   "thinking_budgets": null,
+   "show_images": true,
+   "image_width_cells": 60,
+   "clear_on_shrink": false,
+   "show_terminal_progress": false,
+   "tui_mode": "regular",
+   "fullscreen_exit": "transcript",
+   "fullscreen_scrollbar": "auto",
+   "fullscreen_copy_on_select": true,
+   "image_auto_resize": true,
+   "block_images": false,
+   "enabled_models": null,
+   "default_tools": null,
+   "double_escape": "tree",
+   "tree_filter": "default",
+   "show_hardware_cursor": false,
+   "editor_padding_x": 0,
+   "output_pad": 1,
+   "autocomplete_max_visible": 5,
+   "code_block_indent": "  ",
+   "mermaid": "streaming",
+   "warnings": {},
+   "model_thinking_levels": {},
+   "model_thinking_level": null,
+   "terminal_overrides": {}
+  },
+  "analytics_tracking_id_shape": true,
+  "analytics_enabled": true
+ }
+}

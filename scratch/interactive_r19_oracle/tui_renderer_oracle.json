@@ -1,0 +1,25 @@
+{
+	"searchMatchStyle": [
+		"\u001b[4m\u001b[48;2;58;58;74m\u001b[38;2;212;212;212mmatch\u001b[39m\u001b[49m\u001b[24m",
+		"\u001b[4m\u001b[48;2;58;58;74m\u001b[38;2;212;212;212m\u001b[39m\u001b[49m\u001b[24m",
+		"\u001b[4m\u001b[48;2;58;58;74m\u001b[38;2;212;212;212mmulti word match\u001b[39m\u001b[49m\u001b[24m",
+		"\u001b[4m\u001b[48;2;58;58;74m\u001b[38;2;212;212;212m↑\u001b[39m\u001b[49m\u001b[24m"
+	],
+	"searchCurrentMatchStyle": [
+		"\u001b[1m\u001b[7m\u001b[48;2;58;58;74m\u001b[38;2;212;212;212mmatch\u001b[39m\u001b[49m\u001b[27m\u001b[22m",
+		"\u001b[1m\u001b[7m\u001b[48;2;58;58;74m\u001b[38;2;212;212;212m\u001b[39m\u001b[49m\u001b[27m\u001b[22m",
+		"\u001b[1m\u001b[7m\u001b[48;2;58;58;74m\u001b[38;2;212;212;212mmulti word match\u001b[39m\u001b[49m\u001b[27m\u001b[22m",
+		"\u001b[1m\u001b[7m\u001b[48;2;58;58;74m\u001b[38;2;212;212;212m↑\u001b[39m\u001b[49m\u001b[27m\u001b[22m"
+	],
+	"searchNavigationButtonStyle": [
+		"match",
+		"\u001b[4mmatch\u001b[24m",
+		"",
+		"\u001b[4m\u001b[24m",
+		"multi word match",
+		"\u001b[4mmulti word match\u001b[24m",
+		"↑",
+		"\u001b[4m↑\u001b[24m"
+	],
+	"scrollToEndIndicator": "\u001b[48;2;58;58;74m\u001b[38;2;212;212;212m ↓ Jump to latest message · End \u001b[39m\u001b[49m"
+}

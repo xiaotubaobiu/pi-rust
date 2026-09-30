@@ -1,0 +1,823 @@
+{
+  "scenarios": [
+    {
+      "name": "init:before-reload",
+      "observed": {
+        "extensions": [],
+        "skills": [],
+        "prompts": [],
+        "themes": []
+      }
+    },
+    {
+      "name": "discover:skill-from-agent-dir",
+      "observed": {
+        "skills": [
+          {
+            "name": "test-skill",
+            "description": "A test skill",
+            "filePath": "<root>/s02/agent/skills/test-skill.md",
+            "baseDir": "<root>/s02/agent/skills",
+            "sourceInfo": {
+              "path": "<root>/s02/agent/skills/test-skill.md",
+              "source": "auto",
+              "scope": "user",
+              "origin": "top-level",
+              "baseDir": "<root>/s02/agent"
+            },
+            "disableModelInvocation": false
+          }
+        ],
+        "diagnostics": []
+      }
+    },
+    {
+      "name": "discover:extra-md-ignored-in-skill-dir",
+      "observed": {
+        "skills": [
+          {
+            "name": "browser-tools",
+            "description": "Browser tools",
+            "filePath": "<root>/s03/agent/skills/pi-skills/browser-tools/SKILL.md",
+            "baseDir": "<root>/s03/agent/skills/pi-skills/browser-tools",
+            "sourceInfo": {
+              "path": "<root>/s03/agent/skills/pi-skills/browser-tools/SKILL.md",
+              "source": "auto",
+              "scope": "user",
+              "origin": "top-level",
+              "baseDir": "<root>/s03/agent"
+            },
+            "disableModelInvocation": false
+          }
+        ],
+        "diagnostics": []
+      }
+    },
+    {
+      "name": "discover:prompt-from-agent-dir",
+      "observed": {
+        "prompts": [
+          {
+            "name": "test-prompt",
+            "description": "A test prompt",
+            "content": "Prompt content.",
+            "sourceInfo": {
+              "path": "<root>/s04/agent/prompts/test-prompt.md",
+              "source": "auto",
+              "scope": "user",
+              "origin": "top-level",
+              "baseDir": "<root>/s04/agent"
+            },
+            "filePath": "<root>/s04/agent/prompts/test-prompt.md"
+          }
+        ],
+        "diagnostics": []
+      }
+    },
+    {
+      "name": "collision:project-wins",
+      "observed": {
+        "prompts": {
+          "prompts": [
+            {
+              "name": "commit",
+              "description": "Project prompt",
+              "content": "Project prompt",
+              "sourceInfo": {
+                "path": "<root>/s05/project/.pi/prompts/commit.md",
+                "source": "auto",
+                "scope": "project",
+                "origin": "top-level",
+                "baseDir": "<root>/s05/project/.pi"
+              },
+              "filePath": "<root>/s05/project/.pi/prompts/commit.md"
+            }
+          ],
+          "diagnostics": [
+            {
+              "type": "collision",
+              "message": "name \"/commit\" collision",
+              "path": "<root>/s05/agent/prompts/commit.md",
+              "collision": {
+                "resourceType": "prompt",
+                "name": "commit",
+                "winnerPath": "<root>/s05/project/.pi/prompts/commit.md",
+                "loserPath": "<root>/s05/agent/prompts/commit.md"
+              }
+            }
+          ]
+        },
+        "skills": {
+          "skills": [
+            {
+              "name": "collision-skill",
+              "description": "project",
+              "filePath": "<root>/s05/project/.pi/skills/collision-skill/SKILL.md",
+              "baseDir": "<root>/s05/project/.pi/skills/collision-skill",
+              "sourceInfo": {
+                "path": "<root>/s05/project/.pi/skills/collision-skill/SKILL.md",
+                "source": "auto",
+                "scope": "project",
+                "origin": "top-level",
+                "baseDir": "<root>/s05/project/.pi"
+              },
+              "disableModelInvocation": false
+            }
+          ],
+          "diagnostics": [
+            {
+              "type": "collision",
+              "message": "name \"collision-skill\" collision",
+              "path": "<root>/s05/agent/skills/collision-skill/SKILL.md",
+              "collision": {
+                "resourceType": "skill",
+                "name": "collision-skill",
+                "winnerPath": "<root>/s05/project/.pi/skills/collision-skill/SKILL.md",
+                "loserPath": "<root>/s05/agent/skills/collision-skill/SKILL.md"
+              }
+            }
+          ]
+        },
+        "themes": {
+          "themes": [
+            {
+              "name": "collision-theme",
+              "sourcePath": "<root>/s05/project/.pi/themes/collision.json",
+              "sourceInfo": {
+                "path": "<root>/s05/project/.pi/themes/collision.json",
+                "source": "auto",
+                "scope": "project",
+                "origin": "top-level",
+                "baseDir": "<root>/s05/project/.pi"
+              }
+            }
+          ],
+          "diagnostics": [
+            {
+              "type": "collision",
+              "message": "name \"collision-theme\" collision",
+              "path": "<root>/s05/agent/themes/collision.json",
+              "collision": {
+                "resourceType": "theme",
+                "name": "collision-theme",
+                "winnerPath": "<root>/s05/project/.pi/themes/collision.json",
+                "loserPath": "<root>/s05/agent/themes/collision.json"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "settings:disabled-entries",
+      "observed": {
+        "extensions": {
+          "extensions": [],
+          "errors": []
+        },
+        "skills": {
+          "skills": [],
+          "diagnostics": []
+        },
+        "prompts": {
+          "prompts": [],
+          "diagnostics": []
+        },
+        "themes": {
+          "themes": [],
+          "diagnostics": []
+        },
+        "agentsFiles": [],
+        "systemPrompt": null,
+        "systemPromptSource": null,
+        "appendSystemPrompt": [],
+        "appendSystemPromptSources": []
+      }
+    },
+    {
+      "name": "context:agents-md",
+      "observed": [
+        {
+          "path": "<root>/s07/project/AGENTS.md",
+          "content": "# Project Guidelines\n\nBe helpful."
+        }
+      ]
+    },
+    {
+      "name": "context:override-preference",
+      "observed": [
+        {
+          "path": "<root>/s08/agent/AGENTS.override.md",
+          "content": "global override"
+        },
+        {
+          "path": "<root>/s08/project/AGENTS.md",
+          "content": "project instructions"
+        },
+        {
+          "path": "<root>/s08/project/service/AGENTS.override.md",
+          "content": "service override"
+        }
+      ]
+    },
+    {
+      "name": "context:directory-candidates-ignored",
+      "observed": [
+        {
+          "path": "<root>/s09/project/CLAUDE.md",
+          "content": "Fallback instructions"
+        }
+      ]
+    },
+    {
+      "name": "context:no-context-files",
+      "observed": []
+    },
+    {
+      "name": "system:project-md",
+      "observed": {
+        "systemPrompt": "You are a helpful assistant.",
+        "systemPromptSource": {
+          "path": "<root>/s11/project/.pi/SYSTEM.md"
+        }
+      }
+    },
+    {
+      "name": "system:untrusted-project",
+      "observed": {
+        "extensions": {
+          "extensions": [],
+          "errors": []
+        },
+        "skills": {
+          "skills": [],
+          "diagnostics": []
+        },
+        "prompts": {
+          "prompts": [],
+          "diagnostics": []
+        },
+        "themes": {
+          "themes": [],
+          "diagnostics": []
+        },
+        "agentsFiles": [
+          {
+            "path": "<root>/s12/agent/AGENTS.md",
+            "content": "Global instructions"
+          },
+          {
+            "path": "<root>/s12/project/AGENTS.md",
+            "content": "Project instructions"
+          }
+        ],
+        "systemPrompt": "Global system prompt.",
+        "systemPromptSource": {
+          "path": "<root>/s12/agent/SYSTEM.md"
+        },
+        "appendSystemPrompt": [],
+        "appendSystemPromptSources": []
+      }
+    },
+    {
+      "name": "system:append-md",
+      "observed": {
+        "appendSystemPrompt": [
+          "Additional instructions."
+        ],
+        "appendSystemPromptSources": [
+          {
+            "path": "<root>/s13/project/.pi/APPEND_SYSTEM.md"
+          }
+        ]
+      }
+    },
+    {
+      "name": "system:source-project",
+      "observed": {
+        "systemPrompt": "Project system prompt.",
+        "systemPromptSource": {
+          "path": "<root>/s14/project/.pi/SYSTEM.md"
+        }
+      }
+    },
+    {
+      "name": "system:source-global",
+      "observed": {
+        "systemPrompt": "Global system prompt.",
+        "systemPromptSource": {
+          "path": "<root>/s15/agent/SYSTEM.md"
+        }
+      }
+    },
+    {
+      "name": "system:source-literal",
+      "observed": {
+        "systemPrompt": "Literal system prompt.",
+        "systemPromptSource": null
+      }
+    },
+    {
+      "name": "system:source-file-option",
+      "observed": {
+        "systemPrompt": "Custom system prompt.",
+        "systemPromptSource": {
+          "path": "<root>/s17/custom-system.md"
+        }
+      }
+    },
+    {
+      "name": "system:append-source",
+      "observed": {
+        "appendSystemPrompt": [
+          "Project append prompt."
+        ],
+        "appendSystemPromptSources": [
+          {
+            "path": "<root>/s18/project/.pi/APPEND_SYSTEM.md"
+          }
+        ]
+      }
+    },
+    {
+      "name": "system:append-source-literal",
+      "observed": {
+        "appendSystemPrompt": [
+          "Literal append prompt."
+        ],
+        "appendSystemPromptSources": []
+      }
+    },
+    {
+      "name": "system:append-source-mixed",
+      "observed": {
+        "appendSystemPrompt": [
+          "Custom append prompt.",
+          "Literal append prompt."
+        ],
+        "appendSystemPromptSources": [
+          {
+            "path": "<root>/s20/custom-append.md"
+          }
+        ]
+      }
+    },
+    {
+      "name": "extend:metadata",
+      "observed": {
+        "skills": {
+          "skills": [
+            {
+              "name": "extra-skill",
+              "description": "Extra skill",
+              "filePath": "<root>/s21/extra-skills/extra-skill/SKILL.md",
+              "baseDir": "<root>/s21/extra-skills/extra-skill",
+              "sourceInfo": {
+                "path": "<root>/s21/extra-skills/extra-skill/SKILL.md",
+                "source": "extension:extra",
+                "scope": "temporary",
+                "origin": "top-level",
+                "baseDir": "<root>/s21/extra-skills/extra-skill"
+              },
+              "disableModelInvocation": false
+            }
+          ],
+          "diagnostics": []
+        },
+        "prompts": {
+          "prompts": [
+            {
+              "name": "extra",
+              "description": "Extra prompt",
+              "content": "Extra prompt content",
+              "sourceInfo": {
+                "path": "<root>/s21/extra-prompts/extra.md",
+                "source": "extension:extra",
+                "scope": "temporary",
+                "origin": "top-level",
+                "baseDir": "<root>/s21/extra-prompts"
+              },
+              "filePath": "<root>/s21/extra-prompts/extra.md"
+            }
+          ],
+          "diagnostics": []
+        }
+      }
+    },
+    {
+      "name": "extend:file-url",
+      "observed": {
+        "skills": {
+          "skills": [
+            {
+              "name": "file-url-skill",
+              "description": "File URL skill",
+              "filePath": "<root>/s22/extra skills/file-url-skill/SKILL.md",
+              "baseDir": "<root>/s22/extra skills/file-url-skill",
+              "sourceInfo": {
+                "path": "<root>/s22/extra skills/file-url-skill/SKILL.md",
+                "source": "extension:file-url",
+                "scope": "temporary",
+                "origin": "top-level",
+                "baseDir": "<root>/s22/extra skills/file-url-skill"
+              },
+              "disableModelInvocation": false
+            }
+          ],
+          "diagnostics": []
+        }
+      }
+    },
+    {
+      "name": "extend:package-metadata",
+      "observed": {
+        "skills": {
+          "skills": [
+            {
+              "name": "package-skill",
+              "description": "Package skill",
+              "filePath": "<root>/s23/agent/npm/node_modules/metadata-pkg/skills/package-skill/SKILL.md",
+              "baseDir": "<root>/s23/agent/npm/node_modules/metadata-pkg/skills/package-skill",
+              "sourceInfo": {
+                "path": "<root>/s23/agent/npm/node_modules/metadata-pkg/skills/package-skill/SKILL.md",
+                "source": "npm:metadata-pkg",
+                "scope": "user",
+                "origin": "package",
+                "baseDir": "<root>/s23/agent/npm/node_modules/metadata-pkg"
+              },
+              "disableModelInvocation": false
+            },
+            {
+              "name": "extension-skill",
+              "description": "Extension skill",
+              "filePath": "<root>/s23/extension-resources/extension-skill/SKILL.md",
+              "baseDir": "<root>/s23/extension-resources/extension-skill",
+              "sourceInfo": {
+                "path": "<root>/s23/extension-resources/extension-skill/SKILL.md",
+                "source": "extension:discovery",
+                "scope": "temporary",
+                "origin": "top-level"
+              },
+              "disableModelInvocation": false
+            }
+          ],
+          "diagnostics": []
+        },
+        "prompts": {
+          "prompts": [
+            {
+              "name": "package-prompt",
+              "description": "Package prompt",
+              "content": "Package prompt content",
+              "sourceInfo": {
+                "path": "<root>/s23/agent/npm/node_modules/metadata-pkg/prompts/package-prompt.md",
+                "source": "npm:metadata-pkg",
+                "scope": "user",
+                "origin": "package",
+                "baseDir": "<root>/s23/agent/npm/node_modules/metadata-pkg"
+              },
+              "filePath": "<root>/s23/agent/npm/node_modules/metadata-pkg/prompts/package-prompt.md"
+            },
+            {
+              "name": "extension-prompt",
+              "description": "Extension prompt",
+              "content": "Extension prompt content",
+              "sourceInfo": {
+                "path": "<root>/s23/extension-resources/prompts/extension-prompt.md",
+                "source": "extension:discovery",
+                "scope": "temporary",
+                "origin": "top-level"
+              },
+              "filePath": "<root>/s23/extension-resources/prompts/extension-prompt.md"
+            }
+          ],
+          "diagnostics": []
+        },
+        "themes": {
+          "themes": [
+            {
+              "name": "package-theme",
+              "sourcePath": "<root>/s23/agent/npm/node_modules/metadata-pkg/themes/package-theme.json",
+              "sourceInfo": {
+                "path": "<root>/s23/agent/npm/node_modules/metadata-pkg/themes/package-theme.json",
+                "source": "npm:metadata-pkg",
+                "scope": "user",
+                "origin": "package",
+                "baseDir": "<root>/s23/agent/npm/node_modules/metadata-pkg"
+              }
+            },
+            {
+              "name": "extension-theme",
+              "sourcePath": "<root>/s23/extension-resources/themes/extension.json",
+              "sourceInfo": {
+                "path": "<root>/s23/extension-resources/themes/extension.json",
+                "source": "extension:discovery",
+                "scope": "temporary",
+                "origin": "top-level"
+              }
+            }
+          ],
+          "diagnostics": []
+        },
+        "spawns": []
+      }
+    },
+    {
+      "name": "noskills:skip-discovery",
+      "observed": {
+        "skills": [],
+        "diagnostics": []
+      }
+    },
+    {
+      "name": "noskills:additional-paths",
+      "observed": {
+        "skills": [
+          {
+            "name": "custom",
+            "description": "Custom skill",
+            "filePath": "<root>/s25/custom-skills/custom.md",
+            "baseDir": "<root>/s25/custom-skills",
+            "sourceInfo": {
+              "path": "<root>/s25/custom-skills/custom.md",
+              "source": "local",
+              "scope": "temporary",
+              "origin": "top-level",
+              "baseDir": "<root>/s25/custom-skills"
+            },
+            "disableModelInvocation": false
+          }
+        ],
+        "diagnostics": []
+      }
+    },
+    {
+      "name": "override:skills",
+      "observed": {
+        "skills": [
+          {
+            "name": "injected",
+            "description": "Injected skill",
+            "filePath": "/fake/path",
+            "baseDir": "/fake",
+            "sourceInfo": {
+              "path": "/fake/path",
+              "source": "custom",
+              "scope": "temporary",
+              "origin": "top-level"
+            },
+            "disableModelInvocation": false
+          }
+        ],
+        "diagnostics": []
+      }
+    },
+    {
+      "name": "override:system-prompt",
+      "observed": {
+        "systemPrompt": "Custom system prompt"
+      }
+    },
+    {
+      "name": "extensions:symlink-loaded-once",
+      "observed": {
+        "extensions": [
+          {
+            "path": "<root>/s28/project/.pi/extensions/shared.ts",
+            "commands": [
+              "shared"
+            ],
+            "tools": []
+          }
+        ],
+        "errors": []
+      }
+    },
+    {
+      "name": "extensions:trust-preload",
+      "observed": {
+        "preTrustPaths": [
+          "<root>/s29/agent/extensions/user.ts"
+        ],
+        "final": {
+          "extensions": [
+            {
+              "path": "<root>/s29/project/.pi/extensions/project.ts",
+              "commands": [
+                "project-trusted"
+              ],
+              "tools": []
+            },
+            {
+              "path": "<root>/s29/agent/extensions/user.ts",
+              "commands": [
+                "user-trust"
+              ],
+              "tools": []
+            }
+          ],
+          "errors": []
+        },
+        "factoryCalls": {
+          "user": 1,
+          "project": 1
+        }
+      }
+    },
+    {
+      "name": "extensions:command-collision",
+      "observed": {
+        "extensions": [
+          {
+            "path": "<root>/s30/project/.pi/extensions/project.ts",
+            "commands": [
+              "deploy",
+              "project-only"
+            ],
+            "tools": []
+          },
+          {
+            "path": "<root>/s30/agent/extensions/user.ts",
+            "commands": [
+              "deploy",
+              "user-only"
+            ],
+            "tools": []
+          }
+        ],
+        "errors": []
+      }
+    },
+    {
+      "name": "extensions:tool-conflict",
+      "observed": {
+        "extensions": [
+          {
+            "path": "<root>/s31/agent/extensions/ext1/index.ts",
+            "commands": [],
+            "tools": [
+              "duplicate-tool"
+            ]
+          },
+          {
+            "path": "<root>/s31/agent/extensions/ext2/index.ts",
+            "commands": [],
+            "tools": [
+              "duplicate-tool"
+            ]
+          }
+        ],
+        "errors": [
+          {
+            "path": "<root>/s31/agent/extensions/ext2/index.ts",
+            "error": "Tool \"duplicate-tool\" conflicts with <root>/s31/agent/extensions/ext1/index.ts"
+          }
+        ]
+      }
+    },
+    {
+      "name": "extensions:cli-preference",
+      "observed": {
+        "extensions": [
+          {
+            "path": "<root>/s32/explicit-extension.ts",
+            "commands": [
+              "deploy"
+            ],
+            "tools": [
+              "duplicate-tool"
+            ]
+          },
+          {
+            "path": "<root>/s32/agent/extensions/global.ts",
+            "commands": [
+              "deploy"
+            ],
+            "tools": [
+              "duplicate-tool"
+            ]
+          }
+        ],
+        "errors": [
+          {
+            "path": "<root>/s32/agent/extensions/global.ts",
+            "error": "Tool \"duplicate-tool\" conflicts with <root>/s32/explicit-extension.ts"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ctx:worktree-skip-main-duplicate",
+      "observed": [
+        {
+          "path": "<root>/wt1/main/worktrees/feat/AGENTS.md",
+          "content": "worktree instructions"
+        }
+      ]
+    },
+    {
+      "name": "ctx:worktree-inherit",
+      "observed": [
+        {
+          "path": "<root>/wt2/main/AGENTS.md",
+          "content": "main repo instructions"
+        }
+      ]
+    },
+    {
+      "name": "ctx:worktree-different-filename",
+      "observed": [
+        {
+          "path": "<root>/wt3/main/CLAUDE.md",
+          "content": "main repo instructions"
+        },
+        {
+          "path": "<root>/wt3/main/worktrees/feat/AGENTS.md",
+          "content": "worktree instructions"
+        }
+      ]
+    },
+    {
+      "name": "ctx:bare-layout",
+      "observed": [
+        {
+          "path": "<root>/wt4/proj/AGENTS.md",
+          "content": "container instructions"
+        },
+        {
+          "path": "<root>/wt4/proj/main/AGENTS.md",
+          "content": "worktree instructions"
+        }
+      ]
+    },
+    {
+      "name": "ctx:ancestors-above-main",
+      "observed": [
+        {
+          "path": "<root>/wt5/AGENTS.md",
+          "content": "outer instructions"
+        },
+        {
+          "path": "<root>/wt5/main/worktrees/feat/AGENTS.md",
+          "content": "worktree instructions"
+        }
+      ]
+    },
+    {
+      "name": "ctx:sibling-worktree",
+      "observed": [
+        {
+          "path": "<root>/wt6/AGENTS.md",
+          "content": "outer instructions"
+        },
+        {
+          "path": "<root>/wt6/sib-feat/AGENTS.md",
+          "content": "sibling worktree instructions"
+        }
+      ]
+    },
+    {
+      "name": "ctx:submodule",
+      "observed": [
+        {
+          "path": "<root>/wt7/super/AGENTS.md",
+          "content": "superproject instructions"
+        },
+        {
+          "path": "<root>/wt7/super/vendor/lib/AGENTS.md",
+          "content": "submodule instructions"
+        }
+      ]
+    },
+    {
+      "name": "ctx:ordinary-repo",
+      "observed": [
+        {
+          "path": "<root>/wt8/AGENTS.md",
+          "content": "outer instructions"
+        },
+        {
+          "path": "<root>/wt8/repo/AGENTS.md",
+          "content": "repo instructions"
+        },
+        {
+          "path": "<root>/wt8/repo/src/AGENTS.md",
+          "content": "leaf instructions"
+        }
+      ]
+    },
+    {
+      "name": "ctx:missing-gitdir-target",
+      "observed": [
+        {
+          "path": "<root>/wt9/corrupt/AGENTS.md",
+          "content": "repo instructions"
+        },
+        {
+          "path": "<root>/wt9/corrupt/src/AGENTS.md",
+          "content": "src instructions"
+        }
+      ]
+    }
+  ]
+}

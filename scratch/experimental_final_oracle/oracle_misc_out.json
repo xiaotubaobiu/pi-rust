@@ -1,0 +1,268 @@
+{
+  "commands": {
+    "relay": [
+      {
+        "skip": true,
+        "description": "connecting"
+      },
+      {
+        "skip": false,
+        "description": "connected"
+      },
+      {
+        "skip": true,
+        "description": "connected"
+      },
+      {
+        "skip": false,
+        "description": "not connected; local only"
+      },
+      {
+        "skip": false,
+        "description": "reconnecting: boom"
+      },
+      {
+        "skip": false,
+        "description": "reconnecting: net down"
+      }
+    ],
+    "client": {
+      "lines": [
+        "s1\tse1\tattached",
+        "answer",
+        "b\t2",
+        "a\t9"
+      ],
+      "writes": [
+        "\n"
+      ]
+    }
+  },
+  "server": {
+    "modelOptions": [
+      "null",
+      "{\"model\":\"m1\"}",
+      "{\"provider\":\"p\",\"model\":\"m1\"}",
+      "Internal server received invalid model options",
+      "Internal server received invalid model options",
+      "Internal server received invalid model options",
+      "Internal server received invalid model options",
+      "Internal server received invalid model options",
+      "Internal server received invalid model options",
+      "Internal server received invalid model options"
+    ],
+    "sameStrings": [
+      true,
+      false,
+      true,
+      false
+    ],
+    "args": [
+      "Internal server received unexpected arguments",
+      "Internal server requires an absolute server directory",
+      "Internal server requires a canonical server ID",
+      "no error"
+    ]
+  },
+  "serverLifetime": {
+    "keepAlive": [],
+    "keepAliveFalseStartupExpiry": [
+      "retire"
+    ],
+    "connectionCancelsStartup": [
+      "retire"
+    ],
+    "workerHoldsServer": []
+  },
+  "serverProfile": {
+    "first": {
+      "serverId": "9a787dea-e73a-449d-ba82-8242196a6762",
+      "lockName": "launcher-9a787dea-e73a-449d-ba82-8242196a6762"
+    },
+    "sameAsReread": true,
+    "explicit": "00000000-0000-4000-8000-000000000001",
+    "explicitLock": "launcher-00000000-0000-4000-8000-000000000001",
+    "invalidId": "Invalid experimental server ID: invalid",
+    "corrupt": "Invalid default experimental server identity in <dir>\\default-server-id",
+    "uuidShape": true
+  },
+  "clientRuntime": {
+    "validation": [
+      "Authentication is only supported for experimental Radius connections",
+      "ok",
+      "Server model provider requires a model",
+      "ok",
+      "Model selection is only valid when automatically activating a new server",
+      "Plugin package paths can only be configured on a local Unix server",
+      "ok"
+    ],
+    "routes": [
+      {
+        "serverId": "00000000-0000-4000-8000-000000000001",
+        "path": "\\run\\00000000-0000-4000-8000-000000000001.sock"
+      },
+      "--connect path must end with <uuidv4-server-id>.sock",
+      "--connect path must end with <uuidv4-server-id>.sock"
+    ],
+    "disposeErrors": [
+      "no errors",
+      "one",
+      "AggregateError(Failed to dispose experimental client runtime): one|two"
+    ]
+  },
+  "client": {
+    "listSort": [
+      "a/9",
+      "b/2"
+    ],
+    "errors": [
+      "Client prompt requires exactly one discovered server to create a Session",
+      "Session se-1 is available from more than one server",
+      "No discovered server contains session se-1"
+    ],
+    "messageText": [
+      "ab",
+      ""
+    ],
+    "responseErrors": [
+      "rejected: busy",
+      "failed mid-turn",
+      "ok"
+    ]
+  },
+  "clientTui": {
+    "parse": [
+      {
+        "kind": "prompt",
+        "prompt": "hello"
+      },
+      {
+        "kind": "prompt",
+        "prompt": "hello world"
+      },
+      {
+        "kind": "slash",
+        "name": "model",
+        "args": ""
+      },
+      {
+        "kind": "slash",
+        "name": "reload",
+        "args": "now"
+      },
+      {
+        "kind": "slash",
+        "name": "a",
+        "args": "b   c"
+      },
+      {
+        "kind": "empty"
+      }
+    ],
+    "footer": [
+      "/model · /thinking · /compact · /reload",
+      "test/one · thinking:off · 7 messages · /model · /thinking · /compact · /reload"
+    ],
+    "reports": [
+      "",
+      "Operation failed: mid-turn",
+      "Operation rejected: busy",
+      "Queued entry-9.",
+      "Message rejected: queue full"
+    ],
+    "selection": {
+      "continue_": {
+        "feature": {
+          "serverId": "server-a",
+          "sessions": [
+            {
+              "serverId": "server-a",
+              "sessionId": "one",
+              "createdAt": 1
+            },
+            {
+              "serverId": "server-a",
+              "sessionId": "two",
+              "createdAt": 5
+            }
+          ]
+        },
+        "summary": {
+          "serverId": "server-a",
+          "sessionId": "two",
+          "createdAt": 5
+        }
+      },
+      "resume": {
+        "feature": {
+          "serverId": "server-a",
+          "sessions": [
+            {
+              "serverId": "server-a",
+              "sessionId": "one",
+              "createdAt": 1
+            },
+            {
+              "serverId": "server-a",
+              "sessionId": "two",
+              "createdAt": 5
+            }
+          ]
+        },
+        "summary": {
+          "serverId": "server-a",
+          "sessionId": "two",
+          "createdAt": 5
+        }
+      },
+      "new_": {
+        "feature": {
+          "serverId": "server-c",
+          "sessions": []
+        },
+        "summary": {
+          "sessionId": "created-server-c",
+          "createdAt": 99,
+          "serverId": "server-c"
+        }
+      },
+      "newRequiresSingle": "Starting a Session requires exactly one server",
+      "explicit": {
+        "feature": {
+          "serverId": "server-b",
+          "sessions": [
+            {
+              "serverId": "server-b",
+              "sessionId": "three",
+              "createdAt": 5
+            }
+          ]
+        },
+        "summary": {
+          "serverId": "server-b",
+          "sessionId": "three",
+          "createdAt": 5
+        }
+      },
+      "explicitAmbiguous": {
+        "feature": {
+          "serverId": "server-d",
+          "sessions": [
+            {
+              "sessionId": "dup",
+              "createdAt": 0
+            }
+          ]
+        },
+        "summary": {
+          "sessionId": "dup",
+          "createdAt": 0
+        }
+      },
+      "explicitRemoteMissing": "Remote server does not contain Session nope",
+      "created": [
+        "server-c:created-server-c"
+      ]
+    }
+  }
+}

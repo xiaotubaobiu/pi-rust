@@ -1,0 +1,6117 @@
+{
+	"scenarios": [
+		{
+			"name": "keybinding_hints",
+			"log": [],
+			"result": {
+				"format": [
+					"ctrl+o",
+					"Ctrl+O",
+					"alt+enter/ctrl+q",
+					"Alt+Enter",
+					"",
+					"a"
+				],
+				"keys": {
+					"cancel": "escape/ctrl+c",
+					"confirm": "Enter",
+					"expand": "ctrl+o",
+					"interrupt": "escape",
+					"save": "Ctrl+S",
+					"cycle": "Shift+Tab"
+				},
+				"hints": [
+					"\u001b[38;2;102;102;102mescape/ctrl+c\u001b[39m\u001b[38;2;128;128;128m cancel\u001b[39m",
+					"\u001b[38;2;102;102;102m↑↓\u001b[39m\u001b[38;2;128;128;128m navigate\u001b[39m",
+					"\u001b[38;2;102;102;102mctrl+o\u001b[39m\u001b[38;2;128;128;128m to expand\u001b[39m"
+				],
+				"border": [
+					[
+						"\u001b[38;2;95;135;255m──────────\u001b[39m"
+					],
+					[
+						"\u001b[38;2;138;190;183m────\u001b[39m"
+					]
+				]
+			}
+		},
+		{
+			"name": "countdown_timer",
+			"log": [
+				[
+					"tui.requestRender",
+					false
+				],
+				[
+					"tui.requestRender",
+					false
+				],
+				[
+					"tui.requestRender",
+					false
+				],
+				[
+					"tui.requestRender",
+					false
+				]
+			],
+			"result": {
+				"ticks": [
+					4,
+					3,
+					2,
+					1,
+					0
+				],
+				"expired": 1,
+				"timersCleared": true
+			}
+		},
+		{
+			"name": "visual_truncate",
+			"log": [],
+			"result": [
+				{
+					"visualLines": [],
+					"skippedCount": 0
+				},
+				{
+					"visualLines": [
+						"a                                       ",
+						"b                                       ",
+						"c                                       "
+					],
+					"skippedCount": 0
+				},
+				{
+					"visualLines": [
+						"d                                       ",
+						"e                                       "
+					],
+					"skippedCount": 3
+				},
+				{
+					"visualLines": [
+						" line 27                                ",
+						" line 28                                ",
+						" line 29                                "
+					],
+					"skippedCount": 27
+				},
+				{
+					"visualLines": [
+						" word word word     ",
+						" word word word     "
+					],
+					"skippedCount": 2
+				},
+				{
+					"visualLines": [
+						"word word word word ",
+						"word word word word "
+					],
+					"skippedCount": 1
+				}
+			]
+		},
+		{
+			"name": "diff_render_diff",
+			"log": [],
+			"result": [
+				"\u001b[38;2;128;128;128m\u001b[39m",
+				"\u001b[38;2;128;128;128mcontext line\u001b[39m\n\u001b[38;2;128;128;128manother ctx\u001b[39m",
+				"\u001b[38;2;181;189;104m+12 added line\u001b[39m\n\u001b[38;2;204;102;102m-3 removed line\u001b[39m",
+				"\u001b[38;2;204;102;102m-3 \u001b[7mold\u001b[27m value\u001b[39m\n\u001b[38;2;181;189;104m+3 \u001b[7mnew\u001b[27m value\u001b[39m",
+				"\u001b[38;2;204;102;102m-3 const a = \u001b[7malpha\u001b[27m;\u001b[39m\n\u001b[38;2;181;189;104m+3 const a = \u001b[7mbeta\u001b[27m;\u001b[39m",
+				"\u001b[38;2;204;102;102m-3 alpha beta \u001b[7mgamma\u001b[27m\u001b[39m\n\u001b[38;2;181;189;104m+3 alpha beta \u001b[7mdelta\u001b[27m\u001b[39m\n\u001b[38;2;204;102;102m-7 \u001b[7mx\u001b[27m\u001b[39m\n\u001b[38;2;181;189;104m+7 \u001b[7my\u001b[27m\u001b[39m",
+				"\u001b[38;2;128;128;128m 1 shared\u001b[39m\n\u001b[38;2;204;102;102m-2 \u001b[7mgone\u001b[27m\u001b[39m\n\u001b[38;2;181;189;104m+2 \u001b[7mhere\u001b[27m\u001b[39m\n\u001b[38;2;128;128;128m 3 tail\u001b[39m",
+				"\u001b[38;2;204;102;102m-1 tabbed   \u001b[39m\n\u001b[38;2;181;189;104m+1 tabbed   \u001b[7mtwo\u001b[27m\u001b[39m",
+				"\u001b[38;2;181;189;104m+5 only added\u001b[39m\n\u001b[38;2;181;189;104m+6 second\u001b[39m",
+				"\u001b[38;2;204;102;102m-1 only removed\u001b[39m\n\u001b[38;2;204;102;102m-2 second removed\u001b[39m",
+				"\u001b[38;2;204;102;102m-1 keep alpha, \u001b[7mdrop\u001b[27m beta\u001b[39m\n\u001b[38;2;181;189;104m+1 keep alpha, \u001b[7mkeep\u001b[27m beta\u001b[7m, add gamma\u001b[27m\u001b[39m"
+			]
+		},
+		{
+			"name": "markdown_transform",
+			"log": [],
+			"result": [
+				"hello|t4",
+				"swapped:user text|t4",
+				"|t4",
+				"xyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy",
+				"swapped:assistant-thinking|t4"
+			]
+		},
+		{
+			"name": "mermaid_code_span",
+			"log": [],
+			"result": [
+				"`┌──┐`",
+				"` `",
+				"``plain ` tick``",
+				"```two `` ticks```",
+				"`` `edge` ``",
+				"``` `` ```",
+				[
+					true,
+					true,
+					true,
+					false,
+					false,
+					false,
+					false
+				]
+			]
+		},
+		{
+			"name": "assistant_message",
+			"log": [
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.clear",
+					"container"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Markdown",
+						"text": "hello world",
+						"paddingX": 1
+					}
+				],
+				[
+					"Container.clear",
+					"container"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Markdown",
+						"text": "hello world",
+						"paddingX": 1
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.clear",
+					"container"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "MouseRegion",
+						"child": "[object Object]"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Markdown",
+						"text": "answer",
+						"paddingX": 1
+					}
+				],
+				[
+					"Container.clear",
+					"container"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "MouseRegion",
+						"child": "[object Object]"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Markdown",
+						"text": "answer",
+						"paddingX": 1
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.clear",
+					"container"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "MouseRegion",
+						"child": "[object Object]"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Markdown",
+						"text": "visible",
+						"paddingX": 1
+					}
+				],
+				[
+					"Container.clear",
+					"container"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "MouseRegion",
+						"child": "[object Object]"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Markdown",
+						"text": "visible",
+						"paddingX": 1
+					}
+				],
+				[
+					"Container.clear",
+					"container"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "MouseRegion",
+						"child": {
+							"kind": "Text",
+							"text": "\u001b[3m\u001b[38;2;128;128;128mThinking...\u001b[39m\u001b[23m",
+							"paddingX": 1,
+							"paddingY": 0
+						}
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Markdown",
+						"text": "visible",
+						"paddingX": 1
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.clear",
+					"container"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Markdown",
+						"text": "working",
+						"paddingX": 1
+					}
+				],
+				[
+					"Container.clear",
+					"container"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Markdown",
+						"text": "working",
+						"paddingX": 1
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.clear",
+					"container"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Markdown",
+						"text": "partial",
+						"paddingX": 1
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.clear",
+					"container"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Markdown",
+						"text": "partial",
+						"paddingX": 1
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.clear",
+					"container"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Markdown",
+						"text": "p",
+						"paddingX": 1
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.clear",
+					"container"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Markdown",
+						"text": "p",
+						"paddingX": 1
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.clear",
+					"container"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Markdown",
+						"text": "p",
+						"paddingX": 1
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.clear",
+					"container"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Markdown",
+						"text": "p",
+						"paddingX": 1
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.clear",
+					"container"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Markdown",
+						"text": "p",
+						"paddingX": 1
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.clear",
+					"container"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Markdown",
+						"text": "p",
+						"paddingX": 1
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.clear",
+					"container"
+				],
+				[
+					"Container.clear",
+					"container"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.clear",
+					"container"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "MouseRegion",
+						"child": "[object Object]"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Markdown",
+						"text": "a",
+						"paddingX": 1
+					}
+				],
+				[
+					"Container.clear",
+					"container"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "MouseRegion",
+						"child": "[object Object]"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Markdown",
+						"text": "a",
+						"paddingX": 1
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.clear",
+					"container"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Markdown",
+						"text": "probe",
+						"paddingX": 1
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.clear",
+					"container"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Markdown",
+						"text": "p",
+						"paddingX": 1
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				]
+			],
+			"result": {
+				"textOnly": [
+					"Spacer(1)",
+					{
+						"md": "hello world",
+						"paddingX": 1
+					}
+				],
+				"thinkingThenText": [
+					"Spacer(1)",
+					{
+						"region": {
+							"md": "step one\n\nstep two",
+							"paddingX": 1
+						}
+					},
+					"Spacer(1)",
+					{
+						"md": "answer",
+						"paddingX": 1
+					}
+				],
+				"hiddenThinking": [
+					"Spacer(1)",
+					{
+						"region": {
+							"text": "\u001b[3m\u001b[38;2;128;128;128mThinking...\u001b[39m\u001b[23m",
+							"paddingX": 1,
+							"paddingY": 0
+						}
+					},
+					"Spacer(1)",
+					{
+						"md": "visible",
+						"paddingX": 1
+					}
+				],
+				"hasToolCalls": true,
+				"toolCallsContent": [
+					"Spacer(1)",
+					{
+						"md": "working",
+						"paddingX": 1
+					}
+				],
+				"lengthStop": [
+					"Spacer(1)",
+					{
+						"md": "partial",
+						"paddingX": 1
+					},
+					"Spacer(1)",
+					{
+						"text": "\u001b[38;2;204;102;102mResponse was truncated before completion.\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				"aborted": [
+					"Spacer(1)",
+					{
+						"md": "p",
+						"paddingX": 1
+					},
+					"Spacer(1)",
+					{
+						"text": "\u001b[38;2;204;102;102mOperation aborted\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				"abortedCustom": [
+					"Spacer(1)",
+					{
+						"md": "p",
+						"paddingX": 1
+					},
+					"Spacer(1)",
+					{
+						"text": "\u001b[38;2;204;102;102muser hit the button\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				"errored": [
+					"Spacer(1)",
+					{
+						"md": "p",
+						"paddingX": 1
+					},
+					"Spacer(1)",
+					{
+						"text": "\u001b[38;2;204;102;102mError: boom\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				"blank": [],
+				"streaming": [
+					"Spacer(1)",
+					{
+						"region": {
+							"md": "t",
+							"paddingX": 1
+						}
+					},
+					"Spacer(1)",
+					{
+						"md": "a",
+						"paddingX": 1
+					}
+				],
+				"zoneProbe": [
+					"\u001b]133;A\u0007",
+					"MDLINE-A",
+					"\u001b]133;B\u0007\u001b]133;C\u0007MDLINE-B"
+				],
+				"zoneProbeTool": [
+					"",
+					"MDLINE-A",
+					"MDLINE-B"
+				],
+				"zoneProbeEmpty": []
+			}
+		},
+		{
+			"name": "bash_execution",
+			"log": [
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "DynamicBorder",
+						"colorTag": "fn"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "DynamicBorder",
+						"colorTag": "fn"
+					}
+				],
+				[
+					"Container.clear",
+					"container"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.clear",
+					"container"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.clear",
+					"container"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.clear",
+					"container"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.clear",
+					"container"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.clear",
+					"container"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "DynamicBorder",
+						"colorTag": "fn"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "DynamicBorder",
+						"colorTag": "fn"
+					}
+				],
+				[
+					"Container.clear",
+					"container"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.clear",
+					"container"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "DynamicBorder",
+						"colorTag": "fn"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "DynamicBorder",
+						"colorTag": "fn"
+					}
+				],
+				[
+					"Container.clear",
+					"container"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.clear",
+					"container"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				]
+			],
+			"result": {
+				"renders": 3,
+				"loaderMessage": "Running... (escape/ctrl+c to cancel)",
+				"collapsed": [
+					" \u001b[38;2;181;189;104m\u001b[1m$ echo hi\u001b[22m\u001b[39m                              "
+				],
+				"expanded": [
+					{
+						"text": "\u001b[38;2;181;189;104m\u001b[1m$ echo hi\u001b[22m\u001b[39m",
+						"paddingX": 1
+					},
+					{
+						"text": "\n\u001b[38;2;128;128;128mfirst\u001b[39m\n\u001b[38;2;128;128;128msecond\u001b[39m\n\u001b[38;2;128;128;128mthird\u001b[39m\n\u001b[38;2;128;128;128mfourth\u001b[39m\n\u001b[38;2;128;128;128mfifth\u001b[39m",
+						"paddingX": 1
+					},
+					{
+						"text": "\u001b[38;2;181;189;104m⠋\u001b[39m \u001b[38;2;128;128;128mRunning... (escape/ctrl+c to cancel)\u001b[39m",
+						"paddingX": 1
+					}
+				],
+				"completeLines": [
+					{
+						"text": "\u001b[38;2;181;189;104m\u001b[1m$ echo hi\u001b[22m\u001b[39m",
+						"paddingX": 1
+					},
+					{
+						"text": "\n\u001b[38;2;128;128;128mfirst\u001b[39m\n\u001b[38;2;128;128;128msecond\u001b[39m\n\u001b[38;2;128;128;128mthird\u001b[39m\n\u001b[38;2;128;128;128mfourth\u001b[39m\n\u001b[38;2;128;128;128mfifth\u001b[39m",
+						"paddingX": 1
+					}
+				],
+				"errorLines": [
+					{
+						"text": "\u001b[38;2;181;189;104m\u001b[1m$ echo hi\u001b[22m\u001b[39m",
+						"paddingX": 1
+					},
+					{
+						"text": "\n\u001b[38;2;128;128;128mfirst\u001b[39m\n\u001b[38;2;128;128;128msecond\u001b[39m\n\u001b[38;2;128;128;128mthird\u001b[39m\n\u001b[38;2;128;128;128mfourth\u001b[39m\n\u001b[38;2;128;128;128mfifth\u001b[39m",
+						"paddingX": 1
+					},
+					{
+						"text": "\n\u001b[38;2;204;102;102m(exit 3)\u001b[39m",
+						"paddingX": 1
+					}
+				],
+				"cancelledLines": [
+					{
+						"text": "\u001b[38;2;181;189;104m\u001b[1m$ echo hi\u001b[22m\u001b[39m",
+						"paddingX": 1
+					},
+					{
+						"text": "\n\u001b[38;2;128;128;128mfirst\u001b[39m\n\u001b[38;2;128;128;128msecond\u001b[39m\n\u001b[38;2;128;128;128mthird\u001b[39m\n\u001b[38;2;128;128;128mfourth\u001b[39m\n\u001b[38;2;128;128;128mfifth\u001b[39m",
+						"paddingX": 1
+					},
+					{
+						"text": "\n\u001b[38;2;255;255;0m(cancelled)\u001b[39m\n\u001b[38;2;255;255;0mOutput truncated. Full output: /tmp/full2.out\u001b[39m",
+						"paddingX": 1
+					}
+				],
+				"output": "first\nsecond\nthird\nfourth\nfifth",
+				"command": "echo hi",
+				"excludedHeader": "\u001b[38;2;181;189;104m\u001b[1m$ !! ls\u001b[22m\u001b[39m",
+				"excludedStatus": [
+					"\u001b[38;2;181;189;104m\u001b[1m$ big\u001b[22m\u001b[39m",
+					"\n\u001b[38;2;128;128;128m... 1980 more lines (\u001b[39m\u001b[38;2;102;102;102mctrl+o\u001b[39m\u001b[38;2;128;128;128m to expand\u001b[39m\u001b[38;2;128;128;128m)\u001b[39m\n\u001b[38;2;255;255;0mOutput truncated. Full output: /tmp/big.out\u001b[39m"
+				],
+				"bigPreviewLines": 1,
+				"bigPreviewFirst": " \u001b[38;2;181;189;104m\u001b[1m$ big\u001b[22m\u001b[39m                                  ",
+				"bigOutputLines": 2010,
+				"defaults": {
+					"DEFAULT_MAX_LINES": 2000,
+					"DEFAULT_MAX_BYTES": 51200
+				},
+				"truncateTailProbe": "b\nc",
+				"stripAnsiProbe": "red plain"
+			}
+		},
+		{
+			"name": "bordered_loader",
+			"log": [
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "DynamicBorder",
+						"colorTag": "fn"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "DynamicBorder",
+						"colorTag": "fn"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "DynamicBorder",
+						"colorTag": "fn"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "DynamicBorder",
+						"colorTag": "fn"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "DynamicBorder",
+						"colorTag": "fn"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "DynamicBorder",
+						"colorTag": "fn"
+					}
+				]
+			],
+			"result": {
+				"cancellable": [
+					"border",
+					{
+						"loader": "Working..."
+					},
+					"spacer",
+					{
+						"text": "\u001b[38;2;102;102;102mescape/ctrl+c\u001b[39m\u001b[38;2;128;128;128m cancel\u001b[39m"
+					},
+					"spacer",
+					"border"
+				],
+				"nonCancellable": [
+					"border",
+					{
+						"loader": "Loading..."
+					},
+					"spacer",
+					"border"
+				],
+				"plain": [
+					"border",
+					{
+						"loader": "Plain..."
+					},
+					"spacer",
+					{
+						"text": "\u001b[38;2;102;102;102mescape/ctrl+c\u001b[39m\u001b[38;2;128;128;128m cancel\u001b[39m"
+					},
+					"spacer",
+					"border"
+				],
+				"aborted": true,
+				"events": [
+					"render",
+					"render",
+					"render",
+					"abort",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render",
+					"render"
+				],
+				"render": [
+					"\u001b[38;2;95;135;255m──────────────────────────────\u001b[39m",
+					"",
+					" \u001b[38;2;138;190;183m⠋\u001b[39m \u001b[38;2;128;128;128mWorking...\u001b[39m                 ",
+					"",
+					" \u001b[38;2;102;102;102mescape/ctrl+c\u001b[39m\u001b[38;2;128;128;128m cancel\u001b[39m         ",
+					"",
+					"\u001b[38;2;95;135;255m──────────────────────────────\u001b[39m"
+				]
+			}
+		},
+		{
+			"name": "message_components",
+			"log": [
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Markdown",
+						"text": "**Branch Summary**\n\nDid **stuff**",
+						"paddingX": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Markdown",
+						"text": "**Compacted from 1,234,567 tokens**\n\ncompact summary",
+						"paddingX": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Markdown",
+						"text": "**my-skill**\n\nskill body",
+						"paddingX": 0
+					}
+				],
+				[
+					"Container.clear",
+					"container"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Box",
+						"paddingX": 1,
+						"paddingY": 1,
+						"bgTag": "fn"
+					}
+				],
+				[
+					"Container.clear",
+					"container"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Box",
+						"paddingX": 2,
+						"paddingY": 1,
+						"bgTag": "fn"
+					}
+				],
+				[
+					"Container.clear",
+					"container"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Box",
+						"paddingX": 1,
+						"paddingY": 1,
+						"bgTag": "fn"
+					}
+				],
+				[
+					"Container.clear",
+					"container"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Box",
+						"paddingX": 1,
+						"paddingY": 1,
+						"bgTag": "fn"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.removeChild",
+					"container",
+					{
+						"kind": "Box",
+						"paddingX": 1,
+						"paddingY": 1,
+						"bgTag": "fn"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Box",
+						"paddingX": 1,
+						"paddingY": 1,
+						"bgTag": "fn"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.removeChild",
+					"container",
+					{
+						"kind": "Box",
+						"paddingX": 1,
+						"paddingY": 1,
+						"bgTag": "fn"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Box",
+						"paddingX": 1,
+						"paddingY": 1,
+						"bgTag": "fn"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.removeChild",
+					"container",
+					{
+						"kind": "Box",
+						"paddingX": 1,
+						"paddingY": 1,
+						"bgTag": "fn"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.removeChild",
+					"container",
+					{
+						"kind": "Box",
+						"paddingX": 1,
+						"paddingY": 1,
+						"bgTag": "fn"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Box",
+						"paddingX": 1,
+						"paddingY": 1,
+						"bgTag": "fn"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.removeChild",
+					"container",
+					{
+						"kind": "Box",
+						"paddingX": 1,
+						"paddingY": 1,
+						"bgTag": "fn"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Box",
+						"paddingX": 1,
+						"paddingY": 1,
+						"bgTag": "fn"
+					}
+				],
+				[
+					"Container.removeChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.removeChild",
+					"container",
+					{
+						"kind": "Box",
+						"paddingX": 1,
+						"paddingY": 1,
+						"bgTag": "fn"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.clear",
+					"container"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.clear",
+					"container"
+				],
+				[
+					"Container.clear",
+					"container"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Box",
+						"paddingX": 1,
+						"paddingY": 1,
+						"bgTag": "fn"
+					}
+				],
+				[
+					"Container.clear",
+					"container"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				]
+			],
+			"result": {
+				"branchCollapsed": [
+					{
+						"region": [
+							{
+								"text": "\u001b[38;2;149;117;205m\u001b[1m[branch]\u001b[22m\u001b[39m"
+							},
+							"spacer",
+							{
+								"text": "\u001b[38;2;212;212;212mBranch summary (\u001b[39m\u001b[38;2;102;102;102mctrl+o\u001b[39m\u001b[38;2;212;212;212m to expand)\u001b[39m"
+							}
+						]
+					}
+				],
+				"branchExpanded": [
+					"\u001b[38;2;45;40;56m                                        \u001b[49m",
+					"\u001b[38;2;45;40;56m \u001b[38;2;149;117;205m\u001b[1m[branch]\u001b[22m\u001b[39m                               \u001b[49m",
+					"\u001b[38;2;45;40;56m                                        \u001b[49m",
+					"\u001b[38;2;45;40;56m **Branch Summary**                     \u001b[49m",
+					"\u001b[38;2;45;40;56m                                        \u001b[49m",
+					"\u001b[38;2;45;40;56m Did **stuff**                          \u001b[49m",
+					"\u001b[38;2;45;40;56m                                        \u001b[49m"
+				],
+				"branchToggled": [
+					{
+						"region": [
+							{
+								"text": "\u001b[38;2;149;117;205m\u001b[1m[branch]\u001b[22m\u001b[39m"
+							},
+							"spacer",
+							{
+								"text": "\u001b[38;2;212;212;212mBranch summary (\u001b[39m\u001b[38;2;102;102;102mctrl+o\u001b[39m\u001b[38;2;212;212;212m to expand)\u001b[39m"
+							}
+						]
+					}
+				],
+				"compactionCollapsed": [
+					{
+						"region": [
+							{
+								"text": "\u001b[38;2;149;117;205m\u001b[1m[compaction]\u001b[22m\u001b[39m"
+							},
+							"spacer",
+							{
+								"text": "\u001b[38;2;212;212;212mCompacted from 1,234,567 tokens (\u001b[39m\u001b[38;2;102;102;102mctrl+o\u001b[39m\u001b[38;2;212;212;212m to expand)\u001b[39m"
+							}
+						]
+					}
+				],
+				"compactionExpanded": [
+					{
+						"region": [
+							{
+								"text": "\u001b[38;2;149;117;205m\u001b[1m[compaction]\u001b[22m\u001b[39m"
+							},
+							"spacer",
+							{
+								"md": "**Compacted from 1,234,567 tokens**\n\ncompact summary",
+								"paddingX": 0
+							}
+						]
+					}
+				],
+				"skillCollapsed": [
+					{
+						"region": [
+							{
+								"text": "\u001b[38;2;149;117;205m\u001b[1m[skill]\u001b[22m \u001b[39m\u001b[38;2;212;212;212mmy-skill\u001b[39m\u001b[38;2;102;102;102m (ctrl+o to expand)\u001b[39m"
+							}
+						]
+					}
+				],
+				"skillExpanded": [
+					{
+						"region": [
+							{
+								"text": "\u001b[38;2;149;117;205m\u001b[1m[skill]\u001b[22m\u001b[39m"
+							},
+							{
+								"md": "**my-skill**\n\nskill body",
+								"paddingX": 0
+							}
+						]
+					}
+				],
+				"userBoxInfo": {
+					"kind": "Box",
+					"paddingX": 2,
+					"paddingY": 1,
+					"bgTag": "fn",
+					"children": [
+						{
+							"md": "# Title\n\nbody",
+							"paddingX": 0
+						}
+					]
+				},
+				"userZoneProbe": [
+					"\u001b]133;A\u0007BB-FIRST",
+					"\u001b]133;B\u0007\u001b]133;C\u0007BB-SECOND"
+				],
+				"userCustomMd": {
+					"md": "text",
+					"paddingX": 0
+				},
+				"custom": [
+					"[object Object]",
+					{
+						"box": [
+							{
+								"text": "\u001b[38;2;149;117;205m\u001b[1m[plan]\u001b[22m\u001b[39m"
+							},
+							"spacer",
+							{
+								"md": "steps"
+							}
+						]
+					}
+				],
+				"customBlocks": [
+					"[object Object]",
+					{
+						"box": [
+							"[object Object]",
+							"[object Object]",
+							{
+								"md": "one\ntwo"
+							}
+						]
+					}
+				],
+				"customWithRenderer": [
+					"[object Object]",
+					{
+						"text": "custom rendered"
+					}
+				],
+				"rendererCalls": 2,
+				"customRendererNull": [
+					"[object Object]",
+					"[object Object]"
+				],
+				"customRendererThrows": [
+					"[object Object]",
+					{
+						"box": [
+							{
+								"text": "\u001b[38;2;149;117;205m\u001b[1m[n]\u001b[22m\u001b[39m"
+							},
+							"[object Object]",
+							"[object Object]"
+						]
+					}
+				],
+				"entryOk": [
+					"spacer",
+					{
+						"text": "entry body"
+					}
+				],
+				"entryHasContent": [
+					true,
+					false
+				],
+				"entryEmpty": 0,
+				"entryThrow": [
+					"[object Object]",
+					{
+						"box": [
+							{
+								"text": "\u001b[38;2;204;102;102m[bad] renderer failed: entry failed\u001b[39m"
+							}
+						]
+					}
+				]
+			}
+		},
+		{
+			"name": "daxnuts",
+			"log": [],
+			"result": {
+				"imageRows": 16,
+				"imageRow0": "\u001b[38;2;184;183;181m\u001b[48;2;187;186;184m▄\u001b[38;2;185;184;181m\u001b[48;2;185;185;182m▄\u001b[38;2;184;184;181m\u001b[48;2;185;184;181m▄\u001b[38;2;181;181;178m\u001b[48;2;188;187;184m▄\u001b[38;2;182;181;178m\u001b[48;2;184;183;180m▄\u001b[38;2;184;183;180m\u001b[48;2;183;181;178m▄\u001b[38;2;185;184;181m\u001b[48;2;182;181;178m▄\u001b[38;2;185;184;181m\u001b[48;2;184;183;180m▄\u001b[38;2;182;181;179m\u001b[48;2;183;182;179m▄\u001b[38;2;186;184;181m\u001b[48;2;182;180;177m▄\u001b[38;2;188;186;183m\u001b[48;2;189;188;184m▄\u001b[38;2;187;185;182m\u001b[48;2;186;184;182m▄\u001b[38;2;187;184;181m\u001b[48;2;187;184;181m▄\u001b[38;2;191;185;181m\u001b[48;2;184;181;177m▄\u001b[38;2;189;178;171m\u001b[48;2;187;184;180m▄\u001b[38;2;188;176;168m\u001b[48;2;194;190;187m▄\u001b[38;2;190;178;170m\u001b[48;2;193;190;186m▄\u001b[38;2;190;181;175m\u001b[48;2;192;189;186m▄\u001b[38;2;191;186;182m\u001b[48;2;191;188;185m▄\u001b[38;2;190;186;183m\u001b[48;2;193;190;186m▄\u001b[38;2;192;191;188m\u001b[48;2;191;190;187m▄\u001b[38;2;190;189;186m\u001b[48;2;192;191;188m▄\u001b[38;2;190;187;184m\u001b[48;2;192;189;186m▄\u001b[38;2;192;189;186m\u001b[48;2;187;184;181m▄\u001b[38;2;191;190;187m\u001b[48;2;193;191;188m▄\u001b[38;2;194;190;187m\u001b[48;2;191;188;184m▄\u001b[38;2;189;186;183m\u001b[48;2;187;185;182m▄\u001b[38;2;195;192;189m\u001b[48;2;191;188;184m▄\u001b[38;2;195;192;189m\u001b[48;2;194;191;188m▄\u001b[38;2;193;190;187m\u001b[48;2;193;191;188m▄\u001b[38;2;194;190;186m\u001b[48;2;191;187;184m▄\u001b[38;2;191;188;184m\u001b[48;2;189;185;182m▄\u001b[0m",
+				"imageRowLast": "\u001b[38;2;72;120;161m\u001b[48;2;72;118;160m▄\u001b[38;2;75;122;163m\u001b[48;2;74;120;162m▄\u001b[38;2;76;123;164m\u001b[48;2;81;127;167m▄\u001b[38;2;74;117;155m\u001b[48;2;71;113;151m▄\u001b[38;2;61;99;135m\u001b[48;2;58;93;128m▄\u001b[38;2;59;95;130m\u001b[48;2;64;92;122m▄\u001b[38;2;91;103;118m\u001b[48;2;97;97;103m▄\u001b[38;2;111;95;86m\u001b[48;2;124;105;95m▄\u001b[38;2;156;126;108m\u001b[48;2;172;138;117m▄\u001b[38;2;175;140;119m\u001b[48;2;176;141;119m▄\u001b[38;2;177;143;121m\u001b[48;2;180;145;122m▄\u001b[38;2;178;143;120m\u001b[48;2;175;137;113m▄\u001b[38;2;181;146;124m\u001b[48;2;173;135;111m▄\u001b[38;2;175;142;120m\u001b[48;2;165;129;106m▄\u001b[38;2;169;136;114m\u001b[48;2;166;132;110m▄\u001b[38;2;170;138;118m\u001b[48;2;167;134;112m▄\u001b[38;2;169;138;118m\u001b[48;2;169;138;118m▄\u001b[38;2;172;145;127m\u001b[48;2;172;148;132m▄\u001b[38;2;173;161;153m\u001b[48;2;171;159;150m▄\u001b[38;2;183;176;172m\u001b[48;2;178;172;168m▄\u001b[38;2;185;179;175m\u001b[48;2;189;184;180m▄\u001b[38;2;191;185;181m\u001b[48;2;188;183;179m▄\u001b[38;2;193;186;182m\u001b[48;2;188;184;180m▄\u001b[38;2;189;182;178m\u001b[48;2;188;184;180m▄\u001b[38;2;184;179;175m\u001b[48;2;184;179;175m▄\u001b[38;2;186;181;177m\u001b[48;2;183;178;174m▄\u001b[38;2;185;180;176m\u001b[48;2;185;180;176m▄\u001b[38;2;182;175;171m\u001b[48;2;184;179;175m▄\u001b[38;2;183;177;173m\u001b[48;2;184;178;174m▄\u001b[38;2;179;173;169m\u001b[48;2;182;175;171m▄\u001b[38;2;179;174;170m\u001b[48;2;179;174;170m▄\u001b[38;2;176;171;168m\u001b[48;2;178;174;170m▄\u001b[0m",
+				"tick0": [
+					"",
+					"              \u001b[38;2;100;200;255m▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓\u001b[0m",
+					"                                              ",
+					"                                              ",
+					"                                              ",
+					"                                              ",
+					"                                              ",
+					"                                              ",
+					"                                              ",
+					"                                              ",
+					"                                              ",
+					"                                              ",
+					"                                              ",
+					"                                              ",
+					"                                              ",
+					"                                              ",
+					"                                              ",
+					"",
+					"",
+					"",
+					"",
+					"",
+					"",
+					"",
+					""
+				],
+				"tick1": [
+					"",
+					"              \u001b[38;2;100;200;255m▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓\u001b[0m",
+					"                                              ",
+					"                                              ",
+					"                                              ",
+					"                                              ",
+					"                                              ",
+					"                                              ",
+					"                                              ",
+					"                                              ",
+					"                                              ",
+					"                                              ",
+					"                                              ",
+					"                                              ",
+					"                                              ",
+					"                                              ",
+					"                                              ",
+					"",
+					"",
+					"",
+					"",
+					"",
+					"",
+					"",
+					""
+				],
+				"tick15": [
+					"",
+					"              \u001b[38;2;184;183;181m\u001b[48;2;187;186;184m▄\u001b[38;2;185;184;181m\u001b[48;2;185;185;182m▄\u001b[38;2;184;184;181m\u001b[48;2;185;184;181m▄\u001b[38;2;181;181;178m\u001b[48;2;188;187;184m▄\u001b[38;2;182;181;178m\u001b[48;2;184;183;180m▄\u001b[38;2;184;183;180m\u001b[48;2;183;181;178m▄\u001b[38;2;185;184;181m\u001b[48;2;182;181;178m▄\u001b[38;2;185;184;181m\u001b[48;2;184;183;180m▄\u001b[38;2;182;181;179m\u001b[48;2;183;182;179m▄\u001b[38;2;186;184;181m\u001b[48;2;182;180;177m▄\u001b[38;2;188;186;183m\u001b[48;2;189;188;184m▄\u001b[38;2;187;185;182m\u001b[48;2;186;184;182m▄\u001b[38;2;187;184;181m\u001b[48;2;187;184;181m▄\u001b[38;2;191;185;181m\u001b[48;2;184;181;177m▄\u001b[38;2;189;178;171m\u001b[48;2;187;184;180m▄\u001b[38;2;188;176;168m\u001b[48;2;194;190;187m▄\u001b[38;2;190;178;170m\u001b[48;2;193;190;186m▄\u001b[38;2;190;181;175m\u001b[48;2;192;189;186m▄\u001b[38;2;191;186;182m\u001b[48;2;191;188;185m▄\u001b[38;2;190;186;183m\u001b[48;2;193;190;186m▄\u001b[38;2;192;191;188m\u001b[48;2;191;190;187m▄\u001b[38;2;190;189;186m\u001b[48;2;192;191;188m▄\u001b[38;2;190;187;184m\u001b[48;2;192;189;186m▄\u001b[38;2;192;189;186m\u001b[48;2;187;184;181m▄\u001b[38;2;191;190;187m\u001b[48;2;193;191;188m▄\u001b[38;2;194;190;187m\u001b[48;2;191;188;184m▄\u001b[38;2;189;186;183m\u001b[48;2;187;185;182m▄\u001b[38;2;195;192;189m\u001b[48;2;191;188;184m▄\u001b[38;2;195;192;189m\u001b[48;2;194;191;188m▄\u001b[38;2;193;190;187m\u001b[48;2;193;191;188m▄\u001b[38;2;194;190;186m\u001b[48;2;191;187;184m▄\u001b[38;2;191;188;184m\u001b[48;2;189;185;182m▄\u001b[0m",
+					"              \u001b[38;2;181;180;178m\u001b[48;2;186;185;182m▄\u001b[38;2;180;179;176m\u001b[48;2;183;182;179m▄\u001b[38;2;186;185;182m\u001b[48;2;178;177;174m▄\u001b[38;2;185;185;182m\u001b[48;2;182;181;178m▄\u001b[38;2;181;180;177m\u001b[48;2;181;180;177m▄\u001b[38;2;181;180;177m\u001b[48;2;181;180;178m▄\u001b[38;2;182;181;179m\u001b[48;2;182;181;178m▄\u001b[38;2;185;184;181m\u001b[48;2;183;182;180m▄\u001b[38;2;185;184;182m\u001b[48;2;185;184;182m▄\u001b[38;2;185;184;182m\u001b[48;2;183;182;179m▄\u001b[38;2;178;174;170m\u001b[48;2;187;186;183m▄\u001b[38;2;150;129;116m\u001b[48;2;178;175;171m▄\u001b[38;2;166;131;110m\u001b[48;2;165;152;143m▄\u001b[38;2;170;133;110m\u001b[48;2;180;158;144m▄\u001b[38;2;171;132;110m\u001b[48;2;176;148;129m▄\u001b[38;2;175;137;115m\u001b[48;2;183;154;136m▄\u001b[38;2;172;137;115m\u001b[48;2;179;150;131m▄\u001b[38;2;176;143;121m\u001b[48;2;176;149;131m▄\u001b[38;2;177;143;122m\u001b[48;2;183;163;149m▄\u001b[38;2;179;151;134m\u001b[48;2;191;182;176m▄\u001b[38;2;183;168;157m\u001b[48;2;192;189;186m▄\u001b[38;2;187;179;174m\u001b[48;2;189;187;184m▄\u001b[38;2;191;186;182m\u001b[48;2;190;188;185m▄\u001b[38;2;194;192;189m\u001b[48;2;193;191;188m▄\u001b[38;2;190;188;185m\u001b[48;2;192;190;187m▄\u001b[38;2;191;189;186m\u001b[48;2;189;186;183m▄\u001b[38;2;195;193;189m\u001b[48;2;190;187;184m▄\u001b[38;2;194;190;187m\u001b[48;2;194;191;188m▄\u001b[38;2;192;188;185m\u001b[48;2;192;189;186m▄\u001b[38;2;189;185;182m\u001b[48;2;192;188;185m▄\u001b[38;2;193;189;186m\u001b[48;2;189;185;182m▄\u001b[38;2;191;187;184m\u001b[48;2;192;188;184m▄\u001b[0m",
+					"              \u001b[38;2;180;178;176m\u001b[48;2;180;179;176m▄\u001b[38;2;183;182;180m\u001b[48;2;185;184;181m▄\u001b[38;2;183;182;179m\u001b[48;2;184;183;181m▄\u001b[38;2;180;178;176m\u001b[48;2;180;179;177m▄\u001b[38;2;186;185;183m\u001b[48;2;181;180;177m▄\u001b[38;2;182;181;178m\u001b[48;2;184;183;180m▄\u001b[38;2;182;181;178m\u001b[48;2;184;183;181m▄\u001b[38;2;186;185;182m\u001b[48;2;186;185;182m▄\u001b[38;2;186;185;182m\u001b[48;2;187;186;183m▄\u001b[38;2;149;140;135m\u001b[48;2;177;175;173m▄\u001b[38;2;151;118;99m\u001b[48;2;140;122;113m▄\u001b[38;2;170;131;107m\u001b[48;2;157;115;92m▄\u001b[38;2;172;135;114m\u001b[48;2;164;120;96m▄\u001b[38;2;176;143;122m\u001b[48;2;168;125;101m▄\u001b[38;2;173;140;119m\u001b[48;2;169;128;105m▄\u001b[38;2;178;145;125m\u001b[48;2;174;137;114m▄\u001b[38;2;176;145;125m\u001b[48;2;174;140;117m▄\u001b[38;2;176;144;124m\u001b[48;2;175;141;119m▄\u001b[38;2;172;137;113m\u001b[48;2;170;130;107m▄\u001b[38;2;167;125;100m\u001b[48;2;169;128;103m▄\u001b[38;2;168;127;103m\u001b[48;2;170;137;116m▄\u001b[38;2;172;137;114m\u001b[48;2;179;158;144m▄\u001b[38;2;178;152;135m\u001b[48;2;182;167;157m▄\u001b[38;2;184;168;157m\u001b[48;2;187;178;173m▄\u001b[38;2;191;186;181m\u001b[48;2;192;189;186m▄\u001b[38;2;191;189;186m\u001b[48;2;193;191;189m▄\u001b[38;2;193;190;186m\u001b[48;2;191;187;184m▄\u001b[38;2;192;188;185m\u001b[48;2;193;189;185m▄\u001b[38;2;192;188;185m\u001b[48;2;190;186;182m▄\u001b[38;2;192;188;185m\u001b[48;2;192;189;185m▄\u001b[38;2;193;190;186m\u001b[48;2;191;187;184m▄\u001b[38;2;190;186;183m\u001b[48;2;193;189;186m▄\u001b[0m",
+					"              \u001b[38;2;182;180;178m\u001b[48;2;184;183;180m▄\u001b[38;2;183;181;179m\u001b[48;2;183;182;180m▄\u001b[38;2;182;181;178m\u001b[48;2;181;180;177m▄\u001b[38;2;184;183;180m\u001b[48;2;181;180;178m▄\u001b[38;2;179;178;175m\u001b[48;2;183;182;179m▄\u001b[38;2;184;183;180m\u001b[48;2;181;180;178m▄\u001b[38;2;182;181;178m\u001b[48;2;186;185;183m▄\u001b[38;2;179;178;176m\u001b[48;2;186;185;182m▄\u001b[38;2;179;165;154m\u001b[48;2;180;177;173m▄\u001b[38;2;171;133;111m\u001b[48;2;168;143;127m▄\u001b[38;2;173;141;120m\u001b[48;2;173;137;115m▄\u001b[38;2;176;145;126m\u001b[48;2;174;141;120m▄\u001b[38;2;177;152;134m\u001b[48;2;177;150;132m▄\u001b[38;2;180;155;139m\u001b[48;2;177;150;133m▄\u001b[38;2;180;154;137m\u001b[48;2;178;151;134m▄\u001b[38;2;179;151;133m\u001b[48;2;182;154;137m▄\u001b[38;2;176;145;126m\u001b[48;2;178;149;130m▄\u001b[38;2;175;143;124m\u001b[48;2;177;145;125m▄\u001b[38;2;171;134;111m\u001b[48;2;170;133;110m▄\u001b[38;2;167;125;101m\u001b[48;2;168;126;102m▄\u001b[38;2;167;122;97m\u001b[48;2;169;126;102m▄\u001b[38;2;168;125;100m\u001b[48;2;173;134;110m▄\u001b[38;2;169;129;106m\u001b[48;2;169;130;107m▄\u001b[38;2;176;143;121m\u001b[48;2;175;146;128m▄\u001b[38;2;181;162;150m\u001b[48;2;184;173;166m▄\u001b[38;2;193;188;184m\u001b[48;2;189;187;184m▄\u001b[38;2;195;191;188m\u001b[48;2;190;186;183m▄\u001b[38;2;194;190;187m\u001b[48;2;191;187;184m▄\u001b[38;2;190;186;183m\u001b[48;2;193;189;186m▄\u001b[38;2;191;187;183m\u001b[48;2;191;187;184m▄\u001b[38;2;189;186;182m\u001b[48;2;188;184;180m▄\u001b[38;2;194;190;186m\u001b[48;2;188;184;181m▄\u001b[0m",
+					"              \u001b[38;2;182;181;178m\u001b[48;2;184;183;180m▄\u001b[38;2;185;184;181m\u001b[48;2;183;182;180m▄\u001b[38;2;180;179;177m\u001b[48;2;182;181;179m▄\u001b[38;2;184;183;181m\u001b[48;2;183;182;179m▄\u001b[38;2;180;179;176m\u001b[48;2;182;181;178m▄\u001b[38;2;183;182;180m\u001b[48;2;185;184;182m▄\u001b[38;2;182;181;179m\u001b[48;2;180;179;177m▄\u001b[38;2;177;167;160m\u001b[48;2;182;177;172m▄\u001b[38;2;170;135;114m\u001b[48;2;172;143;124m▄\u001b[38;2;167;125;101m\u001b[48;2;169;130;107m▄\u001b[38;2;168;133;112m\u001b[48;2;174;143;122m▄\u001b[38;2;180;152;135m\u001b[48;2;175;149;131m▄\u001b[38;2;177;155;141m\u001b[48;2;180;156;140m▄\u001b[38;2;156;136;124m\u001b[48;2;180;156;139m▄\u001b[38;2;144;122;109m\u001b[48;2;183;157;140m▄\u001b[38;2;152;127;113m\u001b[48;2;181;153;135m▄\u001b[38;2;170;144;127m\u001b[48;2;177;147;128m▄\u001b[38;2;175;145;125m\u001b[48;2;173;142;121m▄\u001b[38;2;175;142;122m\u001b[48;2;174;140;119m▄\u001b[38;2;173;140;120m\u001b[48;2;175;142;120m▄\u001b[38;2;172;139;119m\u001b[48;2;172;135;113m▄\u001b[38;2;168;131;108m\u001b[48;2;163;119;95m▄\u001b[38;2;169;131;108m\u001b[48;2;170;130;107m▄\u001b[38;2;172;135;112m\u001b[48;2;174;137;114m▄\u001b[38;2;180;155;138m\u001b[48;2;179;152;136m▄\u001b[38;2;189;182;178m\u001b[48;2;187;182;178m▄\u001b[38;2;192;188;185m\u001b[48;2;190;187;184m▄\u001b[38;2;192;189;185m\u001b[48;2;191;187;184m▄\u001b[38;2;191;187;184m\u001b[48;2;191;187;184m▄\u001b[38;2;190;186;183m\u001b[48;2;192;189;185m▄\u001b[38;2;191;188;185m\u001b[48;2;190;187;183m▄\u001b[38;2;190;186;183m\u001b[48;2;192;189;185m▄\u001b[0m",
+					"              \u001b[38;2;183;182;180m\u001b[48;2;185;184;182m▄\u001b[38;2;182;182;179m\u001b[48;2;181;180;178m▄\u001b[38;2;184;183;180m\u001b[48;2;185;184;181m▄\u001b[38;2;181;180;178m\u001b[48;2;184;183;181m▄\u001b[38;2;184;182;180m\u001b[48;2;184;183;180m▄\u001b[38;2;183;182;179m\u001b[48;2;183;182;180m▄\u001b[38;2;180;179;176m\u001b[48;2;181;180;178m▄\u001b[38;2;180;171;164m\u001b[48;2;179;169;162m▄\u001b[38;2;166;130;107m\u001b[48;2;173;137;115m▄\u001b[38;2;163;119;95m\u001b[48;2;161;117;93m▄\u001b[38;2;176;142;121m\u001b[48;2;169;133;111m▄\u001b[38;2;177;149;132m\u001b[48;2;179;152;133m▄\u001b[38;2;168;142;125m\u001b[48;2;140;119;106m▄\u001b[38;2;170;142;125m\u001b[48;2;101;84;75m▄\u001b[38;2;178;148;129m\u001b[48;2;119;99;88m▄\u001b[38;2;173;143;124m\u001b[48;2;114;93;82m▄\u001b[38;2;153;126;109m\u001b[48;2;110;89;77m▄\u001b[38;2;163;134;116m\u001b[48;2;156;127;110m▄\u001b[38;2;172;141;121m\u001b[48;2;177;144;123m▄\u001b[38;2;172;142;122m\u001b[48;2;166;134;114m▄\u001b[38;2;174;145;127m\u001b[48;2;173;142;122m▄\u001b[38;2;154;124;106m\u001b[48;2;171;135;113m▄\u001b[38;2;137;106;89m\u001b[48;2;172;133;109m▄\u001b[38;2;154;124;106m\u001b[48;2;177;143;121m▄\u001b[38;2;179;163;152m\u001b[48;2;179;160;146m▄\u001b[38;2;193;189;186m\u001b[48;2;190;185;181m▄\u001b[38;2;189;185;182m\u001b[48;2;193;189;186m▄\u001b[38;2;188;184;181m\u001b[48;2;189;185;181m▄\u001b[38;2;190;186;182m\u001b[48;2;190;186;183m▄\u001b[38;2;190;186;183m\u001b[48;2;191;187;183m▄\u001b[38;2;189;185;181m\u001b[48;2;190;186;183m▄\u001b[38;2;189;185;182m\u001b[48;2;188;185;182m▄\u001b[0m",
+					"              \u001b[38;2;179;178;176m\u001b[48;2;181;180;177m▄\u001b[38;2;180;179;176m\u001b[48;2;183;181;179m▄\u001b[38;2;181;180;178m\u001b[48;2;181;180;178m▄\u001b[38;2;180;180;177m\u001b[48;2;183;182;179m▄\u001b[38;2;180;179;177m\u001b[48;2;183;182;180m▄\u001b[38;2;180;179;177m\u001b[48;2;179;179;176m▄\u001b[38;2;180;179;176m\u001b[48;2;179;178;176m▄\u001b[38;2;182;173;165m\u001b[48;2;180;172;165m▄\u001b[38;2;170;134;112m\u001b[48;2;167;132;111m▄\u001b[38;2;165;122;98m\u001b[48;2;169;127;104m▄\u001b[38;2;173;142;122m\u001b[48;2;174;143;123m▄\u001b[38;2;178;155;140m\u001b[48;2;174;147;131m▄\u001b[38;2;182;157;141m\u001b[48;2;181;156;139m▄\u001b[38;2;171;133;111m\u001b[48;2;178;147;127m▄\u001b[38;2;169;130;106m\u001b[48;2;174;142;121m▄\u001b[38;2;168;128;105m\u001b[48;2;172;139;118m▄\u001b[38;2;171;135;113m\u001b[48;2;175;146;126m▄\u001b[38;2;175;144;125m\u001b[48;2;175;146;126m▄\u001b[38;2;180;153;135m\u001b[48;2;178;150;131m▄\u001b[38;2;177;150;132m\u001b[48;2;179;152;133m▄\u001b[38;2;178;152;134m\u001b[48;2;178;152;136m▄\u001b[38;2;181;153;135m\u001b[48;2;145;120;106m▄\u001b[38;2;179;148;128m\u001b[48;2;114;89;76m▄\u001b[38;2;176;151;135m\u001b[48;2;110;89;77m▄\u001b[38;2;181;169;161m\u001b[48;2;151;141;134m▄\u001b[38;2;188;184;181m\u001b[48;2;189;186;183m▄\u001b[38;2;190;186;183m\u001b[48;2;186;183;179m▄\u001b[38;2;189;185;181m\u001b[48;2;192;188;185m▄\u001b[38;2;190;186;183m\u001b[48;2;192;188;185m▄\u001b[38;2;191;187;184m\u001b[48;2;190;186;183m▄\u001b[38;2;191;187;183m\u001b[48;2;190;187;183m▄\u001b[38;2;187;183;180m\u001b[48;2;189;185;182m▄\u001b[0m",
+					"              \u001b[38;2;181;180;178m\u001b[48;2;179;178;175m▄\u001b[38;2;182;181;179m\u001b[48;2;184;183;181m▄\u001b[38;2;180;179;176m\u001b[48;2;184;183;181m▄\u001b[38;2;180;179;176m\u001b[48;2;179;178;176m▄\u001b[38;2;185;184;181m\u001b[48;2;181;180;178m▄\u001b[38;2;184;182;180m\u001b[48;2;182;181;179m▄\u001b[38;2;144;139;136m\u001b[48;2;182;180;177m▄\u001b[38;2;136;116;103m\u001b[48;2;175;162;153m▄\u001b[38;2;170;143;126m\u001b[48;2;169;137;117m▄\u001b[38;2;167;137;118m\u001b[48;2;169;130;107m▄\u001b[38;2;173;137;115m\u001b[48;2;175;144;124m▄\u001b[38;2;176;139;116m\u001b[48;2;179;153;136m▄\u001b[38;2;181;152;133m\u001b[48;2;180;154;137m▄\u001b[38;2;182;158;142m\u001b[48;2;175;142;122m▄\u001b[38;2;178;152;136m\u001b[48;2;172;137;115m▄\u001b[38;2;177;145;124m\u001b[48;2;170;133;110m▄\u001b[38;2;177;145;125m\u001b[48;2;175;140;116m▄\u001b[38;2;177;147;127m\u001b[48;2;177;145;125m▄\u001b[38;2;174;144;124m\u001b[48;2;174;144;125m▄\u001b[38;2;177;150;134m\u001b[48;2;172;144;125m▄\u001b[38;2;179;154;138m\u001b[48;2;179;153;136m▄\u001b[38;2;178;152;134m\u001b[48;2;178;151;133m▄\u001b[38;2;181;155;138m\u001b[48;2;180;151;133m▄\u001b[38;2;184;161;146m\u001b[48;2;183;160;144m▄\u001b[38;2;182;170;163m\u001b[48;2;185;172;163m▄\u001b[38;2;183;178;175m\u001b[48;2;191;186;183m▄\u001b[38;2;188;184;180m\u001b[48;2;188;184;181m▄\u001b[38;2;188;184;181m\u001b[48;2;189;185;182m▄\u001b[38;2;187;183;180m\u001b[48;2;188;184;180m▄\u001b[38;2;192;188;185m\u001b[48;2;188;184;181m▄\u001b[38;2;190;186;183m\u001b[48;2;189;185;181m▄\u001b[38;2;192;188;185m\u001b[48;2;188;184;180m▄\u001b[0m",
+					"              \u001b[38;2;180;179;177m\u001b[48;2;182;181;178m▄\u001b[38;2;179;179;176m\u001b[48;2;182;181;179m▄\u001b[38;2;182;181;179m\u001b[48;2;180;179;176m▄\u001b[38;2;184;183;181m\u001b[48;2;186;185;183m▄\u001b[38;2;180;178;176m\u001b[48;2;183;182;180m▄\u001b[38;2;167;165;163m\u001b[48;2;177;176;174m▄\u001b[38;2;143;131;125m\u001b[48;2;123;113;107m▄\u001b[38;2;174;145;126m\u001b[48;2;160;131;112m▄\u001b[38;2;160;132;114m\u001b[48;2;155;128;111m▄\u001b[38;2;90;80;76m\u001b[48;2;113;97;88m▄\u001b[38;2;99;84;77m\u001b[48;2;150;119;100m▄\u001b[38;2;162;131;112m\u001b[48;2;176;136;112m▄\u001b[38;2;179;151;132m\u001b[48;2;178;148;129m▄\u001b[38;2;181;158;141m\u001b[48;2;182;155;138m▄\u001b[38;2;178;160;147m\u001b[48;2;182;159;143m▄\u001b[38;2;166;152;144m\u001b[48;2;179;154;137m▄\u001b[38;2;155;145;139m\u001b[48;2;182;159;144m▄\u001b[38;2;153;142;135m\u001b[48;2;180;157;141m▄\u001b[38;2;144;133;126m\u001b[48;2;179;154;137m▄\u001b[38;2;149;135;125m\u001b[48;2;178;153;136m▄\u001b[38;2;173;153;139m\u001b[48;2;180;156;140m▄\u001b[38;2;179;156;140m\u001b[48;2;182;160;144m▄\u001b[38;2;181;160;145m\u001b[48;2;184;164;150m▄\u001b[38;2;185;162;147m\u001b[48;2;186;164;149m▄\u001b[38;2;141;130;124m\u001b[48;2;147;134;127m▄\u001b[38;2;149;144;141m\u001b[48;2;143;137;134m▄\u001b[38;2;190;186;182m\u001b[48;2;191;187;183m▄\u001b[38;2;187;183;179m\u001b[48;2;189;185;181m▄\u001b[38;2;189;186;183m\u001b[48;2;188;183;180m▄\u001b[38;2;187;183;180m\u001b[48;2;186;182;179m▄\u001b[38;2;189;185;182m\u001b[48;2;185;181;178m▄\u001b[38;2;187;183;180m\u001b[48;2;186;182;178m▄\u001b[0m",
+					"              \u001b[38;2;179;178;176m\u001b[48;2;180;179;176m▄\u001b[38;2;182;181;179m\u001b[48;2;181;180;177m▄\u001b[38;2;178;177;175m\u001b[48;2;184;183;181m▄\u001b[38;2;183;182;180m\u001b[48;2;182;181;179m▄\u001b[38;2;184;183;180m\u001b[48;2;184;184;181m▄\u001b[38;2;181;180;177m\u001b[48;2;180;178;175m▄\u001b[38;2;174;171;168m\u001b[48;2;150;143;138m▄\u001b[38;2;181;168;159m\u001b[48;2;178;154;139m▄\u001b[38;2;172;153;141m\u001b[48;2;171;148;133m▄\u001b[38;2;77;68;65m\u001b[48;2;84;75;72m▄\u001b[38;2;45;37;36m\u001b[48;2;58;50;48m▄\u001b[38;2;77;70;68m\u001b[48;2;115;101;93m▄\u001b[38;2;78;71;68m\u001b[48;2;150;136;127m▄\u001b[38;2;50;43;41m\u001b[48;2;112;101;95m▄\u001b[38;2;58;50;48m\u001b[48;2;97;89;85m▄\u001b[38;2;66;57;55m\u001b[48;2;71;64;62m▄\u001b[38;2;67;58;55m\u001b[48;2;69;62;60m▄\u001b[38;2;53;45;42m\u001b[48;2;69;63;61m▄\u001b[38;2;89;80;76m\u001b[48;2;87;80;79m▄\u001b[38;2;83;75;72m\u001b[48;2;101;94;91m▄\u001b[38;2;82;74;72m\u001b[48;2;144;132;125m▄\u001b[38;2;152;138;129m\u001b[48;2;179;156;141m▄\u001b[38;2;181;159;143m\u001b[48;2;183;160;144m▄\u001b[38;2;177;156;141m\u001b[48;2;182;160;145m▄\u001b[38;2;130;121;116m\u001b[48;2;137;128;122m▄\u001b[38;2;178;175;172m\u001b[48;2;171;166;163m▄\u001b[38;2;189;185;181m\u001b[48;2;189;185;182m▄\u001b[38;2;188;184;180m\u001b[48;2;192;188;185m▄\u001b[38;2;189;185;181m\u001b[48;2;190;186;183m▄\u001b[38;2;188;184;181m\u001b[48;2;188;183;180m▄\u001b[38;2;189;185;182m\u001b[48;2;190;186;183m▄\u001b[38;2;186;182;178m\u001b[48;2;187;183;180m▄\u001b[0m",
+					"              \u001b[38;2;183;182;180m\u001b[48;2;184;183;181m▄\u001b[38;2;184;183;181m\u001b[48;2;181;180;178m▄\u001b[38;2;184;183;180m\u001b[48;2;182;182;179m▄\u001b[38;2;182;181;179m\u001b[48;2;185;184;181m▄\u001b[38;2;184;182;179m\u001b[48;2;183;182;179m▄\u001b[38;2;186;185;182m\u001b[48;2;182;181;178m▄\u001b[38;2;185;184;181m\u001b[48;2;184;182;179m▄\u001b[38;2;180;179;176m\u001b[48;2;185;180;177m▄\u001b[38;2;183;181;178m\u001b[48;2;178;169;162m▄\u001b[38;2;165;162;159m\u001b[48;2;108;100;97m▄\u001b[38;2;69;61;59m\u001b[48;2;45;37;36m▄\u001b[38;2;38;30;29m\u001b[48;2;45;38;37m▄\u001b[38;2;38;31;30m\u001b[48;2;49;42;40m▄\u001b[38;2;46;38;37m\u001b[48;2;53;45;44m▄\u001b[38;2;65;57;54m\u001b[48;2;69;61;58m▄\u001b[38;2;133;114;104m\u001b[48;2;120;103;92m▄\u001b[38;2;151;120;101m\u001b[48;2;141;122;110m▄\u001b[38;2;177;148;130m\u001b[48;2;160;151;146m▄\u001b[38;2;181;166;156m\u001b[48;2;174;166;160m▄\u001b[38;2;172;165;160m\u001b[48;2;97;88;84m▄\u001b[38;2;124;117;114m\u001b[48;2;51;43;41m▄\u001b[38;2;69;61;59m\u001b[48;2;82;74;71m▄\u001b[38;2;116;105;99m\u001b[48;2;159;142;130m▄\u001b[38;2;160;148;140m\u001b[48;2;176;157;144m▄\u001b[38;2;197;191;187m\u001b[48;2;164;155;150m▄\u001b[38;2;192;187;184m\u001b[48;2;193;189;185m▄\u001b[38;2;190;185;182m\u001b[48;2;190;186;183m▄\u001b[38;2;187;183;179m\u001b[48;2;191;187;184m▄\u001b[38;2;187;182;179m\u001b[48;2;187;184;180m▄\u001b[38;2;183;179;175m\u001b[48;2;185;181;177m▄\u001b[38;2;184;180;176m\u001b[48;2;184;180;176m▄\u001b[38;2;185;181;177m\u001b[48;2;185;180;176m▄\u001b[0m",
+					"              \u001b[38;2;100;200;255m▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓\u001b[0m",
+					"                                              ",
+					"                                              ",
+					"                                              ",
+					"                                              ",
+					"",
+					"",
+					"",
+					"",
+					"",
+					"",
+					"",
+					""
+				],
+				"tick25": [
+					"",
+					"              \u001b[38;2;184;183;181m\u001b[48;2;187;186;184m▄\u001b[38;2;185;184;181m\u001b[48;2;185;185;182m▄\u001b[38;2;184;184;181m\u001b[48;2;185;184;181m▄\u001b[38;2;181;181;178m\u001b[48;2;188;187;184m▄\u001b[38;2;182;181;178m\u001b[48;2;184;183;180m▄\u001b[38;2;184;183;180m\u001b[48;2;183;181;178m▄\u001b[38;2;185;184;181m\u001b[48;2;182;181;178m▄\u001b[38;2;185;184;181m\u001b[48;2;184;183;180m▄\u001b[38;2;182;181;179m\u001b[48;2;183;182;179m▄\u001b[38;2;186;184;181m\u001b[48;2;182;180;177m▄\u001b[38;2;188;186;183m\u001b[48;2;189;188;184m▄\u001b[38;2;187;185;182m\u001b[48;2;186;184;182m▄\u001b[38;2;187;184;181m\u001b[48;2;187;184;181m▄\u001b[38;2;191;185;181m\u001b[48;2;184;181;177m▄\u001b[38;2;189;178;171m\u001b[48;2;187;184;180m▄\u001b[38;2;188;176;168m\u001b[48;2;194;190;187m▄\u001b[38;2;190;178;170m\u001b[48;2;193;190;186m▄\u001b[38;2;190;181;175m\u001b[48;2;192;189;186m▄\u001b[38;2;191;186;182m\u001b[48;2;191;188;185m▄\u001b[38;2;190;186;183m\u001b[48;2;193;190;186m▄\u001b[38;2;192;191;188m\u001b[48;2;191;190;187m▄\u001b[38;2;190;189;186m\u001b[48;2;192;191;188m▄\u001b[38;2;190;187;184m\u001b[48;2;192;189;186m▄\u001b[38;2;192;189;186m\u001b[48;2;187;184;181m▄\u001b[38;2;191;190;187m\u001b[48;2;193;191;188m▄\u001b[38;2;194;190;187m\u001b[48;2;191;188;184m▄\u001b[38;2;189;186;183m\u001b[48;2;187;185;182m▄\u001b[38;2;195;192;189m\u001b[48;2;191;188;184m▄\u001b[38;2;195;192;189m\u001b[48;2;194;191;188m▄\u001b[38;2;193;190;187m\u001b[48;2;193;191;188m▄\u001b[38;2;194;190;186m\u001b[48;2;191;187;184m▄\u001b[38;2;191;188;184m\u001b[48;2;189;185;182m▄\u001b[0m",
+					"              \u001b[38;2;181;180;178m\u001b[48;2;186;185;182m▄\u001b[38;2;180;179;176m\u001b[48;2;183;182;179m▄\u001b[38;2;186;185;182m\u001b[48;2;178;177;174m▄\u001b[38;2;185;185;182m\u001b[48;2;182;181;178m▄\u001b[38;2;181;180;177m\u001b[48;2;181;180;177m▄\u001b[38;2;181;180;177m\u001b[48;2;181;180;178m▄\u001b[38;2;182;181;179m\u001b[48;2;182;181;178m▄\u001b[38;2;185;184;181m\u001b[48;2;183;182;180m▄\u001b[38;2;185;184;182m\u001b[48;2;185;184;182m▄\u001b[38;2;185;184;182m\u001b[48;2;183;182;179m▄\u001b[38;2;178;174;170m\u001b[48;2;187;186;183m▄\u001b[38;2;150;129;116m\u001b[48;2;178;175;171m▄\u001b[38;2;166;131;110m\u001b[48;2;165;152;143m▄\u001b[38;2;170;133;110m\u001b[48;2;180;158;144m▄\u001b[38;2;171;132;110m\u001b[48;2;176;148;129m▄\u001b[38;2;175;137;115m\u001b[48;2;183;154;136m▄\u001b[38;2;172;137;115m\u001b[48;2;179;150;131m▄\u001b[38;2;176;143;121m\u001b[48;2;176;149;131m▄\u001b[38;2;177;143;122m\u001b[48;2;183;163;149m▄\u001b[38;2;179;151;134m\u001b[48;2;191;182;176m▄\u001b[38;2;183;168;157m\u001b[48;2;192;189;186m▄\u001b[38;2;187;179;174m\u001b[48;2;189;187;184m▄\u001b[38;2;191;186;182m\u001b[48;2;190;188;185m▄\u001b[38;2;194;192;189m\u001b[48;2;193;191;188m▄\u001b[38;2;190;188;185m\u001b[48;2;192;190;187m▄\u001b[38;2;191;189;186m\u001b[48;2;189;186;183m▄\u001b[38;2;195;193;189m\u001b[48;2;190;187;184m▄\u001b[38;2;194;190;187m\u001b[48;2;194;191;188m▄\u001b[38;2;192;188;185m\u001b[48;2;192;189;186m▄\u001b[38;2;189;185;182m\u001b[48;2;192;188;185m▄\u001b[38;2;193;189;186m\u001b[48;2;189;185;182m▄\u001b[38;2;191;187;184m\u001b[48;2;192;188;184m▄\u001b[0m",
+					"              \u001b[38;2;180;178;176m\u001b[48;2;180;179;176m▄\u001b[38;2;183;182;180m\u001b[48;2;185;184;181m▄\u001b[38;2;183;182;179m\u001b[48;2;184;183;181m▄\u001b[38;2;180;178;176m\u001b[48;2;180;179;177m▄\u001b[38;2;186;185;183m\u001b[48;2;181;180;177m▄\u001b[38;2;182;181;178m\u001b[48;2;184;183;180m▄\u001b[38;2;182;181;178m\u001b[48;2;184;183;181m▄\u001b[38;2;186;185;182m\u001b[48;2;186;185;182m▄\u001b[38;2;186;185;182m\u001b[48;2;187;186;183m▄\u001b[38;2;149;140;135m\u001b[48;2;177;175;173m▄\u001b[38;2;151;118;99m\u001b[48;2;140;122;113m▄\u001b[38;2;170;131;107m\u001b[48;2;157;115;92m▄\u001b[38;2;172;135;114m\u001b[48;2;164;120;96m▄\u001b[38;2;176;143;122m\u001b[48;2;168;125;101m▄\u001b[38;2;173;140;119m\u001b[48;2;169;128;105m▄\u001b[38;2;178;145;125m\u001b[48;2;174;137;114m▄\u001b[38;2;176;145;125m\u001b[48;2;174;140;117m▄\u001b[38;2;176;144;124m\u001b[48;2;175;141;119m▄\u001b[38;2;172;137;113m\u001b[48;2;170;130;107m▄\u001b[38;2;167;125;100m\u001b[48;2;169;128;103m▄\u001b[38;2;168;127;103m\u001b[48;2;170;137;116m▄\u001b[38;2;172;137;114m\u001b[48;2;179;158;144m▄\u001b[38;2;178;152;135m\u001b[48;2;182;167;157m▄\u001b[38;2;184;168;157m\u001b[48;2;187;178;173m▄\u001b[38;2;191;186;181m\u001b[48;2;192;189;186m▄\u001b[38;2;191;189;186m\u001b[48;2;193;191;189m▄\u001b[38;2;193;190;186m\u001b[48;2;191;187;184m▄\u001b[38;2;192;188;185m\u001b[48;2;193;189;185m▄\u001b[38;2;192;188;185m\u001b[48;2;190;186;182m▄\u001b[38;2;192;188;185m\u001b[48;2;192;189;185m▄\u001b[38;2;193;190;186m\u001b[48;2;191;187;184m▄\u001b[38;2;190;186;183m\u001b[48;2;193;189;186m▄\u001b[0m",
+					"              \u001b[38;2;182;180;178m\u001b[48;2;184;183;180m▄\u001b[38;2;183;181;179m\u001b[48;2;183;182;180m▄\u001b[38;2;182;181;178m\u001b[48;2;181;180;177m▄\u001b[38;2;184;183;180m\u001b[48;2;181;180;178m▄\u001b[38;2;179;178;175m\u001b[48;2;183;182;179m▄\u001b[38;2;184;183;180m\u001b[48;2;181;180;178m▄\u001b[38;2;182;181;178m\u001b[48;2;186;185;183m▄\u001b[38;2;179;178;176m\u001b[48;2;186;185;182m▄\u001b[38;2;179;165;154m\u001b[48;2;180;177;173m▄\u001b[38;2;171;133;111m\u001b[48;2;168;143;127m▄\u001b[38;2;173;141;120m\u001b[48;2;173;137;115m▄\u001b[38;2;176;145;126m\u001b[48;2;174;141;120m▄\u001b[38;2;177;152;134m\u001b[48;2;177;150;132m▄\u001b[38;2;180;155;139m\u001b[48;2;177;150;133m▄\u001b[38;2;180;154;137m\u001b[48;2;178;151;134m▄\u001b[38;2;179;151;133m\u001b[48;2;182;154;137m▄\u001b[38;2;176;145;126m\u001b[48;2;178;149;130m▄\u001b[38;2;175;143;124m\u001b[48;2;177;145;125m▄\u001b[38;2;171;134;111m\u001b[48;2;170;133;110m▄\u001b[38;2;167;125;101m\u001b[48;2;168;126;102m▄\u001b[38;2;167;122;97m\u001b[48;2;169;126;102m▄\u001b[38;2;168;125;100m\u001b[48;2;173;134;110m▄\u001b[38;2;169;129;106m\u001b[48;2;169;130;107m▄\u001b[38;2;176;143;121m\u001b[48;2;175;146;128m▄\u001b[38;2;181;162;150m\u001b[48;2;184;173;166m▄\u001b[38;2;193;188;184m\u001b[48;2;189;187;184m▄\u001b[38;2;195;191;188m\u001b[48;2;190;186;183m▄\u001b[38;2;194;190;187m\u001b[48;2;191;187;184m▄\u001b[38;2;190;186;183m\u001b[48;2;193;189;186m▄\u001b[38;2;191;187;183m\u001b[48;2;191;187;184m▄\u001b[38;2;189;186;182m\u001b[48;2;188;184;180m▄\u001b[38;2;194;190;186m\u001b[48;2;188;184;181m▄\u001b[0m",
+					"              \u001b[38;2;182;181;178m\u001b[48;2;184;183;180m▄\u001b[38;2;185;184;181m\u001b[48;2;183;182;180m▄\u001b[38;2;180;179;177m\u001b[48;2;182;181;179m▄\u001b[38;2;184;183;181m\u001b[48;2;183;182;179m▄\u001b[38;2;180;179;176m\u001b[48;2;182;181;178m▄\u001b[38;2;183;182;180m\u001b[48;2;185;184;182m▄\u001b[38;2;182;181;179m\u001b[48;2;180;179;177m▄\u001b[38;2;177;167;160m\u001b[48;2;182;177;172m▄\u001b[38;2;170;135;114m\u001b[48;2;172;143;124m▄\u001b[38;2;167;125;101m\u001b[48;2;169;130;107m▄\u001b[38;2;168;133;112m\u001b[48;2;174;143;122m▄\u001b[38;2;180;152;135m\u001b[48;2;175;149;131m▄\u001b[38;2;177;155;141m\u001b[48;2;180;156;140m▄\u001b[38;2;156;136;124m\u001b[48;2;180;156;139m▄\u001b[38;2;144;122;109m\u001b[48;2;183;157;140m▄\u001b[38;2;152;127;113m\u001b[48;2;181;153;135m▄\u001b[38;2;170;144;127m\u001b[48;2;177;147;128m▄\u001b[38;2;175;145;125m\u001b[48;2;173;142;121m▄\u001b[38;2;175;142;122m\u001b[48;2;174;140;119m▄\u001b[38;2;173;140;120m\u001b[48;2;175;142;120m▄\u001b[38;2;172;139;119m\u001b[48;2;172;135;113m▄\u001b[38;2;168;131;108m\u001b[48;2;163;119;95m▄\u001b[38;2;169;131;108m\u001b[48;2;170;130;107m▄\u001b[38;2;172;135;112m\u001b[48;2;174;137;114m▄\u001b[38;2;180;155;138m\u001b[48;2;179;152;136m▄\u001b[38;2;189;182;178m\u001b[48;2;187;182;178m▄\u001b[38;2;192;188;185m\u001b[48;2;190;187;184m▄\u001b[38;2;192;189;185m\u001b[48;2;191;187;184m▄\u001b[38;2;191;187;184m\u001b[48;2;191;187;184m▄\u001b[38;2;190;186;183m\u001b[48;2;192;189;185m▄\u001b[38;2;191;188;185m\u001b[48;2;190;187;183m▄\u001b[38;2;190;186;183m\u001b[48;2;192;189;185m▄\u001b[0m",
+					"              \u001b[38;2;183;182;180m\u001b[48;2;185;184;182m▄\u001b[38;2;182;182;179m\u001b[48;2;181;180;178m▄\u001b[38;2;184;183;180m\u001b[48;2;185;184;181m▄\u001b[38;2;181;180;178m\u001b[48;2;184;183;181m▄\u001b[38;2;184;182;180m\u001b[48;2;184;183;180m▄\u001b[38;2;183;182;179m\u001b[48;2;183;182;180m▄\u001b[38;2;180;179;176m\u001b[48;2;181;180;178m▄\u001b[38;2;180;171;164m\u001b[48;2;179;169;162m▄\u001b[38;2;166;130;107m\u001b[48;2;173;137;115m▄\u001b[38;2;163;119;95m\u001b[48;2;161;117;93m▄\u001b[38;2;176;142;121m\u001b[48;2;169;133;111m▄\u001b[38;2;177;149;132m\u001b[48;2;179;152;133m▄\u001b[38;2;168;142;125m\u001b[48;2;140;119;106m▄\u001b[38;2;170;142;125m\u001b[48;2;101;84;75m▄\u001b[38;2;178;148;129m\u001b[48;2;119;99;88m▄\u001b[38;2;173;143;124m\u001b[48;2;114;93;82m▄\u001b[38;2;153;126;109m\u001b[48;2;110;89;77m▄\u001b[38;2;163;134;116m\u001b[48;2;156;127;110m▄\u001b[38;2;172;141;121m\u001b[48;2;177;144;123m▄\u001b[38;2;172;142;122m\u001b[48;2;166;134;114m▄\u001b[38;2;174;145;127m\u001b[48;2;173;142;122m▄\u001b[38;2;154;124;106m\u001b[48;2;171;135;113m▄\u001b[38;2;137;106;89m\u001b[48;2;172;133;109m▄\u001b[38;2;154;124;106m\u001b[48;2;177;143;121m▄\u001b[38;2;179;163;152m\u001b[48;2;179;160;146m▄\u001b[38;2;193;189;186m\u001b[48;2;190;185;181m▄\u001b[38;2;189;185;182m\u001b[48;2;193;189;186m▄\u001b[38;2;188;184;181m\u001b[48;2;189;185;181m▄\u001b[38;2;190;186;182m\u001b[48;2;190;186;183m▄\u001b[38;2;190;186;183m\u001b[48;2;191;187;183m▄\u001b[38;2;189;185;181m\u001b[48;2;190;186;183m▄\u001b[38;2;189;185;182m\u001b[48;2;188;185;182m▄\u001b[0m",
+					"              \u001b[38;2;179;178;176m\u001b[48;2;181;180;177m▄\u001b[38;2;180;179;176m\u001b[48;2;183;181;179m▄\u001b[38;2;181;180;178m\u001b[48;2;181;180;178m▄\u001b[38;2;180;180;177m\u001b[48;2;183;182;179m▄\u001b[38;2;180;179;177m\u001b[48;2;183;182;180m▄\u001b[38;2;180;179;177m\u001b[48;2;179;179;176m▄\u001b[38;2;180;179;176m\u001b[48;2;179;178;176m▄\u001b[38;2;182;173;165m\u001b[48;2;180;172;165m▄\u001b[38;2;170;134;112m\u001b[48;2;167;132;111m▄\u001b[38;2;165;122;98m\u001b[48;2;169;127;104m▄\u001b[38;2;173;142;122m\u001b[48;2;174;143;123m▄\u001b[38;2;178;155;140m\u001b[48;2;174;147;131m▄\u001b[38;2;182;157;141m\u001b[48;2;181;156;139m▄\u001b[38;2;171;133;111m\u001b[48;2;178;147;127m▄\u001b[38;2;169;130;106m\u001b[48;2;174;142;121m▄\u001b[38;2;168;128;105m\u001b[48;2;172;139;118m▄\u001b[38;2;171;135;113m\u001b[48;2;175;146;126m▄\u001b[38;2;175;144;125m\u001b[48;2;175;146;126m▄\u001b[38;2;180;153;135m\u001b[48;2;178;150;131m▄\u001b[38;2;177;150;132m\u001b[48;2;179;152;133m▄\u001b[38;2;178;152;134m\u001b[48;2;178;152;136m▄\u001b[38;2;181;153;135m\u001b[48;2;145;120;106m▄\u001b[38;2;179;148;128m\u001b[48;2;114;89;76m▄\u001b[38;2;176;151;135m\u001b[48;2;110;89;77m▄\u001b[38;2;181;169;161m\u001b[48;2;151;141;134m▄\u001b[38;2;188;184;181m\u001b[48;2;189;186;183m▄\u001b[38;2;190;186;183m\u001b[48;2;186;183;179m▄\u001b[38;2;189;185;181m\u001b[48;2;192;188;185m▄\u001b[38;2;190;186;183m\u001b[48;2;192;188;185m▄\u001b[38;2;191;187;184m\u001b[48;2;190;186;183m▄\u001b[38;2;191;187;183m\u001b[48;2;190;187;183m▄\u001b[38;2;187;183;180m\u001b[48;2;189;185;182m▄\u001b[0m",
+					"              \u001b[38;2;181;180;178m\u001b[48;2;179;178;175m▄\u001b[38;2;182;181;179m\u001b[48;2;184;183;181m▄\u001b[38;2;180;179;176m\u001b[48;2;184;183;181m▄\u001b[38;2;180;179;176m\u001b[48;2;179;178;176m▄\u001b[38;2;185;184;181m\u001b[48;2;181;180;178m▄\u001b[38;2;184;182;180m\u001b[48;2;182;181;179m▄\u001b[38;2;144;139;136m\u001b[48;2;182;180;177m▄\u001b[38;2;136;116;103m\u001b[48;2;175;162;153m▄\u001b[38;2;170;143;126m\u001b[48;2;169;137;117m▄\u001b[38;2;167;137;118m\u001b[48;2;169;130;107m▄\u001b[38;2;173;137;115m\u001b[48;2;175;144;124m▄\u001b[38;2;176;139;116m\u001b[48;2;179;153;136m▄\u001b[38;2;181;152;133m\u001b[48;2;180;154;137m▄\u001b[38;2;182;158;142m\u001b[48;2;175;142;122m▄\u001b[38;2;178;152;136m\u001b[48;2;172;137;115m▄\u001b[38;2;177;145;124m\u001b[48;2;170;133;110m▄\u001b[38;2;177;145;125m\u001b[48;2;175;140;116m▄\u001b[38;2;177;147;127m\u001b[48;2;177;145;125m▄\u001b[38;2;174;144;124m\u001b[48;2;174;144;125m▄\u001b[38;2;177;150;134m\u001b[48;2;172;144;125m▄\u001b[38;2;179;154;138m\u001b[48;2;179;153;136m▄\u001b[38;2;178;152;134m\u001b[48;2;178;151;133m▄\u001b[38;2;181;155;138m\u001b[48;2;180;151;133m▄\u001b[38;2;184;161;146m\u001b[48;2;183;160;144m▄\u001b[38;2;182;170;163m\u001b[48;2;185;172;163m▄\u001b[38;2;183;178;175m\u001b[48;2;191;186;183m▄\u001b[38;2;188;184;180m\u001b[48;2;188;184;181m▄\u001b[38;2;188;184;181m\u001b[48;2;189;185;182m▄\u001b[38;2;187;183;180m\u001b[48;2;188;184;180m▄\u001b[38;2;192;188;185m\u001b[48;2;188;184;181m▄\u001b[38;2;190;186;183m\u001b[48;2;189;185;181m▄\u001b[38;2;192;188;185m\u001b[48;2;188;184;180m▄\u001b[0m",
+					"              \u001b[38;2;180;179;177m\u001b[48;2;182;181;178m▄\u001b[38;2;179;179;176m\u001b[48;2;182;181;179m▄\u001b[38;2;182;181;179m\u001b[48;2;180;179;176m▄\u001b[38;2;184;183;181m\u001b[48;2;186;185;183m▄\u001b[38;2;180;178;176m\u001b[48;2;183;182;180m▄\u001b[38;2;167;165;163m\u001b[48;2;177;176;174m▄\u001b[38;2;143;131;125m\u001b[48;2;123;113;107m▄\u001b[38;2;174;145;126m\u001b[48;2;160;131;112m▄\u001b[38;2;160;132;114m\u001b[48;2;155;128;111m▄\u001b[38;2;90;80;76m\u001b[48;2;113;97;88m▄\u001b[38;2;99;84;77m\u001b[48;2;150;119;100m▄\u001b[38;2;162;131;112m\u001b[48;2;176;136;112m▄\u001b[38;2;179;151;132m\u001b[48;2;178;148;129m▄\u001b[38;2;181;158;141m\u001b[48;2;182;155;138m▄\u001b[38;2;178;160;147m\u001b[48;2;182;159;143m▄\u001b[38;2;166;152;144m\u001b[48;2;179;154;137m▄\u001b[38;2;155;145;139m\u001b[48;2;182;159;144m▄\u001b[38;2;153;142;135m\u001b[48;2;180;157;141m▄\u001b[38;2;144;133;126m\u001b[48;2;179;154;137m▄\u001b[38;2;149;135;125m\u001b[48;2;178;153;136m▄\u001b[38;2;173;153;139m\u001b[48;2;180;156;140m▄\u001b[38;2;179;156;140m\u001b[48;2;182;160;144m▄\u001b[38;2;181;160;145m\u001b[48;2;184;164;150m▄\u001b[38;2;185;162;147m\u001b[48;2;186;164;149m▄\u001b[38;2;141;130;124m\u001b[48;2;147;134;127m▄\u001b[38;2;149;144;141m\u001b[48;2;143;137;134m▄\u001b[38;2;190;186;182m\u001b[48;2;191;187;183m▄\u001b[38;2;187;183;179m\u001b[48;2;189;185;181m▄\u001b[38;2;189;186;183m\u001b[48;2;188;183;180m▄\u001b[38;2;187;183;180m\u001b[48;2;186;182;179m▄\u001b[38;2;189;185;182m\u001b[48;2;185;181;178m▄\u001b[38;2;187;183;180m\u001b[48;2;186;182;178m▄\u001b[0m",
+					"              \u001b[38;2;179;178;176m\u001b[48;2;180;179;176m▄\u001b[38;2;182;181;179m\u001b[48;2;181;180;177m▄\u001b[38;2;178;177;175m\u001b[48;2;184;183;181m▄\u001b[38;2;183;182;180m\u001b[48;2;182;181;179m▄\u001b[38;2;184;183;180m\u001b[48;2;184;184;181m▄\u001b[38;2;181;180;177m\u001b[48;2;180;178;175m▄\u001b[38;2;174;171;168m\u001b[48;2;150;143;138m▄\u001b[38;2;181;168;159m\u001b[48;2;178;154;139m▄\u001b[38;2;172;153;141m\u001b[48;2;171;148;133m▄\u001b[38;2;77;68;65m\u001b[48;2;84;75;72m▄\u001b[38;2;45;37;36m\u001b[48;2;58;50;48m▄\u001b[38;2;77;70;68m\u001b[48;2;115;101;93m▄\u001b[38;2;78;71;68m\u001b[48;2;150;136;127m▄\u001b[38;2;50;43;41m\u001b[48;2;112;101;95m▄\u001b[38;2;58;50;48m\u001b[48;2;97;89;85m▄\u001b[38;2;66;57;55m\u001b[48;2;71;64;62m▄\u001b[38;2;67;58;55m\u001b[48;2;69;62;60m▄\u001b[38;2;53;45;42m\u001b[48;2;69;63;61m▄\u001b[38;2;89;80;76m\u001b[48;2;87;80;79m▄\u001b[38;2;83;75;72m\u001b[48;2;101;94;91m▄\u001b[38;2;82;74;72m\u001b[48;2;144;132;125m▄\u001b[38;2;152;138;129m\u001b[48;2;179;156;141m▄\u001b[38;2;181;159;143m\u001b[48;2;183;160;144m▄\u001b[38;2;177;156;141m\u001b[48;2;182;160;145m▄\u001b[38;2;130;121;116m\u001b[48;2;137;128;122m▄\u001b[38;2;178;175;172m\u001b[48;2;171;166;163m▄\u001b[38;2;189;185;181m\u001b[48;2;189;185;182m▄\u001b[38;2;188;184;180m\u001b[48;2;192;188;185m▄\u001b[38;2;189;185;181m\u001b[48;2;190;186;183m▄\u001b[38;2;188;184;181m\u001b[48;2;188;183;180m▄\u001b[38;2;189;185;182m\u001b[48;2;190;186;183m▄\u001b[38;2;186;182;178m\u001b[48;2;187;183;180m▄\u001b[0m",
+					"              \u001b[38;2;183;182;180m\u001b[48;2;184;183;181m▄\u001b[38;2;184;183;181m\u001b[48;2;181;180;178m▄\u001b[38;2;184;183;180m\u001b[48;2;182;182;179m▄\u001b[38;2;182;181;179m\u001b[48;2;185;184;181m▄\u001b[38;2;184;182;179m\u001b[48;2;183;182;179m▄\u001b[38;2;186;185;182m\u001b[48;2;182;181;178m▄\u001b[38;2;185;184;181m\u001b[48;2;184;182;179m▄\u001b[38;2;180;179;176m\u001b[48;2;185;180;177m▄\u001b[38;2;183;181;178m\u001b[48;2;178;169;162m▄\u001b[38;2;165;162;159m\u001b[48;2;108;100;97m▄\u001b[38;2;69;61;59m\u001b[48;2;45;37;36m▄\u001b[38;2;38;30;29m\u001b[48;2;45;38;37m▄\u001b[38;2;38;31;30m\u001b[48;2;49;42;40m▄\u001b[38;2;46;38;37m\u001b[48;2;53;45;44m▄\u001b[38;2;65;57;54m\u001b[48;2;69;61;58m▄\u001b[38;2;133;114;104m\u001b[48;2;120;103;92m▄\u001b[38;2;151;120;101m\u001b[48;2;141;122;110m▄\u001b[38;2;177;148;130m\u001b[48;2;160;151;146m▄\u001b[38;2;181;166;156m\u001b[48;2;174;166;160m▄\u001b[38;2;172;165;160m\u001b[48;2;97;88;84m▄\u001b[38;2;124;117;114m\u001b[48;2;51;43;41m▄\u001b[38;2;69;61;59m\u001b[48;2;82;74;71m▄\u001b[38;2;116;105;99m\u001b[48;2;159;142;130m▄\u001b[38;2;160;148;140m\u001b[48;2;176;157;144m▄\u001b[38;2;197;191;187m\u001b[48;2;164;155;150m▄\u001b[38;2;192;187;184m\u001b[48;2;193;189;185m▄\u001b[38;2;190;185;182m\u001b[48;2;190;186;183m▄\u001b[38;2;187;183;179m\u001b[48;2;191;187;184m▄\u001b[38;2;187;182;179m\u001b[48;2;187;184;180m▄\u001b[38;2;183;179;175m\u001b[48;2;185;181;177m▄\u001b[38;2;184;180;176m\u001b[48;2;184;180;176m▄\u001b[38;2;185;181;177m\u001b[48;2;185;180;176m▄\u001b[0m",
+					"              \u001b[38;2;180;179;176m\u001b[48;2;183;182;179m▄\u001b[38;2;181;180;177m\u001b[48;2;182;181;179m▄\u001b[38;2;181;180;177m\u001b[48;2;181;180;178m▄\u001b[38;2;180;179;177m\u001b[48;2;181;180;178m▄\u001b[38;2;181;180;178m\u001b[48;2;183;182;179m▄\u001b[38;2;184;182;180m\u001b[48;2;183;182;179m▄\u001b[38;2;181;179;176m\u001b[48;2;184;182;179m▄\u001b[38;2;185;182;180m\u001b[48;2;180;178;175m▄\u001b[38;2;181;180;177m\u001b[48;2;183;182;179m▄\u001b[38;2;182;180;178m\u001b[48;2;179;177;174m▄\u001b[38;2;127;121;118m\u001b[48;2;109;103;101m▄\u001b[38;2;42;35;34m\u001b[48;2;37;31;30m▄\u001b[38;2;34;28;27m\u001b[48;2;30;24;23m▄\u001b[38;2;45;37;36m\u001b[48;2;42;34;33m▄\u001b[38;2;34;27;26m\u001b[48;2;45;37;35m▄\u001b[38;2;68;62;60m\u001b[48;2;68;59;57m▄\u001b[38;2;71;65;63m\u001b[48;2;113;98;90m▄\u001b[38;2;111;103;98m\u001b[48;2;177;152;136m▄\u001b[38;2;129;118;111m\u001b[48;2;176;148;130m▄\u001b[38;2;134;121;113m\u001b[48;2;168;145;130m▄\u001b[38;2;103;94;90m\u001b[48;2;135;126;121m▄\u001b[38;2;62;55;53m\u001b[48;2;44;37;36m▄\u001b[38;2;42;34;33m\u001b[48;2;62;54;52m▄\u001b[38;2;102;96;93m\u001b[48;2;118;109;106m▄\u001b[38;2;186;183;179m\u001b[48;2;190;185;181m▄\u001b[38;2;189;185;181m\u001b[48;2;191;187;183m▄\u001b[38;2;190;185;181m\u001b[48;2;190;186;182m▄\u001b[38;2;188;183;179m\u001b[48;2;188;183;179m▄\u001b[38;2;188;183;179m\u001b[48;2;187;182;179m▄\u001b[38;2;185;180;176m\u001b[48;2;185;181;177m▄\u001b[38;2;186;182;178m\u001b[48;2;183;179;175m▄\u001b[38;2;186;182;178m\u001b[48;2;184;180;176m▄\u001b[0m",
+					"              \u001b[38;2;122;131;142m\u001b[48;2;181;179;176m▄\u001b[38;2;155;155;156m\u001b[48;2;182;180;178m▄\u001b[38;2;174;173;172m\u001b[48;2;179;178;175m▄\u001b[38;2;179;178;176m\u001b[48;2;183;182;179m▄\u001b[38;2;179;178;175m\u001b[48;2;180;180;177m▄\u001b[38;2;183;183;180m\u001b[48;2;180;179;176m▄\u001b[38;2;182;181;179m\u001b[48;2;182;180;177m▄\u001b[38;2;182;182;179m\u001b[48;2;181;180;177m▄\u001b[38;2;183;182;179m\u001b[48;2;180;179;176m▄\u001b[38;2;185;173;164m\u001b[48;2;185;182;178m▄\u001b[38;2;169;145;128m\u001b[48;2;154;140;130m▄\u001b[38;2;142;123;111m\u001b[48;2;82;71;66m▄\u001b[38;2;80;69;63m\u001b[48;2;48;41;40m▄\u001b[38;2;43;36;35m\u001b[48;2;40;32;31m▄\u001b[38;2;26;20;20m\u001b[48;2;24;18;18m▄\u001b[38;2;41;35;34m\u001b[48;2;50;44;44m▄\u001b[38;2;31;25;24m\u001b[48;2;35;30;29m▄\u001b[38;2;29;23;22m\u001b[48;2;28;22;22m▄\u001b[38;2;31;24;24m\u001b[48;2;44;38;37m▄\u001b[38;2;38;32;32m\u001b[48;2;41;35;34m▄\u001b[38;2;29;23;22m\u001b[48;2;45;38;37m▄\u001b[38;2;42;34;33m\u001b[48;2;45;37;35m▄\u001b[38;2;93;86;84m\u001b[48;2;51;43;42m▄\u001b[38;2;183;179;176m\u001b[48;2;142;136;133m▄\u001b[38;2;187;183;179m\u001b[48;2;188;184;181m▄\u001b[38;2;187;182;178m\u001b[48;2;188;183;179m▄\u001b[38;2;184;180;176m\u001b[48;2;187;182;178m▄\u001b[38;2;186;181;177m\u001b[48;2;188;183;179m▄\u001b[38;2;187;182;178m\u001b[48;2;185;180;177m▄\u001b[38;2;186;181;177m\u001b[48;2;185;181;177m▄\u001b[38;2;184;180;176m\u001b[48;2;183;178;175m▄\u001b[38;2;186;182;178m\u001b[48;2;183;178;174m▄\u001b[0m",
+					"              \u001b[38;2;50;94;139m\u001b[48;2;44;73;107m▄\u001b[38;2;54;95;138m\u001b[48;2;76;93;115m▄\u001b[38;2;58;93;131m\u001b[48;2;95;104;118m▄\u001b[38;2;63;91;122m\u001b[48;2;110;114;122m▄\u001b[38;2;84;95;112m\u001b[48;2;130;130;133m▄\u001b[38;2;100;100;105m\u001b[48;2;146;144;144m▄\u001b[38;2;112;107;106m\u001b[48;2;173;171;168m▄\u001b[38;2;160;143;132m\u001b[48;2;183;178;174m▄\u001b[38;2;176;142;120m\u001b[48;2;182;165;154m▄\u001b[38;2;177;142;118m\u001b[48;2;179;150;130m▄\u001b[38;2;159;126;104m\u001b[48;2;162;132;112m▄\u001b[38;2;158;127;107m\u001b[48;2;163;135;116m▄\u001b[38;2;158;129;109m\u001b[48;2;142;118;103m▄\u001b[38;2;144;119;102m\u001b[48;2;78;64;58m▄\u001b[38;2;88;73;64m\u001b[48;2;26;20;20m▄\u001b[38;2;54;45;42m\u001b[48;2;29;23;22m▄\u001b[38;2;28;22;21m\u001b[48;2;24;18;17m▄\u001b[38;2;32;27;26m\u001b[48;2;34;28;28m▄\u001b[38;2;26;20;19m\u001b[48;2;31;25;24m▄\u001b[38;2;32;26;26m\u001b[48;2;34;28;27m▄\u001b[38;2;37;30;29m\u001b[48;2;47;40;39m▄\u001b[38;2;57;51;49m\u001b[48;2;52;45;44m▄\u001b[38;2;163;158;155m\u001b[48;2;141;136;132m▄\u001b[38;2;186;181;177m\u001b[48;2;186;182;179m▄\u001b[38;2;188;183;179m\u001b[48;2;185;181;178m▄\u001b[38;2;186;182;178m\u001b[48;2;186;181;177m▄\u001b[38;2;184;179;175m\u001b[48;2;186;181;177m▄\u001b[38;2;184;180;176m\u001b[48;2;185;180;176m▄\u001b[38;2;185;180;176m\u001b[48;2;186;182;178m▄\u001b[38;2;185;180;177m\u001b[48;2;184;180;176m▄\u001b[38;2;186;181;178m\u001b[48;2;185;180;176m▄\u001b[38;2;181;176;172m\u001b[48;2;183;178;174m▄\u001b[0m",
+					"              \u001b[38;2;72;119;161m\u001b[48;2;61;108;152m▄\u001b[38;2;76;122;164m\u001b[48;2;67;114;157m▄\u001b[38;2;78;123;163m\u001b[48;2;68;113;156m▄\u001b[38;2;69;113;154m\u001b[48;2;66;110;152m▄\u001b[38;2;58;93;128m\u001b[48;2;65;95;128m▄\u001b[38;2;88;107;127m\u001b[48;2;90;100;113m▄\u001b[38;2;118;116;117m\u001b[48;2;111;106;105m▄\u001b[38;2;146;123;110m\u001b[48;2;157;134;119m▄\u001b[38;2;177;146;127m\u001b[48;2;177;146;126m▄\u001b[38;2;175;142;121m\u001b[48;2;179;148;127m▄\u001b[38;2;176;142;120m\u001b[48;2;170;137;116m▄\u001b[38;2;167;129;105m\u001b[48;2;157;122;100m▄\u001b[38;2;160;120;97m\u001b[48;2;159;127;107m▄\u001b[38;2;161;127;106m\u001b[48;2;164;135;116m▄\u001b[38;2;165;133;112m\u001b[48;2;158;131;113m▄\u001b[38;2;166;136;116m\u001b[48;2;134;113;100m▄\u001b[38;2;155;131;115m\u001b[48;2;84;70;63m▄\u001b[38;2;130;112;102m\u001b[48;2;44;37;35m▄\u001b[38;2;111;102;97m\u001b[48;2;30;24;24m▄\u001b[38;2;138;132;128m\u001b[48;2;55;48;46m▄\u001b[38;2;164;158;153m\u001b[48;2;58;51;49m▄\u001b[38;2;183;178;174m\u001b[48;2;122;116;113m▄\u001b[38;2;186;182;178m\u001b[48;2;190;185;182m▄\u001b[38;2;188;184;180m\u001b[48;2;188;184;180m▄\u001b[38;2;185;181;177m\u001b[48;2;187;182;178m▄\u001b[38;2;183;178;174m\u001b[48;2;182;178;174m▄\u001b[38;2;186;181;177m\u001b[48;2;186;181;177m▄\u001b[38;2;185;180;176m\u001b[48;2;185;181;177m▄\u001b[38;2;182;177;174m\u001b[48;2;184;179;175m▄\u001b[38;2;182;177;173m\u001b[48;2;186;182;178m▄\u001b[38;2;178;172;168m\u001b[48;2;182;177;173m▄\u001b[38;2;178;172;168m\u001b[48;2;181;174;170m▄\u001b[0m",
+					"              \u001b[38;2;72;120;161m\u001b[48;2;72;118;160m▄\u001b[38;2;75;122;163m\u001b[48;2;74;120;162m▄\u001b[38;2;76;123;164m\u001b[48;2;81;127;167m▄\u001b[38;2;74;117;155m\u001b[48;2;71;113;151m▄\u001b[38;2;61;99;135m\u001b[48;2;58;93;128m▄\u001b[38;2;59;95;130m\u001b[48;2;64;92;122m▄\u001b[38;2;91;103;118m\u001b[48;2;97;97;103m▄\u001b[38;2;111;95;86m\u001b[48;2;124;105;95m▄\u001b[38;2;156;126;108m\u001b[48;2;172;138;117m▄\u001b[38;2;175;140;119m\u001b[48;2;176;141;119m▄\u001b[38;2;177;143;121m\u001b[48;2;180;145;122m▄\u001b[38;2;178;143;120m\u001b[48;2;175;137;113m▄\u001b[38;2;181;146;124m\u001b[48;2;173;135;111m▄\u001b[38;2;175;142;120m\u001b[48;2;165;129;106m▄\u001b[38;2;169;136;114m\u001b[48;2;166;132;110m▄\u001b[38;2;170;138;118m\u001b[48;2;167;134;112m▄\u001b[38;2;169;138;118m\u001b[48;2;169;138;118m▄\u001b[38;2;172;145;127m\u001b[48;2;172;148;132m▄\u001b[38;2;173;161;153m\u001b[48;2;171;159;150m▄\u001b[38;2;183;176;172m\u001b[48;2;178;172;168m▄\u001b[38;2;185;179;175m\u001b[48;2;189;184;180m▄\u001b[38;2;191;185;181m\u001b[48;2;188;183;179m▄\u001b[38;2;193;186;182m\u001b[48;2;188;184;180m▄\u001b[38;2;189;182;178m\u001b[48;2;188;184;180m▄\u001b[38;2;184;179;175m\u001b[48;2;184;179;175m▄\u001b[38;2;186;181;177m\u001b[48;2;183;178;174m▄\u001b[38;2;185;180;176m\u001b[48;2;185;180;176m▄\u001b[38;2;182;175;171m\u001b[48;2;184;179;175m▄\u001b[38;2;183;177;173m\u001b[48;2;184;178;174m▄\u001b[38;2;179;173;169m\u001b[48;2;182;175;171m▄\u001b[38;2;179;174;170m\u001b[48;2;179;174;170m▄\u001b[38;2;176;171;168m\u001b[48;2;178;174;170m▄\u001b[0m",
+					"",
+					"              \u001b[38;2;138;190;183mFree Kimi K2.5 via OpenCode Zen\u001b[39m",
+					"                    \u001b[38;2;181;189;104m\"Powered by daxnuts\"\u001b[39m",
+					"                          \u001b[38;2;128;128;128m— @thdxr\u001b[39m",
+					"",
+					"                        \u001b[38;2;102;102;102mTry OpenCode\u001b[39m",
+					"          \u001b[38;2;129;162;190mhttps://mistral.ai/news/mistral-vibe-2-0\u001b[39m",
+					""
+				],
+				"tick30": [
+					"",
+					"              \u001b[38;2;184;183;181m\u001b[48;2;187;186;184m▄\u001b[38;2;185;184;181m\u001b[48;2;185;185;182m▄\u001b[38;2;184;184;181m\u001b[48;2;185;184;181m▄\u001b[38;2;181;181;178m\u001b[48;2;188;187;184m▄\u001b[38;2;182;181;178m\u001b[48;2;184;183;180m▄\u001b[38;2;184;183;180m\u001b[48;2;183;181;178m▄\u001b[38;2;185;184;181m\u001b[48;2;182;181;178m▄\u001b[38;2;185;184;181m\u001b[48;2;184;183;180m▄\u001b[38;2;182;181;179m\u001b[48;2;183;182;179m▄\u001b[38;2;186;184;181m\u001b[48;2;182;180;177m▄\u001b[38;2;188;186;183m\u001b[48;2;189;188;184m▄\u001b[38;2;187;185;182m\u001b[48;2;186;184;182m▄\u001b[38;2;187;184;181m\u001b[48;2;187;184;181m▄\u001b[38;2;191;185;181m\u001b[48;2;184;181;177m▄\u001b[38;2;189;178;171m\u001b[48;2;187;184;180m▄\u001b[38;2;188;176;168m\u001b[48;2;194;190;187m▄\u001b[38;2;190;178;170m\u001b[48;2;193;190;186m▄\u001b[38;2;190;181;175m\u001b[48;2;192;189;186m▄\u001b[38;2;191;186;182m\u001b[48;2;191;188;185m▄\u001b[38;2;190;186;183m\u001b[48;2;193;190;186m▄\u001b[38;2;192;191;188m\u001b[48;2;191;190;187m▄\u001b[38;2;190;189;186m\u001b[48;2;192;191;188m▄\u001b[38;2;190;187;184m\u001b[48;2;192;189;186m▄\u001b[38;2;192;189;186m\u001b[48;2;187;184;181m▄\u001b[38;2;191;190;187m\u001b[48;2;193;191;188m▄\u001b[38;2;194;190;187m\u001b[48;2;191;188;184m▄\u001b[38;2;189;186;183m\u001b[48;2;187;185;182m▄\u001b[38;2;195;192;189m\u001b[48;2;191;188;184m▄\u001b[38;2;195;192;189m\u001b[48;2;194;191;188m▄\u001b[38;2;193;190;187m\u001b[48;2;193;191;188m▄\u001b[38;2;194;190;186m\u001b[48;2;191;187;184m▄\u001b[38;2;191;188;184m\u001b[48;2;189;185;182m▄\u001b[0m",
+					"              \u001b[38;2;181;180;178m\u001b[48;2;186;185;182m▄\u001b[38;2;180;179;176m\u001b[48;2;183;182;179m▄\u001b[38;2;186;185;182m\u001b[48;2;178;177;174m▄\u001b[38;2;185;185;182m\u001b[48;2;182;181;178m▄\u001b[38;2;181;180;177m\u001b[48;2;181;180;177m▄\u001b[38;2;181;180;177m\u001b[48;2;181;180;178m▄\u001b[38;2;182;181;179m\u001b[48;2;182;181;178m▄\u001b[38;2;185;184;181m\u001b[48;2;183;182;180m▄\u001b[38;2;185;184;182m\u001b[48;2;185;184;182m▄\u001b[38;2;185;184;182m\u001b[48;2;183;182;179m▄\u001b[38;2;178;174;170m\u001b[48;2;187;186;183m▄\u001b[38;2;150;129;116m\u001b[48;2;178;175;171m▄\u001b[38;2;166;131;110m\u001b[48;2;165;152;143m▄\u001b[38;2;170;133;110m\u001b[48;2;180;158;144m▄\u001b[38;2;171;132;110m\u001b[48;2;176;148;129m▄\u001b[38;2;175;137;115m\u001b[48;2;183;154;136m▄\u001b[38;2;172;137;115m\u001b[48;2;179;150;131m▄\u001b[38;2;176;143;121m\u001b[48;2;176;149;131m▄\u001b[38;2;177;143;122m\u001b[48;2;183;163;149m▄\u001b[38;2;179;151;134m\u001b[48;2;191;182;176m▄\u001b[38;2;183;168;157m\u001b[48;2;192;189;186m▄\u001b[38;2;187;179;174m\u001b[48;2;189;187;184m▄\u001b[38;2;191;186;182m\u001b[48;2;190;188;185m▄\u001b[38;2;194;192;189m\u001b[48;2;193;191;188m▄\u001b[38;2;190;188;185m\u001b[48;2;192;190;187m▄\u001b[38;2;191;189;186m\u001b[48;2;189;186;183m▄\u001b[38;2;195;193;189m\u001b[48;2;190;187;184m▄\u001b[38;2;194;190;187m\u001b[48;2;194;191;188m▄\u001b[38;2;192;188;185m\u001b[48;2;192;189;186m▄\u001b[38;2;189;185;182m\u001b[48;2;192;188;185m▄\u001b[38;2;193;189;186m\u001b[48;2;189;185;182m▄\u001b[38;2;191;187;184m\u001b[48;2;192;188;184m▄\u001b[0m",
+					"              \u001b[38;2;180;178;176m\u001b[48;2;180;179;176m▄\u001b[38;2;183;182;180m\u001b[48;2;185;184;181m▄\u001b[38;2;183;182;179m\u001b[48;2;184;183;181m▄\u001b[38;2;180;178;176m\u001b[48;2;180;179;177m▄\u001b[38;2;186;185;183m\u001b[48;2;181;180;177m▄\u001b[38;2;182;181;178m\u001b[48;2;184;183;180m▄\u001b[38;2;182;181;178m\u001b[48;2;184;183;181m▄\u001b[38;2;186;185;182m\u001b[48;2;186;185;182m▄\u001b[38;2;186;185;182m\u001b[48;2;187;186;183m▄\u001b[38;2;149;140;135m\u001b[48;2;177;175;173m▄\u001b[38;2;151;118;99m\u001b[48;2;140;122;113m▄\u001b[38;2;170;131;107m\u001b[48;2;157;115;92m▄\u001b[38;2;172;135;114m\u001b[48;2;164;120;96m▄\u001b[38;2;176;143;122m\u001b[48;2;168;125;101m▄\u001b[38;2;173;140;119m\u001b[48;2;169;128;105m▄\u001b[38;2;178;145;125m\u001b[48;2;174;137;114m▄\u001b[38;2;176;145;125m\u001b[48;2;174;140;117m▄\u001b[38;2;176;144;124m\u001b[48;2;175;141;119m▄\u001b[38;2;172;137;113m\u001b[48;2;170;130;107m▄\u001b[38;2;167;125;100m\u001b[48;2;169;128;103m▄\u001b[38;2;168;127;103m\u001b[48;2;170;137;116m▄\u001b[38;2;172;137;114m\u001b[48;2;179;158;144m▄\u001b[38;2;178;152;135m\u001b[48;2;182;167;157m▄\u001b[38;2;184;168;157m\u001b[48;2;187;178;173m▄\u001b[38;2;191;186;181m\u001b[48;2;192;189;186m▄\u001b[38;2;191;189;186m\u001b[48;2;193;191;189m▄\u001b[38;2;193;190;186m\u001b[48;2;191;187;184m▄\u001b[38;2;192;188;185m\u001b[48;2;193;189;185m▄\u001b[38;2;192;188;185m\u001b[48;2;190;186;182m▄\u001b[38;2;192;188;185m\u001b[48;2;192;189;185m▄\u001b[38;2;193;190;186m\u001b[48;2;191;187;184m▄\u001b[38;2;190;186;183m\u001b[48;2;193;189;186m▄\u001b[0m",
+					"              \u001b[38;2;182;180;178m\u001b[48;2;184;183;180m▄\u001b[38;2;183;181;179m\u001b[48;2;183;182;180m▄\u001b[38;2;182;181;178m\u001b[48;2;181;180;177m▄\u001b[38;2;184;183;180m\u001b[48;2;181;180;178m▄\u001b[38;2;179;178;175m\u001b[48;2;183;182;179m▄\u001b[38;2;184;183;180m\u001b[48;2;181;180;178m▄\u001b[38;2;182;181;178m\u001b[48;2;186;185;183m▄\u001b[38;2;179;178;176m\u001b[48;2;186;185;182m▄\u001b[38;2;179;165;154m\u001b[48;2;180;177;173m▄\u001b[38;2;171;133;111m\u001b[48;2;168;143;127m▄\u001b[38;2;173;141;120m\u001b[48;2;173;137;115m▄\u001b[38;2;176;145;126m\u001b[48;2;174;141;120m▄\u001b[38;2;177;152;134m\u001b[48;2;177;150;132m▄\u001b[38;2;180;155;139m\u001b[48;2;177;150;133m▄\u001b[38;2;180;154;137m\u001b[48;2;178;151;134m▄\u001b[38;2;179;151;133m\u001b[48;2;182;154;137m▄\u001b[38;2;176;145;126m\u001b[48;2;178;149;130m▄\u001b[38;2;175;143;124m\u001b[48;2;177;145;125m▄\u001b[38;2;171;134;111m\u001b[48;2;170;133;110m▄\u001b[38;2;167;125;101m\u001b[48;2;168;126;102m▄\u001b[38;2;167;122;97m\u001b[48;2;169;126;102m▄\u001b[38;2;168;125;100m\u001b[48;2;173;134;110m▄\u001b[38;2;169;129;106m\u001b[48;2;169;130;107m▄\u001b[38;2;176;143;121m\u001b[48;2;175;146;128m▄\u001b[38;2;181;162;150m\u001b[48;2;184;173;166m▄\u001b[38;2;193;188;184m\u001b[48;2;189;187;184m▄\u001b[38;2;195;191;188m\u001b[48;2;190;186;183m▄\u001b[38;2;194;190;187m\u001b[48;2;191;187;184m▄\u001b[38;2;190;186;183m\u001b[48;2;193;189;186m▄\u001b[38;2;191;187;183m\u001b[48;2;191;187;184m▄\u001b[38;2;189;186;182m\u001b[48;2;188;184;180m▄\u001b[38;2;194;190;186m\u001b[48;2;188;184;181m▄\u001b[0m",
+					"              \u001b[38;2;182;181;178m\u001b[48;2;184;183;180m▄\u001b[38;2;185;184;181m\u001b[48;2;183;182;180m▄\u001b[38;2;180;179;177m\u001b[48;2;182;181;179m▄\u001b[38;2;184;183;181m\u001b[48;2;183;182;179m▄\u001b[38;2;180;179;176m\u001b[48;2;182;181;178m▄\u001b[38;2;183;182;180m\u001b[48;2;185;184;182m▄\u001b[38;2;182;181;179m\u001b[48;2;180;179;177m▄\u001b[38;2;177;167;160m\u001b[48;2;182;177;172m▄\u001b[38;2;170;135;114m\u001b[48;2;172;143;124m▄\u001b[38;2;167;125;101m\u001b[48;2;169;130;107m▄\u001b[38;2;168;133;112m\u001b[48;2;174;143;122m▄\u001b[38;2;180;152;135m\u001b[48;2;175;149;131m▄\u001b[38;2;177;155;141m\u001b[48;2;180;156;140m▄\u001b[38;2;156;136;124m\u001b[48;2;180;156;139m▄\u001b[38;2;144;122;109m\u001b[48;2;183;157;140m▄\u001b[38;2;152;127;113m\u001b[48;2;181;153;135m▄\u001b[38;2;170;144;127m\u001b[48;2;177;147;128m▄\u001b[38;2;175;145;125m\u001b[48;2;173;142;121m▄\u001b[38;2;175;142;122m\u001b[48;2;174;140;119m▄\u001b[38;2;173;140;120m\u001b[48;2;175;142;120m▄\u001b[38;2;172;139;119m\u001b[48;2;172;135;113m▄\u001b[38;2;168;131;108m\u001b[48;2;163;119;95m▄\u001b[38;2;169;131;108m\u001b[48;2;170;130;107m▄\u001b[38;2;172;135;112m\u001b[48;2;174;137;114m▄\u001b[38;2;180;155;138m\u001b[48;2;179;152;136m▄\u001b[38;2;189;182;178m\u001b[48;2;187;182;178m▄\u001b[38;2;192;188;185m\u001b[48;2;190;187;184m▄\u001b[38;2;192;189;185m\u001b[48;2;191;187;184m▄\u001b[38;2;191;187;184m\u001b[48;2;191;187;184m▄\u001b[38;2;190;186;183m\u001b[48;2;192;189;185m▄\u001b[38;2;191;188;185m\u001b[48;2;190;187;183m▄\u001b[38;2;190;186;183m\u001b[48;2;192;189;185m▄\u001b[0m",
+					"              \u001b[38;2;183;182;180m\u001b[48;2;185;184;182m▄\u001b[38;2;182;182;179m\u001b[48;2;181;180;178m▄\u001b[38;2;184;183;180m\u001b[48;2;185;184;181m▄\u001b[38;2;181;180;178m\u001b[48;2;184;183;181m▄\u001b[38;2;184;182;180m\u001b[48;2;184;183;180m▄\u001b[38;2;183;182;179m\u001b[48;2;183;182;180m▄\u001b[38;2;180;179;176m\u001b[48;2;181;180;178m▄\u001b[38;2;180;171;164m\u001b[48;2;179;169;162m▄\u001b[38;2;166;130;107m\u001b[48;2;173;137;115m▄\u001b[38;2;163;119;95m\u001b[48;2;161;117;93m▄\u001b[38;2;176;142;121m\u001b[48;2;169;133;111m▄\u001b[38;2;177;149;132m\u001b[48;2;179;152;133m▄\u001b[38;2;168;142;125m\u001b[48;2;140;119;106m▄\u001b[38;2;170;142;125m\u001b[48;2;101;84;75m▄\u001b[38;2;178;148;129m\u001b[48;2;119;99;88m▄\u001b[38;2;173;143;124m\u001b[48;2;114;93;82m▄\u001b[38;2;153;126;109m\u001b[48;2;110;89;77m▄\u001b[38;2;163;134;116m\u001b[48;2;156;127;110m▄\u001b[38;2;172;141;121m\u001b[48;2;177;144;123m▄\u001b[38;2;172;142;122m\u001b[48;2;166;134;114m▄\u001b[38;2;174;145;127m\u001b[48;2;173;142;122m▄\u001b[38;2;154;124;106m\u001b[48;2;171;135;113m▄\u001b[38;2;137;106;89m\u001b[48;2;172;133;109m▄\u001b[38;2;154;124;106m\u001b[48;2;177;143;121m▄\u001b[38;2;179;163;152m\u001b[48;2;179;160;146m▄\u001b[38;2;193;189;186m\u001b[48;2;190;185;181m▄\u001b[38;2;189;185;182m\u001b[48;2;193;189;186m▄\u001b[38;2;188;184;181m\u001b[48;2;189;185;181m▄\u001b[38;2;190;186;182m\u001b[48;2;190;186;183m▄\u001b[38;2;190;186;183m\u001b[48;2;191;187;183m▄\u001b[38;2;189;185;181m\u001b[48;2;190;186;183m▄\u001b[38;2;189;185;182m\u001b[48;2;188;185;182m▄\u001b[0m",
+					"              \u001b[38;2;179;178;176m\u001b[48;2;181;180;177m▄\u001b[38;2;180;179;176m\u001b[48;2;183;181;179m▄\u001b[38;2;181;180;178m\u001b[48;2;181;180;178m▄\u001b[38;2;180;180;177m\u001b[48;2;183;182;179m▄\u001b[38;2;180;179;177m\u001b[48;2;183;182;180m▄\u001b[38;2;180;179;177m\u001b[48;2;179;179;176m▄\u001b[38;2;180;179;176m\u001b[48;2;179;178;176m▄\u001b[38;2;182;173;165m\u001b[48;2;180;172;165m▄\u001b[38;2;170;134;112m\u001b[48;2;167;132;111m▄\u001b[38;2;165;122;98m\u001b[48;2;169;127;104m▄\u001b[38;2;173;142;122m\u001b[48;2;174;143;123m▄\u001b[38;2;178;155;140m\u001b[48;2;174;147;131m▄\u001b[38;2;182;157;141m\u001b[48;2;181;156;139m▄\u001b[38;2;171;133;111m\u001b[48;2;178;147;127m▄\u001b[38;2;169;130;106m\u001b[48;2;174;142;121m▄\u001b[38;2;168;128;105m\u001b[48;2;172;139;118m▄\u001b[38;2;171;135;113m\u001b[48;2;175;146;126m▄\u001b[38;2;175;144;125m\u001b[48;2;175;146;126m▄\u001b[38;2;180;153;135m\u001b[48;2;178;150;131m▄\u001b[38;2;177;150;132m\u001b[48;2;179;152;133m▄\u001b[38;2;178;152;134m\u001b[48;2;178;152;136m▄\u001b[38;2;181;153;135m\u001b[48;2;145;120;106m▄\u001b[38;2;179;148;128m\u001b[48;2;114;89;76m▄\u001b[38;2;176;151;135m\u001b[48;2;110;89;77m▄\u001b[38;2;181;169;161m\u001b[48;2;151;141;134m▄\u001b[38;2;188;184;181m\u001b[48;2;189;186;183m▄\u001b[38;2;190;186;183m\u001b[48;2;186;183;179m▄\u001b[38;2;189;185;181m\u001b[48;2;192;188;185m▄\u001b[38;2;190;186;183m\u001b[48;2;192;188;185m▄\u001b[38;2;191;187;184m\u001b[48;2;190;186;183m▄\u001b[38;2;191;187;183m\u001b[48;2;190;187;183m▄\u001b[38;2;187;183;180m\u001b[48;2;189;185;182m▄\u001b[0m",
+					"              \u001b[38;2;181;180;178m\u001b[48;2;179;178;175m▄\u001b[38;2;182;181;179m\u001b[48;2;184;183;181m▄\u001b[38;2;180;179;176m\u001b[48;2;184;183;181m▄\u001b[38;2;180;179;176m\u001b[48;2;179;178;176m▄\u001b[38;2;185;184;181m\u001b[48;2;181;180;178m▄\u001b[38;2;184;182;180m\u001b[48;2;182;181;179m▄\u001b[38;2;144;139;136m\u001b[48;2;182;180;177m▄\u001b[38;2;136;116;103m\u001b[48;2;175;162;153m▄\u001b[38;2;170;143;126m\u001b[48;2;169;137;117m▄\u001b[38;2;167;137;118m\u001b[48;2;169;130;107m▄\u001b[38;2;173;137;115m\u001b[48;2;175;144;124m▄\u001b[38;2;176;139;116m\u001b[48;2;179;153;136m▄\u001b[38;2;181;152;133m\u001b[48;2;180;154;137m▄\u001b[38;2;182;158;142m\u001b[48;2;175;142;122m▄\u001b[38;2;178;152;136m\u001b[48;2;172;137;115m▄\u001b[38;2;177;145;124m\u001b[48;2;170;133;110m▄\u001b[38;2;177;145;125m\u001b[48;2;175;140;116m▄\u001b[38;2;177;147;127m\u001b[48;2;177;145;125m▄\u001b[38;2;174;144;124m\u001b[48;2;174;144;125m▄\u001b[38;2;177;150;134m\u001b[48;2;172;144;125m▄\u001b[38;2;179;154;138m\u001b[48;2;179;153;136m▄\u001b[38;2;178;152;134m\u001b[48;2;178;151;133m▄\u001b[38;2;181;155;138m\u001b[48;2;180;151;133m▄\u001b[38;2;184;161;146m\u001b[48;2;183;160;144m▄\u001b[38;2;182;170;163m\u001b[48;2;185;172;163m▄\u001b[38;2;183;178;175m\u001b[48;2;191;186;183m▄\u001b[38;2;188;184;180m\u001b[48;2;188;184;181m▄\u001b[38;2;188;184;181m\u001b[48;2;189;185;182m▄\u001b[38;2;187;183;180m\u001b[48;2;188;184;180m▄\u001b[38;2;192;188;185m\u001b[48;2;188;184;181m▄\u001b[38;2;190;186;183m\u001b[48;2;189;185;181m▄\u001b[38;2;192;188;185m\u001b[48;2;188;184;180m▄\u001b[0m",
+					"              \u001b[38;2;180;179;177m\u001b[48;2;182;181;178m▄\u001b[38;2;179;179;176m\u001b[48;2;182;181;179m▄\u001b[38;2;182;181;179m\u001b[48;2;180;179;176m▄\u001b[38;2;184;183;181m\u001b[48;2;186;185;183m▄\u001b[38;2;180;178;176m\u001b[48;2;183;182;180m▄\u001b[38;2;167;165;163m\u001b[48;2;177;176;174m▄\u001b[38;2;143;131;125m\u001b[48;2;123;113;107m▄\u001b[38;2;174;145;126m\u001b[48;2;160;131;112m▄\u001b[38;2;160;132;114m\u001b[48;2;155;128;111m▄\u001b[38;2;90;80;76m\u001b[48;2;113;97;88m▄\u001b[38;2;99;84;77m\u001b[48;2;150;119;100m▄\u001b[38;2;162;131;112m\u001b[48;2;176;136;112m▄\u001b[38;2;179;151;132m\u001b[48;2;178;148;129m▄\u001b[38;2;181;158;141m\u001b[48;2;182;155;138m▄\u001b[38;2;178;160;147m\u001b[48;2;182;159;143m▄\u001b[38;2;166;152;144m\u001b[48;2;179;154;137m▄\u001b[38;2;155;145;139m\u001b[48;2;182;159;144m▄\u001b[38;2;153;142;135m\u001b[48;2;180;157;141m▄\u001b[38;2;144;133;126m\u001b[48;2;179;154;137m▄\u001b[38;2;149;135;125m\u001b[48;2;178;153;136m▄\u001b[38;2;173;153;139m\u001b[48;2;180;156;140m▄\u001b[38;2;179;156;140m\u001b[48;2;182;160;144m▄\u001b[38;2;181;160;145m\u001b[48;2;184;164;150m▄\u001b[38;2;185;162;147m\u001b[48;2;186;164;149m▄\u001b[38;2;141;130;124m\u001b[48;2;147;134;127m▄\u001b[38;2;149;144;141m\u001b[48;2;143;137;134m▄\u001b[38;2;190;186;182m\u001b[48;2;191;187;183m▄\u001b[38;2;187;183;179m\u001b[48;2;189;185;181m▄\u001b[38;2;189;186;183m\u001b[48;2;188;183;180m▄\u001b[38;2;187;183;180m\u001b[48;2;186;182;179m▄\u001b[38;2;189;185;182m\u001b[48;2;185;181;178m▄\u001b[38;2;187;183;180m\u001b[48;2;186;182;178m▄\u001b[0m",
+					"              \u001b[38;2;179;178;176m\u001b[48;2;180;179;176m▄\u001b[38;2;182;181;179m\u001b[48;2;181;180;177m▄\u001b[38;2;178;177;175m\u001b[48;2;184;183;181m▄\u001b[38;2;183;182;180m\u001b[48;2;182;181;179m▄\u001b[38;2;184;183;180m\u001b[48;2;184;184;181m▄\u001b[38;2;181;180;177m\u001b[48;2;180;178;175m▄\u001b[38;2;174;171;168m\u001b[48;2;150;143;138m▄\u001b[38;2;181;168;159m\u001b[48;2;178;154;139m▄\u001b[38;2;172;153;141m\u001b[48;2;171;148;133m▄\u001b[38;2;77;68;65m\u001b[48;2;84;75;72m▄\u001b[38;2;45;37;36m\u001b[48;2;58;50;48m▄\u001b[38;2;77;70;68m\u001b[48;2;115;101;93m▄\u001b[38;2;78;71;68m\u001b[48;2;150;136;127m▄\u001b[38;2;50;43;41m\u001b[48;2;112;101;95m▄\u001b[38;2;58;50;48m\u001b[48;2;97;89;85m▄\u001b[38;2;66;57;55m\u001b[48;2;71;64;62m▄\u001b[38;2;67;58;55m\u001b[48;2;69;62;60m▄\u001b[38;2;53;45;42m\u001b[48;2;69;63;61m▄\u001b[38;2;89;80;76m\u001b[48;2;87;80;79m▄\u001b[38;2;83;75;72m\u001b[48;2;101;94;91m▄\u001b[38;2;82;74;72m\u001b[48;2;144;132;125m▄\u001b[38;2;152;138;129m\u001b[48;2;179;156;141m▄\u001b[38;2;181;159;143m\u001b[48;2;183;160;144m▄\u001b[38;2;177;156;141m\u001b[48;2;182;160;145m▄\u001b[38;2;130;121;116m\u001b[48;2;137;128;122m▄\u001b[38;2;178;175;172m\u001b[48;2;171;166;163m▄\u001b[38;2;189;185;181m\u001b[48;2;189;185;182m▄\u001b[38;2;188;184;180m\u001b[48;2;192;188;185m▄\u001b[38;2;189;185;181m\u001b[48;2;190;186;183m▄\u001b[38;2;188;184;181m\u001b[48;2;188;183;180m▄\u001b[38;2;189;185;182m\u001b[48;2;190;186;183m▄\u001b[38;2;186;182;178m\u001b[48;2;187;183;180m▄\u001b[0m",
+					"              \u001b[38;2;183;182;180m\u001b[48;2;184;183;181m▄\u001b[38;2;184;183;181m\u001b[48;2;181;180;178m▄\u001b[38;2;184;183;180m\u001b[48;2;182;182;179m▄\u001b[38;2;182;181;179m\u001b[48;2;185;184;181m▄\u001b[38;2;184;182;179m\u001b[48;2;183;182;179m▄\u001b[38;2;186;185;182m\u001b[48;2;182;181;178m▄\u001b[38;2;185;184;181m\u001b[48;2;184;182;179m▄\u001b[38;2;180;179;176m\u001b[48;2;185;180;177m▄\u001b[38;2;183;181;178m\u001b[48;2;178;169;162m▄\u001b[38;2;165;162;159m\u001b[48;2;108;100;97m▄\u001b[38;2;69;61;59m\u001b[48;2;45;37;36m▄\u001b[38;2;38;30;29m\u001b[48;2;45;38;37m▄\u001b[38;2;38;31;30m\u001b[48;2;49;42;40m▄\u001b[38;2;46;38;37m\u001b[48;2;53;45;44m▄\u001b[38;2;65;57;54m\u001b[48;2;69;61;58m▄\u001b[38;2;133;114;104m\u001b[48;2;120;103;92m▄\u001b[38;2;151;120;101m\u001b[48;2;141;122;110m▄\u001b[38;2;177;148;130m\u001b[48;2;160;151;146m▄\u001b[38;2;181;166;156m\u001b[48;2;174;166;160m▄\u001b[38;2;172;165;160m\u001b[48;2;97;88;84m▄\u001b[38;2;124;117;114m\u001b[48;2;51;43;41m▄\u001b[38;2;69;61;59m\u001b[48;2;82;74;71m▄\u001b[38;2;116;105;99m\u001b[48;2;159;142;130m▄\u001b[38;2;160;148;140m\u001b[48;2;176;157;144m▄\u001b[38;2;197;191;187m\u001b[48;2;164;155;150m▄\u001b[38;2;192;187;184m\u001b[48;2;193;189;185m▄\u001b[38;2;190;185;182m\u001b[48;2;190;186;183m▄\u001b[38;2;187;183;179m\u001b[48;2;191;187;184m▄\u001b[38;2;187;182;179m\u001b[48;2;187;184;180m▄\u001b[38;2;183;179;175m\u001b[48;2;185;181;177m▄\u001b[38;2;184;180;176m\u001b[48;2;184;180;176m▄\u001b[38;2;185;181;177m\u001b[48;2;185;180;176m▄\u001b[0m",
+					"              \u001b[38;2;180;179;176m\u001b[48;2;183;182;179m▄\u001b[38;2;181;180;177m\u001b[48;2;182;181;179m▄\u001b[38;2;181;180;177m\u001b[48;2;181;180;178m▄\u001b[38;2;180;179;177m\u001b[48;2;181;180;178m▄\u001b[38;2;181;180;178m\u001b[48;2;183;182;179m▄\u001b[38;2;184;182;180m\u001b[48;2;183;182;179m▄\u001b[38;2;181;179;176m\u001b[48;2;184;182;179m▄\u001b[38;2;185;182;180m\u001b[48;2;180;178;175m▄\u001b[38;2;181;180;177m\u001b[48;2;183;182;179m▄\u001b[38;2;182;180;178m\u001b[48;2;179;177;174m▄\u001b[38;2;127;121;118m\u001b[48;2;109;103;101m▄\u001b[38;2;42;35;34m\u001b[48;2;37;31;30m▄\u001b[38;2;34;28;27m\u001b[48;2;30;24;23m▄\u001b[38;2;45;37;36m\u001b[48;2;42;34;33m▄\u001b[38;2;34;27;26m\u001b[48;2;45;37;35m▄\u001b[38;2;68;62;60m\u001b[48;2;68;59;57m▄\u001b[38;2;71;65;63m\u001b[48;2;113;98;90m▄\u001b[38;2;111;103;98m\u001b[48;2;177;152;136m▄\u001b[38;2;129;118;111m\u001b[48;2;176;148;130m▄\u001b[38;2;134;121;113m\u001b[48;2;168;145;130m▄\u001b[38;2;103;94;90m\u001b[48;2;135;126;121m▄\u001b[38;2;62;55;53m\u001b[48;2;44;37;36m▄\u001b[38;2;42;34;33m\u001b[48;2;62;54;52m▄\u001b[38;2;102;96;93m\u001b[48;2;118;109;106m▄\u001b[38;2;186;183;179m\u001b[48;2;190;185;181m▄\u001b[38;2;189;185;181m\u001b[48;2;191;187;183m▄\u001b[38;2;190;185;181m\u001b[48;2;190;186;182m▄\u001b[38;2;188;183;179m\u001b[48;2;188;183;179m▄\u001b[38;2;188;183;179m\u001b[48;2;187;182;179m▄\u001b[38;2;185;180;176m\u001b[48;2;185;181;177m▄\u001b[38;2;186;182;178m\u001b[48;2;183;179;175m▄\u001b[38;2;186;182;178m\u001b[48;2;184;180;176m▄\u001b[0m",
+					"              \u001b[38;2;122;131;142m\u001b[48;2;181;179;176m▄\u001b[38;2;155;155;156m\u001b[48;2;182;180;178m▄\u001b[38;2;174;173;172m\u001b[48;2;179;178;175m▄\u001b[38;2;179;178;176m\u001b[48;2;183;182;179m▄\u001b[38;2;179;178;175m\u001b[48;2;180;180;177m▄\u001b[38;2;183;183;180m\u001b[48;2;180;179;176m▄\u001b[38;2;182;181;179m\u001b[48;2;182;180;177m▄\u001b[38;2;182;182;179m\u001b[48;2;181;180;177m▄\u001b[38;2;183;182;179m\u001b[48;2;180;179;176m▄\u001b[38;2;185;173;164m\u001b[48;2;185;182;178m▄\u001b[38;2;169;145;128m\u001b[48;2;154;140;130m▄\u001b[38;2;142;123;111m\u001b[48;2;82;71;66m▄\u001b[38;2;80;69;63m\u001b[48;2;48;41;40m▄\u001b[38;2;43;36;35m\u001b[48;2;40;32;31m▄\u001b[38;2;26;20;20m\u001b[48;2;24;18;18m▄\u001b[38;2;41;35;34m\u001b[48;2;50;44;44m▄\u001b[38;2;31;25;24m\u001b[48;2;35;30;29m▄\u001b[38;2;29;23;22m\u001b[48;2;28;22;22m▄\u001b[38;2;31;24;24m\u001b[48;2;44;38;37m▄\u001b[38;2;38;32;32m\u001b[48;2;41;35;34m▄\u001b[38;2;29;23;22m\u001b[48;2;45;38;37m▄\u001b[38;2;42;34;33m\u001b[48;2;45;37;35m▄\u001b[38;2;93;86;84m\u001b[48;2;51;43;42m▄\u001b[38;2;183;179;176m\u001b[48;2;142;136;133m▄\u001b[38;2;187;183;179m\u001b[48;2;188;184;181m▄\u001b[38;2;187;182;178m\u001b[48;2;188;183;179m▄\u001b[38;2;184;180;176m\u001b[48;2;187;182;178m▄\u001b[38;2;186;181;177m\u001b[48;2;188;183;179m▄\u001b[38;2;187;182;178m\u001b[48;2;185;180;177m▄\u001b[38;2;186;181;177m\u001b[48;2;185;181;177m▄\u001b[38;2;184;180;176m\u001b[48;2;183;178;175m▄\u001b[38;2;186;182;178m\u001b[48;2;183;178;174m▄\u001b[0m",
+					"              \u001b[38;2;50;94;139m\u001b[48;2;44;73;107m▄\u001b[38;2;54;95;138m\u001b[48;2;76;93;115m▄\u001b[38;2;58;93;131m\u001b[48;2;95;104;118m▄\u001b[38;2;63;91;122m\u001b[48;2;110;114;122m▄\u001b[38;2;84;95;112m\u001b[48;2;130;130;133m▄\u001b[38;2;100;100;105m\u001b[48;2;146;144;144m▄\u001b[38;2;112;107;106m\u001b[48;2;173;171;168m▄\u001b[38;2;160;143;132m\u001b[48;2;183;178;174m▄\u001b[38;2;176;142;120m\u001b[48;2;182;165;154m▄\u001b[38;2;177;142;118m\u001b[48;2;179;150;130m▄\u001b[38;2;159;126;104m\u001b[48;2;162;132;112m▄\u001b[38;2;158;127;107m\u001b[48;2;163;135;116m▄\u001b[38;2;158;129;109m\u001b[48;2;142;118;103m▄\u001b[38;2;144;119;102m\u001b[48;2;78;64;58m▄\u001b[38;2;88;73;64m\u001b[48;2;26;20;20m▄\u001b[38;2;54;45;42m\u001b[48;2;29;23;22m▄\u001b[38;2;28;22;21m\u001b[48;2;24;18;17m▄\u001b[38;2;32;27;26m\u001b[48;2;34;28;28m▄\u001b[38;2;26;20;19m\u001b[48;2;31;25;24m▄\u001b[38;2;32;26;26m\u001b[48;2;34;28;27m▄\u001b[38;2;37;30;29m\u001b[48;2;47;40;39m▄\u001b[38;2;57;51;49m\u001b[48;2;52;45;44m▄\u001b[38;2;163;158;155m\u001b[48;2;141;136;132m▄\u001b[38;2;186;181;177m\u001b[48;2;186;182;179m▄\u001b[38;2;188;183;179m\u001b[48;2;185;181;178m▄\u001b[38;2;186;182;178m\u001b[48;2;186;181;177m▄\u001b[38;2;184;179;175m\u001b[48;2;186;181;177m▄\u001b[38;2;184;180;176m\u001b[48;2;185;180;176m▄\u001b[38;2;185;180;176m\u001b[48;2;186;182;178m▄\u001b[38;2;185;180;177m\u001b[48;2;184;180;176m▄\u001b[38;2;186;181;178m\u001b[48;2;185;180;176m▄\u001b[38;2;181;176;172m\u001b[48;2;183;178;174m▄\u001b[0m",
+					"              \u001b[38;2;72;119;161m\u001b[48;2;61;108;152m▄\u001b[38;2;76;122;164m\u001b[48;2;67;114;157m▄\u001b[38;2;78;123;163m\u001b[48;2;68;113;156m▄\u001b[38;2;69;113;154m\u001b[48;2;66;110;152m▄\u001b[38;2;58;93;128m\u001b[48;2;65;95;128m▄\u001b[38;2;88;107;127m\u001b[48;2;90;100;113m▄\u001b[38;2;118;116;117m\u001b[48;2;111;106;105m▄\u001b[38;2;146;123;110m\u001b[48;2;157;134;119m▄\u001b[38;2;177;146;127m\u001b[48;2;177;146;126m▄\u001b[38;2;175;142;121m\u001b[48;2;179;148;127m▄\u001b[38;2;176;142;120m\u001b[48;2;170;137;116m▄\u001b[38;2;167;129;105m\u001b[48;2;157;122;100m▄\u001b[38;2;160;120;97m\u001b[48;2;159;127;107m▄\u001b[38;2;161;127;106m\u001b[48;2;164;135;116m▄\u001b[38;2;165;133;112m\u001b[48;2;158;131;113m▄\u001b[38;2;166;136;116m\u001b[48;2;134;113;100m▄\u001b[38;2;155;131;115m\u001b[48;2;84;70;63m▄\u001b[38;2;130;112;102m\u001b[48;2;44;37;35m▄\u001b[38;2;111;102;97m\u001b[48;2;30;24;24m▄\u001b[38;2;138;132;128m\u001b[48;2;55;48;46m▄\u001b[38;2;164;158;153m\u001b[48;2;58;51;49m▄\u001b[38;2;183;178;174m\u001b[48;2;122;116;113m▄\u001b[38;2;186;182;178m\u001b[48;2;190;185;182m▄\u001b[38;2;188;184;180m\u001b[48;2;188;184;180m▄\u001b[38;2;185;181;177m\u001b[48;2;187;182;178m▄\u001b[38;2;183;178;174m\u001b[48;2;182;178;174m▄\u001b[38;2;186;181;177m\u001b[48;2;186;181;177m▄\u001b[38;2;185;180;176m\u001b[48;2;185;181;177m▄\u001b[38;2;182;177;174m\u001b[48;2;184;179;175m▄\u001b[38;2;182;177;173m\u001b[48;2;186;182;178m▄\u001b[38;2;178;172;168m\u001b[48;2;182;177;173m▄\u001b[38;2;178;172;168m\u001b[48;2;181;174;170m▄\u001b[0m",
+					"              \u001b[38;2;72;120;161m\u001b[48;2;72;118;160m▄\u001b[38;2;75;122;163m\u001b[48;2;74;120;162m▄\u001b[38;2;76;123;164m\u001b[48;2;81;127;167m▄\u001b[38;2;74;117;155m\u001b[48;2;71;113;151m▄\u001b[38;2;61;99;135m\u001b[48;2;58;93;128m▄\u001b[38;2;59;95;130m\u001b[48;2;64;92;122m▄\u001b[38;2;91;103;118m\u001b[48;2;97;97;103m▄\u001b[38;2;111;95;86m\u001b[48;2;124;105;95m▄\u001b[38;2;156;126;108m\u001b[48;2;172;138;117m▄\u001b[38;2;175;140;119m\u001b[48;2;176;141;119m▄\u001b[38;2;177;143;121m\u001b[48;2;180;145;122m▄\u001b[38;2;178;143;120m\u001b[48;2;175;137;113m▄\u001b[38;2;181;146;124m\u001b[48;2;173;135;111m▄\u001b[38;2;175;142;120m\u001b[48;2;165;129;106m▄\u001b[38;2;169;136;114m\u001b[48;2;166;132;110m▄\u001b[38;2;170;138;118m\u001b[48;2;167;134;112m▄\u001b[38;2;169;138;118m\u001b[48;2;169;138;118m▄\u001b[38;2;172;145;127m\u001b[48;2;172;148;132m▄\u001b[38;2;173;161;153m\u001b[48;2;171;159;150m▄\u001b[38;2;183;176;172m\u001b[48;2;178;172;168m▄\u001b[38;2;185;179;175m\u001b[48;2;189;184;180m▄\u001b[38;2;191;185;181m\u001b[48;2;188;183;179m▄\u001b[38;2;193;186;182m\u001b[48;2;188;184;180m▄\u001b[38;2;189;182;178m\u001b[48;2;188;184;180m▄\u001b[38;2;184;179;175m\u001b[48;2;184;179;175m▄\u001b[38;2;186;181;177m\u001b[48;2;183;178;174m▄\u001b[38;2;185;180;176m\u001b[48;2;185;180;176m▄\u001b[38;2;182;175;171m\u001b[48;2;184;179;175m▄\u001b[38;2;183;177;173m\u001b[48;2;184;178;174m▄\u001b[38;2;179;173;169m\u001b[48;2;182;175;171m▄\u001b[38;2;179;174;170m\u001b[48;2;179;174;170m▄\u001b[38;2;176;171;168m\u001b[48;2;178;174;170m▄\u001b[0m",
+					"",
+					"              \u001b[38;2;138;190;183mFree Kimi K2.5 via OpenCode Zen\u001b[39m",
+					"                    \u001b[38;2;181;189;104m\"Powered by daxnuts\"\u001b[39m",
+					"                          \u001b[38;2;128;128;128m— @thdxr\u001b[39m",
+					"",
+					"                        \u001b[38;2;102;102;102mTry OpenCode\u001b[39m",
+					"          \u001b[38;2;129;162;190mhttps://mistral.ai/news/mistral-vibe-2-0\u001b[39m",
+					""
+				],
+				"rendersAfterDispose": 0
+			}
+		},
+		{
+			"name": "earendil_announcement",
+			"log": [
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "DynamicBorder",
+						"colorTag": "fn"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "DynamicBorder",
+						"colorTag": "fn"
+					}
+				]
+			],
+			"result": [
+				{
+					"border": "fn"
+				},
+				{
+					"text": "\u001b[1m\u001b[38;2;138;190;183mpi has joined Earendil\u001b[39m\u001b[22m",
+					"paddingX": 1
+				},
+				"spacer",
+				{
+					"text": "\u001b[38;2;128;128;128mRead the blog post:\u001b[39m",
+					"paddingX": 1
+				},
+				{
+					"text": "\u001b[38;2;129;162;190mhttps://mariozechner.at/posts/2026-04-08-ive-sold-out/\u001b[39m",
+					"paddingX": 1
+				},
+				"spacer",
+				{
+					"border": "fn"
+				}
+			]
+		},
+		{
+			"name": "footer",
+			"log": [],
+			"result": {
+				"formatTokens": [
+					"0",
+					"999",
+					"1.0k",
+					"1.2k",
+					"10.0k",
+					"10k",
+					"1000k",
+					"1.0M",
+					"1.2M",
+					"10.0M",
+					"10M"
+				],
+				"cwd": [
+					"~\\proj",
+					"C:\\Users\\n\\proj",
+					"~",
+					"C:\\other",
+					"C:\\Users\\n\\..\\elsewhere"
+				],
+				"usageTotals": {
+					"input": 1600,
+					"output": 270,
+					"cacheRead": 100,
+					"cacheWrite": 50,
+					"cost": 0.75
+				},
+				"noModel": [
+					"\u001b[38;2;102;102;102mC:\\Users\\n\\proj\u001b[39m",
+					"\u001b[38;2;102;102;102m0.0%/0 (auto)\u001b[39m\u001b[38;2;102;102;102m                                       no-model\u001b[39m"
+				],
+				"full": [
+					"\u001b[38;2;102;102;102mC:\\Users\\n\\proj (main) • my-session\u001b[39m",
+					"\u001b[38;2;102;102;102m↑1.6k ↓265 R100 W50 CH6.1% $0.560 (sub) 42.5%/200k (auto)\u001b[39m\u001b[38;2;102;102;102m         kimi-k2 • high\u001b[39m",
+					"first status second status"
+				],
+				"xp": [
+					"\u001b[38;2;102;102;102mC:\\Users\\n\\proj (main) • my-session\u001b[39m",
+					"\u001b[38;2;102;102;102m↑1.6k ↓265 R100 W50 CH6.1% $0.560 (sub) 42.5%/200k (auto) \u001b[38;2;102;102;102m•\u001b[39m \u001b[1m\u001b[38;2;255;255;0mxp\u001b[39m\u001b[22m\u001b[39m\u001b[38;2;102;102;102m    kimi-k2 • high\u001b[39m",
+					"first status second status"
+				],
+				"autoOff": [
+					"\u001b[38;2;102;102;102mC:\\Users\\n\\proj (main) • my-session\u001b[39m",
+					"\u001b[38;2;102;102;102m↑1.6k ↓265 R100 W50 CH6.1% $0.560 (sub) 42.5%/200k\u001b[39m\u001b[38;2;102;102;102m        kimi-k2 • thinking off\u001b[39m",
+					"first status second status"
+				],
+				"unknownPct": [
+					"\u001b[38;2;102;102;102mC:\\Users\\n\\proj (main)\u001b[39m",
+					"\u001b[38;2;102;102;102m↑1.6k ↓265 R100 W50 CH6.1% $0.560 (sub) ?/200k (auto)\u001b[39m\u001b[38;2;102;102;102m     kimi-k2 • thinking off\u001b[39m",
+					"first status second status"
+				],
+				"narrow": [
+					"\u001b[38;2;102;102;102mC:\\Users\\n\\proj (main) • my\u001b[0m\u001b[38;2;102;102;102m...\u001b[39m\u001b[0m",
+					"\u001b[38;2;102;102;102m↑1.6k ↓265 R100 W50 CH6.1% \u001b[0m...\u001b[0m\u001b[39m\u001b[38;2;102;102;102m\u001b[39m",
+					"first status second status"
+				],
+				"narrower": [
+					"\u001b[38;2;102;102;102mC:\\Users\\\u001b[0m\u001b[38;2;102;102;102m...\u001b[39m\u001b[0m",
+					"\u001b[38;2;102;102;102m↑1.6k ↓26\u001b[0m...\u001b[0m\u001b[39m\u001b[38;2;102;102;102m\u001b[39m",
+					"first sta\u001b[0m\u001b[38;2;102;102;102m...\u001b[39m\u001b[0m"
+				],
+				"over90": [
+					"\u001b[38;2;102;102;102mC:\\Users\\n\\proj (main)\u001b[39m",
+					"\u001b[38;2;102;102;102m↑1.6k ↓265 R100 W50 CH6.1% $0.560 (sub) \u001b[38;2;204;102;102m91.1%/200k (auto)\u001b[39m\u001b[39m\u001b[38;2;102;102;102m  kimi-k2 • thinking of\u001b[0m\u001b[39m",
+					"first status second status"
+				],
+				"over70": [
+					"\u001b[38;2;102;102;102mC:\\Users\\n\\proj (main)\u001b[39m",
+					"\u001b[38;2;102;102;102m↑1.6k ↓265 R100 W50 CH6.1% $0.560 (sub) \u001b[38;2;255;255;0m70.1%/200k (auto)\u001b[39m\u001b[39m\u001b[38;2;102;102;102m  kimi-k2 • thinking of\u001b[0m\u001b[39m",
+					"first status second status"
+				],
+				"subscription": [
+					"\u001b[38;2;102;102;102mC:\\Users\\n\\proj (main)\u001b[39m",
+					"\u001b[38;2;102;102;102m↑1.6k ↓265 R100 W50 CH6.1% $0.560 (sub) 5.0%/1.0k (auto)\u001b[39m\u001b[38;2;102;102;102m        (sub-provider) m\u001b[39m",
+					"first status second status"
+				],
+				"noBranchNoStatuses": [
+					"\u001b[38;2;102;102;102mC:\\Users\\n\\proj • my-session\u001b[39m",
+					"\u001b[38;2;102;102;102m↑1.6k ↓265 R100 W50 CH6.1% $0.560 (sub) 42.5%/200k (auto)\u001b[39m\u001b[38;2;102;102;102m         kimi-k2 • high\u001b[39m"
+				]
+			}
+		},
+		{
+			"name": "login_dialog",
+			"log": [
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "DynamicBorder",
+						"colorTag": "default"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "DynamicBorder",
+						"colorTag": "default"
+					}
+				],
+				[
+					"Container.clear",
+					"container"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"tui.requestRender",
+					false
+				],
+				[
+					"Container.clear",
+					"container"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"tui.requestRender",
+					false
+				],
+				[
+					"Container.clear",
+					"container"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"tui.requestRender",
+					false
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"tui.requestRender",
+					false
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"tui.requestRender",
+					false
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"tui.requestRender",
+					false
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Input",
+						"value": ""
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"tui.requestRender",
+					false
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Input",
+						"value": "the-code"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"tui.requestRender",
+					false
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Input",
+						"value": "my name"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"tui.requestRender",
+					false
+				]
+			],
+			"result": {
+				"contentAfterShows": [
+					"spacer",
+					"line one",
+					"line two",
+					"spacer",
+					"\u001b[38;2;212;212;212minfo message\u001b[39m",
+					"\u001b[38;2;138;190;183m\u001b]8;;https://docs.example.com\u0007docs: https://docs.example.com\u001b]8;;\u0007\u001b[39m",
+					"\u001b[38;2;138;190;183m\u001b]8;;https://bare.example.com\u0007https://bare.example.com\u001b]8;;\u0007\u001b[39m",
+					"spacer",
+					"(\u001b[38;2;102;102;102mescape/ctrl+c\u001b[39m\u001b[38;2;128;128;128m to close\u001b[39m)",
+					"spacer",
+					"\u001b[38;2;102;102;102mwaiting...\u001b[39m",
+					"(\u001b[38;2;102;102;102mescape/ctrl+c\u001b[39m\u001b[38;2;128;128;128m to cancel\u001b[39m)",
+					"\u001b[38;2;102;102;102mprogressing\u001b[39m"
+				],
+				"manualContent": [
+					"spacer",
+					"line one",
+					"line two",
+					"spacer",
+					"\u001b[38;2;212;212;212minfo message\u001b[39m",
+					"\u001b[38;2;138;190;183m\u001b]8;;https://docs.example.com\u0007docs: https://docs.example.com\u001b]8;;\u0007\u001b[39m",
+					"\u001b[38;2;138;190;183m\u001b]8;;https://bare.example.com\u0007https://bare.example.com\u001b]8;;\u0007\u001b[39m",
+					"spacer",
+					"(\u001b[38;2;102;102;102mescape/ctrl+c\u001b[39m\u001b[38;2;128;128;128m to close\u001b[39m)",
+					"spacer",
+					"\u001b[38;2;102;102;102mwaiting...\u001b[39m",
+					"(\u001b[38;2;102;102;102mescape/ctrl+c\u001b[39m\u001b[38;2;128;128;128m to cancel\u001b[39m)",
+					"\u001b[38;2;102;102;102mprogressing\u001b[39m",
+					"spacer",
+					"\u001b[38;2;102;102;102menter code\u001b[39m",
+					"> the-code",
+					"(\u001b[38;2;102;102;102mescape/ctrl+c\u001b[39m\u001b[38;2;128;128;128m to cancel\u001b[39m)",
+					"spacer",
+					"\u001b[38;2;212;212;212mWho are you?\u001b[39m",
+					"\u001b[38;2;102;102;102me.g., your name\u001b[39m",
+					"> my name",
+					"(\u001b[38;2;102;102;102mescape/ctrl+c\u001b[39m\u001b[38;2;128;128;128m to cancel,\u001b[39m \u001b[38;2;102;102;102menter\u001b[39m\u001b[38;2;128;128;128m to submit\u001b[39m)",
+					"spacer",
+					"\u001b[38;2;212;212;212magain\u001b[39m",
+					"input",
+					"(\u001b[38;2;102;102;102mescape/ctrl+c\u001b[39m\u001b[38;2;128;128;128m to cancel,\u001b[39m \u001b[38;2;102;102;102menter\u001b[39m\u001b[38;2;128;128;128m to submit\u001b[39m)"
+				],
+				"manualValue": [
+					"resolved",
+					"the-code"
+				],
+				"promptContent": [
+					"spacer",
+					"line one",
+					"line two",
+					"spacer",
+					"\u001b[38;2;212;212;212minfo message\u001b[39m",
+					"\u001b[38;2;138;190;183m\u001b]8;;https://docs.example.com\u0007docs: https://docs.example.com\u001b]8;;\u0007\u001b[39m",
+					"\u001b[38;2;138;190;183m\u001b]8;;https://bare.example.com\u0007https://bare.example.com\u001b]8;;\u0007\u001b[39m",
+					"spacer",
+					"(\u001b[38;2;102;102;102mescape/ctrl+c\u001b[39m\u001b[38;2;128;128;128m to close\u001b[39m)",
+					"spacer",
+					"\u001b[38;2;102;102;102mwaiting...\u001b[39m",
+					"(\u001b[38;2;102;102;102mescape/ctrl+c\u001b[39m\u001b[38;2;128;128;128m to cancel\u001b[39m)",
+					"\u001b[38;2;102;102;102mprogressing\u001b[39m",
+					"spacer",
+					"\u001b[38;2;102;102;102menter code\u001b[39m",
+					"> the-code",
+					"(\u001b[38;2;102;102;102mescape/ctrl+c\u001b[39m\u001b[38;2;128;128;128m to cancel\u001b[39m)",
+					"spacer",
+					"\u001b[38;2;212;212;212mWho are you?\u001b[39m",
+					"\u001b[38;2;102;102;102me.g., your name\u001b[39m",
+					"input",
+					"(\u001b[38;2;102;102;102mescape/ctrl+c\u001b[39m\u001b[38;2;128;128;128m to cancel,\u001b[39m \u001b[38;2;102;102;102menter\u001b[39m\u001b[38;2;128;128;128m to submit\u001b[39m)"
+				],
+				"promptValue": [
+					"resolved",
+					"my name"
+				],
+				"cancelled": [
+					"rejected",
+					"Login cancelled"
+				],
+				"completions": [
+					[
+						false,
+						"Login cancelled"
+					]
+				],
+				"focused": false
+			}
+		},
+		{
+			"name": "oauth_selector",
+			"log": [
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "DynamicBorder",
+						"colorTag": "default"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;138;190;183m\u001b[1mSelect provider to configure:\u001b[22m\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Input",
+						"value": "a"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "DynamicBorder",
+						"colorTag": "default"
+					}
+				],
+				[
+					"Container.clear",
+					"container"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;138;190;183m→ \u001b[39m\u001b[38;2;138;190;183mAnthropic\u001b[39m\u001b[38;2;128;128;128m [subscription]\u001b[39m\u001b[38;2;181;189;104m ✓ configured\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Text",
+						"text": "  \u001b[38;2;212;212;212mGemini\u001b[39m\u001b[38;2;128;128;128m [API key]\u001b[39m\u001b[38;2;128;128;128m • \u001b[39m\u001b[38;2;255;255;0msubscription configured\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Text",
+						"text": "  \u001b[38;2;212;212;212mBare\u001b[39m\u001b[38;2;128;128;128m [API key]\u001b[39m\u001b[38;2;128;128;128m • unconfigured\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Text",
+						"text": "  \u001b[38;2;212;212;212mLocal\u001b[39m\u001b[38;2;128;128;128m [API key]\u001b[39m\u001b[38;2;181;189;104m ✓ config file\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Text",
+						"text": "  \u001b[38;2;212;212;212mOpenAI\u001b[39m\u001b[38;2;128;128;128m [API key]\u001b[39m\u001b[38;2;181;189;104m ✓ ENV_VAR,OTHER_ENV\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Text",
+						"text": "  \u001b[38;2;212;212;212mKimi\u001b[39m\u001b[38;2;128;128;128m [subscription]\u001b[39m\u001b[38;2;181;189;104m ✓ configured\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.clear",
+					"container"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Text",
+						"text": "  \u001b[38;2;212;212;212mAnthropic\u001b[39m\u001b[38;2;128;128;128m [subscription]\u001b[39m\u001b[38;2;181;189;104m ✓ configured\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;138;190;183m→ \u001b[39m\u001b[38;2;138;190;183mGemini\u001b[39m\u001b[38;2;128;128;128m [API key]\u001b[39m\u001b[38;2;128;128;128m • \u001b[39m\u001b[38;2;255;255;0msubscription configured\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Text",
+						"text": "  \u001b[38;2;212;212;212mBare\u001b[39m\u001b[38;2;128;128;128m [API key]\u001b[39m\u001b[38;2;128;128;128m • unconfigured\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Text",
+						"text": "  \u001b[38;2;212;212;212mLocal\u001b[39m\u001b[38;2;128;128;128m [API key]\u001b[39m\u001b[38;2;181;189;104m ✓ config file\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Text",
+						"text": "  \u001b[38;2;212;212;212mOpenAI\u001b[39m\u001b[38;2;128;128;128m [API key]\u001b[39m\u001b[38;2;181;189;104m ✓ ENV_VAR,OTHER_ENV\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Text",
+						"text": "  \u001b[38;2;212;212;212mKimi\u001b[39m\u001b[38;2;128;128;128m [subscription]\u001b[39m\u001b[38;2;181;189;104m ✓ configured\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.clear",
+					"container"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Text",
+						"text": "  \u001b[38;2;212;212;212mOpenAI\u001b[39m\u001b[38;2;128;128;128m [API key]\u001b[39m\u001b[38;2;181;189;104m ✓ ENV_VAR,OTHER_ENV\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;138;190;183m→ \u001b[39m\u001b[38;2;138;190;183mAnthropic\u001b[39m\u001b[38;2;128;128;128m [subscription]\u001b[39m\u001b[38;2;181;189;104m ✓ configured\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Text",
+						"text": "  \u001b[38;2;212;212;212mGemini\u001b[39m\u001b[38;2;128;128;128m [API key]\u001b[39m\u001b[38;2;128;128;128m • \u001b[39m\u001b[38;2;255;255;0msubscription configured\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "DynamicBorder",
+						"colorTag": "default"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;138;190;183m\u001b[1mSelect provider to logout:\u001b[22m\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Input",
+						"value": ""
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "DynamicBorder",
+						"colorTag": "default"
+					}
+				],
+				[
+					"Container.clear",
+					"container"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;138;190;183m→ \u001b[39m\u001b[38;2;138;190;183mAnthropic\u001b[39m\u001b[38;2;128;128;128m [subscription]\u001b[39m\u001b[38;2;181;189;104m ✓ configured\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Text",
+						"text": "  \u001b[38;2;212;212;212mOpenAI\u001b[39m\u001b[38;2;128;128;128m [API key]\u001b[39m\u001b[38;2;181;189;104m ✓ ENV_VAR,OTHER_ENV\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.clear",
+					"container"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;138;190;183m→ \u001b[39m\u001b[38;2;138;190;183mAnthropic\u001b[39m\u001b[38;2;128;128;128m [subscription]\u001b[39m\u001b[38;2;181;189;104m ✓ configured\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Text",
+						"text": "  \u001b[38;2;212;212;212mOpenAI\u001b[39m\u001b[38;2;128;128;128m [API key]\u001b[39m\u001b[38;2;181;189;104m ✓ ENV_VAR,OTHER_ENV\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "DynamicBorder",
+						"colorTag": "default"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;138;190;183m\u001b[1mSelect provider to configure:\u001b[22m\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Input",
+						"value": ""
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "DynamicBorder",
+						"colorTag": "default"
+					}
+				],
+				[
+					"Container.clear",
+					"container"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;128;128;128m  No providers available\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "DynamicBorder",
+						"colorTag": "default"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;138;190;183m\u001b[1mSelect provider to logout:\u001b[22m\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Input",
+						"value": ""
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "DynamicBorder",
+						"colorTag": "default"
+					}
+				],
+				[
+					"Container.clear",
+					"container"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;138;190;183m→ \u001b[39m\u001b[38;2;138;190;183mAnthropic\u001b[39m\u001b[38;2;128;128;128m [subscription]\u001b[39m\u001b[38;2;181;189;104m ✓ configured\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Text",
+						"text": "  \u001b[38;2;212;212;212mOpenAI\u001b[39m\u001b[38;2;128;128;128m [API key]\u001b[39m\u001b[38;2;181;189;104m ✓ ENV_VAR,OTHER_ENV\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Text",
+						"text": "  \u001b[38;2;212;212;212mKimi\u001b[39m\u001b[38;2;128;128;128m [subscription]\u001b[39m\u001b[38;2;181;189;104m ✓ configured\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Text",
+						"text": "  \u001b[38;2;212;212;212mGemini\u001b[39m\u001b[38;2;128;128;128m [API key]\u001b[39m\u001b[38;2;128;128;128m • \u001b[39m\u001b[38;2;255;255;0msubscription configured\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Text",
+						"text": "  \u001b[38;2;212;212;212mBare\u001b[39m\u001b[38;2;128;128;128m [API key]\u001b[39m\u001b[38;2;128;128;128m • unconfigured\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Text",
+						"text": "  \u001b[38;2;212;212;212mLocal\u001b[39m\u001b[38;2;128;128;128m [API key]\u001b[39m\u001b[38;2;181;189;104m ✓ config file\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.clear",
+					"container"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;128;128;128m  No matching providers\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				]
+			],
+			"result": {
+				"typeLabels": [
+					"subscription",
+					"API key"
+				],
+				"loginLines": [
+					"\u001b[38;2;138;190;183m→ \u001b[39m\u001b[38;2;138;190;183mAnthropic\u001b[39m\u001b[38;2;128;128;128m [subscription]\u001b[39m\u001b[38;2;181;189;104m ✓ configured\u001b[39m",
+					"  \u001b[38;2;212;212;212mGemini\u001b[39m\u001b[38;2;128;128;128m [API key]\u001b[39m\u001b[38;2;128;128;128m • \u001b[39m\u001b[38;2;255;255;0msubscription configured\u001b[39m",
+					"  \u001b[38;2;212;212;212mBare\u001b[39m\u001b[38;2;128;128;128m [API key]\u001b[39m\u001b[38;2;128;128;128m • unconfigured\u001b[39m",
+					"  \u001b[38;2;212;212;212mLocal\u001b[39m\u001b[38;2;128;128;128m [API key]\u001b[39m\u001b[38;2;181;189;104m ✓ config file\u001b[39m",
+					"  \u001b[38;2;212;212;212mOpenAI\u001b[39m\u001b[38;2;128;128;128m [API key]\u001b[39m\u001b[38;2;181;189;104m ✓ ENV_VAR,OTHER_ENV\u001b[39m",
+					"  \u001b[38;2;212;212;212mKimi\u001b[39m\u001b[38;2;128;128;128m [subscription]\u001b[39m\u001b[38;2;181;189;104m ✓ configured\u001b[39m"
+				],
+				"filteredLines": [
+					"  \u001b[38;2;212;212;212mOpenAI\u001b[39m\u001b[38;2;128;128;128m [API key]\u001b[39m\u001b[38;2;181;189;104m ✓ ENV_VAR,OTHER_ENV\u001b[39m",
+					"\u001b[38;2;138;190;183m→ \u001b[39m\u001b[38;2;138;190;183mAnthropic\u001b[39m\u001b[38;2;128;128;128m [subscription]\u001b[39m\u001b[38;2;181;189;104m ✓ configured\u001b[39m",
+					"  \u001b[38;2;212;212;212mGemini\u001b[39m\u001b[38;2;128;128;128m [API key]\u001b[39m\u001b[38;2;128;128;128m • \u001b[39m\u001b[38;2;255;255;0msubscription configured\u001b[39m"
+				],
+				"selections": [
+					[
+						"anthropic",
+						"oauth"
+					],
+					[
+						"anthropic",
+						"oauth"
+					]
+				],
+				"cancels": 0,
+				"logoutLines": [
+					"\u001b[38;2;138;190;183m→ \u001b[39m\u001b[38;2;138;190;183mAnthropic\u001b[39m\u001b[38;2;128;128;128m [subscription]\u001b[39m\u001b[38;2;181;189;104m ✓ configured\u001b[39m",
+					"  \u001b[38;2;212;212;212mOpenAI\u001b[39m\u001b[38;2;128;128;128m [API key]\u001b[39m\u001b[38;2;181;189;104m ✓ ENV_VAR,OTHER_ENV\u001b[39m"
+				],
+				"emptyLines": [
+					"\u001b[38;2;128;128;128m  No providers available\u001b[39m"
+				],
+				"noMatchLines": [
+					"\u001b[38;2;128;128;128m  No matching providers\u001b[39m"
+				],
+				"fuzzyProbe": [
+					-59.4,
+					false
+				]
+			}
+		},
+		{
+			"name": "extension_components",
+			"log": [
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "DynamicBorder",
+						"colorTag": "default"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Input",
+						"value": ""
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "DynamicBorder",
+						"colorTag": "default"
+					}
+				],
+				[
+					"tui.requestRender",
+					false
+				],
+				[
+					"tui.requestRender",
+					false
+				],
+				[
+					"tui.requestRender",
+					false
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "DynamicBorder",
+						"colorTag": "default"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "DynamicBorder",
+						"colorTag": "default"
+					}
+				],
+				[
+					"Container.clear",
+					"container"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.clear",
+					"container"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.clear",
+					"container"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.clear",
+					"container"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.clear",
+					"container"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"tui.requestRender",
+					false
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "DynamicBorder",
+						"colorTag": "default"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Editor.setText",
+					"prefill"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Editor",
+						"text": "prefill"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "DynamicBorder",
+						"colorTag": "default"
+					}
+				],
+				[
+					"tui.stop"
+				],
+				[
+					"editInExternalEditor",
+					"notepad",
+					"prefill"
+				],
+				[
+					"Editor.setText",
+					"EDITED(prefill)"
+				],
+				[
+					"tui.start"
+				],
+				[
+					"tui.requestRender",
+					true
+				]
+			],
+			"result": {
+				"submits": [
+					"hi"
+				],
+				"cancels": [
+					"input",
+					"selector",
+					"editor",
+					"selector"
+				],
+				"toggles": [],
+				"inputTitle": "\u001b[38;2;138;190;183mPick one (0s)\u001b[39m",
+				"selectorTitle": "\u001b[38;2;138;190;183m\u001b[1mChoose (1s)\u001b[22m\u001b[39m",
+				"selectorLines": [
+					"\u001b[38;2;138;190;183m→ \u001b[39m\u001b[38;2;138;190;183malpha\u001b[39m",
+					"  \u001b[38;2;212;212;212mbeta\u001b[39m"
+				],
+				"hintsLine": "\u001b[38;2;138;190;183m\u001b[1mChoose (1s)\u001b[22m\u001b[39m||\u001b[38;2;102;102;102m↑↓\u001b[39m\u001b[38;2;128;128;128m navigate\u001b[39m  \u001b[38;2;102;102;102menter\u001b[39m\u001b[38;2;128;128;128m select\u001b[39m  \u001b[38;2;102;102;102mescape/ctrl+c\u001b[39m\u001b[38;2;128;128;128m cancel\u001b[39m",
+				"editorText": "EDITED(prefill)",
+				"editorKbExternal": true
+			}
+		},
+		{
+			"name": "first_time_setup",
+			"log": [
+				[
+					"Container.clear",
+					"container"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "DynamicBorder",
+						"colorTag": "default"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "DynamicBorder",
+						"colorTag": "default"
+					}
+				],
+				[
+					"Container.clear",
+					"container"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "DynamicBorder",
+						"colorTag": "default"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "DynamicBorder",
+						"colorTag": "default"
+					}
+				],
+				[
+					"Container.clear",
+					"container"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "DynamicBorder",
+						"colorTag": "default"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "DynamicBorder",
+						"colorTag": "default"
+					}
+				],
+				[
+					"Container.clear",
+					"container"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "DynamicBorder",
+						"colorTag": "default"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "DynamicBorder",
+						"colorTag": "default"
+					}
+				],
+				[
+					"Container.clear",
+					"container"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "DynamicBorder",
+						"colorTag": "default"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "DynamicBorder",
+						"colorTag": "default"
+					}
+				],
+				[
+					"Container.clear",
+					"container"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "DynamicBorder",
+						"colorTag": "default"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "DynamicBorder",
+						"colorTag": "default"
+					}
+				]
+			],
+			"result": {
+				"initial": [
+					"border",
+					"spacer",
+					"\u001b[38;2;138;190;183m██████\n██  ██\n████  ██\n██    ██\u001b[39m",
+					"spacer",
+					"\u001b[38;2;138;190;183m\u001b[1mWelcome to pi, the minimal coding agent.\u001b[22m\u001b[39m",
+					"spacer",
+					"\u001b[38;2;212;212;212mPick a theme.\u001b[39m",
+					"\u001b[38;2;128;128;128mDetected system appearance: light\u001b[39m",
+					"spacer",
+					"  \u001b[38;2;212;212;212mDark\u001b[39m",
+					"\u001b[38;2;138;190;183m→ \u001b[39m\u001b[38;2;138;190;183mLight\u001b[39m",
+					"spacer",
+					"\u001b[38;2;102;102;102m↑↓\u001b[39m\u001b[38;2;128;128;128m navigate\u001b[39m  \u001b[38;2;102;102;102menter\u001b[39m\u001b[38;2;128;128;128m continue\u001b[39m  \u001b[38;2;102;102;102mescape/ctrl+c\u001b[39m\u001b[38;2;128;128;128m skip setup\u001b[39m",
+					"spacer",
+					"border"
+				],
+				"analytics": [
+					"border",
+					"spacer",
+					"\u001b[38;2;138;190;183m██████\n██  ██\n████  ██\n██    ██\u001b[39m",
+					"spacer",
+					"\u001b[38;2;138;190;183m\u001b[1mWelcome to pi, the minimal coding agent.\u001b[22m\u001b[39m",
+					"spacer",
+					"\u001b[38;2;212;212;212mOpt-in to anonymous usage data sharing?\u001b[39m",
+					"\u001b[38;2;128;128;128mOpting in stores a tracking identifier in settings.json and enables anonymous\nusage analytics. This helps us to better debug, reproduce, and resolve issues\nand bugs within Pi. You can observe what is shared using /privacy and make\nchanges anytime in settings.json.\u001b[39m",
+					"spacer",
+					"\u001b[38;2;138;190;183m→ \u001b[39m\u001b[38;2;138;190;183mShare anonymous usage data\u001b[39m",
+					"  \u001b[38;2;212;212;212mDon't share\u001b[39m",
+					"spacer",
+					"\u001b[38;2;102;102;102m↑↓\u001b[39m\u001b[38;2;128;128;128m navigate\u001b[39m  \u001b[38;2;102;102;102menter\u001b[39m\u001b[38;2;128;128;128m finish\u001b[39m  \u001b[38;2;102;102;102mescape/ctrl+c\u001b[39m\u001b[38;2;128;128;128m skip setup\u001b[39m",
+					"spacer",
+					"border"
+				],
+				"results": [
+					{
+						"theme": "light",
+						"shareAnalytics": false
+					}
+				],
+				"previews": [],
+				"cancels": 1,
+				"detectedIndex": 1
+			}
+		},
+		{
+			"name": "simple_selectors",
+			"log": [
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "DynamicBorder",
+						"colorTag": "default"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "SelectList",
+						"items": [
+							{
+								"value": "dark",
+								"label": "dark",
+								"description": "(current)"
+							},
+							{
+								"value": "light",
+								"label": "light"
+							}
+						],
+						"maxVisible": 10,
+						"selectedIndex": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "DynamicBorder",
+						"colorTag": "default"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "DynamicBorder",
+						"colorTag": "default"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "SelectList",
+						"items": [
+							{
+								"value": "yes",
+								"label": "Yes",
+								"description": "Show images inline in terminal"
+							},
+							{
+								"value": "no",
+								"label": "No",
+								"description": "Show text placeholder instead"
+							}
+						],
+						"maxVisible": 5,
+						"selectedIndex": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "DynamicBorder",
+						"colorTag": "default"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "DynamicBorder",
+						"colorTag": "default"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Input",
+						"value": ""
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "SelectList",
+						"items": [
+							{
+								"value": "off",
+								"label": "  off",
+								"description": "No reasoning"
+							},
+							{
+								"value": "low",
+								"label": "  low",
+								"description": "Light reasoning (~2k tokens) · default"
+							},
+							{
+								"value": "medium",
+								"label": "✓ medium",
+								"description": "Moderate reasoning (~8k tokens)"
+							},
+							{
+								"value": "high",
+								"label": "  high",
+								"description": "Deep reasoning (~16k tokens)"
+							}
+						],
+						"maxVisible": 4,
+						"selectedIndex": 2
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "DynamicBorder",
+						"colorTag": "default"
+					}
+				]
+			],
+			"result": {
+				"themeItems": [
+					{
+						"value": "dark",
+						"label": "dark",
+						"description": "(current)"
+					},
+					{
+						"value": "light",
+						"label": "light"
+					}
+				],
+				"imagesItems": [
+					{
+						"value": "yes",
+						"label": "Yes",
+						"description": "Show images inline in terminal"
+					},
+					{
+						"value": "no",
+						"label": "No",
+						"description": "Show text placeholder instead"
+					}
+				],
+				"thinkingItems": [
+					{
+						"value": "off",
+						"label": "  off",
+						"description": "No reasoning"
+					},
+					{
+						"value": "low",
+						"label": "  low",
+						"description": "Light reasoning (~2k tokens) · default"
+					},
+					{
+						"value": "medium",
+						"label": "✓ medium",
+						"description": "Moderate reasoning (~8k tokens)"
+					},
+					{
+						"value": "high",
+						"label": "  high",
+						"description": "Deep reasoning (~16k tokens)"
+					}
+				],
+				"filteredItems": [
+					{
+						"value": "off",
+						"label": "  off",
+						"description": "No reasoning"
+					},
+					{
+						"value": "low",
+						"label": "  low",
+						"description": "Light reasoning (~2k tokens) · default"
+					}
+				],
+				"selected": [
+					[
+						"preview",
+						"light"
+					],
+					[
+						"theme",
+						"dark"
+					],
+					[
+						"images",
+						false
+					],
+					[
+						"thinking",
+						"high"
+					]
+				],
+				"cancels": 0,
+				"layout": {
+					"themeMaxVisible": 10,
+					"imagesMaxVisible": 5,
+					"thinkingMaxVisible": 1
+				}
+			}
+		},
+		{
+			"name": "status_indicator",
+			"log": [
+				[
+					"tui.requestRender",
+					false
+				],
+				[
+					"tui.requestRender",
+					false
+				],
+				[
+					"tui.requestRender",
+					false
+				],
+				[
+					"tui.requestRender",
+					false
+				],
+				[
+					"tui.requestRender",
+					false
+				],
+				[
+					"tui.requestRender",
+					false
+				],
+				[
+					"tui.requestRender",
+					false
+				],
+				[
+					"tui.requestRender",
+					false
+				],
+				[
+					"tui.requestRender",
+					false
+				],
+				[
+					"tui.requestRender",
+					false
+				],
+				[
+					"tui.requestRender",
+					false
+				],
+				[
+					"tui.requestRender",
+					false
+				],
+				[
+					"tui.requestRender",
+					false
+				],
+				[
+					"tui.requestRender",
+					false
+				],
+				[
+					"tui.requestRender",
+					false
+				],
+				[
+					"tui.requestRender",
+					false
+				],
+				[
+					"tui.requestRender",
+					false
+				],
+				[
+					"tui.requestRender",
+					false
+				],
+				[
+					"tui.requestRender",
+					false
+				],
+				[
+					"tui.requestRender",
+					false
+				]
+			],
+			"result": {
+				"kind": "working",
+				"workingInBorder": "\u001b[38;2;138;190;183m⠋\u001b[39m \u001b[38;2;128;128;128mRunning...\u001b[39m",
+				"workingSpinner": "\u001b[38;2;138;190;183m⠋\u001b[39m",
+				"retryKind": "retry",
+				"retryInitial": "Retrying (2/5) in 3s... (escape to cancel)",
+				"retryAfterTicks": "Retrying (2/5) in 0s... (escape to cancel)",
+				"retryDisposeUncleared": 4,
+				"compactionLabel": "Compacting context... (escape to cancel)",
+				"compactionOverflowLabel": "Context overflow detected, Auto-compacting... (escape to cancel)",
+				"compactionThresholdLabel": "Auto-compacting... (escape to cancel)",
+				"branchLabel": "Summarizing branch... (escape to cancel)",
+				"idle": [
+					"          ",
+					"          "
+				],
+				"workingRender": [
+					"",
+					" \u001b[38;2;138;190;183m⠸\u001b[39m \u001b[38;2;128;128;128mRunning...\u001b[39m                 "
+				]
+			}
+		},
+		{
+			"name": "tool_execution",
+			"log": [
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "MouseRegion",
+						"child": {
+							"kind": "Text",
+							"text": "",
+							"paddingX": 1,
+							"paddingY": 1
+						}
+					}
+				],
+				[
+					"tui.requestRender",
+					false
+				],
+				[
+					"tui.requestRender",
+					false
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Box",
+						"paddingX": 1,
+						"paddingY": 1,
+						"bgTag": "fn"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Box",
+						"paddingX": 1,
+						"paddingY": 1,
+						"bgTag": "fn"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "MouseRegion",
+						"child": {
+							"kind": "Text",
+							"text": "",
+							"paddingX": 1,
+							"paddingY": 1
+						}
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Image",
+						"dataLen": 7,
+						"mimeType": "image/png",
+						"opts": {
+							"maxWidthCells": 60
+						}
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "MouseRegion",
+						"child": {
+							"kind": "Text",
+							"text": "",
+							"paddingX": 1,
+							"paddingY": 1
+						}
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Image",
+						"dataLen": 8,
+						"mimeType": "image/jpeg",
+						"opts": {
+							"maxWidthCells": 60
+						}
+					}
+				],
+				[
+					"Container.removeChild",
+					"container",
+					{
+						"kind": "Image",
+						"dataLen": 8,
+						"mimeType": "image/jpeg",
+						"opts": {
+							"maxWidthCells": 60
+						}
+					}
+				],
+				[
+					"Container.removeChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Image",
+						"dataLen": 8,
+						"mimeType": "image/jpeg",
+						"opts": {
+							"maxWidthCells": 60
+						}
+					}
+				],
+				[
+					"Container.removeChild",
+					"container",
+					{
+						"kind": "Image",
+						"dataLen": 8,
+						"mimeType": "image/jpeg",
+						"opts": {
+							"maxWidthCells": 60
+						}
+					}
+				],
+				[
+					"Container.removeChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Image",
+						"dataLen": 8,
+						"mimeType": "image/jpeg",
+						"opts": {
+							"maxWidthCells": 40
+						}
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.clear",
+					"container"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "MouseRegion",
+						"child": {
+							"kind": "Text",
+							"text": "SELF CALL",
+							"paddingX": 0,
+							"paddingY": 0
+						}
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Box",
+						"paddingX": 1,
+						"paddingY": 1,
+						"bgTag": "fn"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "MouseRegion",
+						"child": {
+							"kind": "Text",
+							"text": "",
+							"paddingX": 1,
+							"paddingY": 1
+						}
+					}
+				]
+			],
+			"result": {
+				"plainContent": "\u001b[38;2;212;212;212m\u001b[1mread\u001b[22m\u001b[39m\n\n{\n  \"path\": \"a.txt\",\n  \"n\": 2\n}",
+				"plainAfter": "\u001b[38;2;212;212;212m\u001b[1mread\u001b[22m\u001b[39m\n\n{\n  \"path\": \"a.txt\",\n  \"n\": 2\n}\nfile contents\n[Image: [image/png]]",
+				"plainExpanded": "\u001b[38;2;212;212;212m\u001b[1mread\u001b[22m\u001b[39m\n\n{\n  \"path\": \"a.txt\",\n  \"n\": 2\n}\nfile contents\n[Image: [image/png]]",
+				"partialBox": [
+					"[object Object]",
+					"[object Object]"
+				],
+				"finalBox": [
+					"[object Object]",
+					"[object Object]"
+				],
+				"expandedBox": [
+					"[object Object]",
+					"[object Object]"
+				],
+				"throwingBox": [
+					"[object Object]",
+					"[object Object]"
+				],
+				"throwingExpanded": [
+					"[object Object]",
+					"[object Object]"
+				],
+				"kittyImages": [
+					{
+						"kind": "Image",
+						"dataLen": 7,
+						"mimeType": "image/png",
+						"opts": {
+							"maxWidthCells": 60
+						}
+					}
+				],
+				"noKittyImages": [
+					{
+						"kind": "Image",
+						"dataLen": 8,
+						"mimeType": "image/jpeg",
+						"opts": {
+							"maxWidthCells": 60
+						}
+					}
+				],
+				"hiddenImages": 0,
+				"widthCells": 40,
+				"selfRender": [
+					"",
+					"SELF CALL                     "
+				],
+				"hideRender": [
+					""
+				],
+				"textOutputProbe": "\u001b[38;2;212;212;212m\u001b[1mp\u001b[22m\u001b[39m\n\n{}\none\ntwo\n[Image: [image/jpeg]]"
+			}
+		},
+		{
+			"name": "trust_selector",
+			"log": [
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "DynamicBorder",
+						"colorTag": "default"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "DynamicBorder",
+						"colorTag": "default"
+					}
+				],
+				[
+					"Container.clear",
+					"container"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.clear",
+					"container"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "DynamicBorder",
+						"colorTag": "default"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "DynamicBorder",
+						"colorTag": "default"
+					}
+				],
+				[
+					"Container.clear",
+					"container"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "DynamicBorder",
+						"colorTag": "default"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "DynamicBorder",
+						"colorTag": "default"
+					}
+				],
+				[
+					"Container.clear",
+					"container"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				]
+			],
+			"result": {
+				"initial": [
+					"\u001b[38;2;138;190;183m→ \u001b[39m\u001b[38;2;138;190;183m✓ \u001b[39m\u001b[38;2;138;190;183mTrust this project\u001b[39m",
+					"    \u001b[38;2;212;212;212mTrust without updates\u001b[39m",
+					"    \u001b[38;2;212;212;212mNever trust\u001b[39m"
+				],
+				"selections": [
+					{
+						"trusted": true,
+						"updates": true
+					}
+				],
+				"cancels": 0,
+				"header": [
+					"\u001b[38;2;138;190;183m\u001b[1mProject trust\u001b[22m\u001b[39m",
+					"\u001b[38;2;128;128;128mC:\\w\u001b[39m",
+					"\u001b[38;2;128;128;128mSaved decision: trusted (C:\\w)\u001b[39m",
+					"\u001b[38;2;128;128;128mCurrent session: trusted\u001b[39m",
+					"\u001b[38;2;102;102;102m↑↓\u001b[39m\u001b[38;2;128;128;128m navigate\u001b[39m  \u001b[38;2;102;102;102menter\u001b[39m\u001b[38;2;128;128;128m save\u001b[39m  \u001b[38;2;102;102;102mescape/ctrl+c\u001b[39m\u001b[38;2;128;128;128m cancel\u001b[39m"
+				],
+				"noneSavedHeader": [
+					"\u001b[38;2;138;190;183m\u001b[1mProject trust\u001b[22m\u001b[39m",
+					"\u001b[38;2;128;128;128mC:\\w\u001b[39m",
+					"\u001b[38;2;128;128;128mSaved decision: none\u001b[39m",
+					"\u001b[38;2;128;128;128mCurrent session: untrusted\u001b[39m",
+					"\u001b[38;2;102;102;102m↑↓\u001b[39m\u001b[38;2;128;128;128m navigate\u001b[39m  \u001b[38;2;102;102;102menter\u001b[39m\u001b[38;2;128;128;128m save\u001b[39m  \u001b[38;2;102;102;102mescape/ctrl+c\u001b[39m\u001b[38;2;128;128;128m cancel\u001b[39m"
+				],
+				"inheritedLines": [
+					"\u001b[38;2;138;190;183m→ \u001b[39m  \u001b[38;2;138;190;183mTrust this project\u001b[39m",
+					"    \u001b[38;2;212;212;212mTrust without updates\u001b[39m",
+					"    \u001b[38;2;212;212;212mNever trust\u001b[39m"
+				]
+			}
+		},
+		{
+			"name": "user_message_selector",
+			"log": [
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "DynamicBorder",
+						"colorTag": "default"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "DynamicBorder",
+						"colorTag": "default"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "DynamicBorder",
+						"colorTag": "default"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					"[object Object]"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Spacer"
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "DynamicBorder",
+						"colorTag": "default"
+					}
+				]
+			],
+			"result": {
+				"initial": [
+					"  first message",
+					"\u001b[38;2;128;128;128m  Message 1 of 3\u001b[39m",
+					"",
+					"  second multiline message",
+					"\u001b[38;2;128;128;128m  Message 2 of 3\u001b[39m",
+					"",
+					"\u001b[38;2;138;190;183m› \u001b[39m\u001b[1mthird\u001b[22m",
+					"\u001b[38;2;128;128;128m  Message 3 of 3\u001b[39m",
+					""
+				],
+				"wrapped": [
+					"\u001b[38;2;138;190;183m› \u001b[39m\u001b[1mfirst message\u001b[22m",
+					"\u001b[38;2;128;128;128m  Message 1 of 3\u001b[39m",
+					"",
+					"  second multiline message",
+					"\u001b[38;2;128;128;128m  Message 2 of 3\u001b[39m",
+					"",
+					"  third",
+					"\u001b[38;2;128;128;128m  Message 3 of 3\u001b[39m",
+					""
+				],
+				"selected": [
+					"e1",
+					"e2"
+				],
+				"cancels": 0,
+				"emptyRender": [
+					"\u001b[38;2;128;128;128m  No user messages found\u001b[39m"
+				]
+			}
+		},
+		{
+			"name": "chat_viewport",
+			"log": [],
+			"result": {
+				"full": {
+					"kind": "VStack",
+					"entries": [
+						{
+							"component": {
+								"kind": "ScrollView",
+								"options": {
+									"follow": "end",
+									"primary": true,
+									"overscroll": "chain",
+									"scrollbar": "always"
+								}
+							},
+							"basis": 0,
+							"grow": 1,
+							"shrink": 1,
+							"minSize": 1
+						},
+						{
+							"component": {
+								"kind": "VStack",
+								"entries": [
+									{
+										"component": {
+											"kind": "pending"
+										},
+										"shrink": 1,
+										"minSize": 0
+									},
+									{
+										"component": {
+											"kind": "status"
+										},
+										"shrink": 1,
+										"minSize": 0
+									},
+									{
+										"component": {
+											"kind": "above"
+										},
+										"shrink": 1,
+										"minSize": 0
+									},
+									{
+										"component": {
+											"kind": "editor"
+										},
+										"shrink": 1,
+										"minSize": 3
+									},
+									{
+										"component": {
+											"kind": "below"
+										},
+										"shrink": 1,
+										"minSize": 0
+									},
+									{
+										"component": {
+											"kind": "footer"
+										},
+										"shrink": 1,
+										"minSize": 0
+									}
+								]
+							},
+							"basis": "auto",
+							"grow": 0,
+							"shrink": 1,
+							"minSize": 1
+						}
+					]
+				},
+				"minimal": {
+					"kind": "VStack",
+					"entries": [
+						{
+							"component": {
+								"kind": "ScrollView",
+								"options": {
+									"follow": "end",
+									"primary": true,
+									"overscroll": "chain",
+									"scrollbar": "auto"
+								}
+							},
+							"basis": 0,
+							"grow": 1,
+							"shrink": 1,
+							"minSize": 1
+						},
+						{
+							"component": {
+								"kind": "VStack",
+								"entries": [
+									{
+										"component": {
+											"kind": "pending"
+										},
+										"shrink": 1,
+										"minSize": 0
+									},
+									{
+										"component": {
+											"kind": "status"
+										},
+										"shrink": 1,
+										"minSize": 0
+									},
+									{
+										"component": {
+											"kind": "editor"
+										},
+										"shrink": 1,
+										"minSize": 3
+									},
+									{
+										"component": {
+											"kind": "footer"
+										},
+										"shrink": 1,
+										"minSize": 0
+									}
+								]
+							},
+							"basis": "auto",
+							"grow": 0,
+							"shrink": 1,
+							"minSize": 1
+						}
+					]
+				},
+				"transcriptOptions": {
+					"follow": "end",
+					"primary": true,
+					"overscroll": "chain",
+					"scrollbar": "always"
+				}
+			}
+		},
+		{
+			"name": "session_selector_search",
+			"log": [],
+			"result": {
+				"hasName": [
+					true,
+					false,
+					false
+				],
+				"parse": [
+					{
+						"mode": "tokens",
+						"tokens": [],
+						"error": null,
+						"hasRegex": false
+					},
+					{
+						"mode": "tokens",
+						"tokens": [],
+						"error": null,
+						"hasRegex": false
+					},
+					{
+						"mode": "tokens",
+						"tokens": [
+							{
+								"kind": "fuzzy",
+								"value": "foo"
+							},
+							{
+								"kind": "fuzzy",
+								"value": "bar"
+							}
+						],
+						"error": null,
+						"hasRegex": false
+					},
+					{
+						"mode": "tokens",
+						"tokens": [
+							{
+								"kind": "fuzzy",
+								"value": "foo"
+							},
+							{
+								"kind": "phrase",
+								"value": "node cve"
+							},
+							{
+								"kind": "fuzzy",
+								"value": "bar"
+							}
+						],
+						"error": null,
+						"hasRegex": false
+					},
+					{
+						"mode": "tokens",
+						"tokens": [
+							{
+								"kind": "fuzzy",
+								"value": "unclosed"
+							},
+							{
+								"kind": "fuzzy",
+								"value": "\"quote"
+							},
+							{
+								"kind": "fuzzy",
+								"value": "here"
+							}
+						],
+						"error": null,
+						"hasRegex": false
+					},
+					{
+						"mode": "regex",
+						"tokens": [],
+						"error": null,
+						"hasRegex": true
+					},
+					{
+						"mode": "regex",
+						"tokens": [],
+						"error": "Empty regex",
+						"hasRegex": false
+					},
+					{
+						"mode": "regex",
+						"tokens": [],
+						"error": "Empty regex",
+						"hasRegex": false
+					},
+					{
+						"mode": "regex",
+						"tokens": [],
+						"error": "Invalid regular expression: /([bad/i: Unterminated character class",
+						"hasRegex": false
+					},
+					{
+						"mode": "tokens",
+						"tokens": [
+							{
+								"kind": "fuzzy",
+								"value": "multi"
+							},
+							{
+								"kind": "fuzzy",
+								"value": "spaces"
+							},
+							{
+								"kind": "fuzzy",
+								"value": "tabs"
+							}
+						],
+						"error": null,
+						"hasRegex": false
+					}
+				],
+				"match": [
+					{
+						"matches": true,
+						"score": 22
+					},
+					{
+						"matches": true,
+						"score": -17.5
+					},
+					{
+						"matches": true,
+						"score": 1.3
+					},
+					{
+						"matches": false,
+						"score": 0
+					},
+					{
+						"matches": false,
+						"score": 0
+					},
+					{
+						"matches": true,
+						"score": 0
+					},
+					{
+						"matches": false,
+						"score": 0
+					}
+				],
+				"filterRecent": [
+					[
+						{
+							"id": "1",
+							"name": "alpha session",
+							"allMessagesText": "fix the parser bug",
+							"cwd": "C:\\work",
+							"modified": "1970-01-01T00:00:02.000Z",
+							"path": "C:\\s\\1.jsonl",
+							"created": "1970-01-01T00:00:01.000Z",
+							"messageCount": 3,
+							"firstMessage": "fix the pa",
+							"parentSessionPath": null
+						},
+						{
+							"id": "2",
+							"name": null,
+							"allMessagesText": "review PR node cve fix",
+							"cwd": "C:\\work",
+							"modified": "1970-01-01T00:00:03.000Z",
+							"path": "C:\\s\\2.jsonl",
+							"created": "1970-01-01T00:00:02.000Z",
+							"messageCount": 3,
+							"firstMessage": "review PR ",
+							"parentSessionPath": null
+						}
+					],
+					[
+						{
+							"id": "1",
+							"name": "alpha session",
+							"allMessagesText": "fix the parser bug",
+							"cwd": "C:\\work",
+							"modified": "1970-01-01T00:00:02.000Z",
+							"path": "C:\\s\\1.jsonl",
+							"created": "1970-01-01T00:00:01.000Z",
+							"messageCount": 3,
+							"firstMessage": "fix the pa",
+							"parentSessionPath": null
+						},
+						{
+							"id": "3",
+							"name": "beta notes",
+							"allMessagesText": "random chatter about rust",
+							"cwd": "C:\\other",
+							"modified": "1970-01-01T00:00:01.000Z",
+							"path": "C:\\s\\3.jsonl",
+							"created": "1970-01-01T00:00:00.000Z",
+							"messageCount": 3,
+							"firstMessage": "random cha",
+							"parentSessionPath": null
+						}
+					],
+					[
+						{
+							"id": "2",
+							"name": null,
+							"allMessagesText": "review PR node cve fix",
+							"cwd": "C:\\work",
+							"modified": "1970-01-01T00:00:03.000Z",
+							"path": "C:\\s\\2.jsonl",
+							"created": "1970-01-01T00:00:02.000Z",
+							"messageCount": 3,
+							"firstMessage": "review PR ",
+							"parentSessionPath": null
+						}
+					],
+					[]
+				],
+				"filterRelevance": [
+					[
+						{
+							"id": "1",
+							"name": "alpha session",
+							"allMessagesText": "fix the parser bug",
+							"cwd": "C:\\work",
+							"modified": "1970-01-01T00:00:02.000Z",
+							"path": "C:\\s\\1.jsonl",
+							"created": "1970-01-01T00:00:01.000Z",
+							"messageCount": 3,
+							"firstMessage": "fix the pa",
+							"parentSessionPath": null
+						},
+						{
+							"id": "2",
+							"name": null,
+							"allMessagesText": "review PR node cve fix",
+							"cwd": "C:\\work",
+							"modified": "1970-01-01T00:00:03.000Z",
+							"path": "C:\\s\\2.jsonl",
+							"created": "1970-01-01T00:00:02.000Z",
+							"messageCount": 3,
+							"firstMessage": "review PR ",
+							"parentSessionPath": null
+						}
+					],
+					[
+						{
+							"id": "1",
+							"name": "alpha session",
+							"allMessagesText": "fix the parser bug",
+							"cwd": "C:\\work",
+							"modified": "1970-01-01T00:00:02.000Z",
+							"path": "C:\\s\\1.jsonl",
+							"created": "1970-01-01T00:00:01.000Z",
+							"messageCount": 3,
+							"firstMessage": "fix the pa",
+							"parentSessionPath": null
+						},
+						{
+							"id": "3",
+							"name": "beta notes",
+							"allMessagesText": "random chatter about rust",
+							"cwd": "C:\\other",
+							"modified": "1970-01-01T00:00:01.000Z",
+							"path": "C:\\s\\3.jsonl",
+							"created": "1970-01-01T00:00:00.000Z",
+							"messageCount": 3,
+							"firstMessage": "random cha",
+							"parentSessionPath": null
+						}
+					]
+				],
+				"filterThreaded": [
+					{
+						"id": "1",
+						"name": "alpha session",
+						"allMessagesText": "fix the parser bug",
+						"cwd": "C:\\work",
+						"modified": "1970-01-01T00:00:02.000Z",
+						"path": "C:\\s\\1.jsonl",
+						"created": "1970-01-01T00:00:01.000Z",
+						"messageCount": 3,
+						"firstMessage": "fix the pa",
+						"parentSessionPath": null
+					}
+				]
+			}
+		}
+	],
+	"failures": []
+}

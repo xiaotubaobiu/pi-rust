@@ -1,0 +1,630 @@
+{
+ "buildContext": [
+  {
+   "name": "empty",
+   "ids": [],
+   "thinkingLevel": "off",
+   "model": null,
+   "roles": [],
+   "canon": "[]"
+  },
+  {
+   "name": "single-user",
+   "ids": [
+    "m1"
+   ],
+   "thinkingLevel": "off",
+   "model": null,
+   "roles": [
+    "user"
+   ],
+   "canon": "[{\"content\":\"hello\",\"role\":\"user\",\"timestamp\":0}]"
+  },
+  {
+   "name": "simple-conversation",
+   "ids": [
+    "m1",
+    "m2",
+    "m3",
+    "m4"
+   ],
+   "thinkingLevel": "off",
+   "model": {
+    "provider": "anthropic",
+    "modelId": "claude-test"
+   },
+   "roles": [
+    "user",
+    "assistant",
+    "user",
+    "assistant"
+   ],
+   "canon": "[{\"content\":\"hello\",\"role\":\"user\",\"timestamp\":0},{\"api\":\"anthropic-messages\",\"content\":[{\"text\":\"hi there\",\"type\":\"text\"}],\"model\":\"claude-test\",\"provider\":\"anthropic\",\"role\":\"assistant\",\"stopReason\":\"stop\",\"timestamp\":0,\"usage\":{\"cacheRead\":0,\"cacheWrite\":0,\"cost\":{\"cacheRead\":0,\"cacheWrite\":0,\"input\":0,\"output\":0,\"total\":0},\"input\":1,\"output\":1,\"totalTokens\":2}},{\"content\":\"how are you\",\"role\":\"user\",\"timestamp\":0},{\"api\":\"anthropic-messages\",\"content\":[{\"text\":\"great\",\"type\":\"text\"}],\"model\":\"claude-test\",\"provider\":\"anthropic\",\"role\":\"assistant\",\"stopReason\":\"stop\",\"timestamp\":0,\"usage\":{\"cacheRead\":0,\"cacheWrite\":0,\"cost\":{\"cacheRead\":0,\"cacheWrite\":0,\"input\":0,\"output\":0,\"total\":0},\"input\":1,\"output\":1,\"totalTokens\":2}}]"
+  },
+  {
+   "name": "thinking-level",
+   "ids": [
+    "m1",
+    "t1",
+    "m2"
+   ],
+   "thinkingLevel": "high",
+   "model": {
+    "provider": "anthropic",
+    "modelId": "claude-test"
+   },
+   "roles": [
+    "user",
+    "assistant"
+   ],
+   "canon": "[{\"content\":\"hello\",\"role\":\"user\",\"timestamp\":0},{\"api\":\"anthropic-messages\",\"content\":[{\"text\":\"thinking hard\",\"type\":\"text\"}],\"model\":\"claude-test\",\"provider\":\"anthropic\",\"role\":\"assistant\",\"stopReason\":\"stop\",\"timestamp\":0,\"usage\":{\"cacheRead\":0,\"cacheWrite\":0,\"cost\":{\"cacheRead\":0,\"cacheWrite\":0,\"input\":0,\"output\":0,\"total\":0},\"input\":1,\"output\":1,\"totalTokens\":2}}]"
+  },
+  {
+   "name": "model-from-assistant",
+   "ids": [
+    "m1",
+    "m2"
+   ],
+   "thinkingLevel": "off",
+   "model": {
+    "provider": "anthropic",
+    "modelId": "claude-test"
+   },
+   "roles": [
+    "user",
+    "assistant"
+   ],
+   "canon": "[{\"content\":\"hello\",\"role\":\"user\",\"timestamp\":0},{\"api\":\"anthropic-messages\",\"content\":[{\"text\":\"hi\",\"type\":\"text\"}],\"model\":\"claude-test\",\"provider\":\"anthropic\",\"role\":\"assistant\",\"stopReason\":\"stop\",\"timestamp\":0,\"usage\":{\"cacheRead\":0,\"cacheWrite\":0,\"cost\":{\"cacheRead\":0,\"cacheWrite\":0,\"input\":0,\"output\":0,\"total\":0},\"input\":1,\"output\":1,\"totalTokens\":2}}]"
+  },
+  {
+   "name": "model-change-overwritten",
+   "ids": [
+    "m1",
+    "mc1",
+    "m2"
+   ],
+   "thinkingLevel": "off",
+   "model": {
+    "provider": "anthropic",
+    "modelId": "claude-test"
+   },
+   "roles": [
+    "user",
+    "assistant"
+   ],
+   "canon": "[{\"content\":\"hello\",\"role\":\"user\",\"timestamp\":0},{\"api\":\"anthropic-messages\",\"content\":[{\"text\":\"hi\",\"type\":\"text\"}],\"model\":\"claude-test\",\"provider\":\"anthropic\",\"role\":\"assistant\",\"stopReason\":\"stop\",\"timestamp\":0,\"usage\":{\"cacheRead\":0,\"cacheWrite\":0,\"cost\":{\"cacheRead\":0,\"cacheWrite\":0,\"input\":0,\"output\":0,\"total\":0},\"input\":1,\"output\":1,\"totalTokens\":2}}]"
+  },
+  {
+   "name": "compaction-includes-summary",
+   "ids": [
+    "c1",
+    "m3",
+    "m4",
+    "m5",
+    "m6"
+   ],
+   "thinkingLevel": "off",
+   "model": {
+    "provider": "anthropic",
+    "modelId": "claude-test"
+   },
+   "roles": [
+    "compactionSummary",
+    "user",
+    "assistant",
+    "user",
+    "assistant"
+   ],
+   "canon": "[{\"role\":\"compactionSummary\",\"summary\":\"Summary of first two turns\",\"timestamp\":0,\"tokensBefore\":1000},{\"content\":\"second\",\"role\":\"user\",\"timestamp\":0},{\"api\":\"anthropic-messages\",\"content\":[{\"text\":\"response2\",\"type\":\"text\"}],\"model\":\"claude-test\",\"provider\":\"anthropic\",\"role\":\"assistant\",\"stopReason\":\"stop\",\"timestamp\":0,\"usage\":{\"cacheRead\":0,\"cacheWrite\":0,\"cost\":{\"cacheRead\":0,\"cacheWrite\":0,\"input\":0,\"output\":0,\"total\":0},\"input\":1,\"output\":1,\"totalTokens\":2}},{\"content\":\"third\",\"role\":\"user\",\"timestamp\":0},{\"api\":\"anthropic-messages\",\"content\":[{\"text\":\"response3\",\"type\":\"text\"}],\"model\":\"claude-test\",\"provider\":\"anthropic\",\"role\":\"assistant\",\"stopReason\":\"stop\",\"timestamp\":0,\"usage\":{\"cacheRead\":0,\"cacheWrite\":0,\"cost\":{\"cacheRead\":0,\"cacheWrite\":0,\"input\":0,\"output\":0,\"total\":0},\"input\":1,\"output\":1,\"totalTokens\":2}}]"
+  },
+  {
+   "name": "compaction-keeps-from-first",
+   "ids": [
+    "c1",
+    "m1",
+    "m2",
+    "m3"
+   ],
+   "thinkingLevel": "off",
+   "model": {
+    "provider": "anthropic",
+    "modelId": "claude-test"
+   },
+   "roles": [
+    "compactionSummary",
+    "user",
+    "assistant",
+    "user"
+   ],
+   "canon": "[{\"role\":\"compactionSummary\",\"summary\":\"Empty summary\",\"timestamp\":0,\"tokensBefore\":1000},{\"content\":\"first\",\"role\":\"user\",\"timestamp\":0},{\"api\":\"anthropic-messages\",\"content\":[{\"text\":\"response\",\"type\":\"text\"}],\"model\":\"claude-test\",\"provider\":\"anthropic\",\"role\":\"assistant\",\"stopReason\":\"stop\",\"timestamp\":0,\"usage\":{\"cacheRead\":0,\"cacheWrite\":0,\"cost\":{\"cacheRead\":0,\"cacheWrite\":0,\"input\":0,\"output\":0,\"total\":0},\"input\":1,\"output\":1,\"totalTokens\":2}},{\"content\":\"second\",\"role\":\"user\",\"timestamp\":0}]"
+  },
+  {
+   "name": "multiple-compactions-latest",
+   "ids": [
+    "c2",
+    "m4",
+    "m5"
+   ],
+   "thinkingLevel": "off",
+   "model": {
+    "provider": "anthropic",
+    "modelId": "claude-test"
+   },
+   "roles": [
+    "compactionSummary",
+    "assistant",
+    "user"
+   ],
+   "canon": "[{\"role\":\"compactionSummary\",\"summary\":\"Second summary\",\"timestamp\":0,\"tokensBefore\":1000},{\"api\":\"anthropic-messages\",\"content\":[{\"text\":\"d\",\"type\":\"text\"}],\"model\":\"claude-test\",\"provider\":\"anthropic\",\"role\":\"assistant\",\"stopReason\":\"stop\",\"timestamp\":0,\"usage\":{\"cacheRead\":0,\"cacheWrite\":0,\"cost\":{\"cacheRead\":0,\"cacheWrite\":0,\"input\":0,\"output\":0,\"total\":0},\"input\":1,\"output\":1,\"totalTokens\":2}},{\"content\":\"e\",\"role\":\"user\",\"timestamp\":0}]"
+  },
+  {
+   "name": "context-entries-with-custom",
+   "ids": [
+    "c1",
+    "cu2",
+    "m3",
+    "cu3",
+    "m4"
+   ],
+   "thinkingLevel": "off",
+   "model": {
+    "provider": "anthropic",
+    "modelId": "claude-test"
+   },
+   "roles": [
+    "compactionSummary",
+    "user",
+    "assistant"
+   ],
+   "canon": "[{\"role\":\"compactionSummary\",\"summary\":\"Summary\",\"timestamp\":0,\"tokensBefore\":1000},{\"content\":\"second\",\"role\":\"user\",\"timestamp\":0},{\"api\":\"anthropic-messages\",\"content\":[{\"text\":\"response2\",\"type\":\"text\"}],\"model\":\"claude-test\",\"provider\":\"anthropic\",\"role\":\"assistant\",\"stopReason\":\"stop\",\"timestamp\":0,\"usage\":{\"cacheRead\":0,\"cacheWrite\":0,\"cost\":{\"cacheRead\":0,\"cacheWrite\":0,\"input\":0,\"output\":0,\"total\":0},\"input\":1,\"output\":1,\"totalTokens\":2}}]"
+  },
+  {
+   "name": "settings-from-full-path",
+   "ids": [
+    "c1",
+    "m3"
+   ],
+   "thinkingLevel": "high",
+   "model": {
+    "provider": "anthropic",
+    "modelId": "claude-test"
+   },
+   "roles": [
+    "compactionSummary",
+    "user"
+   ],
+   "canon": "[{\"role\":\"compactionSummary\",\"summary\":\"Summary\",\"timestamp\":0,\"tokensBefore\":1000},{\"content\":\"second\",\"role\":\"user\",\"timestamp\":0}]"
+  },
+  {
+   "name": "branch-a",
+   "leafId": "m3",
+   "ids": [
+    "m1",
+    "m2",
+    "m3"
+   ],
+   "thinkingLevel": "off",
+   "model": {
+    "provider": "anthropic",
+    "modelId": "claude-test"
+   },
+   "roles": [
+    "user",
+    "assistant",
+    "user"
+   ],
+   "canon": "[{\"content\":\"start\",\"role\":\"user\",\"timestamp\":0},{\"api\":\"anthropic-messages\",\"content\":[{\"text\":\"response\",\"type\":\"text\"}],\"model\":\"claude-test\",\"provider\":\"anthropic\",\"role\":\"assistant\",\"stopReason\":\"stop\",\"timestamp\":0,\"usage\":{\"cacheRead\":0,\"cacheWrite\":0,\"cost\":{\"cacheRead\":0,\"cacheWrite\":0,\"input\":0,\"output\":0,\"total\":0},\"input\":1,\"output\":1,\"totalTokens\":2}},{\"content\":\"branch A\",\"role\":\"user\",\"timestamp\":0}]"
+  },
+  {
+   "name": "branch-b",
+   "leafId": "m4",
+   "ids": [
+    "m1",
+    "m2",
+    "m4"
+   ],
+   "thinkingLevel": "off",
+   "model": {
+    "provider": "anthropic",
+    "modelId": "claude-test"
+   },
+   "roles": [
+    "user",
+    "assistant",
+    "user"
+   ],
+   "canon": "[{\"content\":\"start\",\"role\":\"user\",\"timestamp\":0},{\"api\":\"anthropic-messages\",\"content\":[{\"text\":\"response\",\"type\":\"text\"}],\"model\":\"claude-test\",\"provider\":\"anthropic\",\"role\":\"assistant\",\"stopReason\":\"stop\",\"timestamp\":0,\"usage\":{\"cacheRead\":0,\"cacheWrite\":0,\"cost\":{\"cacheRead\":0,\"cacheWrite\":0,\"input\":0,\"output\":0,\"total\":0},\"input\":1,\"output\":1,\"totalTokens\":2}},{\"content\":\"branch B\",\"role\":\"user\",\"timestamp\":0}]"
+  },
+  {
+   "name": "branch-summary-in-path",
+   "leafId": "m4",
+   "ids": [
+    "m1",
+    "m2",
+    "b1",
+    "m4"
+   ],
+   "thinkingLevel": "off",
+   "model": {
+    "provider": "anthropic",
+    "modelId": "claude-test"
+   },
+   "roles": [
+    "user",
+    "assistant",
+    "branchSummary",
+    "user"
+   ],
+   "canon": "[{\"content\":\"start\",\"role\":\"user\",\"timestamp\":0},{\"api\":\"anthropic-messages\",\"content\":[{\"text\":\"response\",\"type\":\"text\"}],\"model\":\"claude-test\",\"provider\":\"anthropic\",\"role\":\"assistant\",\"stopReason\":\"stop\",\"timestamp\":0,\"usage\":{\"cacheRead\":0,\"cacheWrite\":0,\"cost\":{\"cacheRead\":0,\"cacheWrite\":0,\"input\":0,\"output\":0,\"total\":0},\"input\":1,\"output\":1,\"totalTokens\":2}},{\"fromId\":\"m3\",\"role\":\"branchSummary\",\"summary\":\"Summary of abandoned work\",\"timestamp\":0},{\"content\":\"new direction\",\"role\":\"user\",\"timestamp\":0}]"
+  },
+  {
+   "name": "complex-tree",
+   "leafId": "m6",
+   "ids": [
+    "c1",
+    "m3",
+    "m4",
+    "m5",
+    "m6"
+   ],
+   "thinkingLevel": "off",
+   "model": {
+    "provider": "anthropic",
+    "modelId": "claude-test"
+   },
+   "roles": [
+    "compactionSummary",
+    "user",
+    "assistant",
+    "user",
+    "assistant"
+   ],
+   "canon": "[{\"role\":\"compactionSummary\",\"summary\":\"Compacted history\",\"timestamp\":0,\"tokensBefore\":1000},{\"content\":\"q2\",\"role\":\"user\",\"timestamp\":0},{\"api\":\"anthropic-messages\",\"content\":[{\"text\":\"r2\",\"type\":\"text\"}],\"model\":\"claude-test\",\"provider\":\"anthropic\",\"role\":\"assistant\",\"stopReason\":\"stop\",\"timestamp\":0,\"usage\":{\"cacheRead\":0,\"cacheWrite\":0,\"cost\":{\"cacheRead\":0,\"cacheWrite\":0,\"input\":0,\"output\":0,\"total\":0},\"input\":1,\"output\":1,\"totalTokens\":2}},{\"content\":\"q3\",\"role\":\"user\",\"timestamp\":0},{\"api\":\"anthropic-messages\",\"content\":[{\"text\":\"r3\",\"type\":\"text\"}],\"model\":\"claude-test\",\"provider\":\"anthropic\",\"role\":\"assistant\",\"stopReason\":\"stop\",\"timestamp\":0,\"usage\":{\"cacheRead\":0,\"cacheWrite\":0,\"cost\":{\"cacheRead\":0,\"cacheWrite\":0,\"input\":0,\"output\":0,\"total\":0},\"input\":1,\"output\":1,\"totalTokens\":2}}]"
+  },
+  {
+   "name": "complex-tree-branch-leaf",
+   "leafId": "m9",
+   "ids": [
+    "m1",
+    "m2",
+    "m3",
+    "b1",
+    "m9"
+   ],
+   "thinkingLevel": "off",
+   "model": {
+    "provider": "anthropic",
+    "modelId": "claude-test"
+   },
+   "roles": [
+    "user",
+    "assistant",
+    "user",
+    "branchSummary",
+    "user"
+   ],
+   "canon": "[{\"content\":\"start\",\"role\":\"user\",\"timestamp\":0},{\"api\":\"anthropic-messages\",\"content\":[{\"text\":\"r1\",\"type\":\"text\"}],\"model\":\"claude-test\",\"provider\":\"anthropic\",\"role\":\"assistant\",\"stopReason\":\"stop\",\"timestamp\":0,\"usage\":{\"cacheRead\":0,\"cacheWrite\":0,\"cost\":{\"cacheRead\":0,\"cacheWrite\":0,\"input\":0,\"output\":0,\"total\":0},\"input\":1,\"output\":1,\"totalTokens\":2}},{\"content\":\"q2\",\"role\":\"user\",\"timestamp\":0},{\"fromId\":\"m8\",\"role\":\"branchSummary\",\"summary\":\"Tried wrong approach\",\"timestamp\":0},{\"content\":\"better approach\",\"role\":\"user\",\"timestamp\":0}]"
+  },
+  {
+   "name": "leaf-not-found",
+   "leafId": "nonexistent",
+   "ids": [
+    "m1",
+    "m2"
+   ],
+   "thinkingLevel": "off",
+   "model": {
+    "provider": "anthropic",
+    "modelId": "claude-test"
+   },
+   "roles": [
+    "user",
+    "assistant"
+   ],
+   "canon": "[{\"content\":\"hello\",\"role\":\"user\",\"timestamp\":0},{\"api\":\"anthropic-messages\",\"content\":[{\"text\":\"hi\",\"type\":\"text\"}],\"model\":\"claude-test\",\"provider\":\"anthropic\",\"role\":\"assistant\",\"stopReason\":\"stop\",\"timestamp\":0,\"usage\":{\"cacheRead\":0,\"cacheWrite\":0,\"cost\":{\"cacheRead\":0,\"cacheWrite\":0,\"input\":0,\"output\":0,\"total\":0},\"input\":1,\"output\":1,\"totalTokens\":2}}]"
+  },
+  {
+   "name": "orphaned-entries",
+   "leafId": "m2",
+   "ids": [
+    "m2"
+   ],
+   "thinkingLevel": "off",
+   "model": {
+    "provider": "anthropic",
+    "modelId": "claude-test"
+   },
+   "roles": [
+    "assistant"
+   ],
+   "canon": "[{\"api\":\"anthropic-messages\",\"content\":[{\"text\":\"orphan\",\"type\":\"text\"}],\"model\":\"claude-test\",\"provider\":\"anthropic\",\"role\":\"assistant\",\"stopReason\":\"stop\",\"timestamp\":0,\"usage\":{\"cacheRead\":0,\"cacheWrite\":0,\"cost\":{\"cacheRead\":0,\"cacheWrite\":0,\"input\":0,\"output\":0,\"total\":0},\"input\":1,\"output\":1,\"totalTokens\":2}}]"
+  },
+  {
+   "name": "leaf-null",
+   "leafId": null,
+   "ids": [],
+   "thinkingLevel": "off",
+   "model": null,
+   "roles": [],
+   "canon": "[]"
+  },
+  {
+   "name": "compaction-with-system-message",
+   "ids": [
+    "c1",
+    "m1",
+    "m2",
+    "m3"
+   ],
+   "thinkingLevel": "off",
+   "model": {
+    "provider": "anthropic",
+    "modelId": "claude-test"
+   },
+   "roles": [
+    "system",
+    "compactionSummary",
+    "user",
+    "assistant",
+    "user"
+   ],
+   "canon": "[{\"content\":\"system prompt\",\"role\":\"system\",\"timestamp\":0},{\"role\":\"compactionSummary\",\"summary\":\"Summary with system\",\"timestamp\":0,\"tokensBefore\":1000},{\"content\":\"first\",\"role\":\"user\",\"timestamp\":0},{\"api\":\"anthropic-messages\",\"content\":[{\"text\":\"response\",\"type\":\"text\"}],\"model\":\"claude-test\",\"provider\":\"anthropic\",\"role\":\"assistant\",\"stopReason\":\"stop\",\"timestamp\":0,\"usage\":{\"cacheRead\":0,\"cacheWrite\":0,\"cost\":{\"cacheRead\":0,\"cacheWrite\":0,\"input\":0,\"output\":0,\"total\":0},\"input\":1,\"output\":1,\"totalTokens\":2}},{\"content\":\"second\",\"role\":\"user\",\"timestamp\":0}]"
+  },
+  {
+   "name": "custom-message-entries-in-context",
+   "ids": [
+    "m1",
+    "cm1",
+    "cm2",
+    "m2"
+   ],
+   "thinkingLevel": "off",
+   "model": {
+    "provider": "anthropic",
+    "modelId": "claude-test"
+   },
+   "roles": [
+    "user",
+    "custom",
+    "custom",
+    "assistant"
+   ],
+   "canon": "[{\"content\":\"first\",\"role\":\"user\",\"timestamp\":0},{\"content\":\"plain note\",\"customType\":\"note\",\"details\":{\"meta\":1},\"display\":true,\"role\":\"custom\",\"timestamp\":0},{\"content\":[{\"text\":\"block note\",\"type\":\"text\"}],\"customType\":\"blocks\",\"display\":false,\"role\":\"custom\",\"timestamp\":0},{\"api\":\"anthropic-messages\",\"content\":[{\"text\":\"reply\",\"type\":\"text\"}],\"model\":\"claude-test\",\"provider\":\"anthropic\",\"role\":\"assistant\",\"stopReason\":\"stop\",\"timestamp\":0,\"usage\":{\"cacheRead\":0,\"cacheWrite\":0,\"cost\":{\"cacheRead\":0,\"cacheWrite\":0,\"input\":0,\"output\":0,\"total\":0},\"input\":1,\"output\":1,\"totalTokens\":2}}]"
+  }
+ ],
+ "entryToContext": [
+  {
+   "name": "user-message",
+   "canon": "[{\"content\":\"hello\",\"role\":\"user\",\"timestamp\":0}]"
+  },
+  {
+   "name": "assistant-message",
+   "canon": "[{\"api\":\"anthropic-messages\",\"content\":[{\"text\":\"hi\",\"type\":\"text\"}],\"model\":\"claude-test\",\"provider\":\"anthropic\",\"role\":\"assistant\",\"stopReason\":\"stop\",\"timestamp\":0,\"usage\":{\"cacheRead\":0,\"cacheWrite\":0,\"cost\":{\"cacheRead\":0,\"cacheWrite\":0,\"input\":0,\"output\":0,\"total\":0},\"input\":1,\"output\":1,\"totalTokens\":2}}]"
+  },
+  {
+   "name": "thinking-level",
+   "canon": "[]"
+  },
+  {
+   "name": "model-change",
+   "canon": "[]"
+  },
+  {
+   "name": "custom-entry",
+   "canon": "[]"
+  },
+  {
+   "name": "custom-message-text",
+   "canon": "[{\"content\":\"plain\",\"customType\":\"note\",\"details\":{\"meta\":1},\"display\":true,\"role\":\"custom\",\"timestamp\":0}]"
+  },
+  {
+   "name": "custom-message-blocks",
+   "canon": "[{\"content\":[{\"text\":\"b\",\"type\":\"text\"}],\"customType\":\"blocks\",\"display\":false,\"role\":\"custom\",\"timestamp\":0}]"
+  },
+  {
+   "name": "branch-summary",
+   "canon": "[{\"fromId\":\"m1\",\"role\":\"branchSummary\",\"summary\":\"summary text\",\"timestamp\":0}]"
+  },
+  {
+   "name": "branch-summary-empty",
+   "canon": "[]"
+  },
+  {
+   "name": "compaction",
+   "canon": "[{\"role\":\"compactionSummary\",\"summary\":\"summary\",\"timestamp\":0,\"tokensBefore\":1000}]"
+  },
+  {
+   "name": "compaction-with-system",
+   "canon": "[{\"content\":\"system prompt\",\"role\":\"system\",\"timestamp\":0},{\"role\":\"compactionSummary\",\"summary\":\"summary\",\"timestamp\":0,\"tokensBefore\":1000}]"
+  },
+  {
+   "name": "session-info",
+   "canon": "[]"
+  },
+  {
+   "name": "label",
+   "canon": "[]"
+  },
+  {
+   "name": "label-clear",
+   "canon": "[]"
+  },
+  {
+   "name": "system-null-content",
+   "canon": "[{\"content\":\"\",\"role\":\"system\",\"timestamp\":0}]"
+  },
+  {
+   "name": "user-null-content",
+   "canon": "[{\"content\":[],\"role\":\"user\",\"timestamp\":0}]"
+  },
+  {
+   "name": "assistant-null-content",
+   "canon": "[{\"api\":\"anthropic-messages\",\"content\":[],\"model\":\"claude-test\",\"provider\":\"anthropic\",\"role\":\"assistant\",\"stopReason\":\"stop\",\"timestamp\":0,\"usage\":{\"cacheRead\":0,\"cacheWrite\":0,\"cost\":{\"cacheRead\":0,\"cacheWrite\":0,\"input\":0,\"output\":0,\"total\":0},\"input\":1,\"output\":1,\"totalTokens\":2}}]"
+  },
+  {
+   "name": "toolresult-null-content",
+   "canon": "[{\"content\":[],\"isError\":false,\"role\":\"toolResult\",\"timestamp\":0,\"toolCallId\":\"call-1\",\"toolName\":\"nested-model\"}]"
+  },
+  {
+   "name": "custom-message-null-content",
+   "canon": "[{\"content\":[],\"customType\":\"note\",\"display\":true,\"role\":\"custom\",\"timestamp\":0}]"
+  }
+ ],
+ "latestCompaction": [
+  {
+   "name": "none",
+   "canon": "null"
+  },
+  {
+   "name": "last",
+   "canon": "{\"firstKeptEntryId\":\"m1\",\"id\":\"c1\",\"parentId\":\"m1\",\"summary\":\"s\",\"timestamp\":\"1970-01-01T00:00:00.000Z\",\"tokensBefore\":1000,\"type\":\"compaction\"}"
+  },
+  {
+   "name": "middle",
+   "canon": "{\"firstKeptEntryId\":\"m1\",\"id\":\"c1\",\"parentId\":null,\"summary\":\"s\",\"timestamp\":\"1970-01-01T00:00:00.000Z\",\"tokensBefore\":1000,\"type\":\"compaction\"}"
+  }
+ ],
+ "parseEntries": [
+  {
+   "name": "mixed",
+   "canon": "[{\"cwd\":\"/tmp\",\"id\":\"abc\",\"timestamp\":\"1970-01-01T00:00:00.000Z\",\"type\":\"session\"},{\"id\":\"m1\",\"message\":{\"content\":\"hi\",\"role\":\"user\",\"timestamp\":0},\"parentId\":null,\"timestamp\":\"1970-01-01T00:00:00.000Z\",\"type\":\"message\"},{\"payload\":true,\"type\":\"unknown-kind\"}]"
+  },
+  {
+   "name": "empty",
+   "canon": "[]"
+  },
+  {
+   "name": "blank-lines",
+   "canon": "[]"
+  }
+ ],
+ "migrate": [
+  {
+   "name": "v1",
+   "canon": "[{\"cwd\":\"/tmp\",\"id\":\"sess-1\",\"timestamp\":\"1970-01-01T00:00:00.000Z\",\"type\":\"session\",\"version\":3},{\"id\":\"00000001\",\"message\":{\"content\":\"hi\",\"role\":\"user\",\"timestamp\":0},\"parentId\":null,\"timestamp\":\"1970-01-01T00:00:00.000Z\",\"type\":\"message\"},{\"firstKeptEntryId\":\"00000001\",\"id\":\"00000002\",\"parentId\":\"00000001\",\"summary\":\"s\",\"timestamp\":\"1970-01-01T00:00:00.000Z\",\"tokensBefore\":10,\"type\":\"compaction\"}]"
+  },
+  {
+   "name": "v2",
+   "canon": "[{\"cwd\":\"/tmp\",\"id\":\"sess-2\",\"timestamp\":\"1970-01-01T00:00:00.000Z\",\"type\":\"session\",\"version\":3},{\"id\":\"hookmsgid\",\"message\":{\"content\":\"from a hook\",\"role\":\"custom\",\"timestamp\":0},\"parentId\":null,\"timestamp\":\"1970-01-01T00:00:00.000Z\",\"type\":\"message\"},{\"id\":\"usermsgid\",\"message\":{\"content\":\"hi\",\"role\":\"user\",\"timestamp\":0},\"parentId\":\"hookmsgid\",\"timestamp\":\"1970-01-01T00:00:00.000Z\",\"type\":\"message\"}]"
+  },
+  {
+   "name": "current",
+   "canon": "[{\"cwd\":\"/tmp\",\"id\":\"sess-3\",\"timestamp\":\"1970-01-01T00:00:00.000Z\",\"type\":\"session\",\"version\":3},{\"id\":\"usermsgid\",\"message\":{\"content\":\"hi\",\"role\":\"user\",\"timestamp\":0},\"parentId\":null,\"timestamp\":\"1970-01-01T00:00:00.000Z\",\"type\":\"message\"}]"
+  }
+ ],
+ "defaultDir": {
+  "path": "<tmp>\\pi-sm-oracle-agent-home\\sessions\\--C--oracle-fixed-cwd--",
+  "exists": true,
+  "nested": true
+ },
+ "canon": {
+  "load-entries": "{\"empty-count\":0,\"invalid-unterminated-count\":0,\"invalid-unterminated-unchanged\":true,\"leading-blank\":{\"cwd\":\"<root>\\\\stored-project\",\"id\":\"leading-blank\"},\"leading-malformed\":{\"cwd\":\"<root>\\\\stored-project\",\"id\":\"leading-malformed\"},\"malformed-count\":0,\"malformed-tail-count\":1,\"mixed-count\":2,\"multi-buffer-header\":{\"cwd\":\"<root>\\\\stored-project\",\"id\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa<len=8192>\"},\"no-header-count\":0,\"nonexistent-count\":0,\"unterminated-count\":2,\"valid\":{\"count\":2,\"types\":[\"session\",\"message\"]}}",
+  "scan-limit": "{\"large-header\":{\"default\":{\"cwd\":\"<root>\\\\stored-project\",\"id\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa<len=1048577>\"},\"override\":{\"cwd\":\"<root>\\\\override-project\",\"id\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa<len=1048577>\"}},\"large-prefix\":{\"default\":{\"cwd\":\"<root>\\\\stored-project\",\"id\":\"large-prefix\"},\"override\":{\"cwd\":\"<root>\\\\override-project\",\"id\":\"large-prefix\"}}}",
+  "most-recent": "{\"cwd-a\":\"<root>\\\\a.jsonl\",\"cwd-b\":\"<root>\\\\b.jsonl\",\"cwd-none\":\"<root>\\\\session.jsonl\",\"empty-dir\":null,\"invalid-header\":null,\"most-recent\":\"<root>\\\\session.jsonl\",\"non-jsonl\":null,\"nonexistent\":null,\"single\":\"<root>\\\\session.jsonl\",\"skips-invalid\":\"<root>\\\\session.jsonl\",\"skips-oversized\":\"<root>\\\\session.jsonl\"}",
+  "manager.flush-file-base": "\"<stamp>_@u1.jsonl\"",
+  "manager.branch-no-assistant-exists": "false",
+  "manager.branch-no-assistant-headers": "1",
+  "manager.branch-no-assistant-unique-ids": "true",
+  "manager.branch-assistant-exists": "true",
+  "manager.labels-branch-labels": "[{\"id\":\"00000016\",\"label\":\"important\"},{\"id\":\"00000017\",\"label\":\"also-important\"},{\"id\":\"00000020\"}]",
+  "manager.labels-tree": "[{\"children\":[{\"children\":[{\"children\":[{\"children\":[],\"entry\":{\"id\":\"00000022\",\"label\":\"also-important\",\"parentId\":\"00000021\",\"targetId\":\"00000017\",\"timestamp\":\"1970-01-01T00:00:00.000Z\",\"type\":\"label\"}}],\"entry\":{\"id\":\"00000021\",\"label\":\"important\",\"parentId\":\"00000017\",\"targetId\":\"00000016\",\"timestamp\":\"1970-01-01T00:00:00.000Z\",\"type\":\"label\"}}],\"entry\":{\"id\":\"00000017\",\"message\":{\"api\":\"anthropic-messages\",\"content\":[{\"text\":\"hi\",\"type\":\"text\"}],\"model\":\"test\",\"provider\":\"anthropic\",\"role\":\"assistant\",\"stopReason\":\"stop\",\"timestamp\":0,\"usage\":{\"cacheRead\":0,\"cacheWrite\":0,\"cost\":{\"cacheRead\":0,\"cacheWrite\":0,\"input\":0,\"output\":0,\"total\":0},\"input\":1,\"output\":1,\"totalTokens\":2}},\"parentId\":\"00000016\",\"timestamp\":\"1970-01-01T00:00:00.000Z\",\"type\":\"message\"},\"label\":\"also-important\",\"labelTimestamp\":\"1970-01-01T00:00:00.000Z\"}],\"entry\":{\"id\":\"00000016\",\"message\":{\"content\":\"hello\",\"role\":\"user\",\"timestamp\":0},\"parentId\":null,\"timestamp\":\"1970-01-01T00:00:00.000Z\",\"type\":\"message\"},\"label\":\"important\",\"labelTimestamp\":\"1970-01-01T00:00:00.000Z\"}]",
+  "manager.label-rewire-parent": "\"00000023\"",
+  "manager.label-rewire-deferred": "false",
+  "manager.compaction-remap-kept": "true",
+  "manager.in-memory-branch-result": "true",
+  "manager.in-memory-branch-entries": "[\"00000037\",\"00000038\"]",
+  "manager.in-memory-branch-ids": "[\"00000037\",\"00000038\",\"00000040\"]",
+  "manager.fork-header-id": "\"forked-session-id\"",
+  "manager.fork-parent": "\"<root>\\\\source.jsonl\"",
+  "manager.fork-cwd": "\"<root>\\\\target-cwd\"",
+  "manager.corrupt-empty-reopen-same-id": "true",
+  "manager.corrupt-empty-file-preserved": "true",
+  "manager.corrupt-no-header-unchanged": "true",
+  "manager.corrupt-log-unchanged": "true",
+  "manager.list-a": "[{\"allMessagesText\":\"from A reply to from A\",\"created\":0,\"cwd\":\"<root>\\\\project-a\",\"firstMessage\":\"from A\",\"id\":\"@u15\",\"messageCount\":2,\"modified\":1700000000000,\"path\":\"<root>\\\\flat\\\\<stamp>_@u15.jsonl\"}]",
+  "manager.list-all": "[{\"allMessagesText\":\"from B reply to from B\",\"created\":0,\"cwd\":\"<root>\\\\project-b\",\"firstMessage\":\"from B\",\"id\":\"@u16\",\"messageCount\":2,\"modified\":1700000050000,\"path\":\"<root>\\\\flat\\\\<stamp>_@u16.jsonl\"},{\"allMessagesText\":\"from A reply to from A\",\"created\":0,\"cwd\":\"<root>\\\\project-a\",\"firstMessage\":\"from A\",\"id\":\"@u15\",\"messageCount\":2,\"modified\":1700000000000,\"path\":\"<root>\\\\flat\\\\<stamp>_@u15.jsonl\"}]",
+  "manager.continue-recent": "\"<root>\\\\flat\\\\<stamp>_@u15.jsonl\"",
+  "manager.list-progress": "[[1,2],[2,2]]",
+  "manager.find-by-id": "{\"a\":\"<root>\\\\flat\\\\<stamp>_@u15.jsonl\",\"b\":\"<root>\\\\flat\\\\<stamp>_@u16.jsonl\"}",
+  "manager.usage-roundtrip": "[{\"id\":\"00000045\",\"message\":{\"content\":\"question\",\"role\":\"user\",\"timestamp\":0},\"parentId\":null,\"timestamp\":\"1970-01-01T00:00:00.000Z\",\"type\":\"message\"},{\"id\":\"00000046\",\"message\":{\"api\":\"anthropic-messages\",\"content\":[{\"text\":\"answer\",\"type\":\"text\"}],\"model\":\"test\",\"provider\":\"anthropic\",\"role\":\"assistant\",\"stopReason\":\"stop\",\"timestamp\":0,\"usage\":{\"cacheRead\":0,\"cacheWrite\":0,\"cost\":{\"cacheRead\":0,\"cacheWrite\":0,\"input\":0,\"output\":0,\"total\":0},\"input\":1,\"output\":1,\"totalTokens\":2}},\"parentId\":\"00000045\",\"timestamp\":\"1970-01-01T00:00:00.000Z\",\"type\":\"message\"},{\"id\":\"00000047\",\"message\":{\"content\":[{\"text\":\"result\",\"type\":\"text\"}],\"isError\":false,\"role\":\"toolResult\",\"timestamp\":0,\"toolCallId\":\"call-1\",\"toolName\":\"nested-model\",\"usage\":{\"cacheRead\":30,\"cacheWrite\":40,\"cost\":{\"cacheRead\":0.3,\"cacheWrite\":0.4,\"input\":0.1,\"output\":0.2,\"total\":1},\"input\":10,\"output\":20,\"totalTokens\":100}},\"parentId\":\"00000046\",\"timestamp\":\"1970-01-01T00:00:00.000Z\",\"type\":\"message\"},{\"firstKeptEntryId\":\"00000045\",\"fromHook\":false,\"id\":\"00000048\",\"parentId\":\"00000047\",\"summary\":\"summary\",\"timestamp\":\"1970-01-01T00:00:00.000Z\",\"tokensBefore\":100,\"type\":\"compaction\",\"usage\":{\"cacheRead\":30,\"cacheWrite\":40,\"cost\":{\"cacheRead\":0.3,\"cacheWrite\":0.4,\"input\":0.1,\"output\":0.2,\"total\":1},\"input\":10,\"output\":20,\"totalTokens\":100}},{\"fromHook\":false,\"fromId\":\"00000048\",\"id\":\"00000049\",\"parentId\":\"00000045\",\"summary\":\"branch summary\",\"timestamp\":\"1970-01-01T00:00:00.000Z\",\"type\":\"branch_summary\",\"usage\":{\"cacheRead\":30,\"cacheWrite\":40,\"cost\":{\"cacheRead\":0.3,\"cacheWrite\":0.4,\"input\":0.1,\"output\":0.2,\"total\":1},\"input\":10,\"output\":20,\"totalTokens\":100}}]",
+  "in-memory.append-entries": "[{\"id\":\"00000001\",\"message\":{\"content\":\"first\",\"role\":\"user\",\"timestamp\":0},\"parentId\":null,\"timestamp\":\"1970-01-01T00:00:00.000Z\",\"type\":\"message\"},{\"id\":\"00000002\",\"message\":{\"api\":\"anthropic-messages\",\"content\":[{\"text\":\"second\",\"type\":\"text\"}],\"model\":\"test\",\"provider\":\"anthropic\",\"role\":\"assistant\",\"stopReason\":\"stop\",\"timestamp\":0,\"usage\":{\"cacheRead\":0,\"cacheWrite\":0,\"cost\":{\"cacheRead\":0,\"cacheWrite\":0,\"input\":0,\"output\":0,\"total\":0},\"input\":1,\"output\":1,\"totalTokens\":2}},\"parentId\":\"00000001\",\"timestamp\":\"1970-01-01T00:00:00.000Z\",\"type\":\"message\"},{\"id\":\"00000003\",\"message\":{\"content\":\"third\",\"role\":\"user\",\"timestamp\":0},\"parentId\":\"00000002\",\"timestamp\":\"1970-01-01T00:00:00.000Z\",\"type\":\"message\"}]",
+  "in-memory.append-parents": "[null,\"00000001\",\"00000002\"]",
+  "in-memory.leaf-advances": "[true,true]",
+  "in-memory.thinking-parents": "[\"00000004\",\"00000005\"]",
+  "in-memory.model-parents": "[\"00000007\",\"openai\",\"gpt-4\",\"00000008\"]",
+  "in-memory.compaction-parents": "[\"00000011\",\"summary\",\"00000010\",1000,{\"cacheRead\":30,\"cacheWrite\":40,\"cost\":{\"cacheRead\":0.3,\"cacheWrite\":0.4,\"input\":0.1,\"output\":0.2,\"total\":1},\"input\":10,\"output\":20,\"totalTokens\":100},\"00000012\"]",
+  "in-memory.custom-parents": "[\"00000014\",\"my_data\",{\"key\":\"value\"},\"00000015\"]",
+  "in-memory.branch-empty": "0",
+  "in-memory.branch-single": "[\"00000017\"]",
+  "in-memory.branch-full": "[\"00000017\",\"00000018\",\"00000019\",\"00000020\"]",
+  "in-memory.branch-from-mid": "[\"00000017\",\"00000018\"]",
+  "in-memory.tree-empty": "0",
+  "in-memory.tree-linear": "{\"childId\":\"00000022\",\"grandchildId\":\"00000023\",\"leafChildren\":0,\"rootId\":\"00000021\",\"roots\":1}",
+  "in-memory.tree-branch": "{\"childCount\":2,\"childIds\":[\"00000023\",\"00000024\"],\"roots\":1}",
+  "in-memory.tree-multi-branch": "{\"count\":3,\"ids\":[\"00000027\",\"00000028\",\"00000029\"]}",
+  "in-memory.tree-deep": "{\"node2Children\":2,\"node3Children\":1,\"node5Children\":2}",
+  "in-memory.branch-leaf": "true",
+  "in-memory.branch-child": "true",
+  "in-memory.branch-summary": "{\"fromId\":\"00000043\",\"leaf\":true,\"parentId\":\"00000041\",\"usage\":{\"cacheRead\":30,\"cacheWrite\":40,\"cost\":{\"cacheRead\":0.3,\"cacheWrite\":0.4,\"input\":0.1,\"output\":0.2,\"total\":1},\"input\":10,\"output\":20,\"totalTokens\":100}}",
+  "in-memory.label-initial": "true",
+  "in-memory.label-set": "\"checkpoint\"",
+  "in-memory.label-entry": "{\"label\":\"checkpoint\",\"targetId\":\"00000045\"}",
+  "in-memory.label-cleared": "true",
+  "in-memory.label-last-wins": "{\"label\":\"third\",\"tsMatches\":true}",
+  "in-memory.label-tree": "{\"labelA\":\"start\",\"labelB\":\"response\",\"tsA\":true,\"tsB\":true}",
+  "in-memory.label-branch-inmemory": "{\"labelA\":\"important\",\"labelB\":\"also-important\",\"labelEntries\":2,\"tsA\":true,\"tsB\":true}",
+  "in-memory.label-not-in-context": "{\"count\":1,\"role\":\"user\"}",
+  "in-memory.session-name-none": "true",
+  "in-memory.session-name": "\"my name\"",
+  "in-memory.session-name-cleared": "true",
+  "in-memory.preload-verbatim": "true",
+  "in-memory.preload-leaf": "{\"leaf\":true,\"parent\":true}",
+  "in-memory.preload-no-collision": "true",
+  "in-memory.preload-tree": "{\"children\":2,\"roots\":1}",
+  "in-memory.preload-labels": "\"checkpoint\"",
+  "in-memory.preload-compaction": "true",
+  "in-memory.preload-header-from-options": "{\"cwd\":\"C:\\\\project\",\"headerId\":\"restored-session\",\"id\":\"restored-session\"}",
+  "in-memory.preload-off-fs": "{\"file\":true,\"persisted\":true}",
+  "in-memory.preload-empty": "{\"entries\":0,\"id\":\"empty-session\",\"leaf\":true}",
+  "in-memory.preload-header-identity": "{\"cwd\":\"/stored\",\"id\":\"stored-session\"}",
+  "in-memory.preload-migrated": "{\"id\":\"hookmsgid\",\"role\":\"custom\",\"version\":3}",
+  "in-memory.preload-headerless-not-migrated": "\"hookMessage\"",
+  "in-memory.custom-id": "\"my-custom-id\"",
+  "in-memory.custom-id-memory": "{\"fileUndefined\":true,\"header\":\"memory-session-id\",\"id\":\"memory-session-id\"}",
+  "in-memory.custom-id-punctuation": "\"abc-123_def.456\"",
+  "in-memory.custom-id-invalid-count": "10",
+  "in-memory.custom-id-header": "\"header-test-id\"",
+  "in-memory.created-custom-id": "{\"exists\":false,\"fileBase\":\"<stamp>_created-session-id.jsonl\",\"header\":\"created-session-id\",\"id\":\"created-session-id\"}",
+  "errors-assert": "{\"assert-valid\":true}"
+ },
+ "fileBytes": {
+  "empty": "",
+  "no-header": "{\"type\":\"message\",\"id\":\"m1\"}\n",
+  "malformed": "not json\n",
+  "unterminated-input": "{\"type\":\"session\",\"id\":\"abc\",\"timestamp\":\"1970-01-01T00:00:00.000Z\",\"cwd\":\"/tmp\"}\n{\"type\":\"message\",\"id\":\"m1\",\"parentId\":null,\"timestamp\":\"1970-01-01T00:00:00.000Z\",\"message\":{\"role\":\"user\",\"content\":\"hi\",\"timestamp\":0}}",
+  "unterminated-bytes": "{\"type\":\"session\",\"id\":\"abc\",\"timestamp\":\"1970-01-01T00:00:00.000Z\",\"cwd\":\"/tmp\"}\n{\"type\":\"message\",\"id\":\"m1\",\"parentId\":null,\"timestamp\":\"1970-01-01T00:00:00.000Z\",\"message\":{\"role\":\"user\",\"content\":\"hi\",\"timestamp\":0}}\n",
+  "malformed-tail-input": "{\"type\":\"session\",\"id\":\"abc\",\"timestamp\":\"1970-01-01T00:00:00.000Z\",\"cwd\":\"/tmp\"}\n{\"type\":\"message\"",
+  "malformed-tail-bytes": "{\"type\":\"session\",\"id\":\"abc\",\"timestamp\":\"1970-01-01T00:00:00.000Z\",\"cwd\":\"/tmp\"}\n{\"type\":\"message\"\n",
+  "flush": "{\"type\":\"session\",\"version\":3,\"id\":\"@u1\",\"timestamp\":\"1970-01-01T00:00:00.000Z\",\"cwd\":\"<root>\\\\proj\"}\n{\"type\":\"message\",\"id\":\"00000001\",\"parentId\":null,\"timestamp\":\"1970-01-01T00:00:00.000Z\",\"message\":{\"role\":\"user\",\"content\":\"first question\",\"timestamp\":0}}\n{\"type\":\"message\",\"id\":\"00000002\",\"parentId\":\"00000001\",\"timestamp\":\"1970-01-01T00:00:00.000Z\",\"message\":{\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"first answer\"}],\"api\":\"anthropic-messages\",\"provider\":\"anthropic\",\"model\":\"test\",\"usage\":{\"input\":1,\"output\":1,\"cacheRead\":0,\"cacheWrite\":0,\"totalTokens\":2,\"cost\":{\"input\":0,\"output\":0,\"cacheRead\":0,\"cacheWrite\":0,\"total\":0}},\"stopReason\":\"stop\",\"timestamp\":0}}\n{\"type\":\"message\",\"id\":\"00000003\",\"parentId\":\"00000002\",\"timestamp\":\"1970-01-01T00:00:00.000Z\",\"message\":{\"role\":\"user\",\"content\":\"second question\",\"timestamp\":0}}\n{\"type\":\"message\",\"id\":\"00000004\",\"parentId\":\"00000003\",\"timestamp\":\"1970-01-01T00:00:00.000Z\",\"message\":{\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"second answer\"}],\"api\":\"anthropic-messages\",\"provider\":\"anthropic\",\"model\":\"test\",\"usage\":{\"input\":1,\"output\":1,\"cacheRead\":0,\"cacheWrite\":0,\"totalTokens\":2,\"cost\":{\"input\":0,\"output\":0,\"cacheRead\":0,\"cacheWrite\":0,\"total\":0}},\"stopReason\":\"stop\",\"timestamp\":0}}\n",
+  "append-after-flush": "{\"type\":\"session\",\"version\":3,\"id\":\"@u1\",\"timestamp\":\"1970-01-01T00:00:00.000Z\",\"cwd\":\"<root>\\\\proj\"}\n{\"type\":\"message\",\"id\":\"00000001\",\"parentId\":null,\"timestamp\":\"1970-01-01T00:00:00.000Z\",\"message\":{\"role\":\"user\",\"content\":\"first question\",\"timestamp\":0}}\n{\"type\":\"message\",\"id\":\"00000002\",\"parentId\":\"00000001\",\"timestamp\":\"1970-01-01T00:00:00.000Z\",\"message\":{\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"first answer\"}],\"api\":\"anthropic-messages\",\"provider\":\"anthropic\",\"model\":\"test\",\"usage\":{\"input\":1,\"output\":1,\"cacheRead\":0,\"cacheWrite\":0,\"totalTokens\":2,\"cost\":{\"input\":0,\"output\":0,\"cacheRead\":0,\"cacheWrite\":0,\"total\":0}},\"stopReason\":\"stop\",\"timestamp\":0}}\n{\"type\":\"message\",\"id\":\"00000003\",\"parentId\":\"00000002\",\"timestamp\":\"1970-01-01T00:00:00.000Z\",\"message\":{\"role\":\"user\",\"content\":\"second question\",\"timestamp\":0}}\n{\"type\":\"message\",\"id\":\"00000004\",\"parentId\":\"00000003\",\"timestamp\":\"1970-01-01T00:00:00.000Z\",\"message\":{\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"second answer\"}],\"api\":\"anthropic-messages\",\"provider\":\"anthropic\",\"model\":\"test\",\"usage\":{\"input\":1,\"output\":1,\"cacheRead\":0,\"cacheWrite\":0,\"totalTokens\":2,\"cost\":{\"input\":0,\"output\":0,\"cacheRead\":0,\"cacheWrite\":0,\"total\":0}},\"stopReason\":\"stop\",\"timestamp\":0}}\n{\"type\":\"thinking_level_change\",\"id\":\"00000005\",\"parentId\":\"00000004\",\"timestamp\":\"1970-01-01T00:00:00.000Z\",\"thinkingLevel\":\"high\"}\n",
+  "branch-no-assistant": "{\"type\":\"session\",\"version\":3,\"id\":\"@u3\",\"timestamp\":\"1970-01-01T00:00:00.000Z\",\"cwd\":\"<root>\\\\proj\",\"parentSession\":\"<root>\\\\flush\\\\<stamp>_@u2.jsonl\"}\n{\"type\":\"message\",\"id\":\"00000006\",\"parentId\":null,\"timestamp\":\"1970-01-01T00:00:00.000Z\",\"message\":{\"role\":\"user\",\"content\":\"first question\",\"timestamp\":0}}\n{\"type\":\"custom\",\"customType\":\"preset-state\",\"data\":{\"name\":\"plan\"},\"id\":\"00000010\",\"parentId\":\"00000006\",\"timestamp\":\"1970-01-01T00:00:00.000Z\"}\n{\"type\":\"message\",\"id\":\"00000011\",\"parentId\":\"00000010\",\"timestamp\":\"1970-01-01T00:00:00.000Z\",\"message\":{\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"new answer\"}],\"api\":\"anthropic-messages\",\"provider\":\"anthropic\",\"model\":\"test\",\"usage\":{\"input\":1,\"output\":1,\"cacheRead\":0,\"cacheWrite\":0,\"totalTokens\":2,\"cost\":{\"input\":0,\"output\":0,\"cacheRead\":0,\"cacheWrite\":0,\"total\":0}},\"stopReason\":\"stop\",\"timestamp\":0}}\n",
+  "branch-assistant": "{\"type\":\"session\",\"version\":3,\"id\":\"@u5\",\"timestamp\":\"1970-01-01T00:00:00.000Z\",\"cwd\":\"<root>\\\\proj\",\"parentSession\":\"<root>\\\\flush\\\\<stamp>_@u4.jsonl\"}\n{\"type\":\"message\",\"id\":\"00000012\",\"parentId\":null,\"timestamp\":\"1970-01-01T00:00:00.000Z\",\"message\":{\"role\":\"user\",\"content\":\"first question\",\"timestamp\":0}}\n{\"type\":\"message\",\"id\":\"00000013\",\"parentId\":\"00000012\",\"timestamp\":\"1970-01-01T00:00:00.000Z\",\"message\":{\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"first answer\"}],\"api\":\"anthropic-messages\",\"provider\":\"anthropic\",\"model\":\"test\",\"usage\":{\"input\":1,\"output\":1,\"cacheRead\":0,\"cacheWrite\":0,\"totalTokens\":2,\"cost\":{\"input\":0,\"output\":0,\"cacheRead\":0,\"cacheWrite\":0,\"total\":0}},\"stopReason\":\"stop\",\"timestamp\":0}}\n",
+  "labels-branch": "{\"type\":\"session\",\"version\":3,\"id\":\"@u7\",\"timestamp\":\"1970-01-01T00:00:00.000Z\",\"cwd\":\"<root>\\\\proj\",\"parentSession\":\"<root>\\\\flush\\\\<stamp>_@u6.jsonl\"}\n{\"type\":\"message\",\"id\":\"00000016\",\"parentId\":null,\"timestamp\":\"1970-01-01T00:00:00.000Z\",\"message\":{\"role\":\"user\",\"content\":\"hello\",\"timestamp\":0}}\n{\"type\":\"message\",\"id\":\"00000017\",\"parentId\":\"00000016\",\"timestamp\":\"1970-01-01T00:00:00.000Z\",\"message\":{\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"hi\"}],\"api\":\"anthropic-messages\",\"provider\":\"anthropic\",\"model\":\"test\",\"usage\":{\"input\":1,\"output\":1,\"cacheRead\":0,\"cacheWrite\":0,\"totalTokens\":2,\"cost\":{\"input\":0,\"output\":0,\"cacheRead\":0,\"cacheWrite\":0,\"total\":0}},\"stopReason\":\"stop\",\"timestamp\":0}}\n{\"type\":\"label\",\"id\":\"00000021\",\"parentId\":\"00000017\",\"timestamp\":\"1970-01-01T00:00:00.000Z\",\"targetId\":\"00000016\",\"label\":\"important\"}\n{\"type\":\"label\",\"id\":\"00000022\",\"parentId\":\"00000021\",\"timestamp\":\"1970-01-01T00:00:00.000Z\",\"targetId\":\"00000017\",\"label\":\"also-important\"}\n",
+  "label-rewire": "{\"type\":\"session\",\"version\":3,\"id\":\"@u9\",\"timestamp\":\"1970-01-01T00:00:00.000Z\",\"cwd\":\"<root>\\\\proj\",\"parentSession\":\"<root>\\\\flush\\\\<stamp>_@u8.jsonl\"}\n{\"type\":\"message\",\"id\":\"00000023\",\"parentId\":null,\"timestamp\":\"1970-01-01T00:00:00.000Z\",\"message\":{\"role\":\"user\",\"content\":\"hello\",\"timestamp\":0}}\n{\"type\":\"model_change\",\"id\":\"00000025\",\"parentId\":\"00000023\",\"timestamp\":\"1970-01-01T00:00:00.000Z\",\"provider\":\"anthropic\",\"modelId\":\"claude-test\"}\n{\"type\":\"message\",\"id\":\"00000026\",\"parentId\":\"00000025\",\"timestamp\":\"1970-01-01T00:00:00.000Z\",\"message\":{\"role\":\"user\",\"content\":\"followup\",\"timestamp\":0}}\n{\"type\":\"label\",\"id\":\"00000028\",\"parentId\":\"00000026\",\"timestamp\":\"1970-01-01T00:00:00.000Z\",\"targetId\":\"00000023\",\"label\":\"checkpoint\"}\n{\"type\":\"message\",\"id\":\"00000029\",\"parentId\":\"00000028\",\"timestamp\":\"1970-01-01T00:00:00.000Z\",\"message\":{\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"post-fork\"}],\"api\":\"anthropic-messages\",\"provider\":\"anthropic\",\"model\":\"test\",\"usage\":{\"input\":1,\"output\":1,\"cacheRead\":0,\"cacheWrite\":0,\"totalTokens\":2,\"cost\":{\"input\":0,\"output\":0,\"cacheRead\":0,\"cacheWrite\":0,\"total\":0}},\"stopReason\":\"stop\",\"timestamp\":0}}\n",
+  "compaction-remap": "{\"type\":\"session\",\"version\":3,\"id\":\"@u11\",\"timestamp\":\"1970-01-01T00:00:00.000Z\",\"cwd\":\"<root>\\\\proj\",\"parentSession\":\"<root>\\\\flush\\\\<stamp>_@u10.jsonl\"}\n{\"type\":\"message\",\"id\":\"00000030\",\"parentId\":null,\"timestamp\":\"1970-01-01T00:00:00.000Z\",\"message\":{\"role\":\"user\",\"content\":\"one\",\"timestamp\":0}}\n{\"type\":\"message\",\"id\":\"00000031\",\"parentId\":\"00000030\",\"timestamp\":\"1970-01-01T00:00:00.000Z\",\"message\":{\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"two\"}],\"api\":\"anthropic-messages\",\"provider\":\"anthropic\",\"model\":\"test\",\"usage\":{\"input\":1,\"output\":1,\"cacheRead\":0,\"cacheWrite\":0,\"totalTokens\":2,\"cost\":{\"input\":0,\"output\":0,\"cacheRead\":0,\"cacheWrite\":0,\"total\":0}},\"stopReason\":\"stop\",\"timestamp\":0}}\n{\"type\":\"compaction\",\"id\":\"00000033\",\"parentId\":\"00000031\",\"timestamp\":\"1970-01-01T00:00:00.000Z\",\"summary\":\"summary\",\"firstKeptEntryId\":\"00000030\",\"tokensBefore\":100}\n{\"type\":\"label\",\"id\":\"00000036\",\"parentId\":\"00000033\",\"timestamp\":\"1970-01-01T00:00:00.000Z\",\"targetId\":\"00000030\",\"label\":\"kept-mark\"}\n",
+  "fork": "{\"type\":\"session\",\"version\":3,\"id\":\"forked-session-id\",\"timestamp\":\"1970-01-01T00:00:00.000Z\",\"cwd\":\"<root>\\\\target-cwd\",\"parentSession\":\"<root>\\\\source.jsonl\"}\n{\"type\":\"message\",\"id\":\"entry-1\",\"parentId\":null,\"timestamp\":\"1970-01-01T00:00:00.000Z\",\"message\":{\"role\":\"user\",\"content\":\"carried over\",\"timestamp\":0}}\n",
+  "corrupt-empty-rewritten": "{\"type\":\"session\",\"version\":3,\"id\":\"@u14\",\"timestamp\":\"1970-01-01T00:00:00.000Z\",\"cwd\":\"<cwd>\"}\n"
+ },
+ "errors": {
+  "open-no-header": "\"Session file is not a valid pi session: <root>\\\\corrupt\\\\no-header.jsonl\"",
+  "open-not-session": "\"Session file is not a valid pi session: <root>\\\\corrupt\\\\not-a-session.log\"",
+  "invalid-session-id": "Session id must be non-empty, contain only alphanumeric characters, '-', '_', and '.', and start and end with an alphanumeric character",
+  "assert-session-id": "Session id must be non-empty, contain only alphanumeric characters, '-', '_', and '.', and start and end with an alphanumeric character",
+  "branch-not-found": "Entry nonexistent not found",
+  "branch-summary-not-found": "Entry nonexistent not found",
+  "label-not-found": "Entry non-existent not found",
+  "branched-session-not-found": "Entry nonexistent not found",
+  "fork-empty": "\"Cannot fork: source session file is empty or invalid: <root>\\\\empty-source.jsonl\"",
+  "fork-no-header": "\"Cannot fork: source session file is empty or invalid: <root>\\\\headerless.jsonl\""
+ }
+}

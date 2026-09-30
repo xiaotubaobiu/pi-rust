@@ -1,0 +1,41 @@
+{
+  "tools": [
+    "read",
+    "write",
+    "edit",
+    "grep",
+    "find",
+    "ls"
+  ],
+  "sel1": {
+    "provider": "anthropic",
+    "id": "claude-opus-4-6"
+  },
+  "sel2": {
+    "provider": "openai-codex",
+    "id": "gpt-5.6-sol"
+  },
+  "selErrs": [
+    "Select a harness model explicitly or set both PI_PROVIDER and PI_MODEL as defaults.",
+    "Select a harness model explicitly or set both PI_PROVIDER and PI_MODEL as defaults.",
+    "Select a harness model explicitly or set both PI_PROVIDER and PI_MODEL as defaults."
+  ],
+  "variants": [
+    "without_docs",
+    "with_docs"
+  ],
+  "variantErrs": [
+    "PI_EVAL_VARIANT must be \"without_docs\" or \"with_docs\".",
+    "PI_EVAL_VARIANT must be \"without_docs\" or \"with_docs\".",
+    "PI_EVAL_VARIANT must be \"without_docs\" or \"with_docs\"."
+  ],
+  "stripped": "Preamble\n<rules>\nrule one\n</rules>\n<cwd>\n/workspace\n</cwd>\n",
+  "verifyOk": "Preamble\n<rules>\nrule one\n</rules>\n<cwd>\n/workspace\n</cwd>\n",
+  "verifyWith": "Preamble\n<rules>\nrule one\n</rules>\n<docs>\nPi documentation (read only)\ndocs/models.md\nmore docs lines\n</docs>\n<cwd>\n/workspace\n</cwd>\n",
+  "verifyErr1": "Pi system prompt does not match the without_docs eval variant.",
+  "verifyErr2": "Pi system prompt does not match the with_docs eval variant.",
+  "verifyErr3": "Pi system prompt lost its rules in the n eval variant.",
+  "excludeErr1": "Default Pi system prompt has no Pi documentation section.",
+  "excludeErr2": "Default Pi system prompt has no working-directory section.",
+  "verifyPassthrough": "anything"
+}

@@ -1,0 +1,41 @@
+{
+ "out": [
+  [
+   "C:",
+   "C:\\Users\\13063\\Desktop\\code\\agent work\\pi-rust\\scratch\\utils_oracle"
+  ],
+  [
+   "C:x",
+   "C:\\Users\\13063\\Desktop\\code\\agent work\\pi-rust\\scratch\\utils_oracle\\x"
+  ],
+  [
+   "x:",
+   "x:\\"
+  ],
+  [
+   "x:sub",
+   "x:\\sub"
+  ],
+  [
+   "y:z",
+   "y:\\z"
+  ],
+  [
+   "C:\\a|C:",
+   "C:\\a"
+  ],
+  [
+   "C:|q",
+   "C:\\Users\\13063\\Desktop\\code\\agent work\\pi-rust\\scratch\\utils_oracle\\q"
+  ],
+  [
+   "C:\\a\\b|C:x",
+   "C:\\a\\b\\x"
+  ],
+  [
+   "C:\\a|C:x|..",
+   "C:\\a"
+  ]
+ ],
+ "cwd": "C:\\Users\\13063\\Desktop\\code\\agent work\\pi-rust\\scratch\\utils_oracle"
+}

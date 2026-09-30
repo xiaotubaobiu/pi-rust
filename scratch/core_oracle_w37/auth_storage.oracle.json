@@ -1,0 +1,116 @@
+{
+ "values": {
+  "env_resolved": {
+   "type": "api_key",
+   "key": "environment-key"
+  },
+  "read_stored_raw": {
+   "type": "api_key",
+   "key": "$PI_ORACLE_AUTH_KEY"
+  },
+  "read_stored_missing": null,
+  "oauth_unchanged": {
+   "type": "oauth",
+   "access": "access-token",
+   "refresh": "refresh-token",
+   "expires": 1735689600000
+  },
+  "scoped_env": {
+   "type": "api_key",
+   "key": "scoped-value",
+   "env": {
+    "SCOPED_KEY": "scoped-value",
+    "REGION": "test-region"
+   }
+  },
+  "modify_undefined_result": {
+   "type": "api_key",
+   "key": "stored"
+  },
+  "modify_undefined_read": {
+   "type": "api_key",
+   "key": "stored"
+  },
+  "delete_list": [
+   {
+    "providerId": "openai",
+    "type": "api_key"
+   },
+   {
+    "providerId": "google",
+    "type": "api_key"
+   }
+  ],
+  "delete_read_missing": null,
+  "delete_read_openai": {
+   "type": "api_key",
+   "key": "o"
+  },
+  "delete_read_google": {
+   "type": "api_key",
+   "key": "external"
+  },
+  "list_document_order": [
+   {
+    "providerId": "zebra",
+    "type": "api_key"
+   },
+   {
+    "providerId": "alpha",
+    "type": "oauth"
+   }
+  ],
+  "inmem_initial": {
+   "type": "api_key",
+   "key": "initial"
+  },
+  "inmem_updated": {
+   "type": "api_key",
+   "key": "updated"
+  },
+  "inmem_after_delete_list": [],
+  "inmem_empty": [],
+  "readonly_oauth_ok": {
+   "type": "oauth",
+   "access": "a",
+   "refresh": "r",
+   "expires": 5
+  },
+  "readonly_api_key_no_key": {
+   "type": "api_key"
+  },
+  "readonly_list": [
+   {
+    "providerId": "anthropic",
+    "type": "api_key"
+   }
+  ],
+  "clone_semantics": {
+   "type": "api_key",
+   "key": "k",
+   "env": {
+    "A": "mutated"
+   }
+  }
+ },
+ "errors": {
+  "malformed_modify_throws": true,
+  "readonly_not_object": "Invalid auth.json: expected an object",
+  "readonly_bad_api_key": "Invalid auth.json credential for provider \"anthropic\"",
+  "readonly_bad_credential": "Invalid auth.json credential for provider \"anthropic\"",
+  "readonly_bad_oauth": "Invalid auth.json credential for provider \"anthropic\"",
+  "readonly_modify": "Read-only credential storage cannot modify auth.json",
+  "readonly_delete": "Read-only credential storage cannot modify auth.json",
+  "readio_prefix": true
+ },
+ "bytes": {
+  "modify_preserves_external": "{\n  \"anthropic\": {\n    \"type\": \"api_key\",\n    \"key\": \"new\"\n  },\n  \"openai\": {\n    \"type\": \"api_key\",\n    \"key\": \"external\"\n  }\n}",
+  "modify_appends": "{\n  \"anthropic\": {\n    \"type\": \"api_key\",\n    \"key\": \"new\"\n  },\n  \"openai\": {\n    \"type\": \"api_key\",\n    \"key\": \"external\"\n  },\n  \"zeta\": {\n    \"type\": \"api_key\",\n    \"key\": \"zeta-key\"\n  }\n}",
+  "modify_oauth": "{\n  \"anthropic\": {\n    \"type\": \"api_key\",\n    \"key\": \"new\"\n  },\n  \"openai\": {\n    \"type\": \"api_key\",\n    \"key\": \"external\"\n  },\n  \"zeta\": {\n    \"type\": \"api_key\",\n    \"key\": \"zeta-key\"\n  },\n  \"google\": {\n    \"type\": \"oauth\",\n    \"refresh\": \"g-refresh\",\n    \"access\": \"g-access\",\n    \"expires\": 1735689600001\n  }\n}",
+  "modify_scoped_env": "{\n  \"anthropic\": {\n    \"type\": \"api_key\",\n    \"key\": \"new\"\n  },\n  \"openai\": {\n    \"type\": \"api_key\",\n    \"key\": \"external\"\n  },\n  \"zeta\": {\n    \"type\": \"api_key\",\n    \"key\": \"zeta-key\"\n  },\n  \"google\": {\n    \"type\": \"oauth\",\n    \"refresh\": \"g-refresh\",\n    \"access\": \"g-access\",\n    \"expires\": 1735689600001\n  },\n  \"scoped\": {\n    \"type\": \"api_key\",\n    \"key\": \"$K\",\n    \"env\": {\n      \"K\": \"v\",\n      \"OTHER\": \"w\"\n    }\n  }\n}",
+  "delete_remaining": "{\n  \"openai\": {\n    \"type\": \"api_key\",\n    \"key\": \"o\"\n  },\n  \"google\": {\n    \"type\": \"api_key\",\n    \"key\": \"external\"\n  }\n}",
+  "delete_to_empty": "{}",
+  "malformed_file_unchanged": "{invalid-json",
+  "fresh_file_content": "{}"
+ }
+}

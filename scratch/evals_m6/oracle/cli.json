@@ -1,0 +1,271 @@
+[
+  {
+    "args": [],
+    "env": {},
+    "ok": {
+      "runsPerVariant": 1,
+      "requestedFiles": [],
+      "discoveryArgs": []
+    }
+  },
+  {
+    "args": [
+      "--provider",
+      "p1",
+      "--model",
+      "m1"
+    ],
+    "env": {},
+    "ok": {
+      "provider": "p1",
+      "model": "m1",
+      "runsPerVariant": 1,
+      "requestedFiles": [],
+      "discoveryArgs": []
+    }
+  },
+  {
+    "args": [
+      "--provider=p1",
+      "--model=m1",
+      "--runs-per-variant=3"
+    ],
+    "env": {},
+    "ok": {
+      "provider": "p1",
+      "model": "m1",
+      "runsPerVariant": 3,
+      "requestedFiles": [],
+      "discoveryArgs": []
+    }
+  },
+  {
+    "args": [
+      "--provider",
+      " p1 ",
+      "--model",
+      " m1 "
+    ],
+    "env": {},
+    "ok": {
+      "provider": "p1",
+      "model": "m1",
+      "runsPerVariant": 1,
+      "requestedFiles": [],
+      "discoveryArgs": []
+    }
+  },
+  {
+    "args": [
+      "--model",
+      "m1"
+    ],
+    "env": {},
+    "error": "CLI model selection requires both --provider and --model."
+  },
+  {
+    "args": [
+      "--provider",
+      "p1"
+    ],
+    "env": {},
+    "error": "CLI model selection requires both --provider and --model."
+  },
+  {
+    "args": [],
+    "env": {
+      "PI_PROVIDER": "p2",
+      "PI_MODEL": "m2"
+    },
+    "ok": {
+      "provider": "p2",
+      "model": "m2",
+      "runsPerVariant": 1,
+      "requestedFiles": [],
+      "discoveryArgs": []
+    }
+  },
+  {
+    "args": [],
+    "env": {
+      "PI_PROVIDER": "p2"
+    },
+    "error": "Set both PI_PROVIDER and PI_MODEL, or neither."
+  },
+  {
+    "args": [],
+    "env": {
+      "PI_PROVIDER": " p2 ",
+      "PI_MODEL": " m2 "
+    },
+    "ok": {
+      "provider": "p2",
+      "model": "m2",
+      "runsPerVariant": 1,
+      "requestedFiles": [],
+      "discoveryArgs": []
+    }
+  },
+  {
+    "args": [
+      "--provider",
+      "p1",
+      "--model",
+      "m1",
+      "-t",
+      "foo bar"
+    ],
+    "env": {},
+    "ok": {
+      "provider": "p1",
+      "model": "m1",
+      "runsPerVariant": 1,
+      "requestedFiles": [],
+      "discoveryArgs": [
+        "-t",
+        "foo bar"
+      ]
+    }
+  },
+  {
+    "args": [
+      "--provider",
+      "p1",
+      "--model",
+      "m1",
+      "--testNamePattern=x"
+    ],
+    "env": {},
+    "ok": {
+      "provider": "p1",
+      "model": "m1",
+      "runsPerVariant": 1,
+      "requestedFiles": [],
+      "discoveryArgs": [
+        "--testNamePattern=x"
+      ]
+    }
+  },
+  {
+    "args": [
+      "--provider",
+      "p1",
+      "--model",
+      "m1",
+      "--testNamePattern="
+    ],
+    "env": {},
+    "error": "Missing value for --testNamePattern."
+  },
+  {
+    "args": [
+      "--provider",
+      "p1",
+      "--model",
+      "m1",
+      "-t"
+    ],
+    "env": {},
+    "error": "Missing value for -t."
+  },
+  {
+    "args": [
+      "--provider",
+      "p1",
+      "--model"
+    ],
+    "env": {},
+    "error": "Missing value for --model."
+  },
+  {
+    "args": [
+      "evals/models.docs.eval.ts",
+      "--provider",
+      "p1",
+      "--model",
+      "m1"
+    ],
+    "env": {},
+    "ok": {
+      "provider": "p1",
+      "model": "m1",
+      "runsPerVariant": 1,
+      "requestedFiles": [
+        "evals/models.docs.eval.ts"
+      ],
+      "discoveryArgs": []
+    }
+  },
+  {
+    "args": [
+      "--runs-per-variant",
+      "2",
+      "--provider",
+      "p1",
+      "--model",
+      "m1"
+    ],
+    "env": {},
+    "ok": {
+      "provider": "p1",
+      "model": "m1",
+      "runsPerVariant": 2,
+      "requestedFiles": [],
+      "discoveryArgs": []
+    }
+  },
+  {
+    "args": [
+      "--runs-per-variant",
+      "0",
+      "--provider",
+      "p1",
+      "--model",
+      "m1"
+    ],
+    "env": {},
+    "error": "Runs per variant must be a positive integer."
+  },
+  {
+    "args": [],
+    "env": {
+      "PI_PROVIDER": "p2",
+      "PI_MODEL": "m2",
+      "PI_EVAL_RUNS_PER_VARIANT": "4"
+    },
+    "ok": {
+      "provider": "p2",
+      "model": "m2",
+      "runsPerVariant": 4,
+      "requestedFiles": [],
+      "discoveryArgs": []
+    }
+  },
+  {
+    "args": [],
+    "env": {
+      "PI_PROVIDER": "p2",
+      "PI_MODEL": "m2",
+      "PI_EVAL_RUNS_PER_VARIANT": "x"
+    },
+    "error": "Runs per variant must be a positive integer."
+  },
+  {
+    "args": [
+      "--bogus"
+    ],
+    "env": {},
+    "error": "Unsupported eval argument: --bogus"
+  },
+  {
+    "args": [
+      "--runs-per-variant=-1",
+      "--provider",
+      "p1",
+      "--model",
+      "m1"
+    ],
+    "env": {},
+    "error": "Runs per variant must be a positive integer."
+  }
+]

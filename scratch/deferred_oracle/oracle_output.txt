@@ -1,0 +1,4 @@
+{"code":"model_unavailable","message":"The configured model is unavailable in this process","details":{"provider":"faux","modelId":"faux-1"}}
+{"kind":"waiting","operationId":"01950000-0000-7000-8000-000000000001","reason":"deferred","deferred":{"provider":"faux","modelId":"faux-1","api":"faux","id":"deferred-job"}}
+step:poll:1
+{"provider":"faux","modelId":"faux-1","api":"faux","id":"deferred-job"}

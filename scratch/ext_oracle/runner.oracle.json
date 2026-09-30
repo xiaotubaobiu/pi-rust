@@ -1,0 +1,859 @@
+{
+ "scenarios": [
+  {
+   "name": "subscription_self_removal",
+   "observed": {
+    "afterFirst": [
+     "A",
+     "B"
+    ],
+    "afterSecond": [
+     "A",
+     "B",
+     "B"
+    ]
+   }
+  },
+  {
+   "name": "subscription_duplicate_removal",
+   "observed": {
+    "s1": [
+     "shared",
+     "B"
+    ],
+    "s2": [
+     "shared",
+     "B",
+     "B"
+    ],
+    "handlersMapCleared": true
+   }
+  },
+  {
+   "name": "subscription_removed_pending",
+   "observed": {
+    "first3": [
+     "A",
+     "B",
+     "C"
+    ],
+    "second": [
+     "A",
+     "B",
+     "C",
+     "A",
+     "C"
+    ]
+   }
+  },
+  {
+   "name": "subscription_deferred_registration",
+   "observed": {
+    "first4": [
+     "A",
+     "B"
+    ],
+    "second": [
+     "A",
+     "B",
+     "A",
+     "B",
+     "C"
+    ]
+   }
+  },
+  {
+   "name": "subscription_nested_dispatch",
+   "observed": {
+    "calls": [
+     "A",
+     "C",
+     "B"
+    ]
+   }
+  },
+  {
+   "name": "has_handlers",
+   "observed": {
+    "empty": false,
+    "withHandler": true,
+    "otherEvent": false
+   }
+  },
+  {
+   "name": "tool_collection",
+   "observed": {
+    "two_tools": [
+     [
+      {
+       "name": "tool_a",
+       "description": "a"
+      }
+     ],
+     [
+      {
+       "name": "tool_b",
+       "description": "b"
+      }
+     ]
+    ],
+    "first_wins": [
+     {
+      "name": "shared",
+      "description": "first"
+     }
+    ],
+    "by_name": {
+     "name": "shared",
+     "description": "first"
+    }
+   }
+  },
+  {
+   "name": "command_invocation_names",
+   "observed": {
+    "resolved": [
+     {
+      "name": "unique",
+      "invocationName": "unique",
+      "description": "Only one"
+     },
+     {
+      "name": "shared-cmd",
+      "invocationName": "shared-cmd:1",
+      "description": "First command"
+     },
+     {
+      "name": "shared-cmd",
+      "invocationName": "shared-cmd:2",
+      "description": "Second command"
+     },
+     {
+      "name": "shared-cmd",
+      "invocationName": "shared-cmd:3",
+      "description": "Third command"
+     },
+     {
+      "name": "collide",
+      "invocationName": "collide:1",
+      "description": "A"
+     },
+     {
+      "name": "collide:2",
+      "invocationName": "collide:2",
+      "description": "fake"
+     },
+     {
+      "name": "collide",
+      "invocationName": "collide:3",
+      "description": "B"
+     }
+    ],
+    "diagnostics": [],
+    "lookup1": "First command",
+    "lookup2": "Second command",
+    "lookup3": "Third command",
+    "lookupCollide2": "fake",
+    "lookupCollide3": "B",
+    "lookupMissing": "<undefined>"
+   }
+  },
+  {
+   "name": "shortcut_conflicts",
+   "observed": {
+    "reserved": {
+     "keys": [],
+     "descriptions": [],
+     "warns": [
+      "Extension shortcut 'ctrl+x' from <inline> conflicts with built-in shortcut. Skipping."
+     ],
+     "diagnostics": [
+      {
+       "type": "warning",
+       "message": "Extension shortcut 'ctrl+x' from <inline> conflicts with built-in shortcut. Skipping.",
+       "path": "<inline>"
+      }
+     ]
+    },
+    "nonReserved": {
+     "keys": [
+      "ctrl+v"
+     ],
+     "descriptions": [
+      "ext shortcut"
+     ],
+     "warns": [
+      "Extension shortcut conflict: 'ctrl+v' is built-in shortcut for app.clipboard.pasteImage and <inline>. Using <inline>."
+     ],
+     "diagnostics": [
+      {
+       "type": "warning",
+       "message": "Extension shortcut conflict: 'ctrl+v' is built-in shortcut for app.clipboard.pasteImage and <inline>. Using <inline>.",
+       "path": "<inline>"
+      }
+     ]
+    },
+    "rebound": {
+     "keys": [
+      "ctrl+p"
+     ],
+     "descriptions": [
+      "ext shortcut"
+     ],
+     "warns": [],
+     "diagnostics": []
+    },
+    "reboundReserved": {
+     "keys": [],
+     "descriptions": [],
+     "warns": [
+      "Extension shortcut 'ctrl+x' from <inline> conflicts with built-in shortcut. Skipping."
+     ],
+     "diagnostics": [
+      {
+       "type": "warning",
+       "message": "Extension shortcut 'ctrl+x' from <inline> conflicts with built-in shortcut. Skipping.",
+       "path": "<inline>"
+      }
+     ]
+    },
+    "sharedReserved": {
+     "keys": [],
+     "descriptions": [],
+     "warns": [
+      "Extension shortcut 'ctrl+p' from <inline> conflicts with built-in shortcut. Skipping."
+     ],
+     "diagnostics": [
+      {
+       "type": "warning",
+       "message": "Extension shortcut 'ctrl+p' from <inline> conflicts with built-in shortcut. Skipping.",
+       "path": "<inline>"
+      }
+     ]
+    },
+    "multiReserved": {
+     "keys": [],
+     "descriptions": [],
+     "warns": [
+      "Extension shortcut 'ctrl+y' from <inline> conflicts with built-in shortcut. Skipping."
+     ],
+     "diagnostics": [
+      {
+       "type": "warning",
+       "message": "Extension shortcut 'ctrl+y' from <inline> conflicts with built-in shortcut. Skipping.",
+       "path": "<inline>"
+      }
+     ]
+    },
+    "multiNonReserved": {
+     "keys": [
+      "ctrl+y"
+     ],
+     "descriptions": [
+      "ext shortcut"
+     ],
+     "warns": [
+      "Extension shortcut conflict: 'ctrl+y' is built-in shortcut for app.clipboard.pasteImage and <inline>. Using <inline>."
+     ],
+     "diagnostics": [
+      {
+       "type": "warning",
+       "message": "Extension shortcut conflict: 'ctrl+y' is built-in shortcut for app.clipboard.pasteImage and <inline>. Using <inline>.",
+       "path": "<inline>"
+      }
+     ]
+    },
+    "dupe": {
+     "keys": [
+      "ctrl+shift+x"
+     ],
+     "descriptions": [
+      "Second extension"
+     ],
+     "warns": [
+      "Extension shortcut conflict: 'ctrl+shift+x' registered by both <inline> and <inline>. Using <inline>."
+     ],
+     "diagnostics": [
+      {
+       "type": "warning",
+       "message": "Extension shortcut conflict: 'ctrl+shift+x' registered by both <inline> and <inline>. Using <inline>.",
+       "path": "<inline>"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "name": "user_bash_throws",
+   "observed": {
+    "threw": "Routing failed",
+    "errors": [
+     {
+      "event": "user_bash",
+      "error": "Routing failed"
+     }
+    ]
+   }
+  },
+  {
+   "name": "user_bash_invalid_results",
+   "observed": [
+    {
+     "label": "empty_object",
+     "thrown": "Invalid user_bash handler result: return undefined for local execution or exactly one valid { operations } or { result } object",
+     "errorPrefix": "Invalid user_bash handler result: return"
+    },
+    {
+     "label": "null_operations",
+     "thrown": "Invalid user_bash handler result: return undefined for local execution or exactly one valid { operations } or { result } object",
+     "errorPrefix": "Invalid user_bash handler result: return"
+    },
+    {
+     "label": "operations_without_exec",
+     "thrown": "Invalid user_bash handler result: return undefined for local execution or exactly one valid { operations } or { result } object",
+     "errorPrefix": "Invalid user_bash handler result: return"
+    },
+    {
+     "label": "null_result",
+     "thrown": "Invalid user_bash handler result: return undefined for local execution or exactly one valid { operations } or { result } object",
+     "errorPrefix": "Invalid user_bash handler result: return"
+    },
+    {
+     "label": "incomplete_result",
+     "thrown": "Invalid user_bash handler result: return undefined for local execution or exactly one valid { operations } or { result } object",
+     "errorPrefix": "Invalid user_bash handler result: return"
+    },
+    {
+     "label": "operations_and_result",
+     "thrown": "Invalid user_bash handler result: return undefined for local execution or exactly one valid { operations } or { result } object",
+     "errorPrefix": "Invalid user_bash handler result: return"
+    }
+   ]
+  },
+  {
+   "name": "user_bash_valid_results",
+   "observed": {
+    "operationsHasExec": true,
+    "operationsKeys": [
+     "operations"
+    ],
+    "resultOverride": {
+     "result": {
+      "output": "handled",
+      "exitCode": 0,
+      "cancelled": false,
+      "truncated": false
+     }
+    }
+   }
+  },
+  {
+   "name": "input_continue",
+   "observed": [
+    {
+     "action": "continue"
+    },
+    {
+     "action": "continue"
+    },
+    {
+     "action": "continue"
+    }
+   ]
+  },
+  {
+   "name": "input_transform_preserves_images",
+   "observed": {
+    "result": {
+     "action": "transform",
+     "text": "T:hi",
+     "images": [
+      {
+       "type": "image",
+       "data": "orig",
+       "mimeType": "image/png"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "name": "input_transform_replaces_images",
+   "observed": {
+    "result": {
+     "action": "transform",
+     "text": "X",
+     "images": [
+      {
+       "type": "image",
+       "data": "new",
+       "mimeType": "image/jpeg"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "name": "input_chain",
+   "observed": {
+    "result": {
+     "action": "transform",
+     "text": "X[1][2]"
+    }
+   }
+  },
+  {
+   "name": "input_handled_short_circuit",
+   "observed": {
+    "result": {
+     "action": "handled"
+    },
+    "secondRan": false
+   }
+  },
+  {
+   "name": "input_source_and_behavior",
+   "observed": {
+    "sources": [
+     "interactive",
+     "rpc",
+     "extension"
+    ],
+    "behaviors": [
+     "steer",
+     "followUp",
+     null
+    ]
+   }
+  },
+  {
+   "name": "input_error_isolation",
+   "observed": {
+    "result": {
+     "action": "continue"
+    },
+    "errors": [
+     "boom"
+    ]
+   }
+  },
+  {
+   "name": "tool_result_chain_content",
+   "observed": {
+    "content": [
+     {
+      "type": "text",
+      "text": "base"
+     },
+     {
+      "type": "text",
+      "text": "ext1"
+     },
+     {
+      "type": "text",
+      "text": "ext2"
+     }
+    ],
+    "details": {
+     "initial": true
+    },
+    "isError": false
+   }
+  },
+  {
+   "name": "tool_result_partial_patch",
+   "observed": {
+    "patched": {
+     "content": [
+      {
+       "type": "text",
+       "text": "first"
+      }
+     ],
+     "details": {
+      "source": "ext1"
+     },
+     "isError": true
+    }
+   }
+  },
+  {
+   "name": "emit_context",
+   "observed": {
+    "messages": [
+     {
+      "role": "user",
+      "content": "hi"
+     },
+     {
+      "role": "user",
+      "content": "injected"
+     }
+    ],
+    "errors": [
+     "ctx boom"
+    ]
+   }
+  },
+  {
+   "name": "emit_before_provider_request",
+   "observed": {
+    "payload": "second"
+   }
+  },
+  {
+   "name": "emit_before_provider_headers",
+   "observed": {
+    "headers": {
+     "User-Agent": "kimchi/1.0",
+     "X-Turn-Index": "3"
+    }
+   }
+  },
+  {
+   "name": "emit_before_provider_headers_mixed",
+   "observed": {
+    "headers": {
+     "User-Agent": "x",
+     "X-Good": "yes"
+    },
+    "errors": [
+     {
+      "event": "before_provider_headers",
+      "error": "header handler boom"
+     }
+    ]
+   }
+  },
+  {
+   "name": "before_agent_start_chain",
+   "observed": {
+    "messages": [],
+    "systemPrompt": "ORACLE-SHIM(base)\ncustomPrompt=base\nselectedTools=read,bash,edit,write\nappendSystemPrompt=\nfirst\nsecond",
+    "forceSystemPrompt": "ORACLE-SHIM(base)\ncustomPrompt=base\nselectedTools=read,bash,edit,write\nappendSystemPrompt=\nfirst\nsecond",
+    "selectedTools": [
+     "read",
+     "bash",
+     "edit",
+     "write"
+    ],
+    "errors": []
+   }
+  },
+  {
+   "name": "before_agent_start_message",
+   "observed": {
+    "messages": [
+     {
+      "customType": "note",
+      "content": "m",
+      "display": true,
+      "details": null
+     }
+    ]
+   }
+  },
+  {
+   "name": "emit_resources_discover",
+   "observed": {
+    "discovered": {
+     "skillPaths": [
+      {
+       "path": "s1",
+       "extensionPath": "<inline>"
+      },
+      {
+       "path": "s2",
+       "extensionPath": "<inline>"
+      }
+     ],
+     "promptPaths": [
+      {
+       "path": "p1",
+       "extensionPath": "<inline>"
+      }
+     ],
+     "themePaths": [
+      {
+       "path": "t1",
+       "extensionPath": "<inline>"
+      }
+     ]
+    },
+    "errors": [
+     "discover boom"
+    ]
+   }
+  },
+  {
+   "name": "emit_session_before_switch",
+   "observed": {
+    "cancelled": {
+     "cancel": true
+    }
+   }
+  },
+  {
+   "name": "emit_session_before_tree",
+   "observed": {
+    "result": {
+     "summary": {
+      "summary": "s",
+      "details": null
+     },
+     "customInstructions": "ci"
+    }
+   }
+  },
+  {
+   "name": "emit_message_end_replace",
+   "observed": {
+    "result": {
+     "role": "assistant",
+     "content": "replaced"
+    }
+   }
+  },
+  {
+   "name": "emit_message_end_role_mismatch",
+   "observed": {
+    "result": {
+     "role": "assistant",
+     "content": "ok"
+    },
+    "errors": [
+     {
+      "event": "message_end",
+      "error": "message_end handlers must return a message with the same role"
+     }
+    ]
+   }
+  },
+  {
+   "name": "emit_tool_call_block",
+   "observed": {
+    "result": {
+     "block": true,
+     "reason": "nope",
+     "terminate": true
+    },
+    "mutatedInput": {
+     "command": "patched"
+    }
+   }
+  },
+  {
+   "name": "emit_tool_call_soft",
+   "observed": {
+    "result": {
+     "block": false,
+     "reason": "soft"
+    }
+   }
+  },
+  {
+   "name": "project_trust",
+   "observed": {
+    "result": {
+     "result": {
+      "trusted": "no",
+      "remember": true
+     },
+     "errors": []
+    },
+    "errorResult": {
+     "errors": [
+      {
+       "extensionPath": "<boom>",
+       "event": "project_trust",
+       "error": "trust handler failed",
+       "stack": "<js-stack:true>"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "name": "ui_prompt_events",
+   "observed": {
+    "calls": [
+     "select:Pick:a|b",
+     "confirm:Sure?:msg",
+     "input:Name",
+     "editor:Edit:prefill",
+     "custom",
+     "select:Outer:x"
+    ],
+    "uiEvents": [
+     {
+      "type": "ui_prompt_start",
+      "kind": "select",
+      "title": "Pick"
+     },
+     {
+      "type": "ui_prompt_end",
+      "kind": "select",
+      "title": "Pick"
+     },
+     {
+      "type": "ui_prompt_start",
+      "kind": "confirm",
+      "title": "Sure?"
+     },
+     {
+      "type": "ui_prompt_end",
+      "kind": "confirm",
+      "title": "Sure?"
+     },
+     {
+      "type": "ui_prompt_start",
+      "kind": "input",
+      "title": "Name"
+     },
+     {
+      "type": "ui_prompt_end",
+      "kind": "input",
+      "title": "Name"
+     },
+     {
+      "type": "ui_prompt_start",
+      "kind": "editor",
+      "title": "Edit"
+     },
+     {
+      "type": "ui_prompt_end",
+      "kind": "editor",
+      "title": "Edit"
+     },
+     {
+      "type": "ui_prompt_start",
+      "kind": "custom"
+     },
+     {
+      "type": "ui_prompt_end",
+      "kind": "custom"
+     },
+     {
+      "type": "ui_prompt_start",
+      "kind": "select",
+      "title": "Outer"
+     },
+     {
+      "type": "ui_prompt_end",
+      "kind": "select",
+      "title": "Outer"
+     }
+    ],
+    "hasUI": true,
+    "mode": "tui"
+   }
+  },
+  {
+   "name": "context_defaults",
+   "observed": {
+    "modeBefore": "print",
+    "hasUIBefore": false,
+    "mode": "print",
+    "hasUI": false,
+    "isProjectTrusted": false,
+    "scopedModels": [
+     "scoped"
+    ],
+    "idle": true,
+    "pendingMessages": false,
+    "systemPromptDefault": ""
+   }
+  },
+  {
+   "name": "context_rpc_mode",
+   "observed": {
+    "mode": "rpc",
+    "hasUI": true
+   }
+  },
+  {
+   "name": "context_signal_live",
+   "observed": {
+    "aborted": true
+   }
+  },
+  {
+   "name": "invalidate_stale",
+   "observed": {
+    "thrown": "stale-after-replacement",
+    "thrownAbort": "stale-after-replacement",
+    "defaultThrown": "This extension ctx is stale after session replacement or rel",
+    "defaultLen": 60
+   }
+  },
+  {
+   "name": "bind_core_provider_flush",
+   "observed": {
+    "errors": [
+     "/tmp/broken-extension.ts: Provider broken-provider: \"api\" is required when registering streamSimple.|event=register_provider"
+    ],
+    "registryCalls": [
+     "register:instant-provider",
+     "native:native-x",
+     "unregister:instant-provider"
+    ],
+    "pending": 0
+   }
+  },
+  {
+   "name": "bind_core_fallback",
+   "observed": {
+    "fallbackCalls": []
+   }
+  },
+  {
+   "name": "command_context_fork",
+   "observed": {
+    "calls": [
+     {
+      "entryId": "entry-1"
+     },
+     {
+      "entryId": "entry-2",
+      "options": {
+       "position": "at"
+      }
+     }
+    ],
+    "defaultFork": {
+     "cancelled": false
+    },
+    "defaultNewSession": {
+     "cancelled": false
+    }
+   }
+  },
+  {
+   "name": "emit_session_shutdown",
+   "observed": {
+    "noHandlers": false,
+    "withHandlers": true
+   }
+  },
+  {
+   "name": "flags_and_renderers",
+   "observed": {
+    "flags": [
+     "my-flag"
+    ],
+    "flagValue": true,
+    "flagValuesSnapshot": {
+     "--test-flag": true
+    },
+    "messageRenderer": true,
+    "messageRendererMissing": false,
+    "entryRenderer": true,
+    "entryRendererMissing": false,
+    "transformers": 1,
+    "extensionPaths": [
+     "<inline>"
+    ]
+   }
+  }
+ ]
+}

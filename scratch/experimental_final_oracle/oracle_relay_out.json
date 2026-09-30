@@ -1,0 +1,157 @@
+{
+  "envelope": {
+    "connectionId": "00000000-0000-4000-8000-000000000002",
+    "payload": [
+      0,
+      1,
+      2,
+      255
+    ],
+    "encoded": [
+      1,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      64,
+      0,
+      128,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      2,
+      0,
+      1,
+      2,
+      255
+    ]
+  },
+  "encodeInvalidId": "TypeError: Invalid Radius relay connection ID",
+  "parseTooShort": null,
+  "parseWrongVersion": null,
+  "parseNonV4": {
+    "connectionId": "007f0000-0000-4000-8000-000000000002",
+    "payload": {}
+  },
+  "hostBridge": {
+    "openOptions": {
+      "authorization": "Bearer secret",
+      "url": "wss://radius.pi.dev/v1/session-relays/00000000-0000-4000-8000-000000000001/connect",
+      "protocol": "pi-session-relay.host.v1"
+    },
+    "statuses": [
+      "connecting",
+      "connected"
+    ],
+    "acceptedAfterOpen": true,
+    "received": [
+      [
+        1,
+        2,
+        3
+      ]
+    ],
+    "outbound": {
+      "connectionId": "00000000-0000-4000-8000-000000000002",
+      "payload": [
+        4,
+        5,
+        6
+      ]
+    },
+    "pingReply": "{\"version\":1,\"type\":\"pong\"}",
+    "unknownConnectionClose": "{\"version\":1,\"type\":\"connection_close\",\"connection_id\":\"00000000-0000-4000-8000-000000000003\",\"code\":1000}",
+    "onCloseCalls": 1
+  },
+  "hostFailures": {
+    "statuses": [
+      "connecting",
+      "connected",
+      "retrying"
+    ],
+    "retryErrors": [
+      "Radius relay host closed (4000: Radius relay protocol error)"
+    ]
+  },
+  "hostReconnect": {
+    "statusesAfterDrop": [
+      "connected"
+    ]
+  },
+  "clientTransport": {
+    "authorization": "Bearer secret",
+    "sentBytes": [
+      1,
+      2,
+      3
+    ],
+    "onData": [
+      [
+        4,
+        5,
+        6
+      ]
+    ],
+    "onCloseCalls": 1,
+    "onErrorMessages": []
+  },
+  "abnormalClose": {
+    "abnormalThrew": null,
+    "onErrorMessages": [
+      "network lost"
+    ],
+    "onCloseCalls": []
+  },
+  "emptyError": {
+    "rejection": "Radius WebSocket connection failed",
+    "closeArgs": {
+      "readyState": 3
+    }
+  },
+  "protocolMismatch": {
+    "rejection": "Radius relay selected unexpected WebSocket protocol \"pi-session-relay.other.v1\""
+  },
+  "clientReconnect": {
+    "attemptsAfterFirst": 1,
+    "attemptsFinal": 2,
+    "reattachCalls": [
+      "demo-1"
+    ]
+  },
+  "authResolver": {
+    "defaultGateway": "https://radius.pi.dev",
+    "gatewayNormalization": [
+      "https://radius.example",
+      "https://x.dev",
+      "http://y.dev",
+      "https://z.dev"
+    ],
+    "explicitToken": {
+      "gateway": "https://radius.pi.dev",
+      "token": "secret"
+    },
+    "emptyTokenError": "Radius authentication token must not be empty",
+    "offline": {
+      "offlineRequired": "Radius relay connections are unavailable in offline mode"
+    },
+    "missingCredential": {
+      "missingRequired": "Radius authentication is required; start Pi and run /login radius, then retry"
+    },
+    "missingOptionalRuns": 2,
+    "storedCredential": {
+      "gateway": "https://radius.pi.dev",
+      "token": "stored-token"
+    },
+    "storedCredentialAgain": {
+      "gateway": "https://radius.pi.dev",
+      "token": "stored-token"
+    },
+    "createCount": 4
+  }
+}

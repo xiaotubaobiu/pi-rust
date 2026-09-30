@@ -1,0 +1,710 @@
+{
+  "scenarios": [
+    {
+      "name": "from_dir:consecutive-hyphens",
+      "observed": {
+        "skills": [
+          {
+            "name": "bad--name",
+            "description": "A skill with consecutive hyphens in the name.",
+            "filePath": "<fixtures>/skills/consecutive-hyphens/SKILL.md",
+            "baseDir": "<fixtures>/skills/consecutive-hyphens",
+            "sourceInfo": {
+              "path": "<fixtures>/skills/consecutive-hyphens/SKILL.md",
+              "source": "test",
+              "scope": "temporary",
+              "origin": "top-level",
+              "baseDir": "<fixtures>/skills/consecutive-hyphens"
+            },
+            "disableModelInvocation": false
+          }
+        ],
+        "diagnostics": [
+          {
+            "type": "warning",
+            "message": "name must not contain consecutive hyphens",
+            "path": "<fixtures>/skills/consecutive-hyphens/SKILL.md"
+          }
+        ]
+      }
+    },
+    {
+      "name": "from_dir:disable-model-invocation",
+      "observed": {
+        "skills": [
+          {
+            "name": "disable-model-invocation",
+            "description": "A skill that cannot be invoked by the model.",
+            "filePath": "<fixtures>/skills/disable-model-invocation/SKILL.md",
+            "baseDir": "<fixtures>/skills/disable-model-invocation",
+            "sourceInfo": {
+              "path": "<fixtures>/skills/disable-model-invocation/SKILL.md",
+              "source": "test",
+              "scope": "temporary",
+              "origin": "top-level",
+              "baseDir": "<fixtures>/skills/disable-model-invocation"
+            },
+            "disableModelInvocation": true
+          }
+        ],
+        "diagnostics": []
+      }
+    },
+    {
+      "name": "from_dir:invalid-name-chars",
+      "observed": {
+        "skills": [
+          {
+            "name": "Invalid_Name",
+            "description": "A skill with invalid characters in the name.",
+            "filePath": "<fixtures>/skills/invalid-name-chars/SKILL.md",
+            "baseDir": "<fixtures>/skills/invalid-name-chars",
+            "sourceInfo": {
+              "path": "<fixtures>/skills/invalid-name-chars/SKILL.md",
+              "source": "test",
+              "scope": "temporary",
+              "origin": "top-level",
+              "baseDir": "<fixtures>/skills/invalid-name-chars"
+            },
+            "disableModelInvocation": false
+          }
+        ],
+        "diagnostics": [
+          {
+            "type": "warning",
+            "message": "name contains invalid characters (must be lowercase a-z, 0-9, hyphens only)",
+            "path": "<fixtures>/skills/invalid-name-chars/SKILL.md"
+          }
+        ]
+      }
+    },
+    {
+      "name": "from_dir:invalid-yaml",
+      "observed": {
+        "skills": [],
+        "diagnostics": [
+          {
+            "type": "warning",
+            "message": "Flow sequence in block collection must be sufficiently indented and end with a ] at line 2, column 31:\n\ndescription: [unclosed bracket\n                              ^\n",
+            "path": "<fixtures>/skills/invalid-yaml/SKILL.md"
+          }
+        ]
+      }
+    },
+    {
+      "name": "from_dir:long-name",
+      "observed": {
+        "skills": [
+          {
+            "name": "this-is-a-very-long-skill-name-that-exceeds-the-sixty-four-character-limit-set-by-the-standard",
+            "description": "A skill with a name that exceeds 64 characters.",
+            "filePath": "<fixtures>/skills/long-name/SKILL.md",
+            "baseDir": "<fixtures>/skills/long-name",
+            "sourceInfo": {
+              "path": "<fixtures>/skills/long-name/SKILL.md",
+              "source": "test",
+              "scope": "temporary",
+              "origin": "top-level",
+              "baseDir": "<fixtures>/skills/long-name"
+            },
+            "disableModelInvocation": false
+          }
+        ],
+        "diagnostics": [
+          {
+            "type": "warning",
+            "message": "name exceeds 64 characters (94)",
+            "path": "<fixtures>/skills/long-name/SKILL.md"
+          }
+        ]
+      }
+    },
+    {
+      "name": "from_dir:missing-description",
+      "observed": {
+        "skills": [],
+        "diagnostics": [
+          {
+            "type": "warning",
+            "message": "description is required",
+            "path": "<fixtures>/skills/missing-description/SKILL.md"
+          }
+        ]
+      }
+    },
+    {
+      "name": "from_dir:multiline-description",
+      "observed": {
+        "skills": [
+          {
+            "name": "multiline-description",
+            "description": "This is a multiline description.\nIt spans multiple lines.\nAnd should be normalized.\n",
+            "filePath": "<fixtures>/skills/multiline-description/SKILL.md",
+            "baseDir": "<fixtures>/skills/multiline-description",
+            "sourceInfo": {
+              "path": "<fixtures>/skills/multiline-description/SKILL.md",
+              "source": "test",
+              "scope": "temporary",
+              "origin": "top-level",
+              "baseDir": "<fixtures>/skills/multiline-description"
+            },
+            "disableModelInvocation": false
+          }
+        ],
+        "diagnostics": []
+      }
+    },
+    {
+      "name": "from_dir:name-mismatch",
+      "observed": {
+        "skills": [
+          {
+            "name": "different-name",
+            "description": "A skill with a name that doesn't match the directory.",
+            "filePath": "<fixtures>/skills/name-mismatch/SKILL.md",
+            "baseDir": "<fixtures>/skills/name-mismatch",
+            "sourceInfo": {
+              "path": "<fixtures>/skills/name-mismatch/SKILL.md",
+              "source": "test",
+              "scope": "temporary",
+              "origin": "top-level",
+              "baseDir": "<fixtures>/skills/name-mismatch"
+            },
+            "disableModelInvocation": false
+          }
+        ],
+        "diagnostics": []
+      }
+    },
+    {
+      "name": "from_dir:nested",
+      "observed": {
+        "skills": [
+          {
+            "name": "child-skill",
+            "description": "A nested skill in a subdirectory.",
+            "filePath": "<fixtures>/skills/nested/child-skill/SKILL.md",
+            "baseDir": "<fixtures>/skills/nested/child-skill",
+            "sourceInfo": {
+              "path": "<fixtures>/skills/nested/child-skill/SKILL.md",
+              "source": "test",
+              "scope": "temporary",
+              "origin": "top-level",
+              "baseDir": "<fixtures>/skills/nested/child-skill"
+            },
+            "disableModelInvocation": false
+          }
+        ],
+        "diagnostics": []
+      }
+    },
+    {
+      "name": "from_dir:no-frontmatter",
+      "observed": {
+        "skills": [],
+        "diagnostics": [
+          {
+            "type": "warning",
+            "message": "description is required",
+            "path": "<fixtures>/skills/no-frontmatter/SKILL.md"
+          }
+        ]
+      }
+    },
+    {
+      "name": "from_dir:root-skill-preferred",
+      "observed": {
+        "skills": [
+          {
+            "name": "root-skill-preferred",
+            "description": "Root skill should win.",
+            "filePath": "<fixtures>/skills/root-skill-preferred/SKILL.md",
+            "baseDir": "<fixtures>/skills/root-skill-preferred",
+            "sourceInfo": {
+              "path": "<fixtures>/skills/root-skill-preferred/SKILL.md",
+              "source": "test",
+              "scope": "temporary",
+              "origin": "top-level",
+              "baseDir": "<fixtures>/skills/root-skill-preferred"
+            },
+            "disableModelInvocation": false
+          }
+        ],
+        "diagnostics": []
+      }
+    },
+    {
+      "name": "from_dir:unknown-field",
+      "observed": {
+        "skills": [
+          {
+            "name": "unknown-field",
+            "description": "A skill with an unknown frontmatter field.",
+            "filePath": "<fixtures>/skills/unknown-field/SKILL.md",
+            "baseDir": "<fixtures>/skills/unknown-field",
+            "sourceInfo": {
+              "path": "<fixtures>/skills/unknown-field/SKILL.md",
+              "source": "test",
+              "scope": "temporary",
+              "origin": "top-level",
+              "baseDir": "<fixtures>/skills/unknown-field"
+            },
+            "disableModelInvocation": false
+          }
+        ],
+        "diagnostics": []
+      }
+    },
+    {
+      "name": "from_dir:valid-skill",
+      "observed": {
+        "skills": [
+          {
+            "name": "valid-skill",
+            "description": "A valid skill for testing purposes.",
+            "filePath": "<fixtures>/skills/valid-skill/SKILL.md",
+            "baseDir": "<fixtures>/skills/valid-skill",
+            "sourceInfo": {
+              "path": "<fixtures>/skills/valid-skill/SKILL.md",
+              "source": "test",
+              "scope": "temporary",
+              "origin": "top-level",
+              "baseDir": "<fixtures>/skills/valid-skill"
+            },
+            "disableModelInvocation": false
+          }
+        ],
+        "diagnostics": []
+      }
+    },
+    {
+      "name": "from_dir:whole-fixtures-tree",
+      "observed": {
+        "names": [
+          "bad--name",
+          "disable-model-invocation",
+          "Invalid_Name",
+          "this-is-a-very-long-skill-name-that-exceeds-the-sixty-four-character-limit-set-by-the-standard",
+          "multiline-description",
+          "different-name",
+          "child-skill",
+          "root-skill-preferred",
+          "unknown-field",
+          "valid-skill"
+        ],
+        "diagnostics": [
+          {
+            "type": "warning",
+            "message": "name must not contain consecutive hyphens",
+            "path": "<fixtures>/skills/consecutive-hyphens/SKILL.md"
+          },
+          {
+            "type": "warning",
+            "message": "name contains invalid characters (must be lowercase a-z, 0-9, hyphens only)",
+            "path": "<fixtures>/skills/invalid-name-chars/SKILL.md"
+          },
+          {
+            "type": "warning",
+            "message": "Flow sequence in block collection must be sufficiently indented and end with a ] at line 2, column 31:\n\ndescription: [unclosed bracket\n                              ^\n",
+            "path": "<fixtures>/skills/invalid-yaml/SKILL.md"
+          },
+          {
+            "type": "warning",
+            "message": "name exceeds 64 characters (94)",
+            "path": "<fixtures>/skills/long-name/SKILL.md"
+          },
+          {
+            "type": "warning",
+            "message": "description is required",
+            "path": "<fixtures>/skills/missing-description/SKILL.md"
+          },
+          {
+            "type": "warning",
+            "message": "description is required",
+            "path": "<fixtures>/skills/no-frontmatter/SKILL.md"
+          }
+        ]
+      }
+    },
+    {
+      "name": "from_dir:non-existent",
+      "observed": {
+        "skills": [],
+        "diagnostics": []
+      }
+    },
+    {
+      "name": "collision:from_dirs",
+      "observed": {
+        "first": {
+          "skills": [
+            {
+              "name": "calendar",
+              "description": "First calendar skill.",
+              "filePath": "<fixtures>/skills-collision/first/calendar/SKILL.md",
+              "baseDir": "<fixtures>/skills-collision/first/calendar",
+              "sourceInfo": {
+                "path": "<fixtures>/skills-collision/first/calendar/SKILL.md",
+                "source": "first",
+                "scope": "temporary",
+                "origin": "top-level",
+                "baseDir": "<fixtures>/skills-collision/first/calendar"
+              },
+              "disableModelInvocation": false
+            }
+          ],
+          "diagnostics": []
+        },
+        "second": {
+          "skills": [
+            {
+              "name": "calendar",
+              "description": "Second calendar skill.",
+              "filePath": "<fixtures>/skills-collision/second/calendar/SKILL.md",
+              "baseDir": "<fixtures>/skills-collision/second/calendar",
+              "sourceInfo": {
+                "path": "<fixtures>/skills-collision/second/calendar/SKILL.md",
+                "source": "second",
+                "scope": "temporary",
+                "origin": "top-level",
+                "baseDir": "<fixtures>/skills-collision/second/calendar"
+              },
+              "disableModelInvocation": false
+            }
+          ],
+          "diagnostics": []
+        }
+      }
+    },
+    {
+      "name": "load:explicit-path",
+      "observed": {
+        "skills": [
+          {
+            "name": "valid-skill",
+            "description": "A valid skill for testing purposes.",
+            "filePath": "<fixtures>/skills/valid-skill/SKILL.md",
+            "baseDir": "<fixtures>/skills/valid-skill",
+            "sourceInfo": {
+              "path": "<fixtures>/skills/valid-skill/SKILL.md",
+              "source": "local",
+              "scope": "temporary",
+              "origin": "top-level",
+              "baseDir": "<fixtures>/skills/valid-skill"
+            },
+            "disableModelInvocation": false
+          }
+        ],
+        "diagnostics": []
+      }
+    },
+    {
+      "name": "load:missing-path",
+      "observed": {
+        "skills": [],
+        "diagnostics": [
+          {
+            "type": "warning",
+            "message": "skill path does not exist",
+            "path": "C:/non/existent/path"
+          }
+        ]
+      }
+    },
+    {
+      "name": "load:explicit-md-file",
+      "observed": {
+        "skills": [
+          {
+            "name": "valid-skill",
+            "description": "A valid skill for testing purposes.",
+            "filePath": "<fixtures>/skills/valid-skill/SKILL.md",
+            "baseDir": "<fixtures>/skills/valid-skill",
+            "sourceInfo": {
+              "path": "<fixtures>/skills/valid-skill/SKILL.md",
+              "source": "local",
+              "scope": "temporary",
+              "origin": "top-level",
+              "baseDir": "<fixtures>/skills/valid-skill"
+            },
+            "disableModelInvocation": false
+          }
+        ],
+        "diagnostics": []
+      }
+    },
+    {
+      "name": "load:non-markdown-path",
+      "observed": {
+        "skills": [],
+        "diagnostics": [
+          {
+            "type": "warning",
+            "message": "skill path is not a markdown file",
+            "path": "<root>/not-md/notes.txt"
+          }
+        ]
+      }
+    },
+    {
+      "name": "load:relative-trimmed-missing",
+      "observed": {
+        "skills": [],
+        "diagnostics": [
+          {
+            "type": "warning",
+            "message": "skill path does not exist",
+            "path": "<root>/empty-cwd/rel-skills"
+          }
+        ]
+      }
+    },
+    {
+      "name": "load:defaults-user-project",
+      "observed": {
+        "skills": [
+          {
+            "name": "dupe",
+            "description": "User version.",
+            "filePath": "<root>/agent/skills/dupe/SKILL.md",
+            "baseDir": "<root>/agent/skills/dupe",
+            "sourceInfo": {
+              "path": "<root>/agent/skills/dupe/SKILL.md",
+              "source": "local",
+              "scope": "user",
+              "origin": "top-level",
+              "baseDir": "<root>/agent/skills/dupe"
+            },
+            "disableModelInvocation": false
+          },
+          {
+            "name": "user-only",
+            "description": "User only.",
+            "filePath": "<root>/agent/skills/user-only/SKILL.md",
+            "baseDir": "<root>/agent/skills/user-only",
+            "sourceInfo": {
+              "path": "<root>/agent/skills/user-only/SKILL.md",
+              "source": "local",
+              "scope": "user",
+              "origin": "top-level",
+              "baseDir": "<root>/agent/skills/user-only"
+            },
+            "disableModelInvocation": false
+          },
+          {
+            "name": "project-only",
+            "description": "Project only.",
+            "filePath": "<root>/project/.pi/skills/project-only/SKILL.md",
+            "baseDir": "<root>/project/.pi/skills/project-only",
+            "sourceInfo": {
+              "path": "<root>/project/.pi/skills/project-only/SKILL.md",
+              "source": "local",
+              "scope": "project",
+              "origin": "top-level",
+              "baseDir": "<root>/project/.pi/skills/project-only"
+            },
+            "disableModelInvocation": false
+          }
+        ],
+        "diagnostics": [
+          {
+            "type": "collision",
+            "message": "name \"dupe\" collision",
+            "path": "<root>/project/.pi/skills/dupe/SKILL.md",
+            "collision": {
+              "resourceType": "skill",
+              "name": "dupe",
+              "winnerPath": "<root>/agent/skills/dupe/SKILL.md",
+              "loserPath": "<root>/project/.pi/skills/dupe/SKILL.md"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "load:no-defaults",
+      "observed": {
+        "skills": [],
+        "diagnostics": []
+      }
+    },
+    {
+      "name": "load:path-under-user-dir",
+      "observed": {
+        "skills": [
+          {
+            "name": "user-only",
+            "description": "User only.",
+            "filePath": "<root>/agent/skills/user-only/SKILL.md",
+            "baseDir": "<root>/agent/skills/user-only",
+            "sourceInfo": {
+              "path": "<root>/agent/skills/user-only/SKILL.md",
+              "source": "local",
+              "scope": "user",
+              "origin": "top-level",
+              "baseDir": "<root>/agent/skills/user-only"
+            },
+            "disableModelInvocation": false
+          }
+        ],
+        "diagnostics": []
+      }
+    },
+    {
+      "name": "load:path-under-project-dir",
+      "observed": {
+        "skills": [
+          {
+            "name": "project-only",
+            "description": "Project only.",
+            "filePath": "<root>/project/.pi/skills/project-only/SKILL.md",
+            "baseDir": "<root>/project/.pi/skills/project-only",
+            "sourceInfo": {
+              "path": "<root>/project/.pi/skills/project-only/SKILL.md",
+              "source": "local",
+              "scope": "project",
+              "origin": "top-level",
+              "baseDir": "<root>/project/.pi/skills/project-only"
+            },
+            "disableModelInvocation": false
+          }
+        ],
+        "diagnostics": []
+      }
+    },
+    {
+      "name": "load:collision-two-paths",
+      "observed": {
+        "skills": [
+          {
+            "name": "calendar",
+            "description": "First calendar skill.",
+            "filePath": "<fixtures>/skills-collision/first/calendar/SKILL.md",
+            "baseDir": "<fixtures>/skills-collision/first/calendar",
+            "sourceInfo": {
+              "path": "<fixtures>/skills-collision/first/calendar/SKILL.md",
+              "source": "local",
+              "scope": "temporary",
+              "origin": "top-level",
+              "baseDir": "<fixtures>/skills-collision/first/calendar"
+            },
+            "disableModelInvocation": false
+          }
+        ],
+        "diagnostics": [
+          {
+            "type": "collision",
+            "message": "name \"calendar\" collision",
+            "path": "<fixtures>/skills-collision/second/calendar/SKILL.md",
+            "collision": {
+              "resourceType": "skill",
+              "name": "calendar",
+              "winnerPath": "<fixtures>/skills-collision/first/calendar/SKILL.md",
+              "loserPath": "<fixtures>/skills-collision/second/calendar/SKILL.md"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "load:symlink-alias-skip",
+      "observed": {
+        "skills": [
+          {
+            "name": "calendar",
+            "description": "First calendar skill.",
+            "filePath": "<fixtures>/skills-collision/first/calendar/SKILL.md",
+            "baseDir": "<fixtures>/skills-collision/first/calendar",
+            "sourceInfo": {
+              "path": "<fixtures>/skills-collision/first/calendar/SKILL.md",
+              "source": "local",
+              "scope": "temporary",
+              "origin": "top-level",
+              "baseDir": "<fixtures>/skills-collision/first/calendar"
+            },
+            "disableModelInvocation": false
+          }
+        ],
+        "diagnostics": []
+      }
+    },
+    {
+      "name": "ignore:gitignore-rules",
+      "observed": {
+        "skills": [
+          {
+            "name": "kept",
+            "description": "Kept.",
+            "filePath": "<root>/ignore-agent/skills/kept/SKILL.md",
+            "baseDir": "<root>/ignore-agent/skills/kept",
+            "sourceInfo": {
+              "path": "<root>/ignore-agent/skills/kept/SKILL.md",
+              "source": "local",
+              "scope": "user",
+              "origin": "top-level",
+              "baseDir": "<root>/ignore-agent/skills/kept"
+            },
+            "disableModelInvocation": false
+          },
+          {
+            "name": "inner-kept",
+            "description": "Inner kept.",
+            "filePath": "<root>/ignore-agent/skills/nested/inner-kept/SKILL.md",
+            "baseDir": "<root>/ignore-agent/skills/nested/inner-kept",
+            "sourceInfo": {
+              "path": "<root>/ignore-agent/skills/nested/inner-kept/SKILL.md",
+              "source": "local",
+              "scope": "user",
+              "origin": "top-level",
+              "baseDir": "<root>/ignore-agent/skills/nested/inner-kept"
+            },
+            "disableModelInvocation": false
+          }
+        ],
+        "diagnostics": []
+      }
+    },
+    {
+      "name": "format:empty",
+      "observed": {
+        "text": ""
+      }
+    },
+    {
+      "name": "format:single",
+      "observed": {
+        "text": "\n\nThe following skills provide specialized instructions for specific tasks.\nUse the read tool to load a skill's file when the task matches its description.\nWhen a skill file references a relative path, resolve it against the skill directory (parent of SKILL.md / dirname of the path) and use that absolute path in tool commands.\n\n<available_skills>\n  <skill>\n    <name>test-skill</name>\n    <description>A test skill.</description>\n    <location>/path/to/skill/SKILL.md</location>\n  </skill>\n</available_skills>"
+      }
+    },
+    {
+      "name": "format:escaping",
+      "observed": {
+        "text": "\n\nThe following skills provide specialized instructions for specific tasks.\nUse the read tool to load a skill's file when the task matches its description.\nWhen a skill file references a relative path, resolve it against the skill directory (parent of SKILL.md / dirname of the path) and use that absolute path in tool commands.\n\n<available_skills>\n  <skill>\n    <name>test-skill</name>\n    <description>A skill with &lt;special&gt; &amp; &quot;characters&quot;.</description>\n    <location>/path/to/skill/SKILL.md</location>\n  </skill>\n</available_skills>"
+      }
+    },
+    {
+      "name": "format:multiple",
+      "observed": {
+        "text": "\n\nThe following skills provide specialized instructions for specific tasks.\nUse the read tool to load a skill's file when the task matches its description.\nWhen a skill file references a relative path, resolve it against the skill directory (parent of SKILL.md / dirname of the path) and use that absolute path in tool commands.\n\n<available_skills>\n  <skill>\n    <name>skill-one</name>\n    <description>First skill.</description>\n    <location>/path/one/SKILL.md</location>\n  </skill>\n  <skill>\n    <name>skill-two</name>\n    <description>Second skill.</description>\n    <location>/path/two/SKILL.md</location>\n  </skill>\n</available_skills>"
+      }
+    },
+    {
+      "name": "format:disable-model-invocation",
+      "observed": {
+        "text": "\n\nThe following skills provide specialized instructions for specific tasks.\nUse the read tool to load a skill's file when the task matches its description.\nWhen a skill file references a relative path, resolve it against the skill directory (parent of SKILL.md / dirname of the path) and use that absolute path in tool commands.\n\n<available_skills>\n  <skill>\n    <name>visible-skill</name>\n    <description>A visible skill.</description>\n    <location>/path/visible/SKILL.md</location>\n  </skill>\n</available_skills>"
+      }
+    },
+    {
+      "name": "format:all-hidden",
+      "observed": {
+        "text": ""
+      }
+    },
+    {
+      "name": "format:bash-tool",
+      "observed": {
+        "text": "\n\nThe following skills provide specialized instructions for specific tasks.\nUse bash to load a skill's file when the task matches its description.\nWhen a skill file references a relative path, resolve it against the skill directory (parent of SKILL.md / dirname of the path) and use that absolute path in tool commands.\n\n<available_skills>\n  <skill>\n    <name>bash-skill</name>\n    <description>Loaded via bash.</description>\n    <location>/path/bash/SKILL.md</location>\n  </skill>\n</available_skills>"
+      }
+    }
+  ]
+}

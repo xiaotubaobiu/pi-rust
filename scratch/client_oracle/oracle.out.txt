@@ -1,0 +1,74 @@
+=== hello-and-request-bytes
+["00000015a264747970656568656c6c6f6776657273696f6e08"]
+["00000015a264747970656568656c6c6f6776657273696f6e08","00000084a46474797065677265717565737462696469726571756573742d3166746172676574a1687365727665724964782430303030303030302d303030302d343030302d383030302d3030303030303030303030316463616c6ca3697365727669636549646474657374666d656d626572666d7574617465646172677381a16576616c7565182a"]
+{"ok":true,"value":"done"}
+=== cancel-frame-bytes
+{"ok":false,"name":"Error","message":"stop this request"}
+["00000051a364747970656663616e63656c62696469726571756573742d3166746172676574a1687365727665724964782430303030303030302d303030302d343030302d383030302d303030303030303030303031"]
+connected=true
+=== subscription-flow
+{"serverId":"00000000-0000-4000-8000-000000000001","sessionId":"session-1","attachmentId":"attachment-session-1"}
+subscribe-frames=["000000dca46474797065677265717565737462696469726571756573742d3266746172676574a3687365727665724964782430303030303030302d303030302d343030302d383030302d3030303030303030303030316973657373696f6e49646973657373696f6e2d316c6174746163686d656e744964746174746163686d656e742d73657373696f6e2d316463616c6ca3697365727669636549646e2463686f72642e73657276696365666d656d6265726973756273637269626564617267738369736572766963652d316970692e6d6f64656c736973696e676c65746f6e"]
+updates-before-snapshot=[]
+updates-after-open=[]
+snapshot={"serviceId":"pi.models","mode":"singleton","instances":[{"members":[{"name":"state","kind":"state","sequence":0,"ops":[["r",{"revision":0}]]}]}]}
+connected-after-unknown-subscription=true
+updates-after-activate=["state"]
+updates-final=[{"type":"state","member":"state","sequence":1,"ops":[["s",["revision"],1]]},{"type":"state","member":"state","sequence":2,"ops":[["s",["revision"],2]]},{"type":"state","member":"state","sequence":3,"ops":[["s",["revision"],3]]}]
+unsubscribe-frames=["000000caa46474797065677265717565737462696469726571756573742d3366746172676574a3687365727665724964782430303030303030302d303030302d343030302d383030302d3030303030303030303030316973657373696f6e49646973657373696f6e2d316c6174746163686d656e744964746174746163686d656e742d73657373696f6e2d316463616c6ca3697365727669636549646e2463686f72642e73657276696365666d656d6265726b756e73756273637269626564617267738169736572766963652d31"]
+disposed-close-count=0
+=== wrong-server
+{"ok":false,"name":"ProtocolValidationError","message":"Connected server \"00000000-0000-4000-8000-000000000002\" does not match \"00000000-0000-4000-8000-000000000001\""}
+close-count=1
+=== attachment-routing
+attachment={"serverId":"00000000-0000-4000-8000-000000000001","sessionId":"session-1","attachmentId":"attachment-session-1"}
+attach-request={"type":"request","id":"request-1","target":{"serverId":"00000000-0000-4000-8000-000000000001"},"call":{"serviceId":"pi.session-management","member":"attach","args":["session-1"]}}
+detached-attachment=undefined
+changes=[{"serverId":"00000000-0000-4000-8000-000000000001","sessionId":"session-1","attachmentId":"attachment-session-1"},null]
+=== hello-error
+{"ok":false,"name":"ServerError","message":"Unsupported protocol version","code":"version"}
+state=disconnected close-count=1 factory-used=true
+=== data-before-hello
+{"ok":false,"name":"ProtocolValidationError","message":"Received server data before the client hello was sent"}
+state=disconnected send-count=0 close-count=1
+=== response-no-match
+state=disconnected close-count=1
+=== truncated-framing
+invalid-state=disconnected
+{"ok":false,"name":"ProtocolValidationError","message":"Invalid server protocol framing: Truncated frame at end of stream"}
+truncated-state=disconnected
+=== out-of-order-responses
+{"ok":true,"value":["first","second"]}
+=== server-error
+{"ok":false,"name":"ServerError","message":"Unknown session","code":"session_not_found"}
+=== pre-aborted-request
+{"ok":false,"name":"Error","message":"already cancelled"}
+messages=[{"type":"hello","version":8}]
+=== reconnect-sequence
+{"ok":false,"name":"DisconnectedError","message":"Byte transport closed"}
+connection=2 connected=true second-messages=1
+hello={"type":"hello","version":8,"serverId":"00000000-0000-4000-8000-000000000001"}
+states=["connecting","connected","disconnected","connecting","connected"]
+=== transport-failure
+{"ok":false,"name":"DisconnectedError","message":"read failed","cause":"read failed"}
+state=disconnected
+=== service-catalogue
+{"ok":true,"value":[{"serviceId":"pi.models","mode":"singleton"}]}
+{"ok":false,"name":"ProtocolValidationError","message":"Invalid service catalogue"}
+state=disconnected
+=== validation-and-disposal
+TypeError: serverId must be a canonical lowercase UUIDv4
+TypeError: Client maxFrameLength must be an integer between 1 and 4294967295
+{"ok":false,"name":"ClientDisposedError","message":"Client is disposed"}
+ClientDisposedError: Client is disposed
+disposed=true close-count=1
+=== connect-while-connecting
+{"ok":false,"name":"DisconnectedError","message":"Client is already connecting"}
+{"ok":true,"value":{"type":"hello","version":8,"serverId":"00000000-0000-4000-8000-000000000001"}}
+third-connect={"ok":false,"name":"DisconnectedError","message":"Client is already connected"}
+{"ok":false,"name":"ClientDisposedError","message":"Client is disposed"}
+=== disconnect-clears-state
+{"ok":false,"name":"DisconnectedError","message":"Client disconnected"}
+attachment=undefined hello=undefined state=disconnected
+reconnected-states=["connecting","connected"] attachment-still-clear=true
+=== done

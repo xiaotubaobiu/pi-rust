@@ -1,0 +1,142 @@
+{
+ "snapshots": {
+  "after_write_one": "{\n  \"one\": {\n    \"models\": [\n      {\n        \"id\": \"m1\",\n        \"name\": \"m1\",\n        \"api\": \"openai-completions\",\n        \"provider\": \"one\",\n        \"baseUrl\": \"https://example.test/v1\",\n        \"reasoning\": false,\n        \"input\": [\n          \"text\"\n        ],\n        \"cost\": {\n          \"input\": 0,\n          \"output\": 0,\n          \"cacheRead\": 0,\n          \"cacheWrite\": 0\n        },\n        \"contextWindow\": 1000,\n        \"maxTokens\": 100\n      }\n    ],\n    \"checkedAt\": 100\n  }\n}",
+  "after_write_two": "{\n  \"one\": {\n    \"models\": [\n      {\n        \"id\": \"m1\",\n        \"name\": \"m1\",\n        \"api\": \"openai-completions\",\n        \"provider\": \"one\",\n        \"baseUrl\": \"https://example.test/v1\",\n        \"reasoning\": false,\n        \"input\": [\n          \"text\"\n        ],\n        \"cost\": {\n          \"input\": 0,\n          \"output\": 0,\n          \"cacheRead\": 0,\n          \"cacheWrite\": 0\n        },\n        \"contextWindow\": 1000,\n        \"maxTokens\": 100\n      }\n    ],\n    \"checkedAt\": 100\n  },\n  \"two\": {\n    \"models\": [\n      {\n        \"id\": \"m2\",\n        \"name\": \"m2\",\n        \"api\": \"openai-completions\",\n        \"provider\": \"two\",\n        \"baseUrl\": \"https://example.test/v1\",\n        \"reasoning\": false,\n        \"input\": [\n          \"text\"\n        ],\n        \"cost\": {\n          \"input\": 0,\n          \"output\": 0,\n          \"cacheRead\": 0,\n          \"cacheWrite\": 0\n        },\n        \"contextWindow\": 1000,\n        \"maxTokens\": 100\n      }\n    ],\n    \"checkedAt\": 200\n  }\n}",
+  "reads": {
+   "one": {
+    "models": [
+     {
+      "id": "m1",
+      "name": "m1",
+      "api": "openai-completions",
+      "provider": "one",
+      "baseUrl": "https://example.test/v1",
+      "reasoning": false,
+      "input": [
+       "text"
+      ],
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0
+      },
+      "contextWindow": 1000,
+      "maxTokens": 100
+     }
+    ],
+    "checkedAt": 100
+   },
+   "two": {
+    "models": [
+     {
+      "id": "m2",
+      "name": "m2",
+      "api": "openai-completions",
+      "provider": "two",
+      "baseUrl": "https://example.test/v1",
+      "reasoning": false,
+      "input": [
+       "text"
+      ],
+      "cost": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0
+      },
+      "contextWindow": 1000,
+      "maxTokens": 100
+     }
+    ],
+    "checkedAt": 200
+   },
+   "missing": null
+  },
+  "reloaded_read_one": {
+   "models": [
+    {
+     "id": "m1",
+     "name": "m1",
+     "api": "openai-completions",
+     "provider": "one",
+     "baseUrl": "https://example.test/v1",
+     "reasoning": false,
+     "input": [
+      "text"
+     ],
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0
+     },
+     "contextWindow": 1000,
+     "maxTokens": 100
+    }
+   ],
+   "checkedAt": 100
+  },
+  "after_delete_one": "{\n  \"two\": {\n    \"models\": [\n      {\n        \"id\": \"m2\",\n        \"name\": \"m2\",\n        \"api\": \"openai-completions\",\n        \"provider\": \"two\",\n        \"baseUrl\": \"https://example.test/v1\",\n        \"reasoning\": false,\n        \"input\": [\n          \"text\"\n        ],\n        \"cost\": {\n          \"input\": 0,\n          \"output\": 0,\n          \"cacheRead\": 0,\n          \"cacheWrite\": 0\n        },\n        \"contextWindow\": 1000,\n        \"maxTokens\": 100\n      }\n    ],\n    \"checkedAt\": 200\n  }\n}",
+  "read_one_after_delete": null,
+  "read_two_after_delete": {
+   "models": [
+    {
+     "id": "m2",
+     "name": "m2",
+     "api": "openai-completions",
+     "provider": "two",
+     "baseUrl": "https://example.test/v1",
+     "reasoning": false,
+     "input": [
+      "text"
+     ],
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0
+     },
+     "contextWindow": 1000,
+     "maxTokens": 100
+    }
+   ],
+   "checkedAt": 200
+  },
+  "after_write_meta": "{\n  \"p\": {\n    \"models\": [],\n    \"lastModified\": 4,\n    \"checkedAt\": 5,\n    \"etag\": \"\\\"abc\\\"\"\n  }\n}",
+  "read_meta": {
+   "models": [],
+   "lastModified": 4,
+   "checkedAt": 5,
+   "etag": "\"abc\""
+  },
+  "in_memory_after_mutation": {
+   "models": [
+    {
+     "id": "m",
+     "name": "m",
+     "api": "openai-completions",
+     "provider": "p",
+     "baseUrl": "https://example.test/v1",
+     "reasoning": false,
+     "input": [
+      "text"
+     ],
+     "cost": {
+      "input": 0,
+      "output": 0,
+      "cacheRead": 0,
+      "cacheWrite": 0
+     },
+     "contextWindow": 1000,
+     "maxTokens": 100
+    }
+   ],
+   "checkedAt": 1
+  },
+  "in_memory_after_delete": null,
+  "bom_read": {
+   "models": []
+  }
+ }
+}

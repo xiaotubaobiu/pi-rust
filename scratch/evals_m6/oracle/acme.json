@@ -1,0 +1,64 @@
+{
+  "openai": {
+    "probe": {
+      "status": 200,
+      "contentType": "text/event-stream",
+      "body": "data: {\"id\":\"chatcmpl-acme\",\"object\":\"chat.completion.chunk\",\"created\":0,\"model\":\"acme-chat\",\"choices\":[{\"index\":0,\"delta\":{\"role\":\"assistant\",\"content\":\"ACME_OK\"},\"finish_reason\":null}]}\n\ndata: {\"id\":\"chatcmpl-acme\",\"object\":\"chat.completion.chunk\",\"created\":0,\"model\":\"acme-chat\",\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":3,\"completion_tokens\":2}}\n\ndata: [DONE]\n\n"
+    },
+    "unauthorized": {
+      "status": 401,
+      "contentType": "text/plain",
+      "body": "Invalid Acme credential"
+    },
+    "malformed": {
+      "status": 422,
+      "contentType": "text/plain",
+      "body": "Invalid OpenAI-compatible request"
+    },
+    "nonProbe": {
+      "status": 200,
+      "contentType": "text/event-stream",
+      "body": "data: {\"id\":\"chatcmpl-acme\",\"object\":\"chat.completion.chunk\",\"created\":0,\"model\":\"acme-chat\",\"choices\":[{\"index\":0,\"delta\":{\"role\":\"assistant\",\"content\":\"ACME_OK\"},\"finish_reason\":null}]}\n\ndata: {\"id\":\"chatcmpl-acme\",\"object\":\"chat.completion.chunk\",\"created\":0,\"model\":\"acme-chat\",\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":3,\"completion_tokens\":2}}\n\ndata: [DONE]\n\n"
+    },
+    "nonProbeFlag": false,
+    "probeFlag": false,
+    "probe2": {
+      "status": 200,
+      "contentType": "text/event-stream",
+      "body": "data: {\"id\":\"chatcmpl-acme\",\"object\":\"chat.completion.chunk\",\"created\":0,\"model\":\"acme-chat\",\"choices\":[{\"index\":0,\"delta\":{\"role\":\"assistant\",\"content\":\"ACME_OK\"},\"finish_reason\":null}]}\n\ndata: {\"id\":\"chatcmpl-acme\",\"object\":\"chat.completion.chunk\",\"created\":0,\"model\":\"acme-chat\",\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"stop\"}],\"usage\":{\"prompt_tokens\":3,\"completion_tokens\":2}}\n\ndata: [DONE]\n\n"
+    },
+    "probeFlag2": true,
+    "flagAfterReset": false
+  },
+  "stream": {
+    "probe": {
+      "status": 200,
+      "contentType": "application/x-ndjson",
+      "body": "{\"type\":\"text_delta\",\"text\":\"ACME_\"}\n{\"type\":\"text_delta\",\"text\":\"STREAM_OK\"}\n{\"type\":\"usage\",\"input_tokens\":4,\"output_tokens\":3}\n{\"type\":\"done\",\"reason\":\"stop\"}\n"
+    },
+    "unauthorized": {
+      "status": 401,
+      "contentType": "text/plain",
+      "body": "Invalid Acme Stream credential"
+    },
+    "malformed": {
+      "status": 422,
+      "contentType": "text/plain",
+      "body": "Invalid Acme Stream request"
+    },
+    "nonProbe": {
+      "status": 200,
+      "contentType": "application/x-ndjson",
+      "body": "{\"type\":\"text_delta\",\"text\":\"ACME_\"}\n{\"type\":\"text_delta\",\"text\":\"STREAM_OK\"}\n{\"type\":\"usage\",\"input_tokens\":4,\"output_tokens\":3}\n{\"type\":\"done\",\"reason\":\"stop\"}\n"
+    },
+    "nonProbeFlag": false,
+    "probeFlag": false,
+    "probe2": {
+      "status": 200,
+      "contentType": "application/x-ndjson",
+      "body": "{\"type\":\"text_delta\",\"text\":\"ACME_\"}\n{\"type\":\"text_delta\",\"text\":\"STREAM_OK\"}\n{\"type\":\"usage\",\"input_tokens\":4,\"output_tokens\":3}\n{\"type\":\"done\",\"reason\":\"stop\"}\n"
+    },
+    "probeFlag2": true,
+    "flagAfterReset": false
+  }
+}

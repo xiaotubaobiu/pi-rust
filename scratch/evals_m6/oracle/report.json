@@ -1,0 +1,654 @@
+{
+  "report1": {
+    "schemaVersion": 3,
+    "protocolDigest": "digest",
+    "control": "without_docs",
+    "treatment": "with_docs",
+    "comparisons": [
+      {
+        "evalSet": "tool access",
+        "totalPairs": 2,
+        "eligiblePairs": 2,
+        "blockedPairs": 0,
+        "controlPassRate": 0.5,
+        "treatmentPassRate": 1,
+        "lift": 0.5,
+        "flags": [
+          "treatment-saturated",
+          "flaky"
+        ],
+        "totalTokens": {
+          "eligiblePairs": 2,
+          "controlMean": 150,
+          "treatmentMean": 150,
+          "meanDelta": 0
+        },
+        "toolCalls": {
+          "eligiblePairs": 2,
+          "controlMean": 2.5,
+          "treatmentMean": 2,
+          "meanDelta": -0.5
+        },
+        "totalMs": {
+          "eligiblePairs": 2,
+          "controlMean": 1000,
+          "treatmentMean": 900,
+          "meanDelta": -100
+        },
+        "estimatedCostUsd": {
+          "eligiblePairs": 2,
+          "controlMean": 0.01,
+          "treatmentMean": 0.01,
+          "meanDelta": 0
+        }
+      }
+    ],
+    "blockedPairs": [],
+    "operationalTotals": [
+      {
+        "variant": "without_docs",
+        "runs": 2,
+        "inputTokens": {
+          "availableRuns": 0,
+          "total": null
+        },
+        "outputTokens": {
+          "availableRuns": 0,
+          "total": null
+        },
+        "cacheReadTokens": {
+          "availableRuns": 0,
+          "total": null
+        },
+        "cacheWriteTokens": {
+          "availableRuns": 0,
+          "total": null
+        },
+        "totalTokens": {
+          "availableRuns": 2,
+          "total": 300
+        },
+        "toolCalls": {
+          "availableRuns": 2,
+          "total": 5
+        },
+        "totalMs": {
+          "availableRuns": 2,
+          "total": 2000
+        },
+        "estimatedCostUsd": {
+          "availableRuns": 2,
+          "total": 0.02
+        }
+      },
+      {
+        "variant": "with_docs",
+        "runs": 2,
+        "inputTokens": {
+          "availableRuns": 0,
+          "total": null
+        },
+        "outputTokens": {
+          "availableRuns": 0,
+          "total": null
+        },
+        "cacheReadTokens": {
+          "availableRuns": 0,
+          "total": null
+        },
+        "cacheWriteTokens": {
+          "availableRuns": 0,
+          "total": null
+        },
+        "totalTokens": {
+          "availableRuns": 2,
+          "total": 300
+        },
+        "toolCalls": {
+          "availableRuns": 2,
+          "total": 4
+        },
+        "totalMs": {
+          "availableRuns": 2,
+          "total": 1800
+        },
+        "estimatedCostUsd": {
+          "availableRuns": 2,
+          "total": 0.02
+        }
+      }
+    ]
+  },
+  "formatted1": "Documentation Eval Comparisons\n  tool access\n         Pairs  2/2 eligible\n     Pass rate  +50.0 pp (with 100.0%, without 50.0%)\n         Flags  treatment-saturated, flaky\n        Tokens  +0.0 (with 150.0, without 150.0, 2 pairs)\n         Tools  -0.5 (with 2.0, without 2.5, 2 pairs)\n       Latency  -100.0ms (with 900.0ms, without 1000.0ms, 2 pairs)\n     Est. cost  +$0.0000 (with $0.0100, without $0.0100, 2 pairs)\n  Operational totals\n    without_docs: 2 runs, 300 tokens, 5 tools, 2.00s, $0.0200 cost\n    with_docs: 2 runs, 300 tokens, 4 tools, 1.80s, $0.0200 cost",
+  "report2": {
+    "schemaVersion": 3,
+    "protocolDigest": "digest",
+    "control": "without_docs",
+    "treatment": "with_docs",
+    "comparisons": [
+      {
+        "evalSet": "tool access",
+        "totalPairs": 2,
+        "eligiblePairs": 0,
+        "blockedPairs": 2,
+        "controlPassRate": null,
+        "treatmentPassRate": null,
+        "lift": null,
+        "flags": [],
+        "totalTokens": {
+          "eligiblePairs": 0,
+          "controlMean": null,
+          "treatmentMean": null,
+          "meanDelta": null
+        },
+        "toolCalls": {
+          "eligiblePairs": 0,
+          "controlMean": null,
+          "treatmentMean": null,
+          "meanDelta": null
+        },
+        "totalMs": {
+          "eligiblePairs": 0,
+          "controlMean": null,
+          "treatmentMean": null,
+          "meanDelta": null
+        },
+        "estimatedCostUsd": {
+          "eligiblePairs": 0,
+          "controlMean": null,
+          "treatmentMean": null,
+          "meanDelta": null
+        }
+      }
+    ],
+    "blockedPairs": [
+      {
+        "evalSet": "tool access",
+        "caseId": "create",
+        "model": "fixture/model",
+        "runNumber": 1,
+        "reasons": [
+          "with_docs: errored"
+        ]
+      },
+      {
+        "evalSet": "tool access",
+        "caseId": "create",
+        "model": "fixture/model",
+        "runNumber": 2,
+        "reasons": [
+          "with_docs: expected 1 observation, found 0"
+        ]
+      }
+    ],
+    "operationalTotals": [
+      {
+        "variant": "without_docs",
+        "runs": 2,
+        "inputTokens": {
+          "availableRuns": 0,
+          "total": null
+        },
+        "outputTokens": {
+          "availableRuns": 0,
+          "total": null
+        },
+        "cacheReadTokens": {
+          "availableRuns": 0,
+          "total": null
+        },
+        "cacheWriteTokens": {
+          "availableRuns": 0,
+          "total": null
+        },
+        "totalTokens": {
+          "availableRuns": 2,
+          "total": 300
+        },
+        "toolCalls": {
+          "availableRuns": 2,
+          "total": 4
+        },
+        "totalMs": {
+          "availableRuns": 2,
+          "total": 2000
+        },
+        "estimatedCostUsd": {
+          "availableRuns": 2,
+          "total": 0.02
+        }
+      },
+      {
+        "variant": "with_docs",
+        "runs": 1,
+        "inputTokens": {
+          "availableRuns": 0,
+          "total": null
+        },
+        "outputTokens": {
+          "availableRuns": 0,
+          "total": null
+        },
+        "cacheReadTokens": {
+          "availableRuns": 0,
+          "total": null
+        },
+        "cacheWriteTokens": {
+          "availableRuns": 0,
+          "total": null
+        },
+        "totalTokens": {
+          "availableRuns": 1,
+          "total": 120
+        },
+        "toolCalls": {
+          "availableRuns": 0,
+          "total": null
+        },
+        "totalMs": {
+          "availableRuns": 0,
+          "total": null
+        },
+        "estimatedCostUsd": {
+          "availableRuns": 0,
+          "total": null
+        }
+      }
+    ]
+  },
+  "formatted2": "Documentation Eval Comparisons\n  tool access\n         Pairs  0/2 eligible\n     Pass rate  withheld because pairs are blocked\n        Tokens  unavailable\n         Tools  unavailable\n       Latency  unavailable\n     Est. cost  unavailable\n  Operational totals\n    without_docs: 2 runs, 300 tokens, 4 tools, 2.00s, $0.0200 cost\n    with_docs: 1 runs, 120 tokens, unavailable (0/1 measured), unavailable (0/1 measured), unavailable (0/1 measured)\n  Blocked pairs\n    tool access/create/fixture/model/run-1: with_docs: errored\n    tool access/create/fixture/model/run-2: with_docs: expected 1 observation, found 0",
+  "report3": {
+    "schemaVersion": 3,
+    "protocolDigest": "digest",
+    "control": "without_docs",
+    "treatment": "with_docs",
+    "comparisons": [
+      {
+        "evalSet": "tool access",
+        "totalPairs": 1,
+        "eligiblePairs": 0,
+        "blockedPairs": 1,
+        "controlPassRate": null,
+        "treatmentPassRate": null,
+        "lift": null,
+        "flags": [],
+        "totalTokens": {
+          "eligiblePairs": 0,
+          "controlMean": null,
+          "treatmentMean": null,
+          "meanDelta": null
+        },
+        "toolCalls": {
+          "eligiblePairs": 0,
+          "controlMean": null,
+          "treatmentMean": null,
+          "meanDelta": null
+        },
+        "totalMs": {
+          "eligiblePairs": 0,
+          "controlMean": null,
+          "treatmentMean": null,
+          "meanDelta": null
+        },
+        "estimatedCostUsd": {
+          "eligiblePairs": 0,
+          "controlMean": null,
+          "treatmentMean": null,
+          "meanDelta": null
+        }
+      }
+    ],
+    "blockedPairs": [
+      {
+        "evalSet": "tool access",
+        "caseId": "create",
+        "model": "fixture/model",
+        "runNumber": 1,
+        "reasons": [
+          "without_docs: expected 1 observation, found 2"
+        ]
+      }
+    ],
+    "operationalTotals": [
+      {
+        "variant": "without_docs",
+        "runs": 2,
+        "inputTokens": {
+          "availableRuns": 0,
+          "total": null
+        },
+        "outputTokens": {
+          "availableRuns": 0,
+          "total": null
+        },
+        "cacheReadTokens": {
+          "availableRuns": 0,
+          "total": null
+        },
+        "cacheWriteTokens": {
+          "availableRuns": 0,
+          "total": null
+        },
+        "totalTokens": {
+          "availableRuns": 0,
+          "total": null
+        },
+        "toolCalls": {
+          "availableRuns": 2,
+          "total": 4
+        },
+        "totalMs": {
+          "availableRuns": 2,
+          "total": 2000
+        },
+        "estimatedCostUsd": {
+          "availableRuns": 2,
+          "total": 0.02
+        }
+      },
+      {
+        "variant": "with_docs",
+        "runs": 1,
+        "inputTokens": {
+          "availableRuns": 0,
+          "total": null
+        },
+        "outputTokens": {
+          "availableRuns": 0,
+          "total": null
+        },
+        "cacheReadTokens": {
+          "availableRuns": 0,
+          "total": null
+        },
+        "cacheWriteTokens": {
+          "availableRuns": 0,
+          "total": null
+        },
+        "totalTokens": {
+          "availableRuns": 1,
+          "total": 0
+        },
+        "toolCalls": {
+          "availableRuns": 1,
+          "total": 2
+        },
+        "totalMs": {
+          "availableRuns": 1,
+          "total": 1000
+        },
+        "estimatedCostUsd": {
+          "availableRuns": 1,
+          "total": 0.01
+        }
+      }
+    ]
+  },
+  "formatted3": "Documentation Eval Comparisons\n  tool access\n         Pairs  0/1 eligible\n     Pass rate  withheld because pairs are blocked\n        Tokens  unavailable\n         Tools  unavailable\n       Latency  unavailable\n     Est. cost  unavailable\n  Operational totals\n    without_docs: 2 runs, unavailable (0/2 measured), 4 tools, 2.00s, $0.0200 cost\n    with_docs: 1 runs, 0 tokens, 2 tools, 1.00s, $0.0100 cost\n  Blocked pairs\n    tool access/create/fixture/model/run-1: without_docs: expected 1 observation, found 2",
+  "report4": {
+    "schemaVersion": 3,
+    "protocolDigest": "digest",
+    "control": "without_docs",
+    "treatment": "with_docs",
+    "comparisons": [
+      {
+        "evalSet": "tool access",
+        "totalPairs": 2,
+        "eligiblePairs": 1,
+        "blockedPairs": 1,
+        "controlPassRate": null,
+        "treatmentPassRate": null,
+        "lift": null,
+        "flags": [],
+        "totalTokens": {
+          "eligiblePairs": 1,
+          "controlMean": 100,
+          "treatmentMean": 100,
+          "meanDelta": 0
+        },
+        "toolCalls": {
+          "eligiblePairs": 1,
+          "controlMean": 2,
+          "treatmentMean": 2,
+          "meanDelta": 0
+        },
+        "totalMs": {
+          "eligiblePairs": 1,
+          "controlMean": 1000,
+          "treatmentMean": 1000,
+          "meanDelta": 0
+        },
+        "estimatedCostUsd": {
+          "eligiblePairs": 1,
+          "controlMean": 0.01,
+          "treatmentMean": 0.01,
+          "meanDelta": 0
+        }
+      }
+    ],
+    "blockedPairs": [
+      {
+        "evalSet": "tool access",
+        "caseId": "create",
+        "model": "fixture/model",
+        "runNumber": 2,
+        "reasons": [
+          "without_docs: expected 1 observation, found 0",
+          "with_docs: expected 1 observation, found 0"
+        ]
+      }
+    ],
+    "operationalTotals": [
+      {
+        "variant": "without_docs",
+        "runs": 1,
+        "inputTokens": {
+          "availableRuns": 0,
+          "total": null
+        },
+        "outputTokens": {
+          "availableRuns": 0,
+          "total": null
+        },
+        "cacheReadTokens": {
+          "availableRuns": 0,
+          "total": null
+        },
+        "cacheWriteTokens": {
+          "availableRuns": 0,
+          "total": null
+        },
+        "totalTokens": {
+          "availableRuns": 1,
+          "total": 100
+        },
+        "toolCalls": {
+          "availableRuns": 1,
+          "total": 2
+        },
+        "totalMs": {
+          "availableRuns": 1,
+          "total": 1000
+        },
+        "estimatedCostUsd": {
+          "availableRuns": 1,
+          "total": 0.01
+        }
+      },
+      {
+        "variant": "with_docs",
+        "runs": 1,
+        "inputTokens": {
+          "availableRuns": 0,
+          "total": null
+        },
+        "outputTokens": {
+          "availableRuns": 0,
+          "total": null
+        },
+        "cacheReadTokens": {
+          "availableRuns": 0,
+          "total": null
+        },
+        "cacheWriteTokens": {
+          "availableRuns": 0,
+          "total": null
+        },
+        "totalTokens": {
+          "availableRuns": 1,
+          "total": 100
+        },
+        "toolCalls": {
+          "availableRuns": 1,
+          "total": 2
+        },
+        "totalMs": {
+          "availableRuns": 1,
+          "total": 1000
+        },
+        "estimatedCostUsd": {
+          "availableRuns": 1,
+          "total": 0.01
+        }
+      }
+    ]
+  },
+  "formatted4": "Documentation Eval Comparisons\n  tool access\n         Pairs  1/2 eligible\n     Pass rate  withheld because pairs are blocked\n        Tokens  +0.0 (with 100.0, without 100.0, 1 pairs)\n         Tools  +0.0 (with 2.0, without 2.0, 1 pairs)\n       Latency  +0.0ms (with 1000.0ms, without 1000.0ms, 1 pairs)\n     Est. cost  +$0.0000 (with $0.0100, without $0.0100, 1 pairs)\n  Operational totals\n    without_docs: 1 runs, 100 tokens, 2 tools, 1.00s, $0.0100 cost\n    with_docs: 1 runs, 100 tokens, 2 tools, 1.00s, $0.0100 cost\n  Blocked pairs\n    tool access/create/fixture/model/run-2: without_docs: expected 1 observation, found 0; with_docs: expected 1 observation, found 0",
+  "formattedEmpty": "\"\"",
+  "report5": {
+    "schemaVersion": 3,
+    "protocolDigest": "digest",
+    "control": "without_docs",
+    "treatment": "with_docs",
+    "comparisons": [
+      {
+        "evalSet": "tool access",
+        "totalPairs": 1,
+        "eligiblePairs": 1,
+        "blockedPairs": 0,
+        "controlPassRate": 0,
+        "treatmentPassRate": 1,
+        "lift": 1,
+        "flags": [
+          "treatment-saturated"
+        ],
+        "totalTokens": {
+          "eligiblePairs": 1,
+          "controlMean": 1,
+          "treatmentMean": 2,
+          "meanDelta": 1
+        },
+        "toolCalls": {
+          "eligiblePairs": 1,
+          "controlMean": 0,
+          "treatmentMean": 1,
+          "meanDelta": 1
+        },
+        "totalMs": {
+          "eligiblePairs": 1,
+          "controlMean": 333.3,
+          "treatmentMean": 666.7,
+          "meanDelta": 333.4
+        },
+        "estimatedCostUsd": {
+          "eligiblePairs": 1,
+          "controlMean": 0.00015,
+          "treatmentMean": 0.00025,
+          "meanDelta": 0.0001
+        }
+      }
+    ],
+    "blockedPairs": [],
+    "operationalTotals": [
+      {
+        "variant": "without_docs",
+        "runs": 1,
+        "inputTokens": {
+          "availableRuns": 0,
+          "total": null
+        },
+        "outputTokens": {
+          "availableRuns": 0,
+          "total": null
+        },
+        "cacheReadTokens": {
+          "availableRuns": 0,
+          "total": null
+        },
+        "cacheWriteTokens": {
+          "availableRuns": 0,
+          "total": null
+        },
+        "totalTokens": {
+          "availableRuns": 1,
+          "total": 1
+        },
+        "toolCalls": {
+          "availableRuns": 1,
+          "total": 0
+        },
+        "totalMs": {
+          "availableRuns": 1,
+          "total": 333.3
+        },
+        "estimatedCostUsd": {
+          "availableRuns": 1,
+          "total": 0.00015
+        }
+      },
+      {
+        "variant": "with_docs",
+        "runs": 1,
+        "inputTokens": {
+          "availableRuns": 0,
+          "total": null
+        },
+        "outputTokens": {
+          "availableRuns": 0,
+          "total": null
+        },
+        "cacheReadTokens": {
+          "availableRuns": 0,
+          "total": null
+        },
+        "cacheWriteTokens": {
+          "availableRuns": 0,
+          "total": null
+        },
+        "totalTokens": {
+          "availableRuns": 1,
+          "total": 2
+        },
+        "toolCalls": {
+          "availableRuns": 1,
+          "total": 1
+        },
+        "totalMs": {
+          "availableRuns": 1,
+          "total": 666.7
+        },
+        "estimatedCostUsd": {
+          "availableRuns": 1,
+          "total": 0.00025
+        }
+      }
+    ]
+  },
+  "formatted5": "Documentation Eval Comparisons\n  tool access\n         Pairs  1/1 eligible\n     Pass rate  +100.0 pp (with 100.0%, without 0.0%)\n         Flags  treatment-saturated\n        Tokens  +1.0 (with 2.0, without 1.0, 1 pairs)\n         Tools  +1.0 (with 1.0, without 0.0, 1 pairs)\n       Latency  +333.4ms (with 666.7ms, without 333.3ms, 1 pairs)\n     Est. cost  +$0.0001 (with $0.0003, without $0.0001, 1 pairs)\n  Operational totals\n    without_docs: 1 runs, 1 tokens, 0 tools, 0.33s, $0.0001 cost\n    with_docs: 1 runs, 2 tokens, 1 tools, 0.67s, $0.0003 cost",
+  "classify": [
+    "errored",
+    "skipped",
+    "skipped",
+    "skipped",
+    "pending",
+    null
+  ],
+  "erroredObs": {
+    "evalSet": "A",
+    "caseId": "b",
+    "variant": "with_docs",
+    "model": "m/n",
+    "runNumber": 7,
+    "outcome": "errored"
+  }
+}

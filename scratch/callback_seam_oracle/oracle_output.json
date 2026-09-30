@@ -1,0 +1,276 @@
+[
+  {
+    "name": "payload-absent",
+    "params": {
+      "built": true
+    },
+    "hookSaw": []
+  },
+  {
+    "name": "payload-undefined-return",
+    "params": {
+      "built": true
+    },
+    "hookSaw": [
+      {
+        "built": true
+      }
+    ]
+  },
+  {
+    "name": "payload-null-replaces",
+    "params": null,
+    "hookSaw": [
+      {
+        "built": true
+      }
+    ]
+  },
+  {
+    "name": "payload-value-replaces",
+    "params": {
+      "hooked": true
+    },
+    "hookSaw": [
+      {
+        "built": true
+      }
+    ]
+  },
+  {
+    "name": "payload-rejection",
+    "threw": true,
+    "message": "payload refused"
+  },
+  {
+    "name": "azure-success",
+    "events": [
+      "start"
+    ],
+    "seen": [
+      {
+        "built": true,
+        "hooked": true
+      }
+    ],
+    "metadata": [
+      {
+        "status": 200,
+        "headers": {
+          "x-a": "b"
+        }
+      }
+    ],
+    "requests": [
+      {
+        "url": "/responses",
+        "status": 200,
+        "body": null
+      }
+    ],
+    "outcome": "done"
+  },
+  {
+    "name": "azure-http-failure-skips-onresponse",
+    "events": [],
+    "seen": [
+      {
+        "built": true
+      }
+    ],
+    "metadata": [],
+    "requests": [],
+    "outcome": "error",
+    "errorMessage": "boom"
+  },
+  {
+    "name": "azure-response-hook-failure",
+    "events": [],
+    "seen": [
+      {
+        "built": true
+      }
+    ],
+    "metadata": [],
+    "requests": [
+      {
+        "url": "/responses",
+        "status": 200,
+        "body": null
+      }
+    ],
+    "outcome": "error",
+    "errorMessage": "response refused"
+  },
+  {
+    "name": "bedrock-success",
+    "events": [
+      "start"
+    ],
+    "seen": [
+      {
+        "built": true,
+        "hooked": true
+      }
+    ],
+    "metadata": [
+      {
+        "status": 200,
+        "headers": {
+          "x-amzn-requestid": "req-1"
+        }
+      }
+    ],
+    "requests": [
+      {
+        "url": "/model/.../converse-stream",
+        "status": 200,
+        "body": null
+      }
+    ],
+    "outcome": "done"
+  },
+  {
+    "name": "bedrock-no-onresponse-no-fallback-callback",
+    "events": [
+      "start"
+    ],
+    "seen": [
+      {
+        "built": true
+      }
+    ],
+    "metadata": [],
+    "requests": [
+      {
+        "url": "/model/.../converse-stream",
+        "status": 200,
+        "body": null
+      }
+    ],
+    "outcome": "done"
+  },
+  {
+    "name": "bedrock-response-hook-failure",
+    "events": [],
+    "seen": [
+      {
+        "built": true
+      }
+    ],
+    "metadata": [],
+    "requests": [
+      {
+        "url": "/model/.../converse-stream",
+        "status": 200,
+        "body": null
+      }
+    ],
+    "outcome": "error",
+    "errorMessage": "response refused"
+  },
+  {
+    "name": "mistral-onresponse-precedes-ok-check",
+    "events": [],
+    "seen": [],
+    "metadata": [
+      {
+        "status": 429,
+        "headers": {}
+      }
+    ],
+    "requests": [
+      {
+        "url": "/v1/chat/completions",
+        "status": 429,
+        "body": null
+      }
+    ],
+    "outcome": "error",
+    "errorMessage": "MistralHttpError"
+  },
+  {
+    "name": "codex-retry-fires-onresponse-per-attempt",
+    "events": [],
+    "seen": [
+      {
+        "built": true,
+        "hooked": true
+      }
+    ],
+    "metadata": [
+      {
+        "status": 429,
+        "headers": {}
+      },
+      {
+        "status": 429,
+        "headers": {}
+      }
+    ],
+    "requests": [
+      {
+        "url": "/responses",
+        "status": 429,
+        "body": null
+      },
+      {
+        "url": "/responses",
+        "status": 429,
+        "body": null
+      }
+    ],
+    "outcome": "error",
+    "errorMessage": "request failed"
+  },
+  {
+    "name": "codex-response-hook-failure-retries-then-throws",
+    "events": [],
+    "seen": [
+      {
+        "built": true
+      }
+    ],
+    "metadata": [],
+    "requests": [
+      {
+        "url": "/responses",
+        "status": 200,
+        "body": null
+      },
+      {
+        "url": "/responses",
+        "status": 200,
+        "body": null
+      }
+    ],
+    "outcome": "error",
+    "errorMessage": "response refused"
+  },
+  {
+    "name": "codex-success",
+    "events": [
+      "start"
+    ],
+    "seen": [
+      {
+        "built": true,
+        "hooked": true
+      }
+    ],
+    "metadata": [
+      {
+        "status": 200,
+        "headers": {}
+      }
+    ],
+    "requests": [
+      {
+        "url": "/responses",
+        "status": 200,
+        "body": null
+      }
+    ],
+    "outcome": "done"
+  }
+]

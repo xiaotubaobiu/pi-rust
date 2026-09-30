@@ -1,0 +1,171 @@
+{
+  "parseOk": [
+    {
+      "file": "evals/models.docs.eval.ts",
+      "fullName": "Add model > adds the model",
+      "evalSet": "Add model",
+      "caseId": "adds the model"
+    }
+  ],
+  "err1": "Documentation eval must use \"<eval set> > <case>\": adds the model",
+  "err2": "Duplicate eval case identity: Add model > adds the model",
+  "err3": "Discovered eval case is invalid.",
+  "err4": "Discovered eval cases must be an array.",
+  "err5": "Documentation eval must use \"<eval set> > <case>\": A > B > C",
+  "variants": [
+    "without_docs",
+    "with_docs"
+  ],
+  "plan2": [
+    {
+      "file": "evals/models.docs.eval.ts",
+      "fullName": "Add model > adds the model",
+      "evalSet": "Add model",
+      "caseId": "adds the model",
+      "variant": "without_docs",
+      "model": "fixture/model",
+      "runNumber": 1
+    },
+    {
+      "file": "evals/models.docs.eval.ts",
+      "fullName": "Add model > adds the model",
+      "evalSet": "Add model",
+      "caseId": "adds the model",
+      "variant": "with_docs",
+      "model": "fixture/model",
+      "runNumber": 1
+    },
+    {
+      "file": "evals/models.docs.eval.ts",
+      "fullName": "Add model > adds the model",
+      "evalSet": "Add model",
+      "caseId": "adds the model",
+      "variant": "with_docs",
+      "model": "fixture/model",
+      "runNumber": 2
+    },
+    {
+      "file": "evals/models.docs.eval.ts",
+      "fullName": "Add model > adds the model",
+      "evalSet": "Add model",
+      "caseId": "adds the model",
+      "variant": "without_docs",
+      "model": "fixture/model",
+      "runNumber": 2
+    }
+  ],
+  "plan3": [
+    {
+      "file": "a.ts",
+      "fullName": "A > one",
+      "evalSet": "A",
+      "caseId": "one",
+      "variant": "without_docs",
+      "model": "p/m",
+      "runNumber": 1
+    },
+    {
+      "file": "a.ts",
+      "fullName": "A > one",
+      "evalSet": "A",
+      "caseId": "one",
+      "variant": "with_docs",
+      "model": "p/m",
+      "runNumber": 1
+    },
+    {
+      "file": "a.ts",
+      "fullName": "A > one",
+      "evalSet": "A",
+      "caseId": "one",
+      "variant": "with_docs",
+      "model": "p/m",
+      "runNumber": 2
+    },
+    {
+      "file": "a.ts",
+      "fullName": "A > one",
+      "evalSet": "A",
+      "caseId": "one",
+      "variant": "without_docs",
+      "model": "p/m",
+      "runNumber": 2
+    },
+    {
+      "file": "a.ts",
+      "fullName": "A > one",
+      "evalSet": "A",
+      "caseId": "one",
+      "variant": "without_docs",
+      "model": "p/m",
+      "runNumber": 3
+    },
+    {
+      "file": "a.ts",
+      "fullName": "A > one",
+      "evalSet": "A",
+      "caseId": "one",
+      "variant": "with_docs",
+      "model": "p/m",
+      "runNumber": 3
+    },
+    {
+      "file": "b.ts",
+      "fullName": "B > two",
+      "evalSet": "B",
+      "caseId": "two",
+      "variant": "without_docs",
+      "model": "p/m",
+      "runNumber": 1
+    },
+    {
+      "file": "b.ts",
+      "fullName": "B > two",
+      "evalSet": "B",
+      "caseId": "two",
+      "variant": "with_docs",
+      "model": "p/m",
+      "runNumber": 1
+    },
+    {
+      "file": "b.ts",
+      "fullName": "B > two",
+      "evalSet": "B",
+      "caseId": "two",
+      "variant": "with_docs",
+      "model": "p/m",
+      "runNumber": 2
+    },
+    {
+      "file": "b.ts",
+      "fullName": "B > two",
+      "evalSet": "B",
+      "caseId": "two",
+      "variant": "without_docs",
+      "model": "p/m",
+      "runNumber": 2
+    },
+    {
+      "file": "b.ts",
+      "fullName": "B > two",
+      "evalSet": "B",
+      "caseId": "two",
+      "variant": "without_docs",
+      "model": "p/m",
+      "runNumber": 3
+    },
+    {
+      "file": "b.ts",
+      "fullName": "B > two",
+      "evalSet": "B",
+      "caseId": "two",
+      "variant": "with_docs",
+      "model": "p/m",
+      "runNumber": 3
+    }
+  ],
+  "err6": "Model identity must contain a provider and model.",
+  "err7": "Runs per variant must be a positive integer.",
+  "err8": "Model identity must contain a provider and model.",
+  "err9": "Model identity must contain a provider and model."
+}

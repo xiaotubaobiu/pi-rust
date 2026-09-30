@@ -1,0 +1,1233 @@
+{
+ "lifecycle": {
+  "writes": [
+   "\u001b[?25l",
+   "\u001b[?2026hhello\u001b[0m\u001b]8;;\u0007\u001b[?2026l",
+   "\u001b[?25l"
+  ],
+  "fullRedraws": 1,
+  "renderCount": 1
+ },
+ "lifecycle_stop": {
+  "writes": [
+   "\u001b[?25h"
+  ],
+  "stopCalls": 1
+ },
+ "scheme_notifications_before_start": {
+  "writes": [
+   "\u001b[?2031h"
+  ]
+ },
+ "scheme_notifications_start": {
+  "writes": [
+   "\u001b[?25l",
+   "\u001b[?2031h",
+   "\u001b[?2026h\u001b[?2026l",
+   "\u001b[?25l"
+  ]
+ },
+ "scheme_notifications_disable": {
+  "writes": [
+   "\u001b[?2031l"
+  ]
+ },
+ "scheme_notifications_stop": {
+  "writes": [
+   "\u001b[?25h"
+  ]
+ },
+ "keyboard_preempt": {
+  "renderCountDelta": 1,
+  "lines": [
+   "typed"
+  ],
+  "inputs": [
+   "first",
+   "second",
+   "typed"
+  ]
+ },
+ "throttled_frame": {
+  "before_timer": {
+   "writes": [
+    "\u001b[?25l",
+    "\u001b[?2026hone\u001b[0m\u001b]8;;\u0007\u001b[?2026l",
+    "\u001b[?25l"
+   ],
+   "renderCount": 1
+  },
+  "after_timer": {
+   "writes": [
+    "\u001b[?2026h\r\u001b[2Ktwo\u001b[0m\u001b]8;;\u0007\u001b[?2026l",
+    "\u001b[?25l"
+   ],
+   "renderCount": 2
+  }
+ },
+ "input_pipeline": {
+  "inputs": [
+   "rewritten",
+   "q"
+  ],
+  "inputsAfterRemove": [
+   "rewritten",
+   "q",
+   "drop-second"
+  ],
+  "renderCount": 1
+ },
+ "debug_key": {
+  "candidates": [
+   "\u0004",
+   "\u001b[100;6u",
+   "\u001b[100;4u",
+   "\u001b[100;5u"
+  ],
+  "hits": [
+   0,
+   1,
+   0,
+   0
+  ]
+ },
+ "key_release": {
+  "inputs": [
+   "x"
+  ]
+ },
+ "cell_size_start": {
+  "writes": [
+   "\u001b[?25l",
+   "\u001b[16t"
+  ],
+  "cellDimensions": {
+   "widthPx": 9,
+   "heightPx": 18
+  }
+ },
+ "cell_size_response": {
+  "inputs": [],
+  "cellDimensions": {
+   "widthPx": 10,
+   "heightPx": 20
+  }
+ },
+ "cell_size_after": {
+  "inputs": [
+   "q"
+  ]
+ },
+ "cell_size_disabled_start": {
+  "writes": [
+   "\u001b[?25l"
+  ]
+ },
+ "cell_size_disabled_escape": {
+  "inputs": [
+   "\u001b"
+  ]
+ },
+ "osc11_query_writes": [
+  "\u001b]11;?\u0007",
+  "\u001b]11;?\u0007"
+ ],
+ "osc11_response": {
+  "results": [
+   [
+    "first",
+    {
+     "r": 34,
+     "g": 255,
+     "b": 0
+    }
+   ]
+  ],
+  "writes": []
+ },
+ "osc11_timeout": {
+  "results": [
+   null
+  ]
+ },
+ "scheme_query_writes": [
+  "\u001b[?996n"
+ ],
+ "scheme_report": {
+  "schemes": [
+   [
+    "listener",
+    "dark"
+   ],
+   [
+    "query",
+    "dark"
+   ]
+  ],
+  "writes": []
+ },
+ "scheme_timeout": {
+  "schemes": [
+   null
+  ]
+ },
+ "shrink_clear": {
+  "initial_writes": [
+   "\u001b[?25l",
+   "\u001b[?2026h\u001b[?2026l",
+   "\u001b[?25l",
+   "\u001b[?2026hLine 0\u001b[0m\u001b]8;;\u0007\r\nLine 1\u001b[0m\u001b]8;;\u0007\r\nLine 2\u001b[0m\u001b]8;;\u0007\r\nLine 3\u001b[0m\u001b]8;;\u0007\r\nLine 4\u001b[0m\u001b]8;;\u0007\r\nLine 5\u001b[0m\u001b]8;;\u0007\u001b[?2026l",
+   "\u001b[?25l"
+  ],
+  "shrink_writes": [
+   "\u001b[?2026h\u001b[2J\u001b[H\u001b[3JLine 0\u001b[0m\u001b]8;;\u0007\r\nLine 1\u001b[0m\u001b]8;;\u0007\u001b[?2026l",
+   "\u001b[?25l"
+  ],
+  "full_redraw_delta": 2,
+  "viewport": [
+   "Line 0",
+   "Line 1"
+  ]
+ },
+ "shrink_more": {
+  "single_viewport": [
+   "Only line"
+  ],
+  "empty_viewport": []
+ },
+ "spinner": {
+  "frames": [
+   [
+    "\u001b[?2026hHeader\u001b[0m\u001b]8;;\u0007\r\nWorking |\u001b[0m\u001b]8;;\u0007\r\nFooter\u001b[0m\u001b]8;;\u0007\u001b[?2026l",
+    "\u001b[?25l"
+   ],
+   [
+    "\u001b[?2026h\u001b[1A\r\u001b[2KWorking /\u001b[0m\u001b]8;;\u0007\u001b[?2026l",
+    "\u001b[?25l"
+   ],
+   [
+    "\u001b[?2026h\r\u001b[2KWorking -\u001b[0m\u001b]8;;\u0007\u001b[?2026l",
+    "\u001b[?25l"
+   ],
+   [
+    "\u001b[?2026h\r\u001b[2KWorking \\\u001b[0m\u001b]8;;\u0007\u001b[?2026l",
+    "\u001b[?25l"
+   ]
+  ],
+  "viewport": [
+   "Header",
+   "Working \\",
+   "Footer"
+  ]
+ },
+ "deleted_viewport_up": {
+  "grown_writes": [
+   "\u001b[?25l",
+   "\u001b[?2026h\u001b[?2026l",
+   "\u001b[?25l",
+   "\u001b[?2026hLine 0\u001b[0m\u001b]8;;\u0007\r\nLine 1\u001b[0m\u001b]8;;\u0007\r\nLine 2\u001b[0m\u001b]8;;\u0007\r\nLine 3\u001b[0m\u001b]8;;\u0007\r\nLine 4\u001b[0m\u001b]8;;\u0007\r\nLine 5\u001b[0m\u001b]8;;\u0007\r\nLine 6\u001b[0m\u001b]8;;\u0007\r\nLine 7\u001b[0m\u001b]8;;\u0007\r\nLine 8\u001b[0m\u001b]8;;\u0007\r\nLine 9\u001b[0m\u001b]8;;\u0007\r\nLine 10\u001b[0m\u001b]8;;\u0007\r\nLine 11\u001b[0m\u001b]8;;\u0007\u001b[?2026l",
+   "\u001b[?25l"
+  ],
+  "shrink_writes": [
+   "\u001b[?2026h\u001b[2J\u001b[H\u001b[3JLine 0\u001b[0m\u001b]8;;\u0007\r\nLine 1\u001b[0m\u001b]8;;\u0007\r\nLine 2\u001b[0m\u001b]8;;\u0007\r\nLine 3\u001b[0m\u001b]8;;\u0007\r\nLine 4\u001b[0m\u001b]8;;\u0007\r\nLine 5\u001b[0m\u001b]8;;\u0007\r\nLine 6\u001b[0m\u001b]8;;\u0007\u001b[?2026l",
+   "\u001b[?25l"
+  ],
+  "full_redraw_delta": 2,
+  "viewport": [
+   "Line 0",
+   "Line 1",
+   "Line 2",
+   "Line 3",
+   "Line 4",
+   "Line 5",
+   "Line 6"
+  ]
+ },
+ "append_after_shrink": {
+  "writes": [
+   "\u001b[?2026h\u001b[4A\r\u001b[1B\r\u001b[2K\u001b[1B\r\u001b[2K\u001b[1B\r\u001b[2K\u001b[1B\r\u001b[2K\u001b[4A\u001b[?2026l",
+   "\u001b[?25l"
+  ],
+  "full_redraw_delta": 0,
+  "viewport": [
+   "Line 0",
+   "Line 1",
+   "Line 2"
+  ]
+ },
+ "transient_inflation": {
+  "writes": [
+   "\u001b[?25l",
+   "\u001b[?2026hChat 0\u001b[0m\u001b]8;;\u0007\r\nChat 1\u001b[0m\u001b]8;;\u0007\r\nChat 2\u001b[0m\u001b]8;;\u0007\r\nChat 3\u001b[0m\u001b]8;;\u0007\r\nChat 4\u001b[0m\u001b]8;;\u0007\r\nChat 5\u001b[0m\u001b]8;;\u0007\r\nChat 6\u001b[0m\u001b]8;;\u0007\r\nChat 7\u001b[0m\u001b]8;;\u0007\r\nChat 8\u001b[0m\u001b]8;;\u0007\r\nChat 9\u001b[0m\u001b]8;;\u0007\r\nChat 10\u001b[0m\u001b]8;;\u0007\r\nChat 11\u001b[0m\u001b]8;;\u0007\r\nChat 12\u001b[0m\u001b]8;;\u0007\r\nChat 13\u001b[0m\u001b]8;;\u0007\r\nChat 14\u001b[0m\u001b]8;;\u0007\r\nEditor 0\u001b[0m\u001b]8;;\u0007\r\nEditor 1\u001b[0m\u001b]8;;\u0007\r\nEditor 2\u001b[0m\u001b]8;;\u0007\u001b[?2026l",
+   "\u001b[?25l",
+   "\u001b[?2026h\u001b[2A\r\u001b[2KSelector 0\u001b[0m\u001b]8;;\u0007\r\n\u001b[2KSelector 1\u001b[0m\u001b]8;;\u0007\r\n\u001b[2KSelector 2\u001b[0m\u001b]8;;\u0007\r\n\u001b[2KSelector 3\u001b[0m\u001b]8;;\u0007\r\n\u001b[2KSelector 4\u001b[0m\u001b]8;;\u0007\r\n\u001b[2KSelector 5\u001b[0m\u001b]8;;\u0007\r\n\u001b[2KSelector 6\u001b[0m\u001b]8;;\u0007\r\n\u001b[2KSelector 7\u001b[0m\u001b]8;;\u0007\u001b[?2026l",
+   "\u001b[?25l",
+   "\u001b[?2026h\u001b[7A\r\u001b[2KEditor 0\u001b[0m\u001b]8;;\u0007\r\n\u001b[2KEditor 1\u001b[0m\u001b]8;;\u0007\r\n\u001b[2KEditor 2\u001b[0m\u001b]8;;\u0007\r\n\u001b[2K\r\n\u001b[2K\r\n\u001b[2K\r\n\u001b[2K\r\n\u001b[2K\u001b[5A\u001b[?2026l",
+   "\u001b[?25l",
+   "\u001b[?2026h\u001b[2J\u001b[H\u001b[3JChat 0\u001b[0m\u001b]8;;\u0007\r\nChat 1\u001b[0m\u001b]8;;\u0007\r\nChat 2\u001b[0m\u001b]8;;\u0007\r\nChat 3\u001b[0m\u001b]8;;\u0007\r\nChat 4\u001b[0m\u001b]8;;\u0007\r\nChat 5\u001b[0m\u001b]8;;\u0007\r\nChat 6\u001b[0m\u001b]8;;\u0007\r\nChat 7\u001b[0m\u001b]8;;\u0007\r\nChat 8\u001b[0m\u001b]8;;\u0007\r\nChat 9\u001b[0m\u001b]8;;\u0007\r\nChat 10\u001b[0m\u001b]8;;\u0007\r\nChat 11\u001b[0m\u001b]8;;\u0007\r\nEditor 0\u001b[0m\u001b]8;;\u0007\r\nEditor 1\u001b[0m\u001b]8;;\u0007\r\nEditor 2\u001b[0m\u001b]8;;\u0007\u001b[?2026l",
+   "\u001b[?25l"
+  ],
+  "full_redraw_delta": 1,
+  "viewport": [
+   "Chat 0",
+   "Chat 1",
+   "Chat 2",
+   "Chat 3",
+   "Chat 4",
+   "Chat 5",
+   "Chat 6",
+   "Chat 7",
+   "Chat 8",
+   "Chat 9",
+   "Chat 10",
+   "Chat 11",
+   "Editor 0",
+   "Editor 1",
+   "Editor 2"
+  ]
+ },
+ "resize": {
+  "width_change": {
+   "writes": [
+    "\u001b[?2026h\u001b[2J\u001b[H\u001b[3JLine 0\u001b[0m\u001b]8;;\u0007\r\nLine 1\u001b[0m\u001b]8;;\u0007\r\nLine 2\u001b[0m\u001b]8;;\u0007\u001b[?2026l",
+    "\u001b[?25l"
+   ],
+   "delta": 1
+  },
+  "height_change": {
+   "writes": [
+    "\u001b[?2026h\u001b[2J\u001b[H\u001b[3JLine 0\u001b[0m\u001b]8;;\u0007\r\nLine 1\u001b[0m\u001b]8;;\u0007\r\nLine 2\u001b[0m\u001b]8;;\u0007\u001b[?2026l",
+    "\u001b[?25l"
+   ],
+   "delta": 1
+  },
+  "viewport": [
+   "Line 0",
+   "Line 1",
+   "Line 2"
+  ]
+ },
+ "overlay_options": [
+  {
+   "name": "width_percent",
+   "requestedWidth": 50,
+   "viewport": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "                         test",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "name": "min_width",
+   "requestedWidth": 30,
+   "viewport": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "                                   test",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "name": "top_left",
+   "requestedWidth": 10,
+   "viewport": [
+    "TOP-LEFT",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "name": "bottom_right",
+   "requestedWidth": 10,
+   "viewport": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "                                                                      BTM-RIGHT"
+   ]
+  },
+  {
+   "name": "top_center",
+   "requestedWidth": 10,
+   "viewport": [
+    "                                   CENTERED",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "name": "negative_margin",
+   "requestedWidth": 12,
+   "viewport": [
+    "NEG-MARGIN",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "name": "margin_number",
+   "requestedWidth": 10,
+   "viewport": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    "     MARGIN",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "name": "margin_object",
+   "requestedWidth": 10,
+   "viewport": [
+    "",
+    "",
+    "   MARGIN",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "name": "offset",
+   "requestedWidth": 10,
+   "viewport": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    "          OFFSET",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "name": "row_col_percent",
+   "requestedWidth": 10,
+   "viewport": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "                                   PCT",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "name": "row_percent_zero",
+   "requestedWidth": 10,
+   "viewport": [
+    "                                   TOP",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "name": "row_percent_hundred",
+   "requestedWidth": 10,
+   "viewport": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "                                   BOTTOM"
+   ]
+  },
+  {
+   "name": "max_height",
+   "requestedWidth": 80,
+   "viewport": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "Line 1",
+    "Line 2",
+    "Line 3",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "name": "max_height_percent",
+   "requestedWidth": 80,
+   "viewport": [
+    "",
+    "",
+    "L1",
+    "L2",
+    "L3",
+    "L4",
+    "L5",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "name": "absolute",
+   "requestedWidth": 10,
+   "viewport": [
+    "",
+    "",
+    "",
+    "     ABSOLUTE",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "name": "wide_overflow",
+   "requestedWidth": 20,
+   "viewport": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "                              XXXXXXXXXXXXXXXXXXXX",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "name": "complex_ansi",
+   "requestedWidth": 60,
+   "viewport": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "           Some styled contentlink more content  more content  more co",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "name": "cjk_boundary",
+   "requestedWidth": 15,
+   "viewport": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "                                中文日本語한글",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  },
+  {
+   "name": "edge_col",
+   "requestedWidth": 20,
+   "viewport": [
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "                                                            XXXXXXXXXXXXXXXXXXXX",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    ""
+   ]
+  }
+ ],
+ "overlay_stack": {
+  "stacked": "SECOND    LAY",
+  "after_hide": "FIRST-OVERLAY"
+ },
+ "style_leak": {
+  "no_overlay_lines": [
+   "\u001b[3mXXXXXXXXXXXXXXXXXXXX\u001b[23m\u001b[0m\u001b]8;;\u0007",
+   "INPUT\u001b[0m\u001b]8;;\u0007"
+  ],
+  "overlay_lines": [
+   "\u001b[3mXXXXX\u001b[0m\u001b]8;;\u0007OVR\u001b[0m\u001b]8;;\u0007\u001b[3mXXXXXXXXXXXX\u001b[0m\u001b]8;;\u0007",
+   "INPUT\u001b[0m\u001b]8;;\u0007",
+   "\u001b[0m\u001b]8;;\u0007",
+   "\u001b[0m\u001b]8;;\u0007",
+   "\u001b[0m\u001b]8;;\u0007",
+   "\u001b[0m\u001b]8;;\u0007"
+  ]
+ },
+ "composite_table": [
+  "\u001b[0m\u001b]8;;\u0007ovr\u001b[0m\u001b]8;;\u0007e      ",
+  "\u001b[3mba\u001b[0m\u001b]8;;\u0007ovr\u001b[0m\u001b]8;;\u0007     ",
+  "left-\u001b[0m\u001b]8;;\u0007OVR\u001b[0m\u001b]8;;\u0007rside ",
+  "XXX\u001b[0m\u001b]8;;\u0007YYYYYYY",
+  "\u001b[3mXXX\u001b[0m\u001b]8;;\u0007\u001b[1mYY\u001b[22m  \u001b[0m\u001b]8;;\u0007\u001b[3mXXX",
+  "日\u001b[0m\u001b]8;;\u0007英語\u001b[0m\u001b]8;;\u0007のテキスト",
+  "hyper\u001b[0m\u001b]8;;\u0007ov  \u001b[0m\u001b]8;;\u0007tail           ",
+  "\u001b[0m\u001b]8;;\u0007only\u001b[0m\u001b]8;;\u0007    ",
+  "ba\u001b[0m\u001b]8;;\u0007   \u001b[0m\u001b]8;;\u0007     "
+ ],
+ "cursor_marker": {
+  "writes": [
+   "\u001b[?25l",
+   "\u001b[?2026halpha\u001b[0m\u001b]8;;\u0007\r\nbeta\u001b[0m\u001b]8;;\u0007\u001b[?2026l",
+   "\u001b[1A\u001b[6G",
+   "\u001b[?25h"
+  ],
+  "viewport": [
+   "alpha",
+   "beta"
+  ]
+ },
+ "cursor_marker_moved": {
+  "writes": [
+   "\u001b[1B\u001b[5G",
+   "\u001b[?25h"
+  ],
+  "viewport": [
+   "alpha",
+   "beta"
+  ]
+ },
+ "cursor_marker_disabled": {
+  "writes": [
+   "\u001b[?25l",
+   "\u001b[5G",
+   "\u001b[?25l"
+  ]
+ },
+ "focus_suite": {
+  "nc_preserves_focus": {
+   "editor": true,
+   "overlay": false
+  },
+  "focus_transfers": {
+   "editor": false,
+   "overlay": true,
+   "handleFocused": true
+  },
+  "unfocus_restores": {
+   "editor": true,
+   "overlay": false,
+   "handleFocused": false
+  },
+  "set_hidden_false_no_autofocus": {
+   "editor": true,
+   "overlay": false
+  },
+  "hide_not_focused": {
+   "editor": true
+  },
+  "hide_focused_restores": {
+   "editor": true,
+   "overlay": false
+  },
+  "capturing_removed_nc_below": {
+   "focusedOnShow": true,
+   "editor": true,
+   "nonCapturing": false
+  },
+  "sub_overlay_cleanup": {
+   "controllerFocused": true,
+   "editorFocusedAfterShow": false,
+   "editor": true,
+   "controller": false,
+   "timer": false,
+   "editorInputs": [
+    "x"
+   ],
+   "controllerInputs": [],
+   "timerInputs": []
+  },
+  "removed_child_no_fallback": {
+   "parentFocused": true,
+   "editorInputs": [
+    "x"
+   ],
+   "childInputs": [],
+   "parentInputs": [],
+   "editor": true
+  },
+  "invisible_redirect": {
+   "primaryFocused": true,
+   "primaryInputs": [],
+   "nonCapturingInputs": [],
+   "fallbackInputs": [
+    "x"
+   ],
+   "fallbackFocused": true
+  },
+  "base_replacement_close_input": {
+   "overlayFocused": true,
+   "replacementFocused": true,
+   "replacementInputs": [
+    "\r"
+   ],
+   "overlayInputs": [
+    "b",
+    "x"
+   ],
+   "overlayFocusedEnd": true
+  },
+  "replacement_is_pre_focus": {
+   "replacementFocused": true,
+   "replacementInputs": [
+    "1",
+    "\r"
+   ],
+   "overlayInputs": [
+    "b"
+   ],
+   "overlayFocusedEnd": true
+  },
+  "blocked_internal_moves": {
+   "overlayInputs": [
+    "b"
+   ],
+   "firstInputs": [
+    "n"
+   ],
+   "secondInputs": [
+    "2",
+    "\r"
+   ],
+   "overlayFocused": true
+  },
+  "removed_replacement_restores": {
+   "overlayInputs": [
+    "b",
+    "x"
+   ],
+   "replacementInputs": [
+    "\r"
+   ],
+   "editorInputs": [],
+   "overlayFocused": true
+  },
+  "unfocus_target_releases_blocked": {
+   "replacementFocused": true,
+   "overlayInputs": [
+    "b"
+   ],
+   "replacementInputs": [
+    "\r"
+   ],
+   "fallbackInputs": [],
+   "targetInputs": [
+    "x"
+   ]
+  },
+  "restore_after_steal": {
+   "overlayFocused": true,
+   "overlayInputs": [
+    "x"
+   ],
+   "editorInputs": [],
+   "overlayFocusedEnd": true
+  },
+  "raw_sub_overlay_restore": {
+   "subInputs": [
+    "x"
+   ],
+   "controllerInputs": [],
+   "editorInputs": []
+  },
+  "passive_no_regain": {
+   "editorInputs": [
+    "x"
+   ],
+   "passiveInputs": [],
+   "editor": true
+  },
+  "explicit_nc_regains": {
+   "overlayInputs": [
+    "x"
+   ],
+   "editorInputs": []
+  },
+  "unfocus_prevents_regain": {
+   "editorInputs": [
+    "x"
+   ],
+   "overlayInputs": [],
+   "editor": true
+  },
+  "set_focus_null_clears": {
+   "overlayInputs": [],
+   "overlay": false
+  },
+  "blocked_set_focus_null": {
+   "replacementInputs": [
+    "\r"
+   ],
+   "overlayInputs": [
+    "b",
+    "x"
+   ],
+   "overlay": true
+  },
+  "invisible_keeps_eligibility": {
+   "editorInputs": [
+    "x"
+   ],
+   "overlayInputs": [],
+   "editorInputsEnd": [
+    "x"
+   ],
+   "overlayInputsEnd": [
+    "y"
+   ]
+  },
+  "invisible_null_pre_focus": {
+   "afterX": [],
+   "overlayInputs": [
+    "y"
+   ]
+  },
+  "cyclic_pre_focus": {
+   "editorInputs": [
+    "x"
+   ],
+   "overlayInputs": []
+  },
+  "focus_order_top": {
+   "lowerInputs": [
+    "x"
+   ],
+   "upperInputs": [],
+   "editorInputs": []
+  },
+  "hide_overlay_nc_top": {
+   "capturingFocused": true,
+   "capturingFocusedEnd": true
+  },
+  "mixed_removals": {
+   "c2Focused": true,
+   "c1Focused": true,
+   "editorFocused": true
+  },
+  "unfocus_topmost_falls_back": {
+   "capturingFocused": true,
+   "editorFocused": true,
+   "capturingFocusedEnd": false
+  },
+  "focus_hidden_noop": {
+   "editor": true,
+   "handleFocused": false
+  },
+  "focus_after_hide_noop": {
+   "editor": true,
+   "handleFocused": false
+  },
+  "unfocus_not_focused_noop": {
+   "editor": true,
+   "overlay": false
+  },
+  "unfocus_null_pre_focus": {
+   "overlayFocused": true,
+   "afterUnfocus": false,
+   "overlayInputs": [],
+   "handleFocused": false
+  },
+  "toggle_cycle": {
+   "editor": true,
+   "a": false,
+   "b": false
+  },
+  "explicit_targets_cycle": {
+   "aInputs": [
+    "a",
+    "A"
+   ],
+   "bInputs": [
+    "b"
+   ],
+   "cInputs": [
+    "c"
+   ],
+   "editorInputs": [
+    "e",
+    "E"
+   ],
+   "editor": true
+  },
+  "null_unfocus_target": {
+   "overlayInputs": [],
+   "handleFocused": false
+  },
+  "hidden_falls_to_frontmost": {
+   "aInputs": [
+    "x"
+   ],
+   "cInputs": [],
+   "a": true
+  },
+  "visual_order_bump": {
+   "first": "B",
+   "second": "A"
+  },
+  "visual_order_creation": {
+   "first": "B"
+  },
+  "visual_order_lower_focus": {
+   "before": "B",
+   "after": "A"
+  },
+  "visual_order_middle": {
+   "s0": "C",
+   "s1": "B",
+   "s2": "C",
+   "s3": "A"
+  },
+  "visual_order_unhide": {
+   "s0": "B",
+   "s1": "C",
+   "s2": "B"
+  },
+  "visual_order_unfocus_keeps_order": {
+   "s0": "B",
+   "s1": "A",
+   "s2": "A",
+   "s3": "B"
+  }
+ },
+ "mouse_overlay_hit": {
+  "seen": {
+   "x": 2,
+   "y": 0,
+   "screenX": 4,
+   "screenY": 1,
+   "width": 10,
+   "height": 1
+  },
+  "resultHit": true,
+  "handled": true
+ }
+}

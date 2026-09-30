@@ -1,0 +1,8 @@
+{
+  "name": "@earendil-works/pi-protocol",
+  "version": "0.0.0-local-oracle",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  }
+}

@@ -1,0 +1,3733 @@
+{
+	"lib/semver": {
+		"valid": [
+			[
+				"1.2.3",
+				"1.2.3"
+			],
+			[
+				"1.2.3-alpha.1",
+				"1.2.3-alpha.1"
+			],
+			[
+				"1.2.3+build.1",
+				"1.2.3"
+			],
+			[
+				"1.2.3-rc.2+meta",
+				"1.2.3-rc.2"
+			],
+			[
+				"0.0.1",
+				"0.0.1"
+			],
+			[
+				"10.20.30",
+				"10.20.30"
+			],
+			[
+				"1.2",
+				null
+			],
+			[
+				"v1.2.4",
+				"1.2.4"
+			],
+			[
+				"not-a-version",
+				null
+			],
+			[
+				"",
+				null
+			],
+			[
+				"1.2.3.4",
+				null
+			]
+		],
+		"validRange": [
+			[
+				"^1.0.0",
+				">=1.0.0 <2.0.0-0"
+			],
+			[
+				"~1.2.0",
+				">=1.2.0 <1.3.0-0"
+			],
+			[
+				">=1.0.0",
+				">=1.0.0"
+			],
+			[
+				">=1.2.3 <2.0.0",
+				">=1.2.3 <2.0.0"
+			],
+			[
+				"1.2.3",
+				"1.2.3"
+			],
+			[
+				"1.x",
+				">=1.0.0 <2.0.0-0"
+			],
+			[
+				"*",
+				"*"
+			],
+			[
+				">=0.85.0 <0.86.0",
+				">=0.85.0 <0.86.0"
+			],
+			[
+				"^0.85.1",
+				">=0.85.1 <0.86.0-0"
+			],
+			[
+				"not a range",
+				null
+			]
+		],
+		"gt": [
+			[
+				[
+					"1.2.3",
+					"1.2.2"
+				],
+				true
+			],
+			[
+				[
+					"1.2.3",
+					"1.2.3"
+				],
+				false
+			],
+			[
+				[
+					"1.2.3-alpha.1",
+					"1.2.3"
+				],
+				false
+			],
+			[
+				[
+					"2.0.0",
+					"1.9.9"
+				],
+				true
+			]
+		],
+		"maxSatisfying": [
+			[
+				[
+					"1.0.0|1.2.0",
+					"^1.0.0"
+				],
+				"1.2.0"
+			],
+			[
+				[
+					"1.0.0|1.2.0|2.0.0",
+					"^1.0.0"
+				],
+				"1.2.0"
+			],
+			[
+				[
+					"1.0.0|1.2.0|2.0.0",
+					"*"
+				],
+				"2.0.0"
+			],
+			[
+				[
+					"1.0.0|0.9.0",
+					"^1.0.0"
+				],
+				"1.0.0"
+			],
+			[
+				[
+					"1.0.0|1.2.0",
+					">=1.1.0 <2.0.0"
+				],
+				"1.2.0"
+			]
+		],
+		"satisfies": [
+			[
+				[
+					"1.2.3",
+					"^1.0.0"
+				],
+				true
+			],
+			[
+				[
+					"1.2.3",
+					"~1.2.0"
+				],
+				true
+			],
+			[
+				[
+					"1.2.3",
+					">=1.0.0"
+				],
+				true
+			],
+			[
+				[
+					"1.2.3",
+					">=1.2.3 <2.0.0"
+				],
+				true
+			],
+			[
+				[
+					"1.2.3",
+					"1.2.3"
+				],
+				true
+			],
+			[
+				[
+					"1.2.3",
+					"1.x"
+				],
+				true
+			],
+			[
+				[
+					"1.2.3",
+					"*"
+				],
+				true
+			],
+			[
+				[
+					"1.2.3",
+					">=0.85.0 <0.86.0"
+				],
+				false
+			],
+			[
+				[
+					"1.2.3",
+					"^0.85.1"
+				],
+				false
+			],
+			[
+				[
+					"1.2.3",
+					"not a range"
+				],
+				false
+			]
+		],
+		"rcompare": [
+			[
+				[
+					"1.0.0",
+					"2.0.0"
+				],
+				1
+			],
+			[
+				[
+					"1.0.0",
+					"1.0.0"
+				],
+				0
+			],
+			[
+				[
+					"1.2.3-alpha.1",
+					"1.2.3"
+				],
+				1
+			]
+		],
+		"sortDesc": [
+			[
+				[
+					"1.0.0|2.0.0|1.2.3-alpha.1|1.2.3|0.9.0"
+				],
+				"2.0.0|1.2.3|1.2.3-alpha.1|1.0.0|0.9.0"
+			]
+		]
+	},
+	"lib/ignore": [
+		{
+			"rules": [
+				"venv"
+			],
+			"paths": [
+				"venv",
+				"venv/",
+				"venv/SKILL.md",
+				"venv/sub/SKILL.md",
+				"good/SKILL.md",
+				"venv2/SKILL.md"
+			],
+			"results": [
+				true,
+				true,
+				true,
+				true,
+				false,
+				false
+			]
+		},
+		{
+			"rules": [
+				"sub/venv"
+			],
+			"paths": [
+				"sub/venv/SKILL.md",
+				"venv/SKILL.md",
+				"sub/venv",
+				"sub/venv/"
+			],
+			"results": [
+				true,
+				false,
+				true,
+				true
+			]
+		},
+		{
+			"rules": [
+				"*.log"
+			],
+			"paths": [
+				"a.log",
+				"sub/a.log",
+				"a.md"
+			],
+			"results": [
+				true,
+				true,
+				false
+			]
+		},
+		{
+			"rules": [
+				"!keep.md",
+				"*.md"
+			],
+			"paths": [
+				"keep.md",
+				"drop.md"
+			],
+			"results": [
+				true,
+				true
+			]
+		},
+		{
+			"rules": [
+				"**/deps"
+			],
+			"paths": [
+				"a/deps/SKILL.md",
+				"deps/SKILL.md"
+			],
+			"results": [
+				true,
+				true
+			]
+		},
+		{
+			"rules": [
+				"dir/"
+			],
+			"paths": [
+				"dir",
+				"dir/",
+				"dir/file.md",
+				"dirfile.md"
+			],
+			"results": [
+				false,
+				true,
+				true,
+				false
+			]
+		},
+		{
+			"rules": [
+				"/rooted"
+			],
+			"paths": [
+				"rooted",
+				"a/rooted"
+			],
+			"results": [
+				true,
+				false
+			]
+		},
+		{
+			"rules": [
+				"a*b"
+			],
+			"paths": [
+				"axb",
+				"a/b",
+				"axxb"
+			],
+			"results": [
+				true,
+				false,
+				true
+			]
+		},
+		{
+			"rules": [
+				"docs/",
+				"!docs/keep.md"
+			],
+			"paths": [
+				"docs/drop.md",
+				"docs/keep.md"
+			],
+			"results": [
+				true,
+				true
+			]
+		}
+	],
+	"lib/minimatch": [
+		[
+			"extensions/remove.ts",
+			"**/remove.ts",
+			true
+		],
+		[
+			"extensions/remove.ts",
+			"remove.ts",
+			false
+		],
+		[
+			"extensions/remove.ts",
+			"extensions/remove.ts",
+			true
+		],
+		[
+			"funky.json",
+			"funky.json",
+			true
+		],
+		[
+			"skills/bad-skill/SKILL.md",
+			"**/bad-skill",
+			false
+		],
+		[
+			"bad-skill",
+			"**/bad-skill",
+			true
+		],
+		[
+			"bad-skill/SKILL.md",
+			"**/bad-skill",
+			false
+		],
+		[
+			"extension-files/a.ts",
+			"extension-files/*.ts",
+			true
+		],
+		[
+			"a.ts",
+			"extensions/*.ts",
+			false
+		],
+		[
+			"extensions/force-back.ts",
+			"extensions/force-back.ts",
+			true
+		],
+		[
+			"skills/skill-a/SKILL.md",
+			"skills/skill-a",
+			false
+		],
+		[
+			"skills/skill-a",
+			"skills/skill-a",
+			true
+		],
+		[
+			"deep/nested/file.md",
+			"deep/**/*.md",
+			true
+		],
+		[
+			"file.md",
+			"**/*.md",
+			true
+		],
+		[
+			"x.txt",
+			"*.md",
+			false
+		],
+		[
+			"extensions/one.ts",
+			"extensions/one.ts",
+			true
+		],
+		[
+			"sub/dir/file.ts",
+			"**/file.ts",
+			true
+		],
+		[
+			"alpha.ts",
+			"**/alpha.ts",
+			true
+		]
+	],
+	"pure/sourceParsing": {
+		"parseSource": [
+			{
+				"source": "npm:@scope/pkg@1.2.3",
+				"parsed": {
+					"type": "npm",
+					"spec": "@scope/pkg@1.2.3",
+					"name": "@scope/pkg",
+					"version": "1.2.3",
+					"range": "1.2.3",
+					"pinned": true
+				}
+			},
+			{
+				"source": "npm:@scope/pkg@^1.2.3",
+				"parsed": {
+					"type": "npm",
+					"spec": "@scope/pkg@^1.2.3",
+					"name": "@scope/pkg",
+					"version": "^1.2.3",
+					"range": ">=1.2.3 <2.0.0-0",
+					"pinned": false
+				}
+			},
+			{
+				"source": "npm:pkg",
+				"parsed": {
+					"type": "npm",
+					"spec": "pkg",
+					"name": "pkg",
+					"pinned": false
+				}
+			},
+			{
+				"source": "npm:pkg@1.2.3",
+				"parsed": {
+					"type": "npm",
+					"spec": "pkg@1.2.3",
+					"name": "pkg",
+					"version": "1.2.3",
+					"range": "1.2.3",
+					"pinned": true
+				}
+			},
+			{
+				"source": "npm:@scope/pkg",
+				"parsed": {
+					"type": "npm",
+					"spec": "@scope/pkg",
+					"name": "@scope/pkg",
+					"pinned": false
+				}
+			},
+			{
+				"source": "npm:",
+				"parsed": {
+					"type": "npm",
+					"spec": "",
+					"name": "",
+					"pinned": false
+				}
+			},
+			{
+				"source": "git:github.com/user/repo",
+				"parsed": {
+					"type": "git",
+					"repo": "https://github.com/user/repo",
+					"host": "github.com",
+					"path": "user/repo",
+					"pinned": false
+				}
+			},
+			{
+				"source": "git:git@github.com:user/repo",
+				"parsed": {
+					"type": "git",
+					"repo": "git@github.com:user/repo",
+					"host": "github.com",
+					"path": "user/repo",
+					"pinned": false
+				}
+			},
+			{
+				"source": "git:git@github.com:user/repo@v1.0.0",
+				"parsed": {
+					"type": "git",
+					"repo": "git@github.com:user/repo",
+					"host": "github.com",
+					"path": "user/repo",
+					"ref": "v1.0.0",
+					"pinned": true
+				}
+			},
+			{
+				"source": "git:github.com/user/repo@v1",
+				"parsed": {
+					"type": "git",
+					"repo": "https://github.com/user/repo",
+					"host": "github.com",
+					"path": "user/repo",
+					"ref": "v1",
+					"pinned": true
+				}
+			},
+			{
+				"source": "https://github.com/user/repo",
+				"parsed": {
+					"type": "git",
+					"repo": "https://github.com/user/repo",
+					"host": "github.com",
+					"path": "user/repo",
+					"pinned": false
+				}
+			},
+			{
+				"source": "https://github.com/user/repo.git",
+				"parsed": {
+					"type": "git",
+					"repo": "https://github.com/user/repo.git",
+					"host": "github.com",
+					"path": "user/repo",
+					"pinned": false
+				}
+			},
+			{
+				"source": "https://github.com/user/repo@v1.2.3",
+				"parsed": {
+					"type": "git",
+					"repo": "https://github.com/user/repo",
+					"host": "github.com",
+					"path": "user/repo",
+					"ref": "v1.2.3",
+					"pinned": true
+				}
+			},
+			{
+				"source": "https://github.com/user/repo@main",
+				"parsed": {
+					"type": "git",
+					"repo": "https://github.com/user/repo",
+					"host": "github.com",
+					"path": "user/repo",
+					"ref": "main",
+					"pinned": true
+				}
+			},
+			{
+				"source": "https://github.com/user/repo@feature/branch",
+				"parsed": {
+					"type": "git",
+					"repo": "https://github.com/user/repo",
+					"host": "github.com",
+					"path": "user/repo",
+					"ref": "feature/branch",
+					"pinned": true
+				}
+			},
+			{
+				"source": "https://gitlab.com/user/repo",
+				"parsed": {
+					"type": "git",
+					"repo": "https://gitlab.com/user/repo",
+					"host": "gitlab.com",
+					"path": "user/repo",
+					"pinned": false
+				}
+			},
+			{
+				"source": "https://bitbucket.org/user/repo",
+				"parsed": {
+					"type": "git",
+					"repo": "https://bitbucket.org/user/repo",
+					"host": "bitbucket.org",
+					"path": "user/repo",
+					"pinned": false
+				}
+			},
+			{
+				"source": "https://codeberg.org/user/repo",
+				"parsed": {
+					"type": "git",
+					"repo": "https://codeberg.org/user/repo",
+					"host": "codeberg.org",
+					"path": "user/repo",
+					"pinned": false
+				}
+			},
+			{
+				"source": "ssh://git@github.com/user/repo",
+				"parsed": {
+					"type": "git",
+					"repo": "ssh://git@github.com/user/repo",
+					"host": "github.com",
+					"path": "user/repo",
+					"pinned": false
+				}
+			},
+			{
+				"source": "ssh://git@github.com/user/repo@v1",
+				"parsed": {
+					"type": "git",
+					"repo": "ssh://git@github.com/user/repo",
+					"host": "github.com",
+					"path": "user/repo",
+					"ref": "v1",
+					"pinned": true
+				}
+			},
+			{
+				"source": "git:https://github.com/user/repo",
+				"parsed": {
+					"type": "git",
+					"repo": "https://github.com/user/repo",
+					"host": "github.com",
+					"path": "user/repo",
+					"pinned": false
+				}
+			},
+			{
+				"source": "git@github.com:user/repo",
+				"parsed": {
+					"type": "local",
+					"path": "git@github.com:user/repo"
+				}
+			},
+			{
+				"source": "github.com/user/repo",
+				"parsed": {
+					"type": "local",
+					"path": "github.com/user/repo"
+				}
+			},
+			{
+				"source": "/absolute/path/to/package",
+				"parsed": {
+					"type": "local",
+					"path": "/absolute/path/to/package"
+				}
+			},
+			{
+				"source": "./relative/path/to/package",
+				"parsed": {
+					"type": "local",
+					"path": "./relative/path/to/package"
+				}
+			},
+			{
+				"source": "../relative/path/to/package",
+				"parsed": {
+					"type": "local",
+					"path": "../relative/path/to/package"
+				}
+			},
+			{
+				"source": "./packages/agent-timers",
+				"parsed": {
+					"type": "local",
+					"path": "./packages/agent-timers"
+				}
+			},
+			{
+				"source": "../packages/agent-timers",
+				"parsed": {
+					"type": "local",
+					"path": "../packages/agent-timers"
+				}
+			}
+		],
+		"identity": [
+			[
+				"npm:@scope/pkg@1.2.3",
+				"npm:@scope/pkg"
+			],
+			[
+				"npm:@scope/pkg@^1.2.3",
+				"npm:@scope/pkg"
+			],
+			[
+				"npm:pkg",
+				"npm:pkg"
+			],
+			[
+				"npm:pkg@1.2.3",
+				"npm:pkg"
+			],
+			[
+				"npm:@scope/pkg",
+				"npm:@scope/pkg"
+			],
+			[
+				"npm:",
+				"npm:"
+			],
+			[
+				"git:github.com/user/repo",
+				"git:github.com/user/repo"
+			],
+			[
+				"git:git@github.com:user/repo",
+				"git:github.com/user/repo"
+			],
+			[
+				"git:git@github.com:user/repo@v1.0.0",
+				"git:github.com/user/repo"
+			],
+			[
+				"git:github.com/user/repo@v1",
+				"git:github.com/user/repo"
+			],
+			[
+				"https://github.com/user/repo",
+				"git:github.com/user/repo"
+			],
+			[
+				"https://github.com/user/repo.git",
+				"git:github.com/user/repo"
+			],
+			[
+				"https://github.com/user/repo@v1.2.3",
+				"git:github.com/user/repo"
+			],
+			[
+				"https://github.com/user/repo@main",
+				"git:github.com/user/repo"
+			],
+			[
+				"https://github.com/user/repo@feature/branch",
+				"git:github.com/user/repo"
+			],
+			[
+				"https://gitlab.com/user/repo",
+				"git:gitlab.com/user/repo"
+			],
+			[
+				"https://bitbucket.org/user/repo",
+				"git:bitbucket.org/user/repo"
+			],
+			[
+				"https://codeberg.org/user/repo",
+				"git:codeberg.org/user/repo"
+			],
+			[
+				"ssh://git@github.com/user/repo",
+				"git:github.com/user/repo"
+			],
+			[
+				"ssh://git@github.com/user/repo@v1",
+				"git:github.com/user/repo"
+			],
+			[
+				"git:https://github.com/user/repo",
+				"git:github.com/user/repo"
+			],
+			[
+				"git@github.com:user/repo",
+				"local:$T\\pure-parsing\\git@github.com:user\\repo"
+			],
+			[
+				"github.com/user/repo",
+				"local:$T\\pure-parsing\\github.com\\user\\repo"
+			],
+			[
+				"/absolute/path/to/package",
+				"local:C:\\absolute\\path\\to\\package"
+			],
+			[
+				"./relative/path/to/package",
+				"local:$T\\pure-parsing\\relative\\path\\to\\package"
+			],
+			[
+				"../relative/path/to/package",
+				"local:$T\\relative\\path\\to\\package"
+			],
+			[
+				"./packages/agent-timers",
+				"local:$T\\pure-parsing\\packages\\agent-timers"
+			],
+			[
+				"../packages/agent-timers",
+				"local:$T\\packages\\agent-timers"
+			]
+		],
+		"identityWithScope": [
+			[
+				"./relative/path/to/package",
+				"user",
+				"local:$T\\pure-parsing\\agent\\relative\\path\\to\\package"
+			],
+			[
+				"./relative/path/to/package",
+				"project",
+				"local:$T\\pure-parsing\\.pi\\relative\\path\\to\\package"
+			]
+		]
+	},
+	"resolve-empty": {
+		"extensions": [],
+		"skills": [],
+		"prompts": [],
+		"themes": []
+	},
+	"resolve-local-extension-paths": {
+		"extensions": [
+			{
+				"rel": "agent/extensions/my-extension.ts",
+				"enabled": true,
+				"metadata": {
+					"source": "local",
+					"scope": "user",
+					"origin": "top-level"
+				}
+			}
+		],
+		"skills": [],
+		"prompts": [],
+		"themes": []
+	},
+	"resolve-skill-paths": {
+		"extensions": [],
+		"skills": [
+			{
+				"rel": "agent/skills/my-skill/SKILL.md",
+				"enabled": true,
+				"metadata": {
+					"source": "local",
+					"scope": "user",
+					"origin": "top-level"
+				}
+			}
+		],
+		"prompts": [],
+		"themes": []
+	},
+	"resolve-root-markdown-skill": {
+		"extensions": [],
+		"skills": [
+			{
+				"rel": "agent/skills/single-file.md",
+				"enabled": true,
+				"metadata": {
+					"source": "auto",
+					"scope": "user",
+					"origin": "top-level",
+					"baseDir": "agent"
+				}
+			}
+		],
+		"prompts": [],
+		"themes": []
+	},
+	"resolve-project-paths-relative-pi": {
+		"extensions": [
+			{
+				"rel": ".pi/extensions/project-ext.ts",
+				"enabled": true,
+				"metadata": {
+					"source": "local",
+					"scope": "project",
+					"origin": "top-level"
+				}
+			}
+		],
+		"skills": [],
+		"prompts": [],
+		"themes": []
+	},
+	"resolve-user-prompt-overrides": {
+		"extensions": [],
+		"skills": [],
+		"prompts": [
+			{
+				"rel": "agent/prompts/auto.md",
+				"enabled": false,
+				"metadata": {
+					"source": "auto",
+					"scope": "user",
+					"origin": "top-level",
+					"baseDir": "agent"
+				}
+			}
+		],
+		"themes": []
+	},
+	"resolve-symlinked-resources-once": {
+		"extensions": [
+			{
+				"rel": ".pi/extensions/shared.ts",
+				"enabled": true,
+				"metadata": {
+					"source": "auto",
+					"scope": "project",
+					"origin": "top-level",
+					"baseDir": ".pi"
+				}
+			}
+		],
+		"skills": [
+			{
+				"rel": ".pi/skills/shared-skill/SKILL.md",
+				"enabled": true,
+				"metadata": {
+					"source": "auto",
+					"scope": "project",
+					"origin": "top-level",
+					"baseDir": ".pi"
+				}
+			}
+		],
+		"prompts": [
+			{
+				"rel": ".pi/prompts/shared.md",
+				"enabled": true,
+				"metadata": {
+					"source": "auto",
+					"scope": "project",
+					"origin": "top-level",
+					"baseDir": ".pi"
+				}
+			}
+		],
+		"themes": [
+			{
+				"rel": ".pi/themes/shared.json",
+				"enabled": true,
+				"metadata": {
+					"source": "auto",
+					"scope": "project",
+					"origin": "top-level",
+					"baseDir": ".pi"
+				}
+			}
+		]
+	},
+	"resolve-project-prompt-overrides": {
+		"extensions": [],
+		"skills": [],
+		"prompts": [
+			{
+				"rel": ".pi/prompts/is.md",
+				"enabled": false,
+				"metadata": {
+					"source": "auto",
+					"scope": "project",
+					"origin": "top-level",
+					"baseDir": ".pi"
+				}
+			}
+		],
+		"themes": []
+	},
+	"resolve-manifest-in-extensions-setting": {
+		"extensions": [
+			{
+				"rel": "my-extensions-pkg/extensions/clip.ts",
+				"enabled": true,
+				"metadata": {
+					"source": "local",
+					"scope": "user",
+					"origin": "top-level"
+				}
+			},
+			{
+				"rel": "my-extensions-pkg/extensions/cost.ts",
+				"enabled": true,
+				"metadata": {
+					"source": "local",
+					"scope": "user",
+					"origin": "top-level"
+				}
+			}
+		],
+		"skills": [],
+		"prompts": [],
+		"themes": []
+	},
+	"skill-metadata-basedirs": {
+		"extensions": [],
+		"skills": [
+			{
+				"rel": ".pi/skills/project-pi/SKILL.md",
+				"enabled": true,
+				"metadata": {
+					"source": "auto",
+					"scope": "project",
+					"origin": "top-level",
+					"baseDir": ".pi"
+				}
+			},
+			{
+				"rel": "agent/skills/user-pi/SKILL.md",
+				"enabled": true,
+				"metadata": {
+					"source": "auto",
+					"scope": "user",
+					"origin": "top-level",
+					"baseDir": "agent"
+				}
+			},
+			{
+				"rel": ".agents/skills/user-agents/SKILL.md",
+				"enabled": true,
+				"metadata": {
+					"source": "auto",
+					"scope": "user",
+					"origin": "top-level",
+					"baseDir": ".agents"
+				}
+			}
+		],
+		"prompts": [],
+		"themes": []
+	},
+	"project-agents-basedirs": {
+		"extensions": [],
+		"skills": [
+			{
+				"rel": "repo/packages/.agents/skills/package/SKILL.md",
+				"enabled": true,
+				"metadata": {
+					"source": "auto",
+					"scope": "project",
+					"origin": "top-level",
+					"baseDir": "repo/packages/.agents"
+				}
+			},
+			{
+				"rel": "repo/.agents/skills/repo/SKILL.md",
+				"enabled": true,
+				"metadata": {
+					"source": "auto",
+					"scope": "project",
+					"origin": "top-level",
+					"baseDir": "repo/.agents"
+				}
+			}
+		],
+		"prompts": [],
+		"themes": []
+	},
+	"agents-scan-git-bounded": {
+		"extensions": [],
+		"skills": [
+			{
+				"rel": "repo/packages/.agents/skills/nested/SKILL.md",
+				"enabled": true,
+				"metadata": {
+					"source": "auto",
+					"scope": "project",
+					"origin": "top-level",
+					"baseDir": "repo/packages/.agents"
+				}
+			},
+			{
+				"rel": "repo/.agents/skills/repo-root/SKILL.md",
+				"enabled": true,
+				"metadata": {
+					"source": "auto",
+					"scope": "project",
+					"origin": "top-level",
+					"baseDir": "repo/.agents"
+				}
+			},
+			{
+				"rel": ".agents/skills/above-repo/SKILL.md",
+				"enabled": true,
+				"metadata": {
+					"source": "auto",
+					"scope": "user",
+					"origin": "top-level",
+					"baseDir": ".agents"
+				}
+			}
+		],
+		"prompts": [],
+		"themes": []
+	},
+	"agents-scan-no-repo": {
+		"extensions": [],
+		"skills": [
+			{
+				"rel": "non-repo/a/.agents/skills/middle/SKILL.md",
+				"enabled": true,
+				"metadata": {
+					"source": "auto",
+					"scope": "project",
+					"origin": "top-level",
+					"baseDir": "non-repo/a/.agents"
+				}
+			},
+			{
+				"rel": "non-repo/.agents/skills/root/SKILL.md",
+				"enabled": true,
+				"metadata": {
+					"source": "auto",
+					"scope": "project",
+					"origin": "top-level",
+					"baseDir": "non-repo/.agents"
+				}
+			}
+		],
+		"prompts": [],
+		"themes": []
+	},
+	"agents-scan-root-md-ignored": {
+		"extensions": [],
+		"skills": [
+			{
+				"rel": ".agents/skills/nested-skill/SKILL.md",
+				"enabled": true,
+				"metadata": {
+					"source": "auto",
+					"scope": "user",
+					"origin": "top-level",
+					"baseDir": ".agents"
+				}
+			},
+			{
+				"rel": ".agents/skills/third-party/child-skill.md",
+				"enabled": true,
+				"metadata": {
+					"source": "auto",
+					"scope": "user",
+					"origin": "top-level",
+					"baseDir": ".agents"
+				}
+			},
+			{
+				"rel": ".agents/skills/third-party/vendor/pack/deep-skill.md",
+				"enabled": true,
+				"metadata": {
+					"source": "auto",
+					"scope": "user",
+					"origin": "top-level",
+					"baseDir": ".agents"
+				}
+			}
+		],
+		"prompts": [],
+		"themes": []
+	},
+	"agents-home-user-scoped": {
+		"extensions": [],
+		"skills": [
+			{
+				"rel": ".agents/skills/home-skill/SKILL.md",
+				"enabled": true,
+				"metadata": {
+					"source": "auto",
+					"scope": "user",
+					"origin": "top-level",
+					"baseDir": ".agents"
+				}
+			}
+		],
+		"prompts": [],
+		"themes": []
+	},
+	"agents-junction-dedupe": {
+		"extensions": [],
+		"skills": [
+			{
+				"rel": "agent/skills/foo/SKILL.md",
+				"enabled": true,
+				"metadata": {
+					"source": "auto",
+					"scope": "user",
+					"origin": "top-level",
+					"baseDir": "agent"
+				}
+			}
+		],
+		"prompts": [],
+		"themes": []
+	},
+	"ignore-in-skill-dirs": {
+		"extensions": [],
+		"skills": [
+			{
+				"rel": "agent/skills/good-skill/SKILL.md",
+				"enabled": true,
+				"metadata": {
+					"source": "local",
+					"scope": "user",
+					"origin": "top-level"
+				}
+			}
+		],
+		"prompts": [],
+		"themes": []
+	},
+	"parent-gitignore-not-applied": {
+		"extensions": [],
+		"skills": [
+			{
+				"rel": ".pi/skills/auto-skill/SKILL.md",
+				"enabled": true,
+				"metadata": {
+					"source": "auto",
+					"scope": "project",
+					"origin": "top-level",
+					"baseDir": ".pi"
+				}
+			}
+		],
+		"prompts": [],
+		"themes": []
+	},
+	"resolve-extension-sources-local": {
+		"extensions": [
+			{
+				"rel": "ext.ts",
+				"enabled": true,
+				"metadata": {
+					"source": "$T\\resolve-extension-sources-local\\ext.ts",
+					"scope": "user",
+					"origin": "package",
+					"baseDir": ""
+				}
+			}
+		],
+		"skills": [],
+		"prompts": [],
+		"themes": []
+	},
+	"resolve-extension-sources-manifest": {
+		"extensions": [
+			{
+				"rel": "my-package/src/index.ts",
+				"enabled": true,
+				"metadata": {
+					"source": "$T\\resolve-extension-sources-manifest\\my-package",
+					"scope": "user",
+					"origin": "package",
+					"baseDir": "my-package"
+				}
+			}
+		],
+		"skills": [
+			{
+				"rel": "my-package/skills/my-skill/SKILL.md",
+				"enabled": true,
+				"metadata": {
+					"source": "$T\\resolve-extension-sources-manifest\\my-package",
+					"scope": "user",
+					"origin": "package",
+					"baseDir": "my-package"
+				}
+			}
+		],
+		"prompts": [],
+		"themes": []
+	},
+	"resolve-extension-sources-tilde-manifest": {
+		"extensions": [
+			{
+				"rel": "tilde-manifest-package/~extensions/main.ts",
+				"enabled": true,
+				"metadata": {
+					"source": "$T\\resolve-extension-sources-tilde-manifest\\tilde-manifest-package",
+					"scope": "user",
+					"origin": "package",
+					"baseDir": "tilde-manifest-package"
+				}
+			},
+			{
+				"rel": "tilde-manifest-package/~/extensions/alt.ts",
+				"enabled": true,
+				"metadata": {
+					"source": "$T\\resolve-extension-sources-tilde-manifest\\tilde-manifest-package",
+					"scope": "user",
+					"origin": "package",
+					"baseDir": "tilde-manifest-package"
+				}
+			}
+		],
+		"skills": [
+			{
+				"rel": "tilde-manifest-package/~skills/direct-skill/SKILL.md",
+				"enabled": true,
+				"metadata": {
+					"source": "$T\\resolve-extension-sources-tilde-manifest\\tilde-manifest-package",
+					"scope": "user",
+					"origin": "package",
+					"baseDir": "tilde-manifest-package"
+				}
+			},
+			{
+				"rel": "tilde-manifest-package/~/skills/slash-skill/SKILL.md",
+				"enabled": true,
+				"metadata": {
+					"source": "$T\\resolve-extension-sources-tilde-manifest\\tilde-manifest-package",
+					"scope": "user",
+					"origin": "package",
+					"baseDir": "tilde-manifest-package"
+				}
+			}
+		],
+		"prompts": [],
+		"themes": []
+	},
+	"resolve-extension-sources-auto-layout": {
+		"extensions": [
+			{
+				"rel": "auto-pkg/extensions/main.ts",
+				"enabled": true,
+				"metadata": {
+					"source": "$T\\resolve-extension-sources-auto-layout\\auto-pkg",
+					"scope": "user",
+					"origin": "package",
+					"baseDir": "auto-pkg"
+				}
+			}
+		],
+		"skills": [],
+		"prompts": [],
+		"themes": [
+			{
+				"rel": "auto-pkg/themes/dark.json",
+				"enabled": true,
+				"metadata": {
+					"source": "$T\\resolve-extension-sources-auto-layout\\auto-pkg",
+					"scope": "user",
+					"origin": "package",
+					"baseDir": "auto-pkg"
+				}
+			}
+		]
+	},
+	"resolve-skill-root-stop": {
+		"extensions": [],
+		"skills": [
+			{
+				"rel": "skill-root-pkg/skills/root-skill/SKILL.md",
+				"enabled": true,
+				"metadata": {
+					"source": "$T\\resolve-skill-root-stop\\skill-root-pkg",
+					"scope": "user",
+					"origin": "package",
+					"baseDir": "skill-root-pkg"
+				}
+			}
+		],
+		"prompts": [],
+		"themes": []
+	},
+	"manifest-glob-extensions": {
+		"extensions": [
+			{
+				"rel": "manifest-pkg/extensions/local.ts",
+				"enabled": true,
+				"metadata": {
+					"source": "$T\\manifest-glob-extensions\\manifest-pkg",
+					"scope": "user",
+					"origin": "package",
+					"baseDir": "manifest-pkg"
+				}
+			},
+			{
+				"rel": "manifest-pkg/node_modules/dep/extensions/remote.ts",
+				"enabled": true,
+				"metadata": {
+					"source": "$T\\manifest-glob-extensions\\manifest-pkg",
+					"scope": "user",
+					"origin": "package",
+					"baseDir": "manifest-pkg"
+				}
+			}
+		],
+		"skills": [],
+		"prompts": [],
+		"themes": []
+	},
+	"manifest-glob-skills": {
+		"extensions": [],
+		"skills": [
+			{
+				"rel": "skill-manifest-pkg/skills/good-skill/SKILL.md",
+				"enabled": true,
+				"metadata": {
+					"source": "$T\\manifest-glob-skills\\skill-manifest-pkg",
+					"scope": "user",
+					"origin": "package",
+					"baseDir": "skill-manifest-pkg"
+				}
+			}
+		],
+		"prompts": [],
+		"themes": []
+	},
+	"manifest-glob-positive-expansion": {
+		"extensions": [],
+		"skills": [
+			{
+				"rel": "skill-manifest-glob-pkg/plugins/nutrient-dws/skills/document-processor-api/SKILL.md",
+				"enabled": true,
+				"metadata": {
+					"source": "$T\\manifest-glob-positive-expansion\\skill-manifest-glob-pkg",
+					"scope": "user",
+					"origin": "package",
+					"baseDir": "skill-manifest-glob-pkg"
+				}
+			},
+			{
+				"rel": "skill-manifest-glob-pkg/plugins/pdf-to-markdown/skills/pdf-to-markdown/SKILL.md",
+				"enabled": true,
+				"metadata": {
+					"source": "$T\\manifest-glob-positive-expansion\\skill-manifest-glob-pkg",
+					"scope": "user",
+					"origin": "package",
+					"baseDir": "skill-manifest-glob-pkg"
+				}
+			}
+		],
+		"prompts": [],
+		"themes": []
+	},
+	"manifest-glob-semantics": {
+		"extensions": [
+			{
+				"rel": "manifest-glob-semantics-pkg/extension-files/a.ts",
+				"enabled": true,
+				"metadata": {
+					"source": "$T\\manifest-glob-semantics\\manifest-glob-semantics-pkg",
+					"scope": "user",
+					"origin": "package",
+					"baseDir": "manifest-glob-semantics-pkg"
+				}
+			},
+			{
+				"rel": "manifest-glob-semantics-pkg/extension-files/z.ts",
+				"enabled": true,
+				"metadata": {
+					"source": "$T\\manifest-glob-semantics\\manifest-glob-semantics-pkg",
+					"scope": "user",
+					"origin": "package",
+					"baseDir": "manifest-glob-semantics-pkg"
+				}
+			},
+			{
+				"rel": "manifest-glob-semantics-pkg/extension-files/nested/.hidden.ts",
+				"enabled": true,
+				"metadata": {
+					"source": "$T\\manifest-glob-semantics\\manifest-glob-semantics-pkg",
+					"scope": "user",
+					"origin": "package",
+					"baseDir": "manifest-glob-semantics-pkg"
+				}
+			},
+			{
+				"rel": "manifest-glob-semantics-pkg/extension-groups/group/index.ts",
+				"enabled": true,
+				"metadata": {
+					"source": "$T\\manifest-glob-semantics\\manifest-glob-semantics-pkg",
+					"scope": "user",
+					"origin": "package",
+					"baseDir": "manifest-glob-semantics-pkg"
+				}
+			}
+		],
+		"skills": [
+			{
+				"rel": "manifest-glob-semantics-pkg/plugins/local/skills/local-skill/SKILL.md",
+				"enabled": true,
+				"metadata": {
+					"source": "$T\\manifest-glob-semantics\\manifest-glob-semantics-pkg",
+					"scope": "user",
+					"origin": "package",
+					"baseDir": "manifest-glob-semantics-pkg"
+				}
+			},
+			{
+				"rel": "manifest-glob-semantics-pkg/plugins/linked/skills/linked-skill/SKILL.md",
+				"enabled": true,
+				"metadata": {
+					"source": "$T\\manifest-glob-semantics\\manifest-glob-semantics-pkg",
+					"scope": "user",
+					"origin": "package",
+					"baseDir": "manifest-glob-semantics-pkg"
+				}
+			}
+		],
+		"prompts": [],
+		"themes": []
+	},
+	"package-filter-layered": {
+		"extensions": [
+			{
+				"rel": "layered-pkg/extensions/bar.ts",
+				"enabled": false,
+				"metadata": {
+					"source": "$T\\package-filter-layered\\layered-pkg",
+					"scope": "user",
+					"origin": "package",
+					"baseDir": "layered-pkg"
+				}
+			},
+			{
+				"rel": "layered-pkg/extensions/foo.ts",
+				"enabled": true,
+				"metadata": {
+					"source": "$T\\package-filter-layered\\layered-pkg",
+					"scope": "user",
+					"origin": "package",
+					"baseDir": "layered-pkg"
+				}
+			}
+		],
+		"skills": [],
+		"prompts": [],
+		"themes": []
+	},
+	"package-filter-exclude": {
+		"extensions": [
+			{
+				"rel": "pattern-pkg/extensions/bar.ts",
+				"enabled": true,
+				"metadata": {
+					"source": "$T\\package-filter-exclude\\pattern-pkg",
+					"scope": "user",
+					"origin": "package",
+					"baseDir": "pattern-pkg"
+				}
+			},
+			{
+				"rel": "pattern-pkg/extensions/baz.ts",
+				"enabled": false,
+				"metadata": {
+					"source": "$T\\package-filter-exclude\\pattern-pkg",
+					"scope": "user",
+					"origin": "package",
+					"baseDir": "pattern-pkg"
+				}
+			},
+			{
+				"rel": "pattern-pkg/extensions/foo.ts",
+				"enabled": true,
+				"metadata": {
+					"source": "$T\\package-filter-exclude\\pattern-pkg",
+					"scope": "user",
+					"origin": "package",
+					"baseDir": "pattern-pkg"
+				}
+			}
+		],
+		"skills": [],
+		"prompts": [],
+		"themes": []
+	},
+	"package-filter-themes": {
+		"extensions": [],
+		"skills": [],
+		"prompts": [],
+		"themes": [
+			{
+				"rel": "theme-pkg/themes/nice.json",
+				"enabled": true,
+				"metadata": {
+					"source": "$T\\package-filter-themes\\theme-pkg",
+					"scope": "user",
+					"origin": "package",
+					"baseDir": "theme-pkg"
+				}
+			},
+			{
+				"rel": "theme-pkg/themes/ugly.json",
+				"enabled": false,
+				"metadata": {
+					"source": "$T\\package-filter-themes\\theme-pkg",
+					"scope": "user",
+					"origin": "package",
+					"baseDir": "theme-pkg"
+				}
+			}
+		]
+	},
+	"package-filter-combo": {
+		"extensions": [
+			{
+				"rel": "combo-pkg/extensions/alpha.ts",
+				"enabled": true,
+				"metadata": {
+					"source": "$T\\package-filter-combo\\combo-pkg",
+					"scope": "user",
+					"origin": "package",
+					"baseDir": "combo-pkg"
+				}
+			},
+			{
+				"rel": "combo-pkg/extensions/beta.ts",
+				"enabled": false,
+				"metadata": {
+					"source": "$T\\package-filter-combo\\combo-pkg",
+					"scope": "user",
+					"origin": "package",
+					"baseDir": "combo-pkg"
+				}
+			},
+			{
+				"rel": "combo-pkg/extensions/gamma.ts",
+				"enabled": false,
+				"metadata": {
+					"source": "$T\\package-filter-combo\\combo-pkg",
+					"scope": "user",
+					"origin": "package",
+					"baseDir": "combo-pkg"
+				}
+			}
+		],
+		"skills": [],
+		"prompts": [],
+		"themes": []
+	},
+	"package-filter-direct-paths": {
+		"extensions": [
+			{
+				"rel": "direct-pkg/extensions/one.ts",
+				"enabled": true,
+				"metadata": {
+					"source": "$T\\package-filter-direct-paths\\direct-pkg",
+					"scope": "user",
+					"origin": "package",
+					"baseDir": "direct-pkg"
+				}
+			},
+			{
+				"rel": "direct-pkg/extensions/two.ts",
+				"enabled": false,
+				"metadata": {
+					"source": "$T\\package-filter-direct-paths\\direct-pkg",
+					"scope": "user",
+					"origin": "package",
+					"baseDir": "direct-pkg"
+				}
+			}
+		],
+		"skills": [],
+		"prompts": [],
+		"themes": []
+	},
+	"autoload-delta-over-global": {
+		"extensions": [
+			{
+				"rel": "agent/npm/node_modules/pi-tools/extensions/foo.ts",
+				"enabled": false,
+				"metadata": {
+					"source": "npm:pi-tools",
+					"scope": "project",
+					"origin": "package",
+					"baseDir": "agent/npm/node_modules/pi-tools"
+				}
+			},
+			{
+				"rel": "agent/npm/node_modules/pi-tools/extensions/bar.ts",
+				"enabled": true,
+				"metadata": {
+					"source": "npm:pi-tools",
+					"scope": "user",
+					"origin": "package",
+					"baseDir": "agent/npm/node_modules/pi-tools"
+				}
+			}
+		],
+		"skills": [],
+		"prompts": [],
+		"themes": [],
+		"spawnLog": []
+	},
+	"autoload-positive-only": {
+		"extensions": [
+			{
+				"rel": "positive-only-pkg/extensions/foo.ts",
+				"enabled": true,
+				"metadata": {
+					"source": "../positive-only-pkg",
+					"scope": "project",
+					"origin": "package",
+					"baseDir": "positive-only-pkg"
+				}
+			}
+		],
+		"skills": [],
+		"prompts": [],
+		"themes": []
+	},
+	"top-level-include-exclude": {
+		"extensions": [
+			{
+				"rel": "agent/extensions/keep.ts",
+				"enabled": true,
+				"metadata": {
+					"source": "local",
+					"scope": "user",
+					"origin": "top-level"
+				}
+			},
+			{
+				"rel": "agent/extensions/remove.ts",
+				"enabled": false,
+				"metadata": {
+					"source": "local",
+					"scope": "user",
+					"origin": "top-level"
+				}
+			}
+		],
+		"skills": [],
+		"prompts": [],
+		"themes": []
+	},
+	"top-level-theme-glob": {
+		"extensions": [],
+		"skills": [],
+		"prompts": [],
+		"themes": [
+			{
+				"rel": "agent/themes/dark.json",
+				"enabled": true,
+				"metadata": {
+					"source": "local",
+					"scope": "user",
+					"origin": "top-level"
+				}
+			},
+			{
+				"rel": "agent/themes/funky.json",
+				"enabled": false,
+				"metadata": {
+					"source": "local",
+					"scope": "user",
+					"origin": "top-level"
+				}
+			},
+			{
+				"rel": "agent/themes/light.json",
+				"enabled": true,
+				"metadata": {
+					"source": "local",
+					"scope": "user",
+					"origin": "top-level"
+				}
+			}
+		]
+	},
+	"top-level-skill-exclude": {
+		"extensions": [],
+		"skills": [
+			{
+				"rel": "agent/skills/bad-skill/SKILL.md",
+				"enabled": false,
+				"metadata": {
+					"source": "local",
+					"scope": "user",
+					"origin": "top-level"
+				}
+			},
+			{
+				"rel": "agent/skills/good-skill/SKILL.md",
+				"enabled": true,
+				"metadata": {
+					"source": "local",
+					"scope": "user",
+					"origin": "top-level"
+				}
+			}
+		],
+		"prompts": [],
+		"themes": []
+	},
+	"top-level-prompt-exclude": {
+		"extensions": [],
+		"skills": [],
+		"prompts": [
+			{
+				"rel": "agent/prompts/explain.md",
+				"enabled": false,
+				"metadata": {
+					"source": "local",
+					"scope": "user",
+					"origin": "top-level"
+				}
+			},
+			{
+				"rel": "agent/prompts/review.md",
+				"enabled": true,
+				"metadata": {
+					"source": "local",
+					"scope": "user",
+					"origin": "top-level"
+				}
+			}
+		],
+		"themes": []
+	},
+	"top-level-patternless": {
+		"extensions": [
+			{
+				"rel": "agent/extensions/my-ext.ts",
+				"enabled": true,
+				"metadata": {
+					"source": "local",
+					"scope": "user",
+					"origin": "top-level"
+				}
+			}
+		],
+		"skills": [],
+		"prompts": [],
+		"themes": []
+	},
+	"force-include-toplevel": {
+		"extensions": [
+			{
+				"rel": "agent/extensions/excluded.ts",
+				"enabled": false,
+				"metadata": {
+					"source": "local",
+					"scope": "user",
+					"origin": "top-level"
+				}
+			},
+			{
+				"rel": "agent/extensions/force-back.ts",
+				"enabled": true,
+				"metadata": {
+					"source": "local",
+					"scope": "user",
+					"origin": "top-level"
+				}
+			},
+			{
+				"rel": "agent/extensions/keep.ts",
+				"enabled": false,
+				"metadata": {
+					"source": "local",
+					"scope": "user",
+					"origin": "top-level"
+				}
+			}
+		],
+		"skills": [],
+		"prompts": [],
+		"themes": []
+	},
+	"force-include-package": {
+		"extensions": [
+			{
+				"rel": "force-pkg/extensions/alpha.ts",
+				"enabled": false,
+				"metadata": {
+					"source": "$T\\force-include-package\\force-pkg",
+					"scope": "user",
+					"origin": "package",
+					"baseDir": "force-pkg"
+				}
+			},
+			{
+				"rel": "force-pkg/extensions/beta.ts",
+				"enabled": true,
+				"metadata": {
+					"source": "$T\\force-include-package\\force-pkg",
+					"scope": "user",
+					"origin": "package",
+					"baseDir": "force-pkg"
+				}
+			},
+			{
+				"rel": "force-pkg/extensions/gamma.ts",
+				"enabled": false,
+				"metadata": {
+					"source": "$T\\force-include-package\\force-pkg",
+					"scope": "user",
+					"origin": "package",
+					"baseDir": "force-pkg"
+				}
+			}
+		],
+		"skills": [],
+		"prompts": [],
+		"themes": []
+	},
+	"force-include-multi-skills": {
+		"extensions": [],
+		"skills": [
+			{
+				"rel": "multi-force-pkg/skills/skill-a/SKILL.md",
+				"enabled": true,
+				"metadata": {
+					"source": "$T\\force-include-multi-skills\\multi-force-pkg",
+					"scope": "user",
+					"origin": "package",
+					"baseDir": "multi-force-pkg"
+				}
+			},
+			{
+				"rel": "multi-force-pkg/skills/skill-b/SKILL.md",
+				"enabled": false,
+				"metadata": {
+					"source": "$T\\force-include-multi-skills\\multi-force-pkg",
+					"scope": "user",
+					"origin": "package",
+					"baseDir": "multi-force-pkg"
+				}
+			},
+			{
+				"rel": "multi-force-pkg/skills/skill-c/SKILL.md",
+				"enabled": true,
+				"metadata": {
+					"source": "$T\\force-include-multi-skills\\multi-force-pkg",
+					"scope": "user",
+					"origin": "package",
+					"baseDir": "multi-force-pkg"
+				}
+			}
+		],
+		"prompts": [],
+		"themes": []
+	},
+	"force-include-after-specific-exclusion": {
+		"extensions": [
+			{
+				"rel": "agent/extensions/a.ts",
+				"enabled": true,
+				"metadata": {
+					"source": "local",
+					"scope": "user",
+					"origin": "top-level"
+				}
+			},
+			{
+				"rel": "agent/extensions/b.ts",
+				"enabled": true,
+				"metadata": {
+					"source": "local",
+					"scope": "user",
+					"origin": "top-level"
+				}
+			}
+		],
+		"skills": [],
+		"prompts": [],
+		"themes": []
+	},
+	"force-include-manifest": {
+		"extensions": [
+			{
+				"rel": "manifest-force-pkg/extensions/one.ts",
+				"enabled": true,
+				"metadata": {
+					"source": "$T\\force-include-manifest\\manifest-force-pkg",
+					"scope": "user",
+					"origin": "package",
+					"baseDir": "manifest-force-pkg"
+				}
+			},
+			{
+				"rel": "manifest-force-pkg/extensions/three.ts",
+				"enabled": true,
+				"metadata": {
+					"source": "$T\\force-include-manifest\\manifest-force-pkg",
+					"scope": "user",
+					"origin": "package",
+					"baseDir": "manifest-force-pkg"
+				}
+			},
+			{
+				"rel": "manifest-force-pkg/extensions/two.ts",
+				"enabled": true,
+				"metadata": {
+					"source": "$T\\force-include-manifest\\manifest-force-pkg",
+					"scope": "user",
+					"origin": "package",
+					"baseDir": "manifest-force-pkg"
+				}
+			}
+		],
+		"skills": [],
+		"prompts": [],
+		"themes": []
+	},
+	"force-include-themes-prompts": {
+		"extensions": [],
+		"skills": [],
+		"prompts": [
+			{
+				"rel": "agent/prompts/debug.md",
+				"enabled": true,
+				"metadata": {
+					"source": "local",
+					"scope": "user",
+					"origin": "top-level"
+				}
+			},
+			{
+				"rel": "agent/prompts/explain.md",
+				"enabled": false,
+				"metadata": {
+					"source": "local",
+					"scope": "user",
+					"origin": "top-level"
+				}
+			},
+			{
+				"rel": "agent/prompts/review.md",
+				"enabled": false,
+				"metadata": {
+					"source": "local",
+					"scope": "user",
+					"origin": "top-level"
+				}
+			}
+		],
+		"themes": [
+			{
+				"rel": "agent/themes/dark.json",
+				"enabled": false,
+				"metadata": {
+					"source": "local",
+					"scope": "user",
+					"origin": "top-level"
+				}
+			},
+			{
+				"rel": "agent/themes/light.json",
+				"enabled": false,
+				"metadata": {
+					"source": "local",
+					"scope": "user",
+					"origin": "top-level"
+				}
+			},
+			{
+				"rel": "agent/themes/special.json",
+				"enabled": true,
+				"metadata": {
+					"source": "local",
+					"scope": "user",
+					"origin": "top-level"
+				}
+			}
+		]
+	},
+	"force-exclude-toplevel": {
+		"extensions": [
+			{
+				"rel": "agent/extensions/alpha.ts",
+				"enabled": false,
+				"metadata": {
+					"source": "local",
+					"scope": "user",
+					"origin": "top-level"
+				}
+			},
+			{
+				"rel": "agent/extensions/beta.ts",
+				"enabled": true,
+				"metadata": {
+					"source": "local",
+					"scope": "user",
+					"origin": "top-level"
+				}
+			}
+		],
+		"skills": [],
+		"prompts": [],
+		"themes": []
+	},
+	"force-exclude-package": {
+		"extensions": [
+			{
+				"rel": "force-exclude-pkg/extensions/alpha.ts",
+				"enabled": false,
+				"metadata": {
+					"source": "$T\\force-exclude-package\\force-exclude-pkg",
+					"scope": "user",
+					"origin": "package",
+					"baseDir": "force-exclude-pkg"
+				}
+			},
+			{
+				"rel": "force-exclude-pkg/extensions/beta.ts",
+				"enabled": true,
+				"metadata": {
+					"source": "$T\\force-exclude-package\\force-exclude-pkg",
+					"scope": "user",
+					"origin": "package",
+					"baseDir": "force-exclude-pkg"
+				}
+			}
+		],
+		"skills": [],
+		"prompts": [],
+		"themes": []
+	},
+	"dedupe-local-project-wins": {
+		"extensions": [
+			{
+				"rel": "shared-pkg/extensions/shared.ts",
+				"enabled": true,
+				"metadata": {
+					"source": "$T\\dedupe-local-project-wins\\shared-pkg",
+					"scope": "project",
+					"origin": "package",
+					"baseDir": "shared-pkg"
+				}
+			}
+		],
+		"skills": [],
+		"prompts": [],
+		"themes": []
+	},
+	"dedupe-different-kept": {
+		"extensions": [
+			{
+				"rel": "pkg2/extensions/from-pkg2.ts",
+				"enabled": true,
+				"metadata": {
+					"source": "$T\\dedupe-different-kept\\pkg2",
+					"scope": "project",
+					"origin": "package",
+					"baseDir": "pkg2"
+				}
+			},
+			{
+				"rel": "pkg1/extensions/from-pkg1.ts",
+				"enabled": true,
+				"metadata": {
+					"source": "$T\\dedupe-different-kept\\pkg1",
+					"scope": "user",
+					"origin": "package",
+					"baseDir": "pkg1"
+				}
+			}
+		],
+		"skills": [],
+		"prompts": [],
+		"themes": []
+	},
+	"multifile-subdir-index-only": {
+		"extensions": [
+			{
+				"rel": "multifile-pkg/extensions/standalone.ts",
+				"enabled": true,
+				"metadata": {
+					"source": "$T\\multifile-subdir-index-only\\multifile-pkg",
+					"scope": "user",
+					"origin": "package",
+					"baseDir": "multifile-pkg"
+				}
+			},
+			{
+				"rel": "multifile-pkg/extensions/subagent/index.ts",
+				"enabled": true,
+				"metadata": {
+					"source": "$T\\multifile-subdir-index-only\\multifile-pkg",
+					"scope": "user",
+					"origin": "package",
+					"baseDir": "multifile-pkg"
+				}
+			}
+		],
+		"skills": [],
+		"prompts": [],
+		"themes": []
+	},
+	"multifile-manifest-subdir": {
+		"extensions": [
+			{
+				"rel": "manifest-subdir-pkg/extensions/custom/main.ts",
+				"enabled": true,
+				"metadata": {
+					"source": "$T\\multifile-manifest-subdir\\manifest-subdir-pkg",
+					"scope": "user",
+					"origin": "package",
+					"baseDir": "manifest-subdir-pkg"
+				}
+			}
+		],
+		"skills": [],
+		"prompts": [],
+		"themes": []
+	},
+	"multifile-mixed": {
+		"extensions": [
+			{
+				"rel": "mixed-pkg/extensions/complex/index.ts",
+				"enabled": true,
+				"metadata": {
+					"source": "$T\\multifile-mixed\\mixed-pkg",
+					"scope": "user",
+					"origin": "package",
+					"baseDir": "mixed-pkg"
+				}
+			},
+			{
+				"rel": "mixed-pkg/extensions/simple.ts",
+				"enabled": true,
+				"metadata": {
+					"source": "$T\\multifile-mixed\\mixed-pkg",
+					"scope": "user",
+					"origin": "package",
+					"baseDir": "mixed-pkg"
+				}
+			}
+		],
+		"skills": [],
+		"prompts": [],
+		"themes": []
+	},
+	"multifile-no-entry-skipped": {
+		"extensions": [
+			{
+				"rel": "no-entry-pkg/extensions/valid.ts",
+				"enabled": true,
+				"metadata": {
+					"source": "$T\\multifile-no-entry-skipped\\no-entry-pkg",
+					"scope": "user",
+					"origin": "package",
+					"baseDir": "no-entry-pkg"
+				}
+			}
+		],
+		"skills": [],
+		"prompts": [],
+		"themes": []
+	},
+	"settings-normalize-global-local": {
+		"added": true,
+		"packages": [
+			"..\\packages\\local-global-pkg"
+		]
+	},
+	"settings-normalize-project-local": {
+		"added": true,
+		"packages": [
+			"..\\project-local-pkg"
+		]
+	},
+	"settings-remove-equivalent-forms": {
+		"removed": true,
+		"packages": []
+	},
+	"settings-same-ref-noop": {
+		"first": true,
+		"second": false,
+		"packages": [
+			"git:github.com/user/repo@v1"
+		]
+	},
+	"settings-ref-update": {
+		"updated": true,
+		"packages": [
+			"git:github.com/user/repo@v2"
+		]
+	},
+	"settings-filter-preserving-ref-update": {
+		"updated": true,
+		"packages": [
+			{
+				"source": "git:github.com/user/repo@v2",
+				"extensions": [
+					"extensions/main.ts"
+				],
+				"skills": [],
+				"prompts": [
+					"prompts/review.md"
+				],
+				"themes": [
+					"themes/dark.json"
+				]
+			}
+		]
+	},
+	"git-install-path-traversal": {
+		"user": {
+			"error": "Refusing to use path outside package install root: $T\\git-install-path-traversal\\agent\\victim\\repo"
+		},
+		"project": {
+			"error": "Refusing to use path outside package install root: $T\\git-install-path-traversal\\.pi\\victim\\repo"
+		},
+		"temporary": {
+			"error": "Refusing to use path outside package install root: $T\\git-install-path-traversal\\agent\\tmp\\extensions\\victim\\repo"
+		}
+	},
+	"temporary-npm-path": {
+		"installPath": "$T\\temporary-npm-path\\agent\\tmp\\extensions\\npm\\f35b2129\\node_modules\\left-pad",
+		"tempRoot": "$T\\temporary-npm-path\\agent\\tmp\\extensions"
+	},
+	"list-configured-packages": {
+		"value": [
+			{
+				"source": "npm:user-pkg",
+				"scope": "user",
+				"filtered": false,
+				"installedPath": "agent/npm/node_modules/user-pkg"
+			},
+			{
+				"source": "npm:filtered-pkg",
+				"scope": "user",
+				"filtered": true
+			},
+			{
+				"source": "local-missing",
+				"scope": "user",
+				"filtered": false
+			},
+			{
+				"source": "npm:project-pkg",
+				"scope": "project",
+				"filtered": false,
+				"installedPath": ".pi/npm/node_modules/project-pkg"
+			}
+		],
+		"spawnLog": [
+			{
+				"kind": "spawnSync",
+				"command": "npm",
+				"args": [
+					"root",
+					"-g"
+				],
+				"options": {}
+			}
+		]
+	},
+	"flow-npm-install-default": {
+		"spawnLog": [
+			{
+				"kind": "spawn",
+				"command": "npm",
+				"args": [
+					"install",
+					"@scope/pkg",
+					"--prefix",
+					"$T\\flow-npm-install-default\\agent\\npm",
+					"--legacy-peer-deps"
+				],
+				"options": {}
+			}
+		]
+	},
+	"flow-npm-install-mise-argv": {
+		"spawnLog": [
+			{
+				"kind": "spawn",
+				"command": "mise",
+				"args": [
+					"exec",
+					"node@20",
+					"--",
+					"npm",
+					"install",
+					"@scope/pkg",
+					"--prefix",
+					"$T\\flow-npm-install-mise-argv\\agent\\npm",
+					"--legacy-peer-deps"
+				],
+				"options": {}
+			}
+		]
+	},
+	"flow-npm-remove-default": {
+		"spawnLog": [
+			{
+				"kind": "spawn",
+				"command": "npm",
+				"args": [
+					"uninstall",
+					"@scope/pkg",
+					"--prefix",
+					"$T\\flow-npm-remove-default\\agent\\npm",
+					"--legacy-peer-deps"
+				],
+				"options": {}
+			}
+		]
+	},
+	"flow-npm-remove-bun-argv": {
+		"spawnLog": [
+			{
+				"kind": "spawn",
+				"command": "mise",
+				"args": [
+					"exec",
+					"bun@1",
+					"--",
+					"bun",
+					"uninstall",
+					"@scope/pkg",
+					"--cwd",
+					"$T\\flow-npm-remove-bun-argv\\agent\\npm"
+				],
+				"options": {}
+			}
+		]
+	},
+	"flow-npm-remove-pnpm-argv": {
+		"spawnLog": [
+			{
+				"kind": "spawn",
+				"command": "pnpm",
+				"args": [
+					"uninstall",
+					"@scope/pkg",
+					"--prefix",
+					"$T\\flow-npm-remove-pnpm-argv\\agent\\npm"
+				],
+				"options": {}
+			}
+		]
+	},
+	"flow-npm-install-bun-argv": {
+		"spawnLog": [
+			{
+				"kind": "spawn",
+				"command": "mise",
+				"args": [
+					"exec",
+					"bun@1",
+					"--",
+					"bun",
+					"install",
+					"@scope/pkg",
+					"--cwd",
+					"$T\\flow-npm-install-bun-argv\\agent\\npm",
+					"--omit=peer"
+				],
+				"options": {}
+			}
+		]
+	},
+	"flow-npm-install-pnpm-argv": {
+		"spawnLog": [
+			{
+				"kind": "spawn",
+				"command": "pnpm",
+				"args": [
+					"install",
+					"@scope/pkg",
+					"--prefix",
+					"$T\\flow-npm-install-pnpm-argv\\agent\\npm",
+					"--config.auto-install-peers=false",
+					"--config.strict-peer-dependencies=false",
+					"--config.strict-dep-builds=false"
+				],
+				"options": {}
+			}
+		]
+	},
+	"flow-git-install-success": {
+		"spawnLog": [
+			{
+				"kind": "spawn",
+				"command": "git",
+				"args": [
+					"clone",
+					"https://github.com/user/repo",
+					"$T\\flow-git-install-success\\agent\\git\\github.com\\user\\repo"
+				],
+				"options": {}
+			},
+			{
+				"kind": "spawn",
+				"command": "npm",
+				"args": [
+					"install",
+					"--omit=dev"
+				],
+				"options": {
+					"cwd": "$T\\flow-git-install-success\\agent\\git\\github.com\\user\\repo"
+				}
+			}
+		]
+	},
+	"flow-git-install-clone-failure": {
+		"outcome": "simulated git clone failure",
+		"spawnLog": [
+			{
+				"kind": "spawn",
+				"command": "git",
+				"args": [
+					"clone",
+					"https://github.com/user/repo",
+					"$T\\flow-git-install-clone-failure\\agent\\git\\github.com\\user\\repo"
+				],
+				"options": {}
+			}
+		]
+	},
+	"flow-git-install-dependency-failure": {
+		"outcome": "simulated dependency install failure",
+		"spawnLog": [
+			{
+				"kind": "spawn",
+				"command": "git",
+				"args": [
+					"clone",
+					"https://github.com/user/repo",
+					"$T\\flow-git-install-dependency-failure\\agent\\git\\github.com\\user\\repo"
+				],
+				"options": {}
+			},
+			{
+				"kind": "spawn",
+				"command": "npm",
+				"args": [
+					"install",
+					"--omit=dev"
+				],
+				"options": {
+					"cwd": "$T\\flow-git-install-dependency-failure\\agent\\git\\github.com\\user\\repo"
+				}
+			}
+		]
+	},
+	"flow-git-pinned-ref-reconcile": {
+		"spawnLog": [
+			{
+				"kind": "spawn",
+				"command": "git",
+				"args": [
+					"fetch",
+					"origin",
+					"v2"
+				],
+				"options": {
+					"cwd": "$T\\flow-git-pinned-ref-reconcile\\agent\\git\\github.com\\user\\repo"
+				}
+			},
+			{
+				"kind": "spawn",
+				"command": "git",
+				"args": [
+					"rev-parse",
+					"HEAD"
+				],
+				"options": {
+					"cwd": "$T\\flow-git-pinned-ref-reconcile\\agent\\git\\github.com\\user\\repo"
+				}
+			},
+			{
+				"kind": "spawn",
+				"command": "git",
+				"args": [
+					"rev-parse",
+					"FETCH_HEAD^{commit}"
+				],
+				"options": {
+					"cwd": "$T\\flow-git-pinned-ref-reconcile\\agent\\git\\github.com\\user\\repo"
+				}
+			},
+			{
+				"kind": "spawn",
+				"command": "git",
+				"args": [
+					"reset",
+					"--hard",
+					"FETCH_HEAD^{commit}"
+				],
+				"options": {
+					"cwd": "$T\\flow-git-pinned-ref-reconcile\\agent\\git\\github.com\\user\\repo"
+				}
+			},
+			{
+				"kind": "spawn",
+				"command": "git",
+				"args": [
+					"clean",
+					"-fdx"
+				],
+				"options": {
+					"cwd": "$T\\flow-git-pinned-ref-reconcile\\agent\\git\\github.com\\user\\repo"
+				}
+			},
+			{
+				"kind": "spawn",
+				"command": "npm",
+				"args": [
+					"install",
+					"--omit=dev"
+				],
+				"options": {
+					"cwd": "$T\\flow-git-pinned-ref-reconcile\\agent\\git\\github.com\\user\\repo"
+				}
+			}
+		]
+	},
+	"flow-git-update-target-reconcile": {
+		"spawnLog": [
+			{
+				"kind": "spawn",
+				"command": "git",
+				"args": [
+					"rev-parse",
+					"--abbrev-ref",
+					"@{upstream}"
+				],
+				"options": {
+					"cwd": "$T\\flow-git-update-target-reconcile\\agent\\git\\github.com\\user\\repo"
+				}
+			},
+			{
+				"kind": "spawn",
+				"command": "git",
+				"args": [
+					"remote",
+					"set-head",
+					"origin",
+					"-a"
+				],
+				"options": {
+					"cwd": "$T\\flow-git-update-target-reconcile\\agent\\git\\github.com\\user\\repo"
+				}
+			},
+			{
+				"kind": "spawn",
+				"command": "git",
+				"args": [
+					"rev-parse",
+					"origin/HEAD"
+				],
+				"options": {
+					"cwd": "$T\\flow-git-update-target-reconcile\\agent\\git\\github.com\\user\\repo"
+				}
+			},
+			{
+				"kind": "spawn",
+				"command": "git",
+				"args": [
+					"symbolic-ref",
+					"refs/remotes/origin/HEAD"
+				],
+				"options": {
+					"cwd": "$T\\flow-git-update-target-reconcile\\agent\\git\\github.com\\user\\repo"
+				}
+			},
+			{
+				"kind": "spawn",
+				"command": "git",
+				"args": [
+					"fetch",
+					"--prune",
+					"--no-tags",
+					"origin",
+					"+refs/heads/main:refs/remotes/origin/main"
+				],
+				"options": {
+					"cwd": "$T\\flow-git-update-target-reconcile\\agent\\git\\github.com\\user\\repo"
+				}
+			},
+			{
+				"kind": "spawn",
+				"command": "git",
+				"args": [
+					"rev-parse",
+					"HEAD"
+				],
+				"options": {
+					"cwd": "$T\\flow-git-update-target-reconcile\\agent\\git\\github.com\\user\\repo"
+				}
+			},
+			{
+				"kind": "spawn",
+				"command": "git",
+				"args": [
+					"rev-parse",
+					"origin/HEAD^{commit}"
+				],
+				"options": {
+					"cwd": "$T\\flow-git-update-target-reconcile\\agent\\git\\github.com\\user\\repo"
+				}
+			},
+			{
+				"kind": "spawn",
+				"command": "git",
+				"args": [
+					"reset",
+					"--hard",
+					"origin/HEAD^{commit}"
+				],
+				"options": {
+					"cwd": "$T\\flow-git-update-target-reconcile\\agent\\git\\github.com\\user\\repo"
+				}
+			},
+			{
+				"kind": "spawn",
+				"command": "git",
+				"args": [
+					"clean",
+					"-fdx"
+				],
+				"options": {
+					"cwd": "$T\\flow-git-update-target-reconcile\\agent\\git\\github.com\\user\\repo"
+				}
+			}
+		]
+	},
+	"flow-git-deps-plain-install-configured": {
+		"spawnLog": [
+			{
+				"kind": "spawn",
+				"command": "git",
+				"args": [
+					"clone",
+					"https://github.com/user/repo",
+					"$T\\flow-git-deps-plain-install-configured\\agent\\git\\github.com\\user\\repo"
+				],
+				"options": {}
+			},
+			{
+				"kind": "spawn",
+				"command": "pnpm",
+				"args": [
+					"install"
+				],
+				"options": {
+					"cwd": "$T\\flow-git-deps-plain-install-configured\\agent\\git\\github.com\\user\\repo"
+				}
+			}
+		]
+	},
+	"flow-git-update-deps-omit-dev": {
+		"spawnLog": [
+			{
+				"kind": "spawn",
+				"command": "git",
+				"args": [
+					"rev-parse",
+					"--abbrev-ref",
+					"@{upstream}"
+				],
+				"options": {
+					"cwd": "$T\\flow-git-update-deps-omit-dev\\.pi\\git\\github.com\\user\\repo"
+				}
+			},
+			{
+				"kind": "spawn",
+				"command": "git",
+				"args": [
+					"rev-parse",
+					"@{upstream}"
+				],
+				"options": {
+					"cwd": "$T\\flow-git-update-deps-omit-dev\\.pi\\git\\github.com\\user\\repo"
+				}
+			},
+			{
+				"kind": "spawn",
+				"command": "git",
+				"args": [
+					"fetch",
+					"--prune",
+					"--no-tags",
+					"origin",
+					"+refs/heads/main:refs/remotes/origin/main"
+				],
+				"options": {
+					"cwd": "$T\\flow-git-update-deps-omit-dev\\.pi\\git\\github.com\\user\\repo"
+				}
+			},
+			{
+				"kind": "spawn",
+				"command": "git",
+				"args": [
+					"rev-parse",
+					"HEAD"
+				],
+				"options": {
+					"cwd": "$T\\flow-git-update-deps-omit-dev\\.pi\\git\\github.com\\user\\repo"
+				}
+			},
+			{
+				"kind": "spawn",
+				"command": "git",
+				"args": [
+					"rev-parse",
+					"@{upstream}^{commit}"
+				],
+				"options": {
+					"cwd": "$T\\flow-git-update-deps-omit-dev\\.pi\\git\\github.com\\user\\repo"
+				}
+			},
+			{
+				"kind": "spawn",
+				"command": "git",
+				"args": [
+					"reset",
+					"--hard",
+					"@{upstream}^{commit}"
+				],
+				"options": {
+					"cwd": "$T\\flow-git-update-deps-omit-dev\\.pi\\git\\github.com\\user\\repo"
+				}
+			},
+			{
+				"kind": "spawn",
+				"command": "git",
+				"args": [
+					"clean",
+					"-fdx"
+				],
+				"options": {
+					"cwd": "$T\\flow-git-update-deps-omit-dev\\.pi\\git\\github.com\\user\\repo"
+				}
+			},
+			{
+				"kind": "spawn",
+				"command": "npm",
+				"args": [
+					"install",
+					"--omit=dev"
+				],
+				"options": {
+					"cwd": "$T\\flow-git-update-deps-omit-dev\\.pi\\git\\github.com\\user\\repo"
+				}
+			}
+		]
+	},
+	"flow-git-repair-current-checkout": {
+		"spawnLog": [
+			{
+				"kind": "spawn",
+				"command": "git",
+				"args": [
+					"rev-parse",
+					"--abbrev-ref",
+					"@{upstream}"
+				],
+				"options": {
+					"cwd": "$T\\flow-git-repair-current-checkout\\agent\\git\\github.com\\user\\repo"
+				}
+			},
+			{
+				"kind": "spawn",
+				"command": "git",
+				"args": [
+					"rev-parse",
+					"@{upstream}"
+				],
+				"options": {
+					"cwd": "$T\\flow-git-repair-current-checkout\\agent\\git\\github.com\\user\\repo"
+				}
+			},
+			{
+				"kind": "spawn",
+				"command": "git",
+				"args": [
+					"fetch",
+					"--prune",
+					"--no-tags",
+					"origin",
+					"+refs/heads/main:refs/remotes/origin/main"
+				],
+				"options": {
+					"cwd": "$T\\flow-git-repair-current-checkout\\agent\\git\\github.com\\user\\repo"
+				}
+			},
+			{
+				"kind": "spawn",
+				"command": "git",
+				"args": [
+					"rev-parse",
+					"HEAD"
+				],
+				"options": {
+					"cwd": "$T\\flow-git-repair-current-checkout\\agent\\git\\github.com\\user\\repo"
+				}
+			},
+			{
+				"kind": "spawn",
+				"command": "git",
+				"args": [
+					"rev-parse",
+					"@{upstream}^{commit}"
+				],
+				"options": {
+					"cwd": "$T\\flow-git-repair-current-checkout\\agent\\git\\github.com\\user\\repo"
+				}
+			},
+			{
+				"kind": "spawn",
+				"command": "npm",
+				"args": [
+					"install",
+					"--omit=dev"
+				],
+				"options": {
+					"cwd": "$T\\flow-git-repair-current-checkout\\agent\\git\\github.com\\user\\repo"
+				}
+			}
+		]
+	},
+	"flow-git-clean-failure-repairs-deps": {
+		"outcome": "simulated clean failure",
+		"spawnLog": [
+			{
+				"kind": "spawn",
+				"command": "git",
+				"args": [
+					"rev-parse",
+					"--abbrev-ref",
+					"@{upstream}"
+				],
+				"options": {
+					"cwd": "$T\\flow-git-clean-failure-repairs-deps\\agent\\git\\github.com\\user\\repo"
+				}
+			},
+			{
+				"kind": "spawn",
+				"command": "git",
+				"args": [
+					"rev-parse",
+					"@{upstream}"
+				],
+				"options": {
+					"cwd": "$T\\flow-git-clean-failure-repairs-deps\\agent\\git\\github.com\\user\\repo"
+				}
+			},
+			{
+				"kind": "spawn",
+				"command": "git",
+				"args": [
+					"fetch",
+					"--prune",
+					"--no-tags",
+					"origin",
+					"+refs/heads/main:refs/remotes/origin/main"
+				],
+				"options": {
+					"cwd": "$T\\flow-git-clean-failure-repairs-deps\\agent\\git\\github.com\\user\\repo"
+				}
+			},
+			{
+				"kind": "spawn",
+				"command": "git",
+				"args": [
+					"rev-parse",
+					"HEAD"
+				],
+				"options": {
+					"cwd": "$T\\flow-git-clean-failure-repairs-deps\\agent\\git\\github.com\\user\\repo"
+				}
+			},
+			{
+				"kind": "spawn",
+				"command": "git",
+				"args": [
+					"rev-parse",
+					"@{upstream}^{commit}"
+				],
+				"options": {
+					"cwd": "$T\\flow-git-clean-failure-repairs-deps\\agent\\git\\github.com\\user\\repo"
+				}
+			},
+			{
+				"kind": "spawn",
+				"command": "git",
+				"args": [
+					"reset",
+					"--hard",
+					"@{upstream}^{commit}"
+				],
+				"options": {
+					"cwd": "$T\\flow-git-clean-failure-repairs-deps\\agent\\git\\github.com\\user\\repo"
+				}
+			},
+			{
+				"kind": "spawn",
+				"command": "git",
+				"args": [
+					"clean",
+					"-fdx"
+				],
+				"options": {
+					"cwd": "$T\\flow-git-clean-failure-repairs-deps\\agent\\git\\github.com\\user\\repo"
+				}
+			},
+			{
+				"kind": "spawn",
+				"command": "npm",
+				"args": [
+					"install",
+					"--omit=dev"
+				],
+				"options": {
+					"cwd": "$T\\flow-git-clean-failure-repairs-deps\\agent\\git\\github.com\\user\\repo"
+				}
+			}
+		]
+	},
+	"flow-git-update-mise-argv-deps": {
+		"spawnLog": [
+			{
+				"kind": "spawn",
+				"command": "git",
+				"args": [
+					"rev-parse",
+					"--abbrev-ref",
+					"@{upstream}"
+				],
+				"options": {
+					"cwd": "$T\\flow-git-update-mise-argv-deps\\.pi\\git\\github.com\\user\\repo"
+				}
+			},
+			{
+				"kind": "spawn",
+				"command": "git",
+				"args": [
+					"rev-parse",
+					"@{upstream}"
+				],
+				"options": {
+					"cwd": "$T\\flow-git-update-mise-argv-deps\\.pi\\git\\github.com\\user\\repo"
+				}
+			},
+			{
+				"kind": "spawn",
+				"command": "git",
+				"args": [
+					"fetch",
+					"--prune",
+					"--no-tags",
+					"origin",
+					"+refs/heads/main:refs/remotes/origin/main"
+				],
+				"options": {
+					"cwd": "$T\\flow-git-update-mise-argv-deps\\.pi\\git\\github.com\\user\\repo"
+				}
+			},
+			{
+				"kind": "spawn",
+				"command": "git",
+				"args": [
+					"rev-parse",
+					"HEAD"
+				],
+				"options": {
+					"cwd": "$T\\flow-git-update-mise-argv-deps\\.pi\\git\\github.com\\user\\repo"
+				}
+			},
+			{
+				"kind": "spawn",
+				"command": "git",
+				"args": [
+					"rev-parse",
+					"@{upstream}^{commit}"
+				],
+				"options": {
+					"cwd": "$T\\flow-git-update-mise-argv-deps\\.pi\\git\\github.com\\user\\repo"
+				}
+			},
+			{
+				"kind": "spawn",
+				"command": "git",
+				"args": [
+					"reset",
+					"--hard",
+					"@{upstream}^{commit}"
+				],
+				"options": {
+					"cwd": "$T\\flow-git-update-mise-argv-deps\\.pi\\git\\github.com\\user\\repo"
+				}
+			},
+			{
+				"kind": "spawn",
+				"command": "git",
+				"args": [
+					"clean",
+					"-fdx"
+				],
+				"options": {
+					"cwd": "$T\\flow-git-update-mise-argv-deps\\.pi\\git\\github.com\\user\\repo"
+				}
+			},
+			{
+				"kind": "spawn",
+				"command": "mise",
+				"args": [
+					"exec",
+					"node@20",
+					"--",
+					"pnpm",
+					"install"
+				],
+				"options": {
+					"cwd": "$T\\flow-git-update-mise-argv-deps\\.pi\\git\\github.com\\user\\repo"
+				}
+			}
+		]
+	},
+	"flow-update-npm-range-spec": {
+		"spawnLog": [
+			{
+				"kind": "spawn",
+				"command": "npm",
+				"args": [
+					"view",
+					"example@^1.0.0",
+					"version",
+					"--json"
+				],
+				"options": {
+					"cwd": "$T\\flow-update-npm-range-spec"
+				}
+			},
+			{
+				"kind": "spawn",
+				"command": "npm",
+				"args": [
+					"install",
+					"example@^1.0.0",
+					"--prefix",
+					"$T\\flow-update-npm-range-spec\\.pi\\npm",
+					"--legacy-peer-deps"
+				],
+				"options": {}
+			}
+		]
+	},
+	"flow-update-npm-current-skip": {
+		"spawnLog": [
+			{
+				"kind": "spawn",
+				"command": "npm",
+				"args": [
+					"view",
+					"example@^1.0.0",
+					"version",
+					"--json"
+				],
+				"options": {
+					"cwd": "$T\\flow-update-npm-current-skip"
+				}
+			}
+		]
+	},
+	"flow-update-npm-newer-installed-skip": {
+		"spawnLog": [
+			{
+				"kind": "spawn",
+				"command": "npm",
+				"args": [
+					"view",
+					"example",
+					"version",
+					"--json"
+				],
+				"options": {
+					"cwd": "$T\\flow-update-npm-newer-installed-skip"
+				}
+			}
+		]
+	},
+	"flow-update-migrate-legacy-user-install": {
+		"before": "legacy-global/node_modules/legacy-pkg",
+		"after": "agent/npm/node_modules/legacy-pkg",
+		"spawnLog": [
+			{
+				"kind": "spawnSync",
+				"command": "npm",
+				"args": [
+					"root",
+					"-g"
+				],
+				"options": {}
+			},
+			{
+				"kind": "spawn",
+				"command": "npm",
+				"args": [
+					"install",
+					"legacy-pkg@latest",
+					"--prefix",
+					"$T\\flow-update-migrate-legacy-user-install\\agent\\npm",
+					"--legacy-peer-deps"
+				],
+				"options": {}
+			}
+		]
+	},
+	"flow-update-batch-per-scope": {
+		"spawns": [
+			"git checkout v1",
+			"git clone https://github.com/example/project-repo-a $T\\flow-update-batch-per-scope\\.pi\\git\\github.com\\example\\project-repo-a",
+			"git clone https://github.com/example/user-repo-a $T\\flow-update-batch-per-scope\\agent\\git\\github.com\\example\\user-repo-a",
+			"git clone https://github.com/example/user-repo-b $T\\flow-update-batch-per-scope\\agent\\git\\github.com\\example\\user-repo-b",
+			"git clone https://github.com/example/user-repo-pinned $T\\flow-update-batch-per-scope\\agent\\git\\github.com\\example\\user-repo-pinned",
+			"npm install project-old@latest project-missing@latest --prefix $T\\flow-update-batch-per-scope\\.pi\\npm --legacy-peer-deps",
+			"npm install user-old@latest user-unknown@latest --prefix $T\\flow-update-batch-per-scope\\agent\\npm --legacy-peer-deps",
+			"npm view project-current version --json",
+			"npm view project-old version --json",
+			"npm view user-current version --json",
+			"npm view user-old version --json",
+			"npm view user-unknown version --json"
+		],
+		"counts": {
+			"npm view user-old version --json": 1,
+			"npm view user-current version --json": 1,
+			"npm view user-unknown version --json": 1,
+			"npm view project-old version --json": 1,
+			"npm view project-current version --json": 1,
+			"npm install user-old@latest user-unknown@latest --prefix $T\\flow-update-batch-per-scope\\agent\\npm --legacy-peer-deps": 1,
+			"npm install project-old@latest project-missing@latest --prefix $T\\flow-update-batch-per-scope\\.pi\\npm --legacy-peer-deps": 1,
+			"git clone https://github.com/example/user-repo-a $T\\flow-update-batch-per-scope\\agent\\git\\github.com\\example\\user-repo-a": 1,
+			"git clone https://github.com/example/user-repo-b $T\\flow-update-batch-per-scope\\agent\\git\\github.com\\example\\user-repo-b": 1,
+			"git clone https://github.com/example/user-repo-pinned $T\\flow-update-batch-per-scope\\agent\\git\\github.com\\example\\user-repo-pinned": 1,
+			"git clone https://github.com/example/project-repo-a $T\\flow-update-batch-per-scope\\.pi\\git\\github.com\\example\\project-repo-a": 1,
+			"git checkout v1": 1
+		}
+	},
+	"flow-update-suggest-npm-prefix": {
+		"outcome": "No matching package found for example. Did you mean npm:example?"
+	},
+	"flow-update-suggest-git-prefix": {
+		"outcome": "No matching package found for github.com/example/repo. Did you mean git:github.com/example/repo?"
+	},
+	"flow-offline-resolve-skips-install": {
+		"packageOriginCount": 0
+	},
+	"flow-offline-temp-git-skip-refresh": {
+		"extensions": [
+			{
+				"rel": "agent/tmp/extensions/git-github.com/939872a8/example/repo/extensions/index.ts",
+				"enabled": true,
+				"metadata": {
+					"source": "git:github.com/example/repo",
+					"scope": "temporary",
+					"origin": "package",
+					"baseDir": "agent/tmp/extensions/git-github.com/939872a8/example/repo"
+				}
+			}
+		],
+		"skills": [],
+		"prompts": [],
+		"themes": []
+	},
+	"flow-offline-resolve-no-npm-view": {
+		"extensions": [
+			{
+				"rel": ".pi/npm/node_modules/example/extensions/index.ts",
+				"enabled": true,
+				"metadata": {
+					"source": "npm:example@^1.0.0",
+					"scope": "project",
+					"origin": "package",
+					"baseDir": ".pi/npm/node_modules/example"
+				}
+			}
+		],
+		"skills": [],
+		"prompts": [],
+		"themes": []
+	},
+	"flow-resolve-pinned-mismatch-reinstalls": {
+		"extensions": [],
+		"skills": [],
+		"prompts": [],
+		"themes": [],
+		"spawnLog": [
+			{
+				"kind": "spawn",
+				"command": "npm",
+				"args": [
+					"install",
+					"example@2.0.0",
+					"--prefix",
+					"$T\\flow-resolve-pinned-mismatch-reinstalls\\.pi\\npm",
+					"--legacy-peer-deps"
+				],
+				"options": {}
+			}
+		]
+	},
+	"flow-check-updates-offline-empty": {
+		"value": []
+	},
+	"flow-check-updates-reports-npm": {
+		"value": [
+			{
+				"source": "npm:example",
+				"displayName": "example",
+				"type": "npm",
+				"scope": "project"
+			}
+		],
+		"spawnLog": [
+			{
+				"kind": "spawn",
+				"command": "npm",
+				"args": [
+					"view",
+					"example",
+					"version",
+					"--json"
+				],
+				"options": {
+					"cwd": "$T\\flow-check-updates-reports-npm"
+				}
+			}
+		]
+	},
+	"flow-check-updates-newer-installed-skip": {
+		"value": [],
+		"spawnLog": [
+			{
+				"kind": "spawn",
+				"command": "npm",
+				"args": [
+					"view",
+					"example",
+					"version",
+					"--json"
+				],
+				"options": {
+					"cwd": "$T\\flow-check-updates-newer-installed-skip"
+				}
+			}
+		]
+	},
+	"flow-check-updates-pinned-skip": {
+		"value": []
+	},
+	"flow-latest-npm-version": {
+		"value": "1.2.3",
+		"spawnLog": [
+			{
+				"kind": "spawn",
+				"command": "npm",
+				"args": [
+					"view",
+					"example",
+					"version",
+					"--json"
+				],
+				"options": {
+					"cwd": "$T\\flow-latest-npm-version"
+				}
+			}
+		]
+	},
+	"flow-latest-npm-version-mise-argv": {
+		"value": "1.2.3",
+		"spawnLog": [
+			{
+				"kind": "spawn",
+				"command": "mise",
+				"args": [
+					"exec",
+					"node@20",
+					"--",
+					"npm",
+					"view",
+					"@scope/pkg",
+					"version",
+					"--json"
+				],
+				"options": {
+					"cwd": "$T\\flow-latest-npm-version-mise-argv"
+				}
+			}
+		]
+	},
+	"flow-latest-npm-version-array-max": {
+		"noRange": "1.2.0",
+		"withRange": "1.2.0",
+		"spawnLog": [
+			{
+				"kind": "spawn",
+				"command": "npm",
+				"args": [
+					"view",
+					"example",
+					"version",
+					"--json"
+				],
+				"options": {
+					"cwd": "$T\\flow-latest-npm-version-array-max"
+				}
+			},
+			{
+				"kind": "spawn",
+				"command": "npm",
+				"args": [
+					"view",
+					"example",
+					"version",
+					"--json"
+				],
+				"options": {
+					"cwd": "$T\\flow-latest-npm-version-array-max"
+				}
+			}
+		]
+	},
+	"flow-latest-npm-version-errors": {
+		"empty": {
+			"error": "Empty response from npm view"
+		},
+		"registryError": {
+			"error": "npm view example version --json failed with code 1: registry down"
+		},
+		"nonString": {
+			"error": "Unexpected response from npm view"
+		},
+		"mixedArray": "1.0.0",
+		"spawnLog": [
+			{
+				"kind": "spawn",
+				"command": "npm",
+				"args": [
+					"view",
+					"example",
+					"version",
+					"--json"
+				],
+				"options": {
+					"cwd": "$T\\flow-latest-npm-version-errors"
+				}
+			},
+			{
+				"kind": "spawn",
+				"command": "npm",
+				"args": [
+					"view",
+					"example",
+					"version",
+					"--json"
+				],
+				"options": {
+					"cwd": "$T\\flow-latest-npm-version-errors"
+				}
+			},
+			{
+				"kind": "spawn",
+				"command": "npm",
+				"args": [
+					"view",
+					"example",
+					"version",
+					"--json"
+				],
+				"options": {
+					"cwd": "$T\\flow-latest-npm-version-errors"
+				}
+			},
+			{
+				"kind": "spawn",
+				"command": "npm",
+				"args": [
+					"view",
+					"example",
+					"version",
+					"--json"
+				],
+				"options": {
+					"cwd": "$T\\flow-latest-npm-version-errors"
+				}
+			}
+		]
+	},
+	"flow-installed-path-legacy-roots": {
+		"first": "node20/lib/node_modules/@scope/pkg",
+		"spawnLog": [
+			{
+				"kind": "spawnSync",
+				"command": "mise",
+				"args": [
+					"exec",
+					"node@20",
+					"--",
+					"npm",
+					"root",
+					"-g"
+				],
+				"options": {}
+			},
+			{
+				"kind": "spawnSync",
+				"command": "mise",
+				"args": [
+					"exec",
+					"node@22",
+					"--",
+					"npm",
+					"root",
+					"-g"
+				],
+				"options": {}
+			}
+		]
+	},
+	"flow-installed-path-pnpm-list-legacy": {
+		"extensions": [
+			{
+				"rel": "pnpm/global/v11/20-hash/node_modules/pnpm-pkg/extensions/index.ts",
+				"enabled": true,
+				"metadata": {
+					"source": "npm:pnpm-pkg",
+					"scope": "user",
+					"origin": "package",
+					"baseDir": "pnpm/global/v11/20-hash/node_modules/pnpm-pkg"
+				}
+			}
+		],
+		"skills": [],
+		"prompts": [],
+		"themes": [],
+		"installedPath": "pnpm/global/v11/20-hash/node_modules/pnpm-pkg",
+		"spawnLog": [
+			{
+				"kind": "spawnSync",
+				"command": "pnpm",
+				"args": [
+					"list",
+					"-g",
+					"--depth",
+					"0",
+					"--json"
+				],
+				"options": {}
+			},
+			{
+				"kind": "spawnSync",
+				"command": "pnpm",
+				"args": [
+					"list",
+					"-g",
+					"--depth",
+					"0",
+					"--json"
+				],
+				"options": {}
+			}
+		]
+	},
+	"flow-installed-path-pnpm-list-wrapped": {
+		"installedPath": "pnpm/global/v11/20-hash/node_modules/pnpm-pkg",
+		"spawnLog": [
+			{
+				"kind": "spawnSync",
+				"command": "mise",
+				"args": [
+					"exec",
+					"node@20",
+					"--",
+					"pnpm",
+					"list",
+					"-g",
+					"--depth",
+					"0",
+					"--json"
+				],
+				"options": {}
+			}
+		]
+	},
+	"flow-installed-path-pnpm-list-malformed": {
+		"spawnLog": [
+			{
+				"kind": "spawnSync",
+				"command": "pnpm",
+				"args": [
+					"list",
+					"-g",
+					"--depth",
+					"0",
+					"--json"
+				],
+				"options": {}
+			}
+		]
+	},
+	"flow-managed-install-wins-no-reinstall": {
+		"installsAfterFirst": 0,
+		"installsAfterSecond": 0
+	},
+	"flow-progress-events-install-failure": {
+		"events": [
+			{
+				"type": "start",
+				"action": "install",
+				"source": "npm:nonexistent-package@1.0.0",
+				"message": "Installing npm:nonexistent-package@1.0.0..."
+			},
+			{
+				"type": "error",
+				"action": "install",
+				"source": "npm:nonexistent-package@1.0.0",
+				"message": "simulated npm install failure"
+			}
+		],
+		"outcome": "simulated npm install failure",
+		"spawnLog": [
+			{
+				"kind": "spawn",
+				"command": "npm",
+				"args": [
+					"install",
+					"nonexistent-package@1.0.0",
+					"--prefix",
+					"$T\\flow-progress-events-install-failure\\agent\\npm",
+					"--legacy-peer-deps"
+				],
+				"options": {}
+			}
+		]
+	},
+	"flow-progress-local-no-events": {
+		"events": 0
+	},
+	"flow-progress-github-clone-attempt": {
+		"events": [
+			{
+				"type": "start",
+				"action": "install",
+				"source": "https://github.com/nonexistent/repo",
+				"message": "Installing https://github.com/nonexistent/repo..."
+			},
+			{
+				"type": "error",
+				"action": "install",
+				"source": "https://github.com/nonexistent/repo",
+				"message": "simulated git clone failure"
+			}
+		],
+		"outcome": "simulated git clone failure",
+		"spawnLog": [
+			{
+				"kind": "spawn",
+				"command": "git",
+				"args": [
+					"clone",
+					"https://github.com/nonexistent/repo",
+					"$T\\flow-progress-github-clone-attempt\\agent\\git\\github.com\\nonexistent\\repo"
+				],
+				"options": {}
+			}
+		]
+	}
+}

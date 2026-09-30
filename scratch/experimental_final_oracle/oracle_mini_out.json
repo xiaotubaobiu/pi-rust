@@ -1,0 +1,208 @@
+{
+  "rpc": {
+    "announce": "{\"kind\":\"announce\",\"services\":[\"lane\"]}",
+    "callRoundTrip": {
+      "frame": "{\"kind\":\"call\",\"id\":1,\"method\":\"lane.prompt\",\"args\":[\"hi\"]}",
+      "answer": "{\"echoed\":\"hi\",\"aborted\":false}"
+    },
+    "errorFrame": {
+      "frame": "{\"kind\":\"call\",\"id\":2,\"method\":\"lane.fail\",\"args\":[]}",
+      "failureMessage": "worker exploded"
+    },
+    "dispatchErrors": {
+      "noService": "No service provides models.refresh",
+      "noServiceFrame": "{\"kind\":\"call\",\"id\":1,\"method\":\"models.refresh\",\"args\":[]}",
+      "unknownMethod": "Unknown method: lane.nope",
+      "unknownMethodFrame": "{\"kind\":\"call\",\"id\":2,\"method\":\"lane.nope\",\"args\":[]}"
+    },
+    "forward": {
+      "forwarded": [
+        {
+          "method": "sessions.list",
+          "args": []
+        }
+      ],
+      "listed": "[{\"id\":\"s1\"}]",
+      "forwardError": "forward exploded"
+    },
+    "undefinedResult": {
+      "frame": "{\"kind\":\"call\",\"id\":1,\"method\":\"lane.nothing\",\"args\":[]}",
+      "answer": "null"
+    },
+    "events": {
+      "sent": [
+        "{\"kind\":\"event\",\"service\":\"lane\",\"payload\":{\"subscriptionId\":\"sub-1\",\"event\":{\"type\":\"run_start\"}}}",
+        "{\"kind\":\"event\",\"service\":\"models\",\"payload\":{\"type\":\"prompt\",\"requestId\":\"r1\",\"request\":{\"type\":\"text\",\"message\":\"code?\"}},\"to\":\"presentation-9\"}",
+        "{\"kind\":\"event\",\"service\":\"custom.service\",\"payload\":{\"n\":1}}"
+      ],
+      "laneEvents": [
+        {
+          "subscriptionId": "sub-1",
+          "event": {
+            "type": "entry_added"
+          }
+        }
+      ],
+      "rawEvents": [
+        {
+          "service": "lane",
+          "payload": {
+            "subscriptionId": "sub-1",
+            "event": {
+              "type": "entry_added"
+            }
+          }
+        },
+        {
+          "service": "models",
+          "payload": {
+            "type": "notice",
+            "notice": {
+              "type": "info",
+              "message": "hi"
+            }
+          },
+          "to": "presentation-9"
+        }
+      ]
+    },
+    "cancel": {
+      "frame": "{\"kind\":\"call\",\"id\":1,\"method\":\"lane.slow\",\"args\":[\"x\"]}",
+      "sawAbort": null,
+      "answer": "\"late\""
+    },
+    "timeout": {
+      "timeoutError": "lane.prompt timed out after 20ms",
+      "frames": [
+        "{\"kind\":\"call\",\"id\":1,\"method\":\"lane.prompt\",\"args\":[\"hi\"]}",
+        "{\"kind\":\"cancel\",\"id\":1}"
+      ]
+    },
+    "preAborted": {
+      "abortError": "Call cancelled",
+      "frames": 0
+    },
+    "closeRejects": {
+      "closeError": "Connection closed"
+    }
+  },
+  "framing": {
+    "parsed": [
+      "seen:{\"a\":1}",
+      "seen:{\"b\":2}",
+      "seen:{\"c\":33}"
+    ],
+    "writtenBeforeClose": [],
+    "writtenFinal": [
+      "{\"kind\":\"ping\"}\n"
+    ],
+    "bufferedTail": ""
+  },
+  "worker": {
+    "systemPrompt": "You are a coding agent working in a terminal.\nWorking directory: /work/demo\nUse the read, write, edit, and bash tools to inspect and change files.\nKeep answers short and technical.",
+    "unknownSession": "Unknown session: s2",
+    "knownSession": "/sessions/s1",
+    "entryValidation": [
+      "Session worker requires <sessionsRoot> <cwd> [sessionId]",
+      "Server requires <socketPath> <sessionsRoot>"
+    ]
+  },
+  "laneService": {
+    "ok": {
+      "ok": true
+    },
+    "laneError": {
+      "ok": false,
+      "error": "lane refused"
+    },
+    "laneErrorNoMessage": {
+      "ok": false,
+      "error": "Command failed"
+    },
+    "thrown": {
+      "ok": false,
+      "error": "harness gone"
+    }
+  },
+  "modelsService": {
+    "state": {
+      "models": [
+        {
+          "provider": "b",
+          "modelId": "m2",
+          "name": "Zeta"
+        },
+        {
+          "provider": "a",
+          "modelId": "m1",
+          "name": "Alpha"
+        }
+      ],
+      "accounts": [
+        {
+          "id": "p1",
+          "name": "Anthropic",
+          "configured": true,
+          "authType": "api_key",
+          "interactive": true,
+          "methodName": "KeyLogin"
+        },
+        {
+          "id": "p2",
+          "name": "Zeta",
+          "configured": false,
+          "source": "environment",
+          "authType": "oauth",
+          "interactive": true,
+          "methodName": "ZLogin"
+        }
+      ],
+      "refreshing": true
+    }
+  },
+  "miniTui": {
+    "queue": [
+      "[steer] a b",
+      "[write] <pi.memory>"
+    ],
+    "submit": [
+      "ignore",
+      "selectModel",
+      "login",
+      "compact",
+      "steer",
+      "prompt"
+    ],
+    "loginLabels": [
+      "Sign in with an account",
+      "Sign in with an API key"
+    ],
+    "continueSelection": [
+      "new",
+      null
+    ],
+    "modelValueSplit": {
+      "provider": "provider",
+      "modelId": "model-id"
+    },
+    "notAttached": "Not attached to a session",
+    "noHostProvides": "No host provides lane: server has [sessions], worker has [lane,models,worker]"
+  },
+  "miniServer": {
+    "attachBookkeeping": {
+      "afterAttach": [
+        "presentation-a"
+      ],
+      "stopAfterFirstClose": 0,
+      "stoppedFinal": 1
+    },
+    "idleRetire": {
+      "decisions": [
+        "hold",
+        "scheduled",
+        "scheduled"
+      ],
+      "afterIdle": 1
+    }
+  }
+}

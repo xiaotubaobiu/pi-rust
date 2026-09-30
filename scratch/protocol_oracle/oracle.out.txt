@@ -1,0 +1,393 @@
+=== encode:null
+f6
+=== encode:false
+f4
+=== encode:true
+f5
+=== encode:0
+00
+=== encode:1
+01
+=== encode:10
+0a
+=== encode:23
+17
+=== encode:24
+1818
+=== encode:25
+1819
+=== encode:100
+1864
+=== encode:1000
+1903e8
+=== encode:1e6
+1a000f4240
+=== encode:1e12
+1b000000e8d4a51000
+=== encode:maxsafe
+1b001fffffffffffff
+=== encode:-1
+20
+=== encode:-10
+29
+=== encode:-24
+37
+=== encode:-25
+3818
+=== encode:-100
+3863
+=== encode:-1000
+3903e7
+=== encode:-1e6
+3a000f423f
+=== encode:minsafe
+3b001ffffffffffffe
+=== encode:1.1
+fb3ff199999999999a
+=== encode:-0
+fb8000000000000000
+=== encode:bytes4
+4401020304
+=== encode:emptystr
+60
+=== encode:IETF
+6449455446
+=== encode:u-umlaut
+62c3bc
+=== encode:water
+63e6b0b4
+=== encode:gothic
+64f0908591
+=== encode:emptyarr
+80
+=== encode:arr123
+83010203
+=== encode:nested
+8301820203820405
+=== encode:map
+a26161016162820203
+=== decode:roundtrip:null
+null
+=== decode:roundtrip:false
+false
+=== decode:roundtrip:true
+true
+=== decode:roundtrip:0
+0
+=== decode:roundtrip:1
+1
+=== decode:roundtrip:10
+10
+=== decode:roundtrip:23
+23
+=== decode:roundtrip:24
+24
+=== decode:roundtrip:25
+25
+=== decode:roundtrip:100
+100
+=== decode:roundtrip:1000
+1000
+=== decode:roundtrip:1e6
+1000000
+=== decode:roundtrip:1e12
+1000000000000
+=== decode:roundtrip:maxsafe
+9007199254740991
+=== decode:roundtrip:-1
+-1
+=== decode:roundtrip:-10
+-10
+=== decode:roundtrip:-24
+-24
+=== decode:roundtrip:-25
+-25
+=== decode:roundtrip:-100
+-100
+=== decode:roundtrip:-1000
+-1000
+=== decode:roundtrip:-1e6
+-1000000
+=== decode:roundtrip:minsafe
+-9007199254740991
+=== decode:roundtrip:1.1
+1.1
+=== decode:roundtrip:-0
+number -0
+=== decode:roundtrip:emptystr
+""
+=== decode:roundtrip:IETF
+"IETF"
+=== decode:roundtrip:u-umlaut
+"ü"
+=== decode:roundtrip:water
+"水"
+=== decode:roundtrip:gothic
+"𐅑"
+=== decode:roundtrip:emptyarr
+[]
+=== decode:roundtrip:arr123
+[1,2,3]
+=== decode:roundtrip:nested
+[1,[2,3],[4,5]]
+=== decode:roundtrip:map
+{"a":1,"b":[2,3]}
+=== encode:float-integral-8.0
+08
+=== encode:float-integral-neg
+27
+=== encode:float-integral-1e10
+1b00000002540be400
+=== encode:float-negzero
+fb8000000000000000
+=== encode:unsafe-float-2^53
+ERR CborError: CBOR integers must be safe JavaScript integers
+=== encode:float-2^60
+ERR CborError: CBOR integers must be safe JavaScript integers
+=== encode:nan
+ERR CborError: CBOR numbers must be finite
+=== encode:posinf
+ERR CborError: CBOR numbers must be finite
+=== encode:neginf
+ERR CborError: CBOR numbers must be finite
+=== encode:undef-omitted
+a4647a65726f0065656d70747960626e6ff4636e696cf6
+=== decode:bom
+"﻿"
+=== encode:proto-key
+a164736166656473616665
+=== encode:dupe-undef-values
+a0
+=== encode:cyclic-array
+ERR CborError: CBOR values must not contain cycles
+=== encode:too-deep
+ERR CborError: CBOR nesting depth exceeds configured limit of 64
+=== encode:lone-surrogate
+ERR CborError: CBOR text strings must contain valid Unicode scalar values
+=== encode:array-with-undefined
+ERR CborError: CBOR arrays must not contain holes or undefined values
+=== decode:empty
+ERR CborError: Truncated CBOR payload
+=== decode:trunc-int
+ERR CborError: Truncated CBOR payload
+=== decode:reserved-ai
+ERR CborError: Malformed CBOR additional information
+=== decode:indef-bytes
+ERR CborError: Indefinite-length CBOR byte strings are not supported
+=== decode:indef-text
+ERR CborError: Indefinite-length CBOR text strings are not supported
+=== decode:indef-arr
+ERR CborError: Indefinite-length CBOR arrays are not supported
+=== decode:indef-map
+ERR CborError: Indefinite-length CBOR maps are not supported
+=== decode:tag
+ERR CborError: CBOR tags are not supported
+=== decode:undefined
+ERR CborError: Unsupported CBOR simple value or floating-point width
+=== decode:simple-e0
+ERR CborError: Unsupported CBOR simple value or floating-point width
+=== decode:break
+ERR CborError: CBOR break marker is not supported
+=== decode:float16
+ERR CborError: Unsupported CBOR simple value or floating-point width
+=== decode:float32
+ERR CborError: Unsupported CBOR simple value or floating-point width
+=== decode:posinf
+ERR CborError: Decoded CBOR number must be finite
+=== decode:nan
+ERR CborError: Decoded CBOR number must be finite
+=== decode:trunc-f64
+ERR CborError: Truncated CBOR payload
+=== decode:trunc-bytes
+ERR CborError: Truncated CBOR payload
+=== decode:trunc-text
+ERR CborError: Truncated CBOR payload
+=== decode:trunc-arr
+ERR CborError: Truncated CBOR payload
+=== decode:trunc-map
+ERR CborError: Truncated CBOR payload
+=== decode:trailing
+ERR CborError: CBOR payload contains trailing data
+=== decode:nonstr-key
+ERR CborError: CBOR map keys must be strings
+=== decode:dup-key
+ERR CborError: CBOR map contains a duplicate key
+=== decode:bad-utf8
+ERR CborError: CBOR text string contains invalid UTF-8
+=== decode:overlong-utf8
+ERR CborError: CBOR text string contains invalid UTF-8
+=== decode:utf8-surrogate
+ERR CborError: CBOR text string contains invalid UTF-8
+=== decode:unsafe-uint
+ERR CborError: Decoded CBOR integer or length is outside the safe range
+=== decode:unsafe-nint
+ERR CborError: Decoded CBOR integer is outside the safe range
+=== decode:unsafe-f64-int
+ERR CborError: Decoded CBOR integer is outside the safe range
+=== decode:neg-2^53-minus-2-f64
+ERR CborError: Decoded CBOR integer is outside the safe range
+=== decode:depth-65-ok
+[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[null]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]
+=== decode:depth-66-err
+ERR CborError: CBOR nesting depth exceeds configured limit of 64
+=== decode:oversized-bytes
+ERR CborError: CBOR byte string length exceeds configured limit of 16777216
+=== decode:oversized-text
+ERR CborError: CBOR text string length exceeds configured limit of 16777216
+=== decode:oversized-arr
+ERR CborError: CBOR array length exceeds configured limit of 1000000
+=== decode:oversized-map
+ERR CborError: CBOR map length exceeds configured limit of 1000000
+=== decode:strict-container
+ERR CborError: CBOR array length exceeds configured limit of 2
+=== decode:strict-bytes
+ERR CborError: CBOR byte length exceeds configured limit of 2
+=== encode:strict-enc-container
+ERR CborError: CBOR array length exceeds configured limit of 2
+=== encode:strict-enc-bytes
+ERR CborError: CBOR byte length exceeds configured limit of 2
+=== encode:text-over-max
+ERR CborError: CBOR text string length exceeds configured limit of 16
+=== decode:safe-uint-2^53-1
+9007199254740991
+=== decode:float-not-int
+1.5
+=== encode:msg:client_hello
+a264747970656568656c6c6f6776657273696f6e08
+=== frame:client_hello
+payload=a264747970656568656c6c6f6776657273696f6e08
+frame=00000015a264747970656568656c6c6f6776657273696f6e08
+=== reframe:client_hello
+a264747970656568656c6c6f6776657273696f6e08
+{"type":"hello","version":8}
+=== encode:msg:client_hello_v0
+a264747970656568656c6c6f6776657273696f6e00
+=== frame:client_hello_v0
+payload=a264747970656568656c6c6f6776657273696f6e00
+frame=00000015a264747970656568656c6c6f6776657273696f6e00
+=== reframe:client_hello_v0
+a264747970656568656c6c6f6776657273696f6e00
+{"type":"hello","version":0}
+=== encode:msg:client_hello_v9
+a264747970656568656c6c6f6776657273696f6e09
+=== frame:client_hello_v9
+payload=a264747970656568656c6c6f6776657273696f6e09
+frame=00000015a264747970656568656c6c6f6776657273696f6e09
+=== reframe:client_hello_v9
+a264747970656568656c6c6f6776657273696f6e09
+{"type":"hello","version":9}
+=== encode:msg:request_server
+a46474797065677265717565737462696469726571756573742d3166746172676574a1687365727665724964782430303030303030302d303030302d343030302d383030302d3030303030303030303030316463616c6ca3697365727669636549646970692e6d6f64656c73666d656d626572646c697374646172677380
+=== frame:request_server
+payload=a46474797065677265717565737462696469726571756573742d3166746172676574a1687365727665724964782430303030303030302d303030302d343030302d383030302d3030303030303030303030316463616c6ca3697365727669636549646970692e6d6f64656c73666d656d626572646c697374646172677380
+frame=0000007ea46474797065677265717565737462696469726571756573742d3166746172676574a1687365727665724964782430303030303030302d303030302d343030302d383030302d3030303030303030303030316463616c6ca3697365727669636549646970692e6d6f64656c73666d656d626572646c697374646172677380
+=== reframe:request_server
+a46474797065677265717565737462696469726571756573742d3166746172676574a1687365727665724964782430303030303030302d303030302d343030302d383030302d3030303030303030303030316463616c6ca3697365727669636549646970692e6d6f64656c73666d656d626572646c697374646172677380
+{"type":"request","id":"request-1","target":{"serverId":"00000000-0000-4000-8000-000000000001"},"call":{"serviceId":"pi.models","member":"list","args":[]}}
+=== encode:msg:request_session
+a46474797065677265717565737462696469726571756573742d3266746172676574a3687365727665724964782430303030303030302d303030302d343030302d383030302d3030303030303030303030316973657373696f6e49646973657373696f6e2d316c6174746163686d656e7449646c6174746163686d656e742d316463616c6ca469736572766963654964726170706c69636174696f6e2e637573746f6d68696e7374616e6365a2636b65796a696e7374616e63652d316a67656e65726174696f6e02666d656d62657266696e766f6b65646172677382a169617262697472617279f581666f7061717565
+=== frame:request_session
+payload=a46474797065677265717565737462696469726571756573742d3266746172676574a3687365727665724964782430303030303030302d303030302d343030302d383030302d3030303030303030303030316973657373696f6e49646973657373696f6e2d316c6174746163686d656e7449646c6174746163686d656e742d316463616c6ca469736572766963654964726170706c69636174696f6e2e637573746f6d68696e7374616e6365a2636b65796a696e7374616e63652d316a67656e65726174696f6e02666d656d62657266696e766f6b65646172677382a169617262697472617279f581666f7061717565
+frame=000000f0a46474797065677265717565737462696469726571756573742d3266746172676574a3687365727665724964782430303030303030302d303030302d343030302d383030302d3030303030303030303030316973657373696f6e49646973657373696f6e2d316c6174746163686d656e7449646c6174746163686d656e742d316463616c6ca469736572766963654964726170706c69636174696f6e2e637573746f6d68696e7374616e6365a2636b65796a696e7374616e63652d316a67656e65726174696f6e02666d656d62657266696e766f6b65646172677382a169617262697472617279f581666f7061717565
+=== reframe:request_session
+a46474797065677265717565737462696469726571756573742d3266746172676574a3687365727665724964782430303030303030302d303030302d343030302d383030302d3030303030303030303030316973657373696f6e49646973657373696f6e2d316c6174746163686d656e7449646c6174746163686d656e742d316463616c6ca469736572766963654964726170706c69636174696f6e2e637573746f6d68696e7374616e6365a2636b65796a696e7374616e63652d316a67656e65726174696f6e02666d656d62657266696e766f6b65646172677382a169617262697472617279f581666f7061717565
+{"type":"request","id":"request-2","target":{"serverId":"00000000-0000-4000-8000-000000000001","sessionId":"session-1","attachmentId":"attachment-1"},"call":{"serviceId":"application.custom","instance":{"key":"instance-1","generation":2},"member":"invoke","args":[{"arbitrary":true},["opaque"]]}}
+=== encode:msg:cancel
+a364747970656663616e63656c62696469726571756573742d3166746172676574a1687365727665724964782430303030303030302d303030302d343030302d383030302d303030303030303030303031
+=== frame:cancel
+payload=a364747970656663616e63656c62696469726571756573742d3166746172676574a1687365727665724964782430303030303030302d303030302d343030302d383030302d303030303030303030303031
+frame=00000051a364747970656663616e63656c62696469726571756573742d3166746172676574a1687365727665724964782430303030303030302d303030302d343030302d383030302d303030303030303030303031
+=== reframe:cancel
+a364747970656663616e63656c62696469726571756573742d3166746172676574a1687365727665724964782430303030303030302d303030302d343030302d383030302d303030303030303030303031
+{"type":"cancel","id":"request-1","target":{"serverId":"00000000-0000-4000-8000-000000000001"}}
+=== encode:msg:server_hello
+a364747970656568656c6c6f6776657273696f6e08687365727665724964782430303030303030302d303030302d343030302d383030302d303030303030303030303031
+=== frame:server_hello
+payload=a364747970656568656c6c6f6776657273696f6e08687365727665724964782430303030303030302d303030302d343030302d383030302d303030303030303030303031
+frame=00000044a364747970656568656c6c6f6776657273696f6e08687365727665724964782430303030303030302d303030302d343030302d383030302d303030303030303030303031
+=== reframe:server_hello
+a364747970656568656c6c6f6776657273696f6e08687365727665724964782430303030303030302d303030302d343030302d383030302d303030303030303030303031
+{"type":"hello","version":8,"serverId":"00000000-0000-4000-8000-000000000001"}
+=== encode:msg:hello_error
+a264747970656b68656c6c6f5f6572726f72656572726f72a264636f64656c77726f6e675f736572766572676d6573736167656473616665
+=== frame:hello_error
+payload=a264747970656b68656c6c6f5f6572726f72656572726f72a264636f64656c77726f6e675f736572766572676d6573736167656473616665
+frame=00000038a264747970656b68656c6c6f5f6572726f72656572726f72a264636f64656c77726f6e675f736572766572676d6573736167656473616665
+=== reframe:hello_error
+a264747970656b68656c6c6f5f6572726f72656572726f72a264636f64656c77726f6e675f736572766572676d6573736167656473616665
+{"type":"hello_error","error":{"code":"wrong_server","message":"safe"}}
+=== encode:msg:response_void
+a3647479706568726573706f6e736562696469726571756573742d31626f6bf5
+=== frame:response_void
+payload=a3647479706568726573706f6e736562696469726571756573742d31626f6bf5
+frame=00000020a3647479706568726573706f6e736562696469726571756573742d31626f6bf5
+=== reframe:response_void
+a3647479706568726573706f6e736562696469726571756573742d31626f6bf5
+{"type":"response","id":"request-1","ok":true}
+=== encode:msg:response_result
+a4647479706568726573706f6e736562696469726571756573742d31626f6bf566726573756c7480
+=== frame:response_result
+payload=a4647479706568726573706f6e736562696469726571756573742d31626f6bf566726573756c7480
+frame=00000028a4647479706568726573706f6e736562696469726571756573742d31626f6bf566726573756c7480
+=== reframe:response_result
+a4647479706568726573706f6e736562696469726571756573742d31626f6bf566726573756c7480
+{"type":"response","id":"request-1","ok":true,"result":[]}
+=== encode:msg:response_error
+a4647479706568726573706f6e736562696469726571756573742d31626f6bf4656572726f72a264636f646571736572766963655f6e6f745f666f756e64676d6573736167656473616665
+=== frame:response_error
+payload=a4647479706568726573706f6e736562696469726571756573742d31626f6bf4656572726f72a264636f646571736572766963655f6e6f745f666f756e64676d6573736167656473616665
+frame=0000004ba4647479706568726573706f6e736562696469726571756573742d31626f6bf4656572726f72a264636f646571736572766963655f6e6f745f666f756e64676d6573736167656473616665
+=== reframe:response_error
+a4647479706568726573706f6e736562696469726571756573742d31626f6bf4656572726f72a264636f646571736572766963655f6e6f745f666f756e64676d6573736167656473616665
+{"type":"response","id":"request-1","ok":false,"error":{"code":"service_not_found","message":"safe"}}
+=== encode:msg:service_update
+a364747970656e736572766963655f7570646174656e737562736372697074696f6e49646e737562736372697074696f6e2d3166757064617465a1726170706c69636174696f6e446566696e6564f5
+=== frame:service_update
+payload=a364747970656e736572766963655f7570646174656e737562736372697074696f6e49646e737562736372697074696f6e2d3166757064617465a1726170706c69636174696f6e446566696e6564f5
+frame=0000004fa364747970656e736572766963655f7570646174656e737562736372697074696f6e49646e737562736372697074696f6e2d3166757064617465a1726170706c69636174696f6e446566696e6564f5
+=== reframe:service_update
+a364747970656e736572766963655f7570646174656e737562736372697074696f6e49646e737562736372697074696f6e2d3166757064617465a1726170706c69636174696f6e446566696e6564f5
+{"type":"service_update","subscriptionId":"subscription-1","update":{"applicationDefined":true}}
+=== encode:msg:attachment_attached
+a264747970656a6174746163686d656e746a6174746163686d656e74a3687365727665724964782430303030303030302d303030302d343030302d383030302d3030303030303030303030316973657373696f6e49646973657373696f6e2d316c6174746163686d656e7449646c6174746163686d656e742d31
+=== frame:attachment_attached
+payload=a264747970656a6174746163686d656e746a6174746163686d656e74a3687365727665724964782430303030303030302d303030302d343030302d383030302d3030303030303030303030316973657373696f6e49646973657373696f6e2d316c6174746163686d656e7449646c6174746163686d656e742d31
+frame=0000007aa264747970656a6174746163686d656e746a6174746163686d656e74a3687365727665724964782430303030303030302d303030302d343030302d383030302d3030303030303030303030316973657373696f6e49646973657373696f6e2d316c6174746163686d656e7449646c6174746163686d656e742d31
+=== reframe:attachment_attached
+a264747970656a6174746163686d656e746a6174746163686d656e74a3687365727665724964782430303030303030302d303030302d343030302d383030302d3030303030303030303030316973657373696f6e49646973657373696f6e2d316c6174746163686d656e7449646c6174746163686d656e742d31
+{"type":"attachment","attachment":{"serverId":"00000000-0000-4000-8000-000000000001","sessionId":"session-1","attachmentId":"attachment-1"}}
+=== encode:msg:attachment_detached
+a264747970656a6174746163686d656e746a6174746163686d656e74f6
+=== frame:attachment_detached
+payload=a264747970656a6174746163686d656e746a6174746163686d656e74f6
+frame=0000001da264747970656a6174746163686d656e746a6174746163686d656e74f6
+=== reframe:attachment_detached
+a264747970656a6174746163686d656e746a6174746163686d656e74f6
+{"type":"attachment","attachment":null}
+=== encode:frame-3-bytes
+00000003aabbcc
+=== encode:frame-empty
+00000000
+=== frame-coalesced
+wire=00000003010203000000000000000104
+all=010203,,04
+byByte=010203,,04
+=== frame-70000-blocks
+len=1 first40=000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f2021222324252627
+sha-ish=d4d5d6d7d8d9dadbdcdd
+=== frame-oversized
+ERR FrameError: Frame length 4 exceeds configured limit of 3
+ERR FrameError: Frame decoder has failed
+=== frame-range-errors
+ERR RangeError: maxFrameLength must be an integer between 0 and 4294967295
+ERR RangeError: maxFrameLength must be an integer between 0 and 4294967295
+ERR RangeError: maxFrameLength must be an integer between 0 and 4294967295
+ERR RangeError: maxFrameLength must be an integer between 0 and 4294967295
+=== options-range-errors
+maxByteLength-neg ERR RangeError: maxByteLength must be an integer between 0 and 4294967295
+maxByteLength-float ERR RangeError: maxByteLength must be an integer between 0 and 4294967295
+maxByteLength-over ERR RangeError: maxByteLength must be an integer between 0 and 4294967295
+maxDepth-over ERR RangeError: maxDepth must be an integer between 0 and 512
+maxDepth-neg ERR RangeError: maxDepth must be an integer between 0 and 512
+maxContainerLength-over ERR RangeError: maxContainerLength must be an integer between 0 and 4294967295
+=== END
