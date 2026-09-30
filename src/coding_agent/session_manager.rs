@@ -1797,12 +1797,19 @@ fn list_sessions_from_dir(
     let Ok(read_dir) = std::fs::read_dir(dir) else {
         return sessions;
     };
-    let files: Vec<String> = read_dir
+    let mut files: Vec<String> = read_dir
         .filter_map(|entry| entry.ok())
         .map(|entry| entry.file_name().to_string_lossy().into_owned())
         .filter(|name| name.ends_with(".jsonl"))
         .map(|name| path_join(&[dir, &name]))
         .collect();
+    // Upstream keeps readdir order and its mtime sort is stable, so sessions
+    // with an equal activity time tie-break on directory enumeration order —
+    // an OS artifact (NTFS enumerates name-sorted, ext4 hashes names). Sort
+    // the base order by name so ties resolve to the capture machine's
+    // enumeration deterministically on every filesystem; non-tied results are
+    // unaffected by the mtime sort on top.
+    files.sort();
     let total = progress_total.unwrap_or(files.len());
 
     let mut loaded = 0usize;
@@ -1849,6 +1856,10 @@ pub fn find_most_recent_session(session_dir: &str, cwd: Option<&str>) -> Option<
         files.push((path, mtime));
     }
 
+    // Same tie determinism as list_sessions_from_dir: name-sort the base
+    // order so equal-mtime ties resolve to the capture machine's NTFS
+    // enumeration order on every filesystem.
+    files.sort_by(|a, b| a.0.cmp(&b.0));
     // Most recently modified first; ties keep directory order (stable sort).
     files.sort_by_key(|a| std::cmp::Reverse(a.1));
     files.into_iter().next().map(|(path, _)| path)
