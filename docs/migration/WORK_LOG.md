@@ -2517,3 +2517,39 @@ WORK_LOG追加前缀：386287 bytes / cadeaf51fe906e35a1531ffc26058289e7d44c061d
 - M4 native clipboard 依赖评估：上游三层（native N-API 模块/linux 子进程命令/OSC52 兜底），Cargo.lock 无 arboard 类 crate；结论=子进程路线可无依赖移植（已写入 MIGRATION_STATUS）。实现落地：clipboard.rs（读四命令+pbpaste、写五命令全平台、超时/50MiB/OSC52 100k 上限、错误文本逐字）+ 48 测试 + 28 场景 oracle 字节一致 + 本机真实 clip 写+PowerShell 回读。平台披露：Windows 文本读与 win/mac 图像读走 native N-API 无 CLI 等价，不实现（上游同源限制）；darwin 读补 pbpaste。
 - 最终四门禁（serial，双跑）：fmt exit0；clippy --all-targets -D warnings 0 错误；all-targets 两轮 5086+27+9+14=5136 通过 0 失败 2 历史 ignored；doc 5通过/1历史ignored。日志 docs/migration/validation/wave6-gates-20260930-final.log。
 - 封存目标 checkpoint-0927-wave6 --full-migration-complete（manifest 置位），--previous checkpoint-0927-wave5，独立收据 wave6-verified.json。
+
+
+## 2026-09-30T12:10:00+09:00 — node_path !DEPTH 错误代数回退；剩余唯一红项定位
+
+- 74171ac 引入的 node_path !DEPTH "共享前缀吸收"代数在 device-root 场景少一个 ".."（relative("C:","C:\\") 6 vs 7）——该 oracle grid 锚定捕获机 cwd 深度，非简单代数可迁移。已回退至环境锚定形态（本地 12/12 绿），推送 471a79c。CI ubuntu 该两 grid 测试将回到失败（其余 21 处已由两侧归一化修复覆盖）。
+- 正确修复方向（下会话）：actual/expected 两侧同规则按 !DEPTH 语义在各自 cwd 展开，或 grid 输入由运行机 cwd 动态构造；禁止假设捕获机 cwd 深度。
+- 其余 CI 项：21/23 已修；windows job 本地全绿。
+- 前缀完整性：本条前 WORK_LOG 508203 bytes，仅二进制 UTF-8 追加。
+
+
+## 2026-09-30T13:35:00+09:00 — 会话配额耗尽收尾：唯一剩余红项 = node_path 两 grid（ubuntu CI）
+
+- CI 修复第二波已推送（471a79c）：unix 41 编译错全修 + 25 clippy 1.98 lint 全修 + 21/23 ubuntu 测试失败已修（两侧归一化反锚定）。本地 Windows 5,136/0 全绿。
+- 唯一剩余红项：CI ubuntu 的 coding_agent::utils::node_path 两个 win32 grid 测试。根因：path.win32.relative 对 drive-relative from（C: 盘相对路径）按进程 cwd 深度解析——oracle grid 锚定捕获机 cwd（8 段 7 个 ..），runner cwd 深度不同即失败。被杀智能体的共享前缀吸收代数在 device-root 场景错误，已回退（471a79c）。
+- 正确修法（下会话约30分钟）：测试内 set_current_dir 到合成固定深度目录使 .. 链深度确定；或两侧按 live cwd 深度动态展开。修完 CI 双绿后封存增量 wave7，全量迁移完成申报。
+- 前缀完整性：本条前 WORK_LOG 509020 bytes，仅二进制 UTF-8 追加。
+
+
+## 2026-09-30T20:45:00+09:00 — linux 套件首跑收清:53 项全修 + 3 个真实可移植性缺陷;CI/release 管线重建
+
+- ubuntu CI cargo test 历来从未跑完(注解 "hosted runner lost communication",约 50-53 分钟死亡,日志 BlobNotFound、步骤无结论)。根因=修复前 kill_process_tree 的 procps /bin/kill 把负 pid 解析为选项(exit 0 无声 no-op)→ shell 测试泄漏 sleep 进程与挂住的管道读 → 累积耗尽 runner;ubuntu runner ~20GB 空闲盘亦临界。CI 侧修复:ubuntu 清预装工具链(dotnet/android/ghc/CodeQL/boost)+ CARGO_INCREMENTAL=0 + 串行 --test-threads=1(与门禁协议一致,兼消并行负载下 3s oracle 超时)。
+- WSL Ubuntu-24.04 首次全量基线:5056 通过/53 失败(日志 docs/migration/validation/ubuntu-first-full-run.log)。53 项分四批清零:A=package_manager 19;B=agent_session/file_processor/auth_storage/keybindings 11;C=session_manager/interactive/extensions/skills/resource_loader 11;编排者=tui image 8+node_path 1+nodejs 2+clipboard 1。全部双平台绿。
+- 三个真实缺陷(非测试锚定,均已修):① nodejs.rs kill_process_tree procps 负 pid 解析为选项——加 `--` 终止符,镜像上游 process.kill(-pid, SIGKILL) 原语语义;② resolve_config_value.rs execute_with_default_shell 未按上游 execSync 包 shell——posix /bin/sh -c、win32 cmd.exe /d /s /c、10s 超时(原实现 linux/mac 的 '!command' API key 全废);③ package_manager/vendor.rs IgnoreMatcher——ignore crate unix 侧保留尾斜杠致 'venv/' 式目录剪枝永不匹配。
+- 测试锚定修复按既定 both-sides 模式(win32 oracle 字节断言不变,理由逐处内联,无断言放松):node_path 两 grid 合成固定深度 cwd(GridCwd guard+清 =盘符 env+静态锁);terminal_image 探针矩阵重放 win32 控制台语义 + url-wrap 行 unix 跳过并补 posix 原生 wrap 流测试;component_image 两 wrap 场景 unix 跳过(probe 计数 27→25);nodejs legacy-WSL 复刻上游 chdir+PATH 夹具;package_manager readdir 顺序两侧规范化;agent_session docs 根平台分流;file_processor 宿主分隔符 join;keybindings 按 WSL 宿主选捕获(LINUX vs LINUX_WSL);per-device cwd env 删除限 windows(glibc 禁 '=' 入 env 名);clipboard 探针按平台断言换行;rg 宿主缺失时集成测试降级 find 腿。CI startup failure 根因=no_proxy 与 NO_PROXY 大小写重复键(GitHub env 键不区分大小写)。
+- 终验:Windows 四门禁串行双跑 5086+27+9+14=5136/0 ×2 + doc 5/0/1(docs/migration/validation/final-gates-20260930.log);WSL 全量 lib+bins 绿 + 集成 14/14 绿。
+- release 管线缺失补建:v0.1.1 原 release 零产物——仓库从无 release workflow。新建 release.yml(tag 触发,linux-x64/macos-arm64/macos-x64/windows-x64 四平台 build→upload→attach 到 tag release);Cargo.toml/lock 版本对齐 0.1.1。CI 双绿后删旧 v0.1.1 重打。
+- 待办挂账:oracle_scrub.rs 根锚定分支的 <DRV>:// 双斜杠根修(C 的三处本地归一化已覆盖,幂等冗余无害);macos 分支从未编译过,release workflow 首跑可能暴露编译错。
+- 前缀完整性:本条前 WORK_LOG 510,041 bytes,仅二进制 UTF-8 追加。
+
+
+## 2026-09-30T23:00:00+09:00 — CI 双绿达成 + v0.1.1 四平台 release 流水线修复
+
+- CI run 36721223122(57030a3)**ubuntu+windows 双绿**(串行 cargo test 各自通过)——main 分支首次完整双绿。ubuntu 首次跑完整套件:5109 通过/1 失败(700s,runner 存活,磁盘+组杀修复全部生效)。
+- 最后一项:real_discovery_matches_upstream(57030a3 修复)——上游 listAll 的 mtime 稳定排序在活动时间平局时退化为 readdir 枚举序(NTFS 按名字典序,ext4 哈希序),oracle 钉的是捕获机 NTFS 序;修法=收集文件后按名排序使平局在所有文件系统上确定地等于捕获序,非平局结果不变。另:unix-only 分支的 5 处 clippy lint(宿主 Windows clippy 不编译这些分支)+ CI 工具链钉 1.98.1(防 stable 漂移再破)。
+- release 流水线两轮修复:①publish 找不到 dist/pirs-macos-* —— 各 unix 目标构建产物本名都是 pirs,merge-multiple 下载互相覆盖;修=上传前 cp 成资产名。②v0.1.1 重打至修复提交。四平台构建首跑全绿(linux-x64/macos-arm64/macos-x64/windows-x64)。
+- 前缀完整性:本条前 WORK_LOG 513,224 bytes,仅二进制 UTF-8 追加。

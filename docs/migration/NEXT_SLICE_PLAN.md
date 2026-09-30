@@ -1,3 +1,19 @@
+- **2026-09-30T12:00+09:00（CI 修复第二波状态）**：unix 编译 41 错全修（WSL clippy 1.98.1 0错）；25 处 clippy 1.98 lint 全修；r20 134 场景中 skills/session_manager/interactive 2 处已两侧归一化修复。**唯一剩余红项**：utils/node_path 的 !DEPTH 标记——oracle grid 锚定捕获机 cwd 深度（7 级），与运行机 cwd 深度本质相关；一次"共享前缀吸收"代数修正尝试错误已回退（74171ac→471a79c），需要真正环境无关的重设计：改为对 actual 与 expected 两侧同规则归一化（如都按 `!DEPTH<suffix>` 标记语义在各自 cwd 下展开后比对，或 grid 输入改用运行机 cwd 构造）。修复后 ubuntu+windows CI 双绿即封存 wave5/wave6 增量为 wave7（full_migration_complete 已在 wave6 置位）。
+
+- **2026-09-30T23:40+09:00（终态:CI 双绿 + v0.1.1 四平台 release 完成）**：
+  - **CI run 36721223122(57030a3)ubuntu+windows 双绿**——main 分支首次完整双绿;ubuntu 首次跑完整套件 5109/1(700s 串行,runner 存活)。最后 1 项=会话发现 readdir 平局序(上游 mtime 稳定排序在活动时间平局时退化为目录枚举序,NTFS 字典序 vs ext4 哈希序;57030a3 按名排序基础序修复,非平局不变)。
+  - 全程修复链(本次会话):56c6602 win32 grid 合成 cwd + CI 串行/磁盘清理;121bbd5 no_proxy 大小写重复键(startup failure);b799b86+2219184 ubuntu 首跑 53 项全清(含 3 真实缺陷:procps 负 pid 组杀 no-op、'!command' API key 未包 shell、IgnoreMatcher 尾斜杠)+ 3 个真缺陷后续 273bfe3 unix 分支 clippy 5 处 + 工具链钉 1.98.1。
+  - **release:https://github.com/xiaotubaobiu/pi-rust/releases/tag/v0.1.1** 四平台产物齐全(pirs-linux-x64 21MB / pirs-macos-arm64 15MB / pirs-macos-x64 16MB / pirs-windows-x64.exe 15MB),tag→b9c42df,run 36730423818 全绿;linux/windows 二进制本机实跑 `pirs 0.1.1` 冒烟通过。publish 两轮修复:unix 产物本名同为 pirs 需先 cp 成资产名再上传。
+  - 挂账(非阻塞):oracle_scrub <DRV>:// 双斜杠根修(本地归一化已覆盖,幂等冗余);scratch/ TS-JS oracle 脚手架 434 文件待用户决定是否归档删除;M4 native clipboard Windows 文本读与 win/mac 图像读(上游 N-API 限制,已披露)。
+  - 唯一待办:wave7 增量封存(可选,full_migration_complete 已在 wave6 置位)。
+
+- **2026-09-30T19:10+09:00（CI 三重根因定位,已被上方终态取代）**：
+  1. **windows CI 的 win32 relative grid**：GitHub windows runner cwd=`D:\a\pi-rust\pi-rust`,重定向捕获盘后 grid 路径 `C:\a`→`D:\a` 与 runner cwd 第二段 `a` 撞共享前缀,relative 语义从"退到盘根"变"退2级"；且 shell 注入的 `=C:` 每盘 cwd 环境变量使 drive-relative 解析绕过传入 cwd（本地 git-bash 设了它而 CI pwsh 没设,解释了"本地绿 CI 红"）。修法=GridCwd guard：测试内创建活动盘合成固定深度目录 `q0\q1\q2`（与所有 grid 路径无共享段）,set_current_dir 进去+清 `=<live>:` 变量,静态锁串行两 grid,Drop 恢复+清目录（node_path.rs tests::GridCwd）。
+  2. **windows CI 的 nodejs settles 测试 3000ms 超时**：超时值本身是 oracle 忠实还原（upstream withTimeout 3000）,不可动;CI 并行负载下进程测试超时。修法=CI 串行 `--test-threads=1`（与门禁协议一致）。
+  3. **ubuntu CI cargo test 50 分钟死亡（从未跑完过）**：runner 只剩 ~20GB 磁盘,本工程 debug target 超限,磁盘耗尽杀 runner（日志 BlobNotFound+步骤无 conclusion 佐证）。修法=ubuntu 清理预装工具链（dotnet/android/ghc/CodeQL/boost）+ `CARGO_INCREMENTAL=0`。
+  4. **release 管线缺失**：v0.1.1 只有 release-notes.md 零产物——仓库从来没有 release workflow。已新建 release.yml（tag push 触发,linux-x64/macos-arm64/macos-x64/windows-x64 四平台 build→upload→attach）;Cargo.toml/lock 版本对齐 0.1.1。macos 分支从未编译过,首跑可能暴露编译错,预期需一轮修复。
+  - 剩余流程：本地四门禁 + WSL ubuntu 全量串行预验绿 → 推送 → CI 双绿 → 删旧 v0.1.1（release+tag）→ 在绿提交重打 v0.1.1 → release workflow 产物齐全 → wave7 封存申报。
+
 # 交接更新（2026-09-30T09:20+09:00，wave5 收官——最新状态，优先于以下历史内容）
 
 - clippy 三轮（27+43+20处）全部清零；四门禁串行双跑全绿（5034+27+9+14=5084/0 ×2，doc 5绿）。
