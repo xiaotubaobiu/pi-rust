@@ -1034,7 +1034,23 @@ mod tests {
         let separator = if windows { '\\' } else { '/' };
         if let Some(suffix) = expected.strip_prefix("!DEPTH") {
             let separator_string = separator.to_string();
-            let chain = vec![".."; cwd.matches(separator).count()].join(&separator_string);
+            // environment-anchored: one ".." per cwd segment below the device
+            // root (matching path.relative to that root; a root cwd
+            // contributes none), not per raw separator. Windows paths carry a
+            // leading device segment ("D:"), POSIX ones do not.
+            let segments: Vec<&str> = cwd
+                .split(separator)
+                .filter(|part| !part.is_empty())
+                .collect();
+            let depth = if windows {
+                segments.len().saturating_sub(1)
+            } else {
+                segments.len()
+            };
+            let chain = vec![".."; depth].join(&separator_string);
+            if chain.is_empty() {
+                return suffix.trim_start_matches(separator).to_string();
+            }
             return format!("{chain}{suffix}");
         }
         if let Some(relative) = expected.strip_prefix("!REL") {
@@ -1044,21 +1060,59 @@ mod tests {
                 posix_resolve(&[relative], cwd)
             }
         } else {
-            expected.replace("!CWD", cwd)
+            // Strip a trailing separator so a device-root cwd (X:\)
+            // substitutes cleanly into "!CWD\<suffix>" forms.
+            let base = cwd.strip_suffix(separator).unwrap_or(cwd);
+            expected.replace("!CWD", base)
         }
     }
 
+    /// environment-anchored: a device-root cwd (X:\) makes drive-relative
+    /// resolution surface the root with its trailing separator while the
+    /// capture (a non-root cwd) stored none; drop trailing separators on both
+    /// comparison sides.
+    fn strip_trailing_separator(value: &str, windows: bool) -> &str {
+        let separator = if windows { '\\' } else { '/' };
+        value.strip_suffix(separator).unwrap_or(value)
+    }
+
+    /// environment-anchored: the win32 grids were captured on a machine whose
+    /// process cwd sat on `C:`. Entries with marker expectations (!REL/!CWD/
+    /// !DEPTH) resolve drive-relative inputs against the capture drive, so
+    /// those inputs are retargeted to the live drive; entries with literal
+    /// expectations are cwd-independent and keep the captured inputs verbatim.
+    /// (Literal entries with synthetic devices, e.g. `x:`, additionally assume
+    /// the live drive differs from the synthetic letter, as on any real
+    /// runner: only then does node's per-device fallback land on the device
+    /// root like the capture.)
+    fn retarget_args(args: &[&str], expected: &str) -> Vec<String> {
+        let marker = expected.starts_with("!REL")
+            || expected.starts_with("!CWD")
+            || expected.starts_with("!DEPTH");
+        args.iter()
+            .map(|arg| {
+                if marker {
+                    crate::coding_agent::oracle_scrub::retarget_capture_drive(arg)
+                } else {
+                    arg.to_string()
+                }
+            })
+            .collect()
+    }
+
     #[test]
+    #[cfg(windows)] // grid captured with a win32 process cwd
     fn node_path_win32_resolve_grid() {
-        if !cfg!(windows) {
-            return; // grid captured with a win32 process cwd
-        }
         for (args, expected) in oracle::NODE_PATH_WIN32_RESOLVE {
-            let got = win32_resolve(args, &cwd());
+            let retargeted = retarget_args(args, expected);
+            let refs: Vec<&str> = retargeted.iter().map(String::as_str).collect();
+            let got = win32_resolve(&refs, &cwd());
             // node resolves win32 paths case-insensitively and preserves the
             // input's drive case, so compare case-insensitively.
             assert!(
-                got.eq_ignore_ascii_case(&expand_marker(expected, true, &cwd())),
+                strip_trailing_separator(&got, true).eq_ignore_ascii_case(
+                    strip_trailing_separator(&expand_marker(expected, true, &cwd()), true)
+                ),
                 "win32 resolve {args:?}: {got:?} != {expected:?}"
             );
         }
@@ -1104,12 +1158,14 @@ mod tests {
     }
 
     #[test]
+    #[cfg(windows)] // grid captured with a win32 process cwd
     fn node_path_win32_relative_grid() {
         let c = cwd();
         for (from, to, expected) in oracle::NODE_PATH_WIN32_RELATIVE {
+            let retargeted = retarget_args(&[from, to], expected);
             assert_eq!(
-                win32_relative(from, to, &c),
-                expand_marker(expected, true, &c),
+                strip_trailing_separator(&win32_relative(&retargeted[0], &retargeted[1], &c), true),
+                strip_trailing_separator(&expand_marker(expected, true, &c), true),
                 "win32 relative({from:?}, {to:?})"
             );
         }

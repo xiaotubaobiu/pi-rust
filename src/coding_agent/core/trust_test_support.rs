@@ -1,13 +1,15 @@
 use super::trust_manager::ProjectTrustStore;
 use serde_json::Value;
-use std::{fs, path::Path};
+use std::{fs, path::Path, path::PathBuf};
 
 pub fn oracle() -> Value {
     serde_json::from_str(include_str!("trust_oracle.json")).unwrap()
 }
 
 pub struct Fixture {
-    pub dir: tempfile::TempDir,
+    /// Keeps the fixture tree alive (deleted on drop); paths are joined from
+    /// the canonicalized `root` so they stay stable across machines.
+    _dir: tempfile::TempDir,
     pub root: String,
 }
 impl Fixture {
@@ -15,7 +17,7 @@ impl Fixture {
         let dir = tempfile::tempdir().unwrap();
         let root =
             crate::coding_agent::utils::paths::canonicalize_path(dir.path().to_str().unwrap());
-        Self { dir, root }
+        Self { _dir: dir, root }
     }
     pub fn p(&self, portable: &str) -> String {
         if portable == "/" {
@@ -30,11 +32,15 @@ impl Fixture {
         portable
             .strip_prefix("/root")
             .map(|suffix| {
-                let mut p = self.dir.path().to_path_buf();
+                // environment-anchored: CI temp dirs can be 8.3 short paths
+                // (RUNNER~1); join from the canonical root so the paths handed
+                // to the product and the ones `text()`/`file()` map back match
+                // byte-for-byte on every machine. Preserves `..` parts for
+                // normalization tests.
+                let mut p = PathBuf::from(&self.root);
                 for part in suffix.trim_start_matches('/').split('/') {
                     p.push(part);
                 }
-                // Avoid verbatim Windows paths and preserve .. for normalization tests.
                 p.to_string_lossy().into_owned()
             })
             .unwrap_or_else(|| portable.into())

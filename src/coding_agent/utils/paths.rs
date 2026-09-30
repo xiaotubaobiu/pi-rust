@@ -533,7 +533,19 @@ mod tests {
         let captured_cwd =
             "C:\\Users\\13063\\Desktop\\code\\agent work\\pi-rust\\scratch\\utils_oracle";
         if expected == captured_cwd {
-            return current_dir();
+            // environment-anchored: the capture resolved `C:` against its C:
+            // process cwd. On machines whose cwd sits on another drive, node
+            // falls back to that device's root.
+            let live = current_dir();
+            let on_capture_drive = live
+                .chars()
+                .next()
+                .is_some_and(|drive| drive.eq_ignore_ascii_case(&'C'));
+            return if on_capture_drive {
+                live
+            } else {
+                r"C:\".to_string()
+            };
         }
         let live_home = default_home_dir();
         if live_home.is_empty() || live_home == "C:\\Users\\13063" {
@@ -543,6 +555,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(windows)] // captured on the win32 oracle host (drive/cwd interplay)
     fn resolve_path_matches_oracle() {
         for (input, base, expected) in oracle::RESOLVE_PATH {
             match (*expected).strip_prefix("!ERR") {
@@ -555,7 +568,13 @@ mod tests {
                     let adjusted = adjust_oracle_value(expected);
                     let got = resolve_path_with(input, base, &PathInputOptions::default(), true)
                         .expect("ok");
-                    assert_eq!(got, adjusted, "resolve {input:?} against {base:?}");
+                    // environment-anchored: both sides normalized (drive and
+                    // home anchors).
+                    assert_eq!(
+                        crate::coding_agent::oracle_scrub::scrub_str(&got),
+                        crate::coding_agent::oracle_scrub::scrub_str(&adjusted),
+                        "resolve {input:?} against {base:?}"
+                    );
                 }
             }
         }

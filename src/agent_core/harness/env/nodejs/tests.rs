@@ -29,7 +29,10 @@ use tokio_util::sync::CancellationToken;
 
 fn temp_root() -> (tempfile::TempDir, String) {
     let dir = tempfile::tempdir().expect("tempdir");
-    let path = path_string(dir.path());
+    // environment-anchored: both sides normalized. CI temp dirs can be 8.3
+    // short paths (RUNNER~1) while spawned shells report the long form as
+    // PWD; canonicalize the env root so both sides match on every machine.
+    let path = canonical(&path_string(dir.path()));
     (dir, path)
 }
 

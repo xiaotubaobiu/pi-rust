@@ -6148,8 +6148,18 @@ mod upper_oracle {
         customize(&fixture);
         let shell = fixture.build(options);
         drive(&shell, &fixture);
-        let ours: Vec<Value> = log.lock().expect("log").clone();
-        let expected = oracle_log(name);
+        let mut ours: Vec<Value> = log.lock().expect("log").clone();
+        let mut expected = oracle_log(name);
+        // environment-anchored: both sides normalized. Root-relative fixture
+        // inputs (`/outside/AGENTS.md`) resolve onto the live drive while the
+        // capture stores the capture machine's `C:` form, so both sides go
+        // through the shared anchor scrub before the byte comparison.
+        for entry in ours.iter_mut() {
+            crate::coding_agent::oracle_scrub::scrub_value(entry);
+        }
+        for entry in expected.iter_mut() {
+            crate::coding_agent::oracle_scrub::scrub_value(entry);
+        }
         let failures: Vec<String> = ours
             .iter()
             .enumerate()

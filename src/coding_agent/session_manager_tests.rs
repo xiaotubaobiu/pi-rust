@@ -104,6 +104,12 @@ fn process_cwd_string() -> String {
         .unwrap_or_default()
 }
 
+fn canonical_path_or_same(path: &str) -> String {
+    std::fs::canonicalize(path)
+        .map(|p| p.to_string_lossy().into_owned())
+        .unwrap_or_else(|_| path.to_string())
+}
+
 fn scrub_string(root: &str, key: &str, value: &str) -> String {
     let mut scrubbed = value.replace(root, "<root>");
     scrubbed = scrubbed.replace(&process_cwd_string(), "<cwd>");
@@ -150,6 +156,12 @@ fn scrub_value(root: &str, key: &str, value: &Value) -> Value {
 fn canon(root: &str, value: &impl Serialize) -> String {
     let serialized = serde_json::to_value(value).expect("serializable");
     let mut scrubbed = scrub_value(root, "<no-key>", &serialized);
+    // environment-anchored: both sides normalized. Root-relative fixture
+    // inputs (`/project`) resolve against the live drive while the capture
+    // stores the capture machine's `C:` form, so both sides go through the
+    // shared anchor scrub (separators + drive/root anchors) before the
+    // canonical comparison.
+    crate::coding_agent::oracle_scrub::scrub_value(&mut scrubbed);
     // The Node oracle explicitly sorts its canonical comparison tree. Keep
     // this test-only normalization separate from raw JSONL wire assertions.
     scrubbed.sort_all_objects();
@@ -163,10 +175,16 @@ fn scrub_file_text(root: &str, text: &str) -> String {
         .expect("iso field");
     let numeric_field = Regexp::new(r#""timestamp":-?\d+"#).expect("numeric field");
     // JSON strings escape backslashes, so path occurrences inside JSONL lines
-    // carry doubled separators; replace the escaped forms too.
+    // carry doubled separators; replace the escaped forms too. The
+    // canonicalized forms are replaced as well (environment-anchored: CI temp
+    // dirs can be 8.3 short paths while product code canonicalizes).
     let root_escaped = root.replace('\\', "\\\\");
     let cwd = process_cwd_string();
     let cwd_escaped = cwd.replace('\\', "\\\\");
+    let root_canonical = canonical_path_or_same(root);
+    let root_canonical_escaped = root_canonical.replace('\\', "\\\\");
+    let cwd_canonical = canonical_path_or_same(&cwd);
+    let cwd_canonical_escaped = cwd_canonical.replace('\\', "\\\\");
     text.split('\n')
         .map(|line| {
             if line.trim().is_empty() {
@@ -175,8 +193,12 @@ fn scrub_file_text(root: &str, text: &str) -> String {
             let mut scrubbed = line
                 .replace(&root_escaped, "<root>")
                 .replace(&cwd_escaped, "<cwd>")
+                .replace(&root_canonical_escaped, "<root>")
+                .replace(&cwd_canonical_escaped, "<cwd>")
                 .replace(root, "<root>")
-                .replace(&cwd, "<cwd>");
+                .replace(&cwd, "<cwd>")
+                .replace(&root_canonical, "<root>")
+                .replace(&cwd_canonical, "<cwd>");
             scrubbed = stamp_regexp()
                 .replace_all(&scrubbed, "<stamp>_")
                 .into_owned();
@@ -204,10 +226,34 @@ fn canonical_comparison_does_not_sort_wire_scrubbing() {
     assert_eq!(serde_json::to_string(&value).unwrap(), raw);
 }
 
+/// environment-anchored: both sides normalized — route a raw oracle canon
+/// rendering through the same canon scrub/sort pipeline used for actual
+/// values. The oracle stores the rendering as a JSON string, so it is parsed
+/// first to keep the re-serialization single-layer.
+fn oracle_canon_value(value: &Value) -> String {
+    let raw = value.as_str().unwrap_or_default();
+    match serde_json::from_str::<Value>(raw) {
+        Ok(parsed) => canon("<unused-root>", &parsed),
+        Err(_) => canon("<unused-root>", &value),
+    }
+}
+
+fn oracle_canon(path: &[&str]) -> String {
+    let expected: serde_json::Value =
+        serde_json::from_str(oracle_cap(path)).expect("oracle canon json");
+    canon("<unused-root>", &expected)
+}
+
+/// environment-anchored: both sides normalized — same pipeline for the raw
+/// oracle error texts (stored as canon renderings, i.e. JSON-quoted).
+fn oracle_error_canon(key: &str) -> String {
+    oracle_canon_value(&Value::String(oracle_error(key).to_string()))
+}
+
 fn assert_canon_matches(root: &str, value: &impl Serialize, oracle_path: &[&str]) {
     assert_eq!(
         canon(root, value),
-        oracle_cap(oracle_path),
+        oracle_canon(oracle_path),
         "oracle mismatch at {oracle_path:?}"
     );
 }
@@ -629,7 +675,7 @@ fn build_session_context_matches_oracle_grid() {
         assert_eq!(roles, expected_roles, "roles for {name}");
         assert_eq!(
             canon("<root>", &ctx.messages),
-            case["canon"].as_str().expect("canon"),
+            oracle_canon_value(&case["canon"]),
             "canon messages for {name}"
         );
     }
@@ -784,7 +830,7 @@ fn session_entry_to_context_messages_matches_oracle_battery() {
         let entry = &battery[case_index].1;
         assert_eq!(
             canon("<root>", &session_entry_to_context_messages(entry)),
-            case["canon"].as_str().expect("canon"),
+            oracle_canon_value(&case["canon"]),
             "entryToContext for {name}"
         );
     }
@@ -804,9 +850,7 @@ fn latest_compaction_and_parse_entries_match_oracle() {
     for (index, input) in [&none, &last, &middle].into_iter().enumerate() {
         assert_eq!(
             canon("<root>", &get_latest_compaction_entry(input)),
-            oracle()["latestCompaction"][index]["canon"]
-                .as_str()
-                .expect("canon"),
+            oracle_canon_value(&oracle()["latestCompaction"][index]["canon"]),
             "latestCompaction case {index}"
         );
     }
@@ -820,9 +864,7 @@ not json
     for (index, content) in [mixed, "", blank_lines].into_iter().enumerate() {
         assert_eq!(
             canon("<root>", &parse_session_entries(content)),
-            oracle()["parseEntries"][index]["canon"]
-                .as_str()
-                .expect("canon"),
+            oracle_canon_value(&oracle()["parseEntries"][index]["canon"]),
             "parseEntries case {index}"
         );
     }
@@ -860,7 +902,7 @@ fn migrate_session_entries_matches_oracle() {
     migrate_session_entries(&mut v1);
     assert_eq!(
         canon("<root>", &v1),
-        oracle()["migrate"][0]["canon"].as_str().expect("canon"),
+        oracle_canon_value(&oracle()["migrate"][0]["canon"]),
         "v1 migration"
     );
 
@@ -890,7 +932,7 @@ fn migrate_session_entries_matches_oracle() {
     migrate_session_entries(&mut v2);
     assert_eq!(
         canon("<root>", &v2),
-        oracle()["migrate"][1]["canon"].as_str().expect("canon"),
+        oracle_canon_value(&oracle()["migrate"][1]["canon"]),
         "v2 migration"
     );
 
@@ -913,7 +955,7 @@ fn migrate_session_entries_matches_oracle() {
     migrate_session_entries(&mut current);
     assert_eq!(
         canon("<root>", &current),
-        oracle()["migrate"][2]["canon"].as_str().expect("canon"),
+        oracle_canon_value(&oracle()["migrate"][2]["canon"]),
         "current entries unchanged"
     );
     test_id_seam::disable();
@@ -1059,7 +1101,7 @@ fn load_entries_from_file_matches_oracle() {
 
     assert_eq!(
         canon(&root, &Value::Object(caps)),
-        oracle_cap(&["canon", "load-entries"]),
+        oracle_canon(&["canon", "load-entries"]),
         "load-entries caps"
     );
     test_id_seam::disable();
@@ -1109,7 +1151,7 @@ fn open_beyond_scan_limit_matches_oracle() {
 
     assert_eq!(
         canon(&root, &Value::Object(caps)),
-        oracle_cap(&["canon", "scan-limit"]),
+        oracle_canon(&["canon", "scan-limit"]),
         "scan-limit caps"
     );
     test_id_seam::disable();
@@ -1226,7 +1268,7 @@ fn find_most_recent_session_matches_oracle() {
 
     assert_eq!(
         canon(&root, &Value::Object(caps)),
-        oracle_cap(&["canon", "most-recent"]),
+        oracle_canon(&["canon", "most-recent"]),
         "most-recent caps"
     );
     test_id_seam::disable();
@@ -1590,7 +1632,7 @@ fn session_manager_persisted_flows_match_oracle() {
         .map(|e| e.to_string());
     assert_eq!(
         open_error.map(|text| canon(&root, &text)),
-        Some(oracle_error("open-no-header").to_string()),
+        Some(oracle_error_canon("open-no-header")),
         "open no-header error"
     );
     expect_cap!(
@@ -1611,7 +1653,7 @@ fn session_manager_persisted_flows_match_oracle() {
         .map(|e| e.to_string());
     assert_eq!(
         log_error.map(|text| canon(&root, &text)),
-        Some(oracle_error("open-not-session").to_string()),
+        Some(oracle_error_canon("open-not-session")),
         "open non-session error"
     );
     expect_cap!(
@@ -2548,7 +2590,7 @@ fn session_manager_errors_match_oracle() {
         .map(|e| e.to_string());
     assert_eq!(
         fork_empty.map(|text| canon(&root, &text)),
-        Some(oracle_error("fork-empty").to_string()),
+        Some(oracle_error_canon("fork-empty")),
     );
 
     let headerless_source = temp_path(dir.path(), "headerless.jsonl");
@@ -2562,7 +2604,7 @@ fn session_manager_errors_match_oracle() {
         .map(|e| e.to_string());
     assert_eq!(
         fork_no_header.map(|text| canon(&root, &text)),
-        Some(oracle_error("fork-no-header").to_string()),
+        Some(oracle_error_canon("fork-no-header")),
     );
     test_id_seam::disable();
 }

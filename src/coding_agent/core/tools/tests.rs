@@ -341,7 +341,16 @@ async fn aborted_write_settles_before_following_mutation_and_different_files_pro
 #[tokio::test]
 async fn newly_created_file_keeps_the_same_queue_key_until_operation_settles() {
     let dir = tempfile::tempdir().unwrap();
-    let path = dir.path().join("new").to_string_lossy().into_owned();
+    // environment-anchored: CI temp dirs can be 8.3 short paths (RUNNER~1)
+    // while the queue canonicalizes existing files to the long form; start
+    // from the canonical path so both queue keys agree on every machine.
+    let canonical_dir = crate::coding_agent::utils::paths::canonicalize_path(
+        dir.path().to_str().expect("utf8 temp dir"),
+    );
+    let path = std::path::Path::new(&canonical_dir)
+        .join("new")
+        .to_string_lossy()
+        .into_owned();
     let path2 = path.clone();
     let entered = Arc::new(Notify::new());
     let release = Arc::new(Notify::new());

@@ -9,6 +9,8 @@ use super::{
     format_no_api_key_found_message, format_no_model_selected_message,
     format_no_models_available_message, get_provider_login_help,
 };
+use crate::coding_agent::oracle_scrub::scrub_str;
+use serde_json::Value;
 
 static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
@@ -17,6 +19,15 @@ fn oracle() -> serde_json::Value {
         "../../../scratch/core_oracle_w37/auth_guidance.oracle.json"
     ))
     .unwrap()
+}
+
+/// environment-anchored: both sides normalized. The captured docs paths are
+/// rooted at the capture machine's package dir (`C:\pi-oracle-w37-pkg\...`);
+/// the root-relative `PI_PACKAGE_DIR` resolves against the live drive (and
+/// stays separator-native on POSIX), so both sides go through the shared
+/// anchor scrub before comparing.
+fn scrubbed(value: &Value) -> String {
+    scrub_str(value.as_str().expect("oracle string"))
 }
 
 #[test]
@@ -28,22 +39,25 @@ fn guidance_texts_match_the_oracle_capture() {
     std::env::set_var("PI_PACKAGE_DIR", "/pi-oracle-w37-pkg");
 
     let capture = oracle();
-    assert_eq!(get_provider_login_help(), capture["provider_login_help"]);
     assert_eq!(
-        format_no_models_available_message(),
-        capture["no_models_available"]
+        scrub_str(&get_provider_login_help()),
+        scrubbed(&capture["provider_login_help"])
     );
     assert_eq!(
-        format_no_model_selected_message(),
-        capture["no_model_selected"]
+        scrub_str(&format_no_models_available_message()),
+        scrubbed(&capture["no_models_available"])
     );
     assert_eq!(
-        format_no_api_key_found_message("anthropic"),
-        capture["no_api_key"]
+        scrub_str(&format_no_model_selected_message()),
+        scrubbed(&capture["no_model_selected"])
     );
     assert_eq!(
-        format_no_api_key_found_message("unknown"),
-        capture["no_api_key_unknown"]
+        scrub_str(&format_no_api_key_found_message("anthropic")),
+        scrubbed(&capture["no_api_key"])
+    );
+    assert_eq!(
+        scrub_str(&format_no_api_key_found_message("unknown")),
+        scrubbed(&capture["no_api_key_unknown"])
     );
 
     match previous {

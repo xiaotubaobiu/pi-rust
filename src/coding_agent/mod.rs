@@ -12,6 +12,9 @@ pub mod package_manager;
 pub mod session_manager;
 pub mod utils;
 
+#[cfg(test)]
+pub mod oracle_scrub;
+
 pub mod modes;
 
 pub mod cli;

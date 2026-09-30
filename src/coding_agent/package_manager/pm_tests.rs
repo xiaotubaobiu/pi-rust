@@ -401,6 +401,20 @@ fn oracle_entry(name: &str) -> Value {
         .clone()
 }
 
+/// environment-anchored: both sides normalized — absolute local sources
+/// resolve onto the live drive while the capture stored the capture machine's
+/// `C:` form, so `local:D:/...` / `local:/...` identities are compared
+/// against `local:C:/...` through a drive placeholder.
+fn scrub_identity_drive(text: &str) -> String {
+    let out = crate::coding_agent::oracle_scrub::scrub_str(text);
+    // `local:/absolute/...` (drive-less resolution on POSIX) shares the
+    // capture's `local:<DRV>:/...` anchor.
+    if let Some(rest) = out.strip_prefix("local:/") {
+        return format!("local:<DRV>:/{rest}");
+    }
+    out
+}
+
 /// Mask the temp root and normalize separators on every string (both sides).
 fn normalize(value: &mut Value, root: &Path) {
     let root_text = root.to_string_lossy().into_owned();
@@ -411,7 +425,8 @@ fn normalize(value: &mut Value, root: &Path) {
             } else {
                 text.replace(&root_text, "$T")
             };
-            *text = replaced.replace('\\', "/");
+            let unified = replaced.replace('\\', "/");
+            *text = scrub_identity_drive(&unified);
         }
         Value::Array(entries) => {
             for entry in entries {

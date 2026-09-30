@@ -375,13 +375,22 @@ fn search_flow_matches_oracle() {
 // -- delete flow (oracle: session_selector_delete_flow) ----------------------
 
 fn oracle_tmp_dir(name: &str) -> std::path::PathBuf {
-    // All-backslash construction: the oracle JSON embeds node's
-    // `path.join` output and the confirmations compare byte-for-byte.
-    std::path::PathBuf::from(format!(
-        "{}\\scratch\\interactive_r20_components_oracle\\tmp\\{}",
-        env!("CARGO_MANIFEST_DIR"),
-        name
-    ))
+    // The oracle JSON embeds node's `path.join` output (host separators at
+    // capture); build with the live host separator — environment-anchored:
+    // both sides normalized through `scrub_str` at the comparison sites.
+    if cfg!(windows) {
+        std::path::PathBuf::from(format!(
+            "{}\\scratch\\interactive_r20_components_oracle\\tmp\\{}",
+            env!("CARGO_MANIFEST_DIR"),
+            name
+        ))
+    } else {
+        std::path::PathBuf::from(format!(
+            "{}/scratch/interactive_r20_components_oracle/tmp/{}",
+            env!("CARGO_MANIFEST_DIR"),
+            name
+        ))
+    }
 }
 
 #[test]
@@ -464,7 +473,16 @@ fn delete_flow_matches_oracle() {
         let confirmations = confirmations.lock().expect("confirmations").clone();
         assert_eq!(confirmations.len(), 1);
         let oracle_confirm = expected["confirmationsGone"][0].as_str().expect("path");
-        assert_eq!(confirmations[0].as_deref(), Some(oracle_confirm));
+        // environment-anchored: both sides normalized. The oracle embeds the
+        // capture machine's absolute repo path while the live tree sits under
+        // the live checkout root (different drive/mount on CI).
+        let observed = confirmations[0]
+            .as_deref()
+            .map(crate::coding_agent::oracle_scrub::scrub_str);
+        assert_eq!(
+            observed.as_deref(),
+            Some(crate::coding_agent::oracle_scrub::scrub_str(oracle_confirm)).as_deref()
+        );
     }
     selector.session_list_mut().handle_input(ENTER);
     run_pending(&mut selector);

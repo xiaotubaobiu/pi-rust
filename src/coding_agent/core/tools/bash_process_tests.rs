@@ -326,7 +326,10 @@ async fn dropping_native_exec_terminates_child_even_while_stdin_write_is_pending
 async fn real_powershell_wrapper_sets_utf8_and_executes_unicode() {
     let dir = tempfile::tempdir().unwrap();
     let (mut options, bytes) = capture_options("unused");
-    options.timeout = Some(12.0);
+    // environment-anchored: cold PowerShell startup on CI runners can exceed
+    // a tight timeout (Defender scanning); the pinned intent — UTF-8 output
+    // and unicode round-trip — is unchanged by a generous ceiling.
+    options.timeout = Some(120.0);
     let result = (create_local_powershell_operations().exec)(
         "[Console]::Write('雪🙂')".into(),
         dir.path().to_string_lossy().into_owned(),

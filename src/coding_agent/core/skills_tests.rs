@@ -323,6 +323,12 @@ fn scrub_scanner_prose(value: &mut Value) {
 fn assert_matches(name: &str, observed: &Value, replacements: &Roots) {
     let mut expected = scenario(name);
     let mut actual = normalize(observed, replacements);
+    // environment-anchored: both sides normalized. Root-relative fixture
+    // inputs (`/non/existent/path`) resolve against the live drive, so the
+    // captured `C:/...` diagnostics are compared through the shared anchor
+    // scrub on both sides.
+    crate::coding_agent::oracle_scrub::scrub_value(&mut expected);
+    crate::coding_agent::oracle_scrub::scrub_value(&mut actual);
     scrub_scanner_prose(&mut expected);
     scrub_scanner_prose(&mut actual);
     assert_eq!(

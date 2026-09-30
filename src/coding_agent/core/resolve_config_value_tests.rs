@@ -121,8 +121,29 @@ fn resolution_matches_the_upstream_oracle() {
 
 #[test]
 fn or_throw_error_texts_match_the_upstream_oracle() {
-    let oracle = oracle();
-    for case in oracle["orThrow"].as_array().unwrap() {
+    // environment-anchored: the failing cases pass no overlay env, so the
+    // resolver reads the live process environment; the oracle captured a
+    // machine where the template names are absent. Pin that precondition
+    // (under the shared env lock) instead of inheriting ambient CI vars.
+    let _guard = ENV_LOCK
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let mut restore: Vec<(String, Option<String>)> = Vec::new();
+    for case in oracle()["orThrow"].as_array().unwrap() {
+        if case["ok"].as_bool().unwrap() {
+            continue;
+        }
+        let value = case["value"].as_str().unwrap();
+        for name in get_config_value_env_var_names(value) {
+            if let Ok(previous) = std::env::var(&name) {
+                restore.push((name.clone(), Some(previous)));
+            } else {
+                restore.push((name.clone(), None));
+            }
+            std::env::remove_var(&name);
+        }
+    }
+    for case in oracle()["orThrow"].as_array().unwrap() {
         let value = case["value"].as_str().unwrap();
         let description = case["description"].as_str().unwrap();
         let env = env_of(case, "env");
@@ -139,6 +160,12 @@ fn or_throw_error_texts_match_the_upstream_oracle() {
                 case["error"].as_str().unwrap(),
                 "error case {value:?}"
             );
+        }
+    }
+    for (name, previous) in restore {
+        match previous {
+            Some(value) => std::env::set_var(&name, value),
+            None => std::env::remove_var(&name),
         }
     }
 }
