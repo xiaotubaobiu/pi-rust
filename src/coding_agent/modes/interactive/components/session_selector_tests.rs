@@ -1,7 +1,7 @@
 //! Inline test module for [`super`] (sibling file via `#[cfg(test)] #[path]`,
 //! mirroring `tree_selector_tests`). Every rendered-output assertion compares
 //! byte-for-byte with the r20 node oracle
-//! (`scratch/interactive_r20_components_oracle/component_r20_oracle.json`).
+//! (`tests/fixtures/interactive_r20_components_oracle/component_r20_oracle.json`).
 
 use super::*;
 use serde_json::Value;
@@ -23,7 +23,7 @@ fn theme() -> Arc<Theme> {
 
 fn oracle() -> Value {
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("scratch/interactive_r20_components_oracle/component_r20_oracle.json");
+        .join("tests/fixtures/interactive_r20_components_oracle/component_r20_oracle.json");
     let raw = std::fs::read_to_string(&path).expect("oracle json");
     serde_json::from_str(&raw).expect("oracle json parse")
 }
@@ -386,7 +386,7 @@ fn oracle_tmp_dir(name: &str) -> std::path::PathBuf {
         ))
     } else {
         std::path::PathBuf::from(format!(
-            "{}/scratch/interactive_r20_components_oracle/tmp/{}",
+            "{}/tests/fixtures/interactive_r20_components_oracle/tmp/{}",
             env!("CARGO_MANIFEST_DIR"),
             name
         ))

@@ -4,7 +4,7 @@
 //!
 //! Deterministic outputs (parse results, error strings, usage/help text,
 //! credential extraction rules) are byte-compared against
-//! `scratch/cli_oracle/oracle.json` in tests.
+//! `tests/fixtures/cli_oracle/oracle.json` in tests.
 
 use crate::ai::auth::types::AuthResult;
 

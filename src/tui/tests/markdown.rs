@@ -225,7 +225,7 @@ fn build_markdown(c: &FixtureCase) -> Markdown {
 
 #[test]
 fn markdown_18_0_11_semantics_renders_match_upstream() {
-    // Supplementary oracle (scratch/marked-18.0.11-oracle/oracle/gen-extra.mjs):
+    // Supplementary oracle (tests/fixtures/marked-18.0.11-oracle/oracle/gen-extra.mjs):
     // actual upstream markdown.ts under the exact marked 18.0.11 pin, covering
     // the 18.0.5 -> 18.0.11 deltas: nested links, escaped-astral mask, emStrong
     // mid-run, blockquote continuation, list loose/checkbox two-pass, lheading

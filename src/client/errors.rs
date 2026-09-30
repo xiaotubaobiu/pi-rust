@@ -5,7 +5,7 @@
 //!
 //! Wire-visible error text (rejection `message`, hello mismatch quoting,
 //! cause chains) is pinned byte-for-byte against the node oracle
-//! (`scratch/client_oracle/oracle.out.txt`).
+//! (`tests/fixtures/client_oracle/oracle.out.txt`).
 
 use std::borrow::Cow;
 use std::fmt;

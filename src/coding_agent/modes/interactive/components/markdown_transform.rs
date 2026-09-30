@@ -86,7 +86,7 @@ mod tests {
         ]
     }
 
-    /// Oracle: scratch/interactive_r19_oracle scenario `markdown_transform` —
+    /// Oracle: tests/fixtures/interactive_r19_oracle scenario `markdown_transform` —
     /// exact strings from the verbatim upstream module.
     #[test]
     fn transformer_pipeline_matches_oracle() {

@@ -2,7 +2,7 @@
 //! resolution, scoping, and initial selection.
 //!
 //! Behavior is pinned against the real upstream module under node in
-//! `scratch/core_oracle_model/model_resolver.oracle.json` (generator
+//! `tests/fixtures/core_oracle_model/model_resolver.oracle.json` (generator
 //! `oracle_model_resolver.mjs`): the `defaultModelPerProvider` table,
 //! `parseModelPattern` (normal + strict CLI mode), glob and non-glob
 //! scoping with diagnostics, the `resolveCliModel` battery, fallback

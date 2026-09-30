@@ -3,7 +3,7 @@
 //! [`Provider`](crate::ai::models::Provider) without reading credentials.
 //!
 //! Behavior is pinned against the real upstream module under node in
-//! `scratch/core_oracle_model/provider_composer.oracle.json` (generator
+//! `tests/fixtures/core_oracle_model/provider_composer.oracle.json` (generator
 //! `oracle_provider_composer.mjs`): composed `getModels()` lists (canonical
 //! key-sorted JSON), every structural error text, the auth-status table, and
 //! the composed api-key `resolve` flow (config key templates, header

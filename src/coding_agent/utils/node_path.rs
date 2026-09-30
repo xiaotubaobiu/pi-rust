@@ -4,7 +4,7 @@
 //!
 //! This is a behavioral port of the exact `path.js` embedded in the local
 //! node v25.8.2 binary (extracted via `process.binding('natives')` into
-//! `scratch/utils_oracle/node_path_source.js`, © Joyent / Node contributors,
+//! `tests/fixtures/utils_oracle/node_path_source.js`, © Joyent / Node contributors,
 //! MIT), including the win32 UNC/device-root parsing, the
 //! `isWindowsReservedName` handling and the CVE-2024-36139 colon checks in
 //! `win32.normalize`, and the case-length-mismatch branch of
@@ -12,7 +12,7 @@
 //!
 //! Validated against the captured node oracle (45-case resolve grid, 20-case
 //! relative grid, join/normalize probes for both flavors — see
-//! `scratch/utils_oracle/`); the cwd-dependent oracle entries are asserted
+//! `tests/fixtures/utils_oracle/`); the cwd-dependent oracle entries are asserted
 //! against the process cwd instead of pinned values. node indexes UTF-16
 //! code units; this port indexes `char`s (equivalent for BMP paths).
 //!

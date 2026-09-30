@@ -2,7 +2,7 @@
 //! oracle convention:
 //!
 //! 1. **Byte oracle comparisons** against
-//!    `scratch/agent_session_oracle/oracle_w312.json`, captured from the real
+//!    `tests/fixtures/agent_session_oracle/oracle_w312.json`, captured from the real
 //!    upstream TypeScript function bodies under node
 //!    (`--experimental-strip-types`; see `capture_oracle_w312.mjs`). Covers
 //!    `getSessionStats`, `getContextUsage`, `getUserMessagesForForking`,
@@ -53,7 +53,7 @@ use crate::coding_agent::extensions::loader::{ExtensionApi, ExtensionFactory};
 use crate::coding_agent::extensions::types::{ExtensionContext, HandlerFn, HandlerResult};
 use crate::coding_agent::session_manager::{MessageEntry, SessionEntry, SessionManager};
 
-const ORACLE: &str = include_str!("../../../scratch/agent_session_oracle/oracle_w312.json");
+const ORACLE: &str = include_str!("../../../tests/fixtures/agent_session_oracle/oracle_w312.json");
 
 fn oracle() -> &'static serde_json::Map<String, Value> {
     static ORACLE_VALUE: std::sync::OnceLock<Value> = std::sync::OnceLock::new();

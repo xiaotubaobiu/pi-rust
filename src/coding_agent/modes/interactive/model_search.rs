@@ -5,7 +5,7 @@
 //! (21 lines, sha256 `9be620174c0f25516b0c537dcd4ef9be7c9c9a145e6489e186cc6c4787b25412`).
 //!
 //! Two pure search-text builders feeding fuzzy matching for the /model
-//! selector. Byte-exact oracle: `scratch/interactive_r16_oracle/model_search_oracle.json`.
+//! selector. Byte-exact oracle: `tests/fixtures/interactive_r16_oracle/model_search_oracle.json`.
 
 /// Upstream `ModelSearchItem`.
 #[derive(Debug, Clone, PartialEq, Eq)]

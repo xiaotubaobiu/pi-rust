@@ -1,7 +1,7 @@
 //! Tests for `radius_relay.rs`: pinned to the node oracle captured from the
 //! verbatim upstream file
-//! (scratch/experimental_final_oracle/oracle_relay_out.json; upstream sources
-//! in scratch/experimental_final_oracle/upstream/radius-relay.ts).
+//! (tests/fixtures/experimental_final_oracle/oracle_relay_out.json; upstream sources
+//! in tests/fixtures/experimental_final_oracle/upstream/radius-relay.ts).
 
 use super::*;
 

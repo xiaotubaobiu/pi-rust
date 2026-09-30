@@ -1,7 +1,7 @@
 //! Upstream test port plus oracle replay for `terminal-image.ts`.
 //!
 //! Two evidence sources:
-//! - `scratch/terminal_image_oracle/oracle.mjs` ran the REAL upstream module
+//! - `tests/fixtures/terminal_image_oracle/oracle.mjs` ran the REAL upstream module
 //!   under node and captured exact outputs per scenario; every
 //!   `oracle_*` test replays a section of that capture byte-for-byte.
 //! - The upstream `test/terminal-image.test.ts` and

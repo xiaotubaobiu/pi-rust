@@ -142,7 +142,7 @@ mod tests {
         Arc::new(load_builtin_theme("dark", Some(ColorMode::Truecolor)).expect("dark theme"))
     }
 
-    /// Oracle: scratch/interactive_r19_oracle/tui_renderer_oracle.json —
+    /// Oracle: tests/fixtures/interactive_r19_oracle/tui_renderer_oracle.json —
     /// byte-identical stylers over the r17-verified truecolor dark theme.
     #[test]
     fn stylers_match_oracle_bytes() {

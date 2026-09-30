@@ -198,7 +198,7 @@ impl Component for DaxnutsComponent {
 mod tests {
     use super::*;
 
-    /// Oracle: scratch/interactive_r19_oracle scenario `daxnuts` — the image
+    /// Oracle: tests/fixtures/interactive_r19_oracle scenario `daxnuts` — the image
     /// rows, the scanline reveal layout and the fade-in text layout.
     #[test]
     fn daxnuts_matches_oracle() {

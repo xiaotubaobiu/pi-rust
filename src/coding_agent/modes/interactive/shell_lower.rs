@@ -7,7 +7,7 @@
 //! event bridge, the command handlers, and the exit/cleanup paths.
 //!
 //! Ported from the byte-verbatim oracle bodies captured in
-//! `scratch/interactive_r20_oracle/` (134 driven scenarios; replayed
+//! `tests/fixtures/interactive_r20_oracle/` (134 driven scenarios; replayed
 //! byte-for-byte in `interactive_tests.rs`, `lower_oracle` group).
 
 use std::sync::Arc;

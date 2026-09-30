@@ -4,7 +4,7 @@
 //! Sources of truth:
 //! - upstream `test/extensions-runner.test.ts` and
 //!   `test/extensions-input-event.test.ts` (adapted to the handler seams),
-//! - the runner oracle capture (`scratch/ext_oracle/runner.oracle.json`,
+//! - the runner oracle capture (`tests/fixtures/ext_oracle/runner.oracle.json`,
 //!   generator `oracle_runner.mjs`): byte comparisons against the verbatim
 //!   upstream runner under node. The capture's `warns` entries are the
 //!   upstream `console.warn` texts, which equal the pinned diagnostic
@@ -1339,7 +1339,7 @@ async fn before_provider_headers_mutate_in_place_and_isolate_throws() {
 // ---------------------------------------------------------------------------
 
 /// The oracle's disclosed system-prompt shim (see
-/// `scratch/ext_oracle/src/core/system-prompt.ts`): the force path is the
+/// `tests/fixtures/ext_oracle/src/core/system-prompt.ts`): the force path is the
 /// pinned `buildSystemPromptState` contract; the section path renders the
 /// deterministic stand-in captured in the oracle.
 struct OracleShimRenderer;

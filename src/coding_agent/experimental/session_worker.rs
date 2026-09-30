@@ -824,7 +824,7 @@ fn control_initial_connection(server_connection_id: Option<String>) -> Option<St
 /// base64url decoder skips invalid characters and its UTF-8 view replaces
 /// malformed sequences, while this decoder rejects them; the key is always
 /// produced by the manager's own base64url encoder, so in-contract bytes
-/// agree (oracle: `scratch/experimental_d1236_oracle`, `sessionKey`).
+/// agree (oracle: `tests/fixtures/experimental_d1236_oracle`, `sessionKey`).
 fn decode_session_key(encoded: &str) -> Result<String, String> {
     const ALPHABET: &str = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
     let mut out: Vec<u8> = Vec::new();
@@ -953,7 +953,7 @@ fn dispatch_command(
 /// JSON value that fails the `CoordinatorInputSchema` check destroys with
 /// `"Coordinator sent an invalid worker message"` (the `readCommands` guard,
 /// including the `from !== "server"` literal), and a valid frame returns
-/// `None`. Oracle: `scratch/experimental_d1236_oracle`
+/// `None`. Oracle: `tests/fixtures/experimental_d1236_oracle`
 /// (`readCommandsErrors`).
 pub fn coordinator_line_destroy_error(line: &str) -> Option<String> {
     let parsed: Result<CoordinatorInput, _> = serde_json::from_str(line);

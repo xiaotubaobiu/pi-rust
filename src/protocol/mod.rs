@@ -16,7 +16,7 @@
 //! plain JS objects; integer-index keys enumerate before other string keys) and
 //! [`cbor::CborValue`] (adds CBOR byte strings). Wire bytes, field order, and
 //! error text are pinned byte-for-byte against a node oracle run of the copied
-//! upstream source (`scratch/protocol_oracle/`).
+//! upstream source (`tests/fixtures/protocol_oracle/`).
 //!
 //! # Upstream sources (SHA256, behavior authority)
 //!

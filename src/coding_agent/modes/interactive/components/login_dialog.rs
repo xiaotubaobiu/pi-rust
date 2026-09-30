@@ -439,7 +439,7 @@ mod tests {
         )
     }
 
-    /// Oracle: scratch/interactive_r19_oracle scenario `login_dialog` —
+    /// Oracle: tests/fixtures/interactive_r19_oracle scenario `login_dialog` —
     /// content sequences, promise resolution/cancellation, completion.
     #[test]
     fn login_dialog_matches_oracle() {

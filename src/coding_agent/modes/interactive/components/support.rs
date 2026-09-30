@@ -192,7 +192,7 @@ mod tests {
         Arc::new(|text| format!("\x1b[41m{text}\x1b[49m"))
     }
 
-    /// Oracle: the deps.ts `Box` patch in scratch/interactive_r19_oracle is a
+    /// Oracle: the deps.ts `Box` patch in tests/fixtures/interactive_r19_oracle is a
     /// verbatim port of upstream `box.ts` `render`/`applyBg`; this mirrors the
     /// same padding + per-cell background pipeline.
     #[test]

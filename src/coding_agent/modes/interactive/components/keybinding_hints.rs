@@ -27,7 +27,7 @@ mod tests {
         key_display_text, key_text,
     };
 
-    /// Oracle: scratch/interactive_r19_oracle scenario `keybinding_hints`
+    /// Oracle: tests/fixtures/interactive_r19_oracle scenario `keybinding_hints`
     /// (win32 host → no darwin rewrite; merged registry keys).
     #[test]
     fn keybinding_hints_match_oracle() {

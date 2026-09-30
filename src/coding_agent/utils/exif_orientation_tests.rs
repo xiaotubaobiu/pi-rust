@@ -2,7 +2,7 @@
 //!
 //! Every scenario below was executed against the REAL upstream
 //! `exif-orientation.ts` under node with the real Photon WASM backend (see
-//! `scratch/image_oracle/capture.mjs`); `image_oracle.json` holds the captured
+//! `tests/fixtures/image_oracle/capture.mjs`); `image_oracle.json` holds the captured
 //! dimensions and raw pixel buffers. The Rust parser must reproduce both the
 //! parsed orientation value and the pixel permutation byte-for-byte.
 
@@ -143,7 +143,7 @@ fn xmp_app1() -> Vec<u8> {
     app1(b"http://ns.adobe.com/xap/1.0/\0<x:xmpmeta xmlns:x=\"adobe:ns:meta/\"/>")
 }
 
-/// The exact fixture matrix captured by scratch/image_oracle/capture.mjs.
+/// The exact fixture matrix captured by tests/fixtures/image_oracle/capture.mjs.
 fn fixture(name: &str) -> Vec<u8> {
     let comment = vec![0xff, 0xe0, 0x00, 0x04, 0x00, 0x00];
     match name {

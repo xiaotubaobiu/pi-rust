@@ -2,7 +2,7 @@
 //! CLI argument parsing and help display.
 //!
 //! The parser is ported branch-for-branch; the 92-case oracle battery in
-//! `scratch/cli_oracle/oracle.json` (captured from the real upstream source
+//! `tests/fixtures/cli_oracle/oracle.json` (captured from the real upstream source
 //! under node) is byte-compared in tests, including help text and error
 //! strings.
 //!

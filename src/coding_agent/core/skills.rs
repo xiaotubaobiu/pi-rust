@@ -5,7 +5,7 @@
 //! Deterministic outputs (per-fixture discovery order, warning/collision
 //! diagnostics with their exact texts, `formatSkillsForPrompt` bytes) were
 //! captured from the real upstream source under node (type stripping) into
-//! `scratch/core_oracle_w38/skills.oracle.json` (generator
+//! `tests/fixtures/core_oracle_w38/skills.oracle.json` (generator
 //! `oracle_skills.mjs`); the tests pin them byte-for-byte.
 //!
 //! Shared seams (upstream imports modules outside this slice; disclosed):

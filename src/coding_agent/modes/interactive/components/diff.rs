@@ -13,7 +13,7 @@
 //! `WordDiff.equals` (trimmed token comparison), `join` (leading-whitespace
 //! stripping) and `postProcess` (`dedupeWhitespaceInChangeObjects`).
 //! Oracle: the verbatim upstream `diff.ts` runs against the real jsdiff 8.0.4
-//! tarball in `scratch/interactive_r19_oracle/` (scenario
+//! tarball in `tests/fixtures/interactive_r19_oracle/` (scenario
 //! `diff_render_diff`), so the tests pin byte-identical output.
 //!
 //! Disclosed divergence (S19.2): jsdiff's whitespace helpers index strings by
@@ -942,7 +942,7 @@ mod tests {
         Arc::new(load_builtin_theme("dark", Some(ColorMode::Truecolor)).expect("dark theme"))
     }
 
-    /// Oracle: scratch/interactive_r19_oracle scenario `diff_render_diff`
+    /// Oracle: tests/fixtures/interactive_r19_oracle scenario `diff_render_diff`
     /// (upstream diff.ts against the real jsdiff 8.0.4) — all 11 rows pinned
     /// byte-for-byte.
     #[test]

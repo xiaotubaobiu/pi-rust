@@ -1,6 +1,6 @@
 //! Tests for the package-manager CLI port.
 //!
-//! Layer 1: every entry of `scratch/pm_oracle/cli.oracle.json` (captured by
+//! Layer 1: every entry of `tests/fixtures/pm_oracle/cli.oracle.json` (captured by
 //! running the byte-identical upstream `package-manager-cli.ts` under node
 //! with stubbed externals) is replayed against a scripted
 //! [`TestHost`]; joined stdout/stderr bytes and the exit code must match.
@@ -312,7 +312,7 @@ impl PackageCommandHost for TestHost {
 // Oracle replay
 // ===========================================================================
 
-const CLI_ORACLE: &str = include_str!("../../../scratch/pm_oracle/cli.oracle.json");
+const CLI_ORACLE: &str = include_str!("../../../tests/fixtures/pm_oracle/cli.oracle.json");
 
 fn cli_oracle() -> Value {
     serde_json::from_str(CLI_ORACLE).unwrap()

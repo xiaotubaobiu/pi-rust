@@ -5,7 +5,7 @@
 //!   flows; the unix file-mode case is cfg'd out on Windows exactly like the
 //!   upstream `it.skipIf(process.platform === "win32")`),
 //! - oracle captures of the real upstream store
-//!   (`scratch/core_oracle/models_store.oracle.json`) including exact file
+//!   (`tests/fixtures/core_oracle/models_store.oracle.json`) including exact file
 //!   bytes for the `JSON.stringify(current, null, 2)` rewrite.
 
 use std::sync::Arc;

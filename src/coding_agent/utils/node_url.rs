@@ -92,7 +92,7 @@ fn contains_encoded_slash(pathname: &str) -> bool {
 ///
 /// Ported against the exact `internal/url.js` embedded in the local node
 /// v25.8.2 (`getPathFromURLWin32` / `getPathFromURLPosix`, extracted to
-/// `scratch/utils_oracle/node_internal_url_source.js`): the encoded-slash
+/// `tests/fixtures/utils_oracle/node_internal_url_source.js`): the encoded-slash
 /// check runs on the raw pathname, the win32 branch converts `/` → `\`
 /// before decoding, decodes before the drive check, and the posix branch
 /// checks the hostname before the encoded-slash scan.

@@ -27,7 +27,7 @@
 //! auth-command parsing, credential-extraction rules, the `--list-models`
 //! table, and the experimental `Command` grammar) were captured from the real
 //! upstream TypeScript sources under `node --experimental-strip-types` into
-//! `scratch/cli_oracle/oracle.json` and are byte-compared in tests.
+//! `tests/fixtures/cli_oracle/oracle.json` and are byte-compared in tests.
 //!
 //! Seams (upstream interactive TUI surfaces not yet ported — the interactive
 //! session shell lives in `modes/interactive` upstream and has no Rust port

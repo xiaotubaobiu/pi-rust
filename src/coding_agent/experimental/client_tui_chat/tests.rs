@@ -1,5 +1,5 @@
 //! Tests for `client_tui_chat.rs`: pinned to the node oracle
-//! (scratch/experimental_final_oracle/oracle_view_out.json, `chatView`
+//! (tests/fixtures/experimental_final_oracle/oracle_view_out.json, `chatView`
 //! section).
 
 use super::*;

@@ -1,6 +1,6 @@
 //! Tests for the `mini/` port: pinned to the node oracle captured from the
 //! verbatim upstream `rpc.ts` (and verbatim bodies for the rest)
-//! (scratch/experimental_final_oracle/oracle_mini_out.json).
+//! (tests/fixtures/experimental_final_oracle/oracle_mini_out.json).
 
 use super::lane_service::{map_lane_command, set_model_guard};
 use super::protocol::{

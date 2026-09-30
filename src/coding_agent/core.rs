@@ -19,7 +19,7 @@
 //! message serialization, migration ordering, models-store file bytes,
 //! models.json schema-error rendering) were captured from the real upstream
 //! TypeScript sources under node (type stripping) into
-//! `scratch/core_oracle/*.oracle.json` and are pinned in [`oracle_data`]
+//! `tests/fixtures/core_oracle/*.oracle.json` and are pinned in [`oracle_data`]
 //! (test-only) with per-module byte-comparison tests.
 //!
 //! Shared seams (upstream imports modules outside this slice; disclosed

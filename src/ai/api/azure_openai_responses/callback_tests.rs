@@ -1,6 +1,6 @@
 //! Offline loopback tests for the process-local request callbacks
 //! (azure-openai-responses.ts:113 onPayload, :130 onResponse): the seam
-//! semantics pinned by `scratch/callback_seam_oracle` — a replacement
+//! semantics pinned by `tests/fixtures/callback_seam_oracle` — a replacement
 //! reaches the wire, `undefined` keeps the built body, hook rejections take
 //! the pre-send (payload) / pre-start (response) error paths, and a failed
 //! send never reaches onResponse.

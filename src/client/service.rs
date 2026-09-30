@@ -28,7 +28,7 @@
 //!
 //! Errors are [`SeamError`] — the upstream `TypeError`/`Error` message text,
 //! which `client.ts` embeds verbatim into `ProtocolValidationError`s. All
-//! message texts are pinned against `scratch/client_oracle/`.
+//! message texts are pinned against `tests/fixtures/client_oracle/`.
 
 use std::collections::HashMap;
 use std::fmt;

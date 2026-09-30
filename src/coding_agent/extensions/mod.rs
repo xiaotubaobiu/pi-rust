@@ -13,7 +13,7 @@
 //! | `core/extensions/wrapper.ts` | [`wrapper`] | `f71eae fd…345188cd` |
 //!
 //! (Full 64-hex digests are in the slice report; the oracle tree under
-//! `scratch/ext_oracle/src` pins byte-identical copies.)
+//! `tests/fixtures/ext_oracle/src` pins byte-identical copies.)
 //!
 //! The `src/extensions/` product directory contains only the `llama`
 //! extension (local-LLM provider registration over a llama.cpp bridge and
@@ -28,12 +28,12 @@
 //! validation, input transform chaining, before_agent_start chaining,
 //! ui_prompt nesting) were captured from the verbatim upstream TypeScript
 //! sources under node (type stripping) into
-//! `scratch/ext_oracle/{loader,runner}.oracle.json` and are pinned in
+//! `tests/fixtures/ext_oracle/{loader,runner}.oracle.json` and are pinned in
 //! [`oracle_data`] (test-only) with byte-comparison tests. The generator
 //! scripts live next to the captures; the captured `loader.ts` / `runner.ts`
 //! are byte-identical to upstream (hashes above), with only the surrounding
 //! module graph stubbed (jiti, bundled pi packages, theme, system-prompt
-//! section rendering) — see the `scratch/ext_oracle/src` file headers.
+//! section rendering) — see the `tests/fixtures/ext_oracle/src` file headers.
 //!
 //! Shared seams (upstream imports modules outside this slice):
 //!

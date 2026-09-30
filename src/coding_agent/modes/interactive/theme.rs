@@ -5,7 +5,7 @@
 //! (1234 lines, sha256 `c3bf2e3b72f6bb782f34de0535fcc1758b9b6ea7a0d2e7d6f17244fa55c3f31a`)
 //! — the deterministic theme core.
 //!
-//! Oracle: `scratch/interactive_r17_oracle/theme_oracle.mjs` runs verbatim
+//! Oracle: `tests/fixtures/interactive_r17_oracle/theme_oracle.mjs` runs verbatim
 //! upstream bodies under node and captures `theme_oracle.json`; the tests in
 //! `interactive_tests.rs` compare this module's output against it byte for
 //! byte.

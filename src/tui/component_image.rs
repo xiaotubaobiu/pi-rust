@@ -36,7 +36,7 @@
 //!   [`Component::invalidate`] drops the cache (the TUI calls it on every
 //!   component on resize, which is the resize re-render path).
 //!
-//! Byte-for-byte oracle evidence: `scratch/component_image_oracle/oracle.mjs`
+//! Byte-for-byte oracle evidence: `tests/fixtures/component_image_oracle/oracle.mjs`
 //! runs the real upstream component (with the real `terminal-image.ts` and
 //! `utils.ts`) under node and captured 19 scenarios / 27 render probes;
 //! `tests/component_image.rs` replays every probe byte-for-byte. The only

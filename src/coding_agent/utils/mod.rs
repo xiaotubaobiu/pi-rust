@@ -41,7 +41,7 @@
 //!
 //! The deterministic pure functions were validated against oracle output
 //! captured from the real upstream sources under node (see
-//! `scratch/utils_oracle/`); the captured values live in [`oracle_data`]
+//! `tests/fixtures/utils_oracle/`); the captured values live in [`oracle_data`]
 //! and are pinned by the per-module tests.
 
 pub mod abort;

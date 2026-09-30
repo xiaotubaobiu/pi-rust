@@ -23,7 +23,7 @@
 //! - `hyperlink`/`imageFallback`/`shortenImagePath` -> [`hyperlink`]/[`image_fallback`]/[`shorten_image_path`]
 //! - `isImageLine`/`allocateImageId` -> [`is_image_line`]/[`allocate_image_id`]
 //!
-//! Byte-for-byte oracle evidence: `scratch/terminal_image_oracle/` runs the
+//! Byte-for-byte oracle evidence: `tests/fixtures/terminal_image_oracle/` runs the
 //! real upstream module under node; `oracle_consts.rs` (mounted by
 //! [`tests`]) embeds every captured scenario.
 //!

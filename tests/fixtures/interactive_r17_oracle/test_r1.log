@@ -1,0 +1,126 @@
+   Compiling pi-rust v0.1.0 (C:\Users\13063\Desktop\code\agent work\pi-rust)
+warning: unused import: `std::sync::Arc`
+ --> src\coding_agent\cli\experimental\tests.rs:7:5
+  |
+7 | use std::sync::Arc;
+  |     ^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `ParsedCommandInput`
+  --> src\coding_agent\cli\experimental\tests.rs:13:44
+   |
+13 |     BuiltInvocation, CommandActionContext, ParsedCommandInput,
+   |                                            ^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `ProjectTrustUi`
+ --> src\coding_agent\cli\project_trust_tests.rs:8:56
+  |
+8 |     create_project_trust_context, AppMode, NotifyType, ProjectTrustUi,
+  |                                                        ^^^^^^^^^^^^^^
+
+warning: function `light_value` is never used
+   --> src\coding_agent\modes\interactive\interactive_tests.rs:755:8
+    |
+755 |     fn light_value() -> Value {
+    |        ^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `host` is never used
+  --> src\coding_agent\cli\project_trust_tests.rs:34:4
+   |
+34 | fn host() -> Arc<dyn StartupUiHost + Send + Sync> {
+   |    ^^^^
+
+warning: `pi-rust` (lib test) generated 5 warnings (run `cargo fix --lib -p pi-rust --tests` to apply 2 suggestions)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 2m 02s
+     Running unittests src\lib.rs (target\debug\deps\pi_rust-953d71bb277c10ea.exe)
+
+running 43 tests
+test coding_agent::modes::interactive::tests::model_search_tests::selector_text_leads_with_the_provider_prefix ... ok
+test coding_agent::modes::interactive::tests::theme_r17_tests::builtin_theme_names_match_the_upstream_registry_order ... ok
+test coding_agent::modes::interactive::tests::theme_r17_tests::classifies_rgb_colors_by_luminance ... ok
+test coding_agent::modes::interactive::tests::model_search_tests::search_texts_match_the_node_oracle_byte_for_byte ... ok
+test coding_agent::modes::interactive::tests::theme_r17_tests::env_detection_uses_the_colorfgbg_background_index ... ok
+test coding_agent::modes::interactive::tests::theme_r17_tests::colorfgbg_index_takes_the_last_valid_field ... FAILED
+test coding_agent::modes::interactive::tests::model_catalog_refresh_tests::the_global_entry_point_rejects_an_already_cancelled_signal ... ok
+test coding_agent::modes::interactive::tests::theme_r17_tests::background_query_precedes_env_hints ... ok
+test coding_agent::modes::interactive::tests::theme_r17_tests::auto_detection_prefers_the_color_scheme ... FAILED
+test coding_agent::modes::interactive::tests::theme_r17_tests::builtin_themes_load_by_name ... ok
+test coding_agent::modes::interactive::tests::theme_r17_tests::color_mode_selects_the_ansi_form ... ok
+test coding_agent::modes::interactive::tests::model_catalog_refresh_tests::aborts_an_abandoned_refresh_and_allows_a_later_refresh_to_start ... ok
+test coding_agent::modes::interactive::tests::theme_r17_tests::hex_parsing_error_messages_match_upstream ... ok
+test coding_agent::modes::interactive::tests::theme_r17_tests::is_light_theme_checks_the_name ... ok
+test coding_agent::modes::interactive::tests::theme_r17_tests::ansi256_to_hex_table_matches_the_node_oracle ... ok
+test coding_agent::modes::interactive::tests::theme_r17_tests::parses_and_resolves_automatic_theme_settings ... ok
+test coding_agent::modes::interactive::tests::theme_r17_tests::external_editor_fails_when_the_editor_exits_unsuccessfully ... ok
+test coding_agent::modes::interactive::tests::theme_r17_tests::export_colors_match_the_node_oracle ... FAILED
+test coding_agent::modes::interactive::tests::theme_r17_tests::external_editor_treats_a_spawn_error_as_failure ... ok
+test coding_agent::modes::interactive::tests::theme_r17_tests::external_editor_returns_empty_content_for_a_cleared_prompt ... ok
+test coding_agent::modes::interactive::tests::theme_r17_tests::ansi_sequences_match_the_node_oracle_byte_for_byte ... ok
+test coding_agent::modes::interactive::tests::theme_r17_tests::external_editor_edits_a_prompt_in_a_private_temp_directory ... ok
+test coding_agent::modes::interactive::tests::theme_r17_tests::theme_text_stylers_and_unknown_color_errors ... ok
+test coding_agent::modes::interactive::tests::theme_r17_tests::language_table_matches_the_node_oracle ... ok
+test coding_agent::modes::interactive::tests::theme_r17_tests::validation_accepts_a_minimal_custom_theme ... ok
+test coding_agent::modes::interactive::tests::theme_r17_tests::validation_accepts_the_builtin_document ... ok
+test coding_agent::modes::interactive::tests::theme_r17_tests::thinking_and_bash_mode_border_colors ... ok
+test coding_agent::modes::interactive::tests::theme_r17_tests::validation_lists_missing_colors_byte_for_byte ... ok
+test coding_agent::modes::interactive::tests::theme_r17_tests::validation_rejects_slash_names_byte_for_byte ... ok
+test coding_agent::modes::interactive::tests::theme_r17_tests::validation_reports_an_absent_colors_map_byte_for_byte ... ok
+test coding_agent::modes::interactive::tests::theme_r17_tests::theme_setting_helpers_match_the_node_oracle ... FAILED
+test coding_agent::modes::interactive::tests::theme_r17_tests::terminal_detection_matches_the_node_oracle ... ok
+test coding_agent::modes::interactive::tests::theme_r17_tests::resolved_builtin_colors_match_the_node_oracle ... ok
+test coding_agent::modes::interactive::tests::session_share_tests::trailing_entries_receive_the_leaf_parent_and_shared_timestamp ... ok
+test coding_agent::modes::interactive::tests::theme_r17_tests::var_resolution_matches_the_node_oracle ... ok
+test coding_agent::modes::interactive::tests::theme_r17_tests::theme_ansi_tables_match_the_node_oracle ... ok
+test coding_agent::modes::interactive::tests::theme_r17_tests::rgb_to_256_grid_matches_the_node_oracle ... ok
+test coding_agent::modes::interactive::tests::session_share_tests::exports_match_the_node_oracle_byte_for_byte ... ok
+test coding_agent::modes::interactive::tests::model_catalog_refresh_tests::keeps_the_shared_refresh_alive_when_one_caller_stops_waiting ... ok
+test coding_agent::modes::interactive::tests::model_catalog_refresh_tests::shares_one_runtime_refresh_between_concurrent_callers ... ok
+test coding_agent::modes::interactive::tests::session_share_tests::adds_presentation_data_without_changing_conversation_ids_or_links ... ok
+'definitely-not-a-real-editor-xyz-12345' 不是内部或外部命令，也不是可运行的程序
+或批处理文件。
+test coding_agent::modes::interactive::tests::theme_r17_tests::real_spawn_unknown_editor_fails ... ok
+已复制         1 个文件。
+test coding_agent::modes::interactive::tests::theme_r17_tests::real_spawn_truncating_editor_completes_with_empty_content ... ok
+
+failures:
+
+---- coding_agent::modes::interactive::tests::theme_r17_tests::colorfgbg_index_takes_the_last_valid_field stdout ----
+
+thread 'coding_agent::modes::interactive::tests::theme_r17_tests::colorfgbg_index_takes_the_last_valid_field' (31624) panicked at src\coding_agent\modes\interactive\interactive_tests.rs:1207:9:
+assertion `left == right` failed
+  left: Some(15)
+ right: Some(0)
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+
+---- coding_agent::modes::interactive::tests::theme_r17_tests::auto_detection_prefers_the_color_scheme stdout ----
+
+thread 'coding_agent::modes::interactive::tests::theme_r17_tests::auto_detection_prefers_the_color_scheme' (27712) panicked at src\coding_agent\modes\interactive\interactive_tests.rs:1299:9:
+assertion failed: *detector.background_started.lock().expect("lock")
+
+---- coding_agent::modes::interactive::tests::theme_r17_tests::export_colors_match_the_node_oracle stdout ----
+
+thread 'coding_agent::modes::interactive::tests::theme_r17_tests::export_colors_match_the_node_oracle' (56556) panicked at src\coding_agent\modes\interactive\interactive_tests.rs:959:9:
+assertion `left == right` failed
+  left: Object {"pageBg": String("#abcdef"), "cardBg": String("#005f87"), "infoBg": Null}
+ right: Object {"pageBg": String("#abcdef"), "cardBg": String("#005f87")}
+
+---- coding_agent::modes::interactive::tests::theme_r17_tests::theme_setting_helpers_match_the_node_oracle stdout ----
+
+thread 'coding_agent::modes::interactive::tests::theme_r17_tests::theme_setting_helpers_match_the_node_oracle' (120492) panicked at src\coding_agent\modes\interactive\interactive_tests.rs:1033:9:
+assertion `left == right` failed
+  left: Array [Array [String("light"), String("dark")], Array [String("my-light"), String("my-dark")], Null, Null, Null, Null, Null, Null, Null]
+ right: Array [Object {"lightTheme": String("light"), "darkTheme": String("dark")}, Object {"lightTheme": String("my-light"), "darkTheme": String("my-dark")}, Null, Null, Null, Null, Null, Null, Null]
+
+
+failures:
+    coding_agent::modes::interactive::tests::theme_r17_tests::auto_detection_prefers_the_color_scheme
+    coding_agent::modes::interactive::tests::theme_r17_tests::colorfgbg_index_takes_the_last_valid_field
+    coding_agent::modes::interactive::tests::theme_r17_tests::export_colors_match_the_node_oracle
+    coding_agent::modes::interactive::tests::theme_r17_tests::theme_setting_helpers_match_the_node_oracle
+
+test result: FAILED. 39 passed; 4 failed; 0 ignored; 0 measured; 4108 filtered out; finished in 0.07s
+
+error: test failed, to rerun pass `--lib`

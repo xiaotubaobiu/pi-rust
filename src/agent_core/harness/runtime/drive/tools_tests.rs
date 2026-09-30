@@ -6,7 +6,7 @@
 //! (`syntheticMessage`/`abortedOutcome`/`interruptedOutcome`/
 //! `truncatedOutcome` and the `publishToolIntent`/`publishToolOutcome` event
 //! literals) with node `--experimental-strip-types`
-//! (`scratch/tools_oracle/tools_oracle.ts`, timestamp stubbed to 1234).
+//! (`tests/fixtures/tools_oracle/tools_oracle.ts`, timestamp stubbed to 1234).
 //!
 //! Ported substitutions: `ObservedMemoryStorage` becomes a wrapping
 //! [`ObservedStorage`] (the Rust `MemoryStorage` is not subclassable); the

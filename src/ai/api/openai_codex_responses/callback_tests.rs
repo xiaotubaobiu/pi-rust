@@ -3,7 +3,7 @@
 #![allow(clippy::field_reassign_with_default)]
 //! Offline loopback tests for the process-local request callbacks
 //! (openai-codex-responses.ts:278 onPayload, :414 onResponse): the seam
-//! semantics pinned by `scratch/callback_seam_oracle` — a replacement reaches
+//! semantics pinned by `tests/fixtures/callback_seam_oracle` — a replacement reaches
 //! the wire body (and, by seam placement, feeds the websocket transport too,
 //! which has no onResponse call site), onResponse fires per SSE attempt
 //! before the ok check, and a response-hook rejection retries like any other

@@ -1,7 +1,7 @@
 //! Support port: the npm `hosted-git-info` package (v9.0.3, ISC), reduced to
 //! the `fromUrl` surface consumed by [`crate::coding_agent::utils::git`].
 //!
-//! Ported from the vendored copies under `scratch/utils_oracle/node_modules/
+//! Ported from the vendored copies under `tests/fixtures/utils_oracle/node_modules/
 //! hosted-git-info/lib/` (`from-url.js`, `parse-url.js`, `hosts.js`,
 //! `index.js`) against the captured oracle (`oracle_data::HOSTED_FROM_URL`,
 //! plus the `parse_git_url` grid that flows through it).

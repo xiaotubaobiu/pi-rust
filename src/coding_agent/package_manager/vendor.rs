@@ -25,7 +25,7 @@
 //!   is [`prefix_ignore_pattern`], applied by the caller.
 //!
 //! All behavior is pinned against the real upstream libraries via
-//! `scratch/pm_oracle/core.oracle.json` (captured under node from the
+//! `tests/fixtures/pm_oracle/core.oracle.json` (captured under node from the
 //! pinned versions); see the tests.
 
 use std::cmp::Ordering;

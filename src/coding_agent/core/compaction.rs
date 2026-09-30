@@ -29,7 +29,7 @@
 //! were captured from the real upstream TypeScript sources under node (type
 //! stripping; real `contentText`/`normalizeContext`/`retryAssistantCall`/
 //! `uuidv7` implementations) into
-//! `scratch/core_oracle_compaction/compaction.oracle.json` and are pinned by
+//! `tests/fixtures/core_oracle_compaction/compaction.oracle.json` and are pinned by
 //! byte-comparison tests in [`compaction_tests`].
 //!
 //! Seams (upstream imports modules outside this slice):

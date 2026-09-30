@@ -245,7 +245,7 @@ mod tests {
         use CborValue::*;
 
         // Vectors and expected wire hex from the upstream cbor.test.ts table,
-        // confirmed against the node oracle (scratch/protocol_oracle).
+        // confirmed against the node oracle (tests/fixtures/protocol_oracle).
         let vectors: Vec<(CborValue, &str)> = vec![
             (CborValue::Null, "f6"),
             (CborValue::Bool(false), "f4"),

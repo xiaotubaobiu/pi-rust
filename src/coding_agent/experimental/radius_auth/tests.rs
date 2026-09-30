@@ -1,7 +1,7 @@
 //! Tests for `radius_auth.rs`: pinned to the node oracle captured from the
 //! verbatim upstream file
-//! (scratch/experimental_final_oracle/oracle_relay_out.json, `authResolver`
-//! section; upstream sources in scratch/experimental_final_oracle/upstream).
+//! (tests/fixtures/experimental_final_oracle/oracle_relay_out.json, `authResolver`
+//! section; upstream sources in tests/fixtures/experimental_final_oracle/upstream).
 
 use super::*;
 

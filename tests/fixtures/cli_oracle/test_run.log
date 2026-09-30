@@ -1,0 +1,119 @@
+   Compiling pi-rust v0.1.0 (C:\Users\13063\Desktop\code\agent work\pi-rust)
+warning: unused import: `std::sync::Arc`
+ --> src\coding_agent\cli\experimental\tests.rs:7:5
+  |
+7 | use std::sync::Arc;
+  |     ^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `ParsedCommandInput`
+  --> src\coding_agent\cli\experimental\tests.rs:13:44
+   |
+13 |     BuiltInvocation, CommandActionContext, ParsedCommandInput,
+   |                                            ^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `ProjectTrustUi`
+ --> src\coding_agent\cli\project_trust_tests.rs:8:56
+  |
+8 |     create_project_trust_context, AppMode, NotifyType, ProjectTrustUi,
+  |                                                        ^^^^^^^^^^^^^^
+
+warning: function `host` is never used
+  --> src\coding_agent\cli\project_trust_tests.rs:28:4
+   |
+28 | fn host() -> Arc<dyn StartupUiHost + Send + Sync> {
+   |    ^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: field `attachment_id` is never read
+   --> src\coding_agent\experimental\session_worker.rs:292:5
+    |
+290 | struct LifecycleDemand {
+    |        --------------- field in this struct
+291 |     server_connection_id: String,
+292 |     attachment_id: String,
+    |     ^^^^^^^^^^^^^
+
+warning: field `exit_tx` is never read
+   --> src\coding_agent\experimental\session_worker_manager.rs:252:5
+    |
+246 | struct PendingLaunch {
+    |        ------------- field in this struct
+...
+252 |     exit_tx: Mutex<Option<oneshot::Sender<()>>>,
+    |     ^^^^^^^
+
+warning: field `timer_generation` is never read
+   --> src\coding_agent\experimental\session_worker_manager.rs:262:5
+    |
+258 | struct PendingDemand {
+    |        ------------- field in this struct
+...
+262 |     timer_generation: u64,
+    |     ^^^^^^^^^^^^^^^^
+
+warning: `pi-rust` (lib test) generated 7 warnings (run `cargo fix --lib -p pi-rust --tests` to apply 2 suggestions)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 59.28s
+     Running unittests src\lib.rs (target\debug\deps\pi_rust-953d71bb277c10ea.exe)
+
+running 58 tests
+test coding_agent::cli::args::tests::frontmatter_prompt_following_print_is_a_message ... ok
+test coding_agent::cli::args::tests::old_ui_mode_flag_is_unknown ... ok
+test coding_agent::cli::args::tests::options_after_print_are_not_prompts ... ok
+test coding_agent::cli::args::tests::print_help_appends_extension_flags ... FAILED
+test coding_agent::cli::args::tests::normalize_session_name_matches_the_oracle ... ok
+test coding_agent::cli::auth_command::tests::usage_and_names_match_the_oracle ... ok
+test coding_agent::cli::auth_command::tests::is_auth_command_help_matches_the_oracle ... ok
+test coding_agent::cli::args::tests::print_help_matches_the_node_oracle_byte_for_byte ... FAILED
+test coding_agent::cli::auth_command::tests::print_auth_command_help_matches_the_oracle ... FAILED
+test coding_agent::cli::auth_command::tests::get_auth_credential_matches_the_oracle ... FAILED
+test coding_agent::cli::args::tests::parse_args_matches_the_node_oracle_byte_for_byte ... ok
+test coding_agent::cli::experimental::tests::execute_passes_server_options_to_the_action ... ok
+test coding_agent::cli::experimental::tests::execute_dispatches_to_the_selected_command ... ok
+test coding_agent::cli::experimental::tests::remaining_args_capture_the_double_dash_grammar ... ok
+test coding_agent::cli::experimental::tests::requires_an_experimental_subcommand ... ok
+test coding_agent::cli::experimental::tests::server_id_validation_fails_before_unsupported_options ... ok
+test coding_agent::cli::experimental::tests::transport_address_grammar_matches_upstream ... ok
+test coding_agent::cli::experimental::tests::experimental_parse_matches_the_node_oracle_byte_for_byte ... FAILED
+test coding_agent::cli::file_processor::tests::embeds_text_files_and_strips_bom ... FAILED
+test coding_agent::cli::file_processor::tests::missing_file_is_an_error ... ok
+test coding_agent::cli::file_processor::tests::multiple_files_concatenate_in_order ... FAILED
+test coding_agent::cli::file_processor::tests::skips_empty_files ... ok
+test coding_agent::cli::initial_message::tests::combines_stdin_file_text_and_first_message ... ok
+test coding_agent::cli::initial_message::tests::file_images_pass_through ... ok
+test coding_agent::cli::initial_message::tests::merges_stdin_with_first_cli_message ... ok
+test coding_agent::cli::initial_message::tests::no_images_stays_none ... ok
+test coding_agent::cli::initial_message::tests::uses_stdin_when_no_cli_message ... ok
+test coding_agent::cli::file_processor::tests::images_embed_base64_with_reference_text ... FAILED
+test coding_agent::cli::list_models::tests::empty_catalog_message_matches_the_oracle ... FAILED
+test coding_agent::cli::list_models::tests::fuzzy_search_matches_the_oracle ... ok
+test coding_agent::cli::list_models::tests::list_models_table_matches_the_oracle ... ok
+test coding_agent::cli::list_models::tests::no_match_message_matches_the_oracle ... ok
+test coding_agent::cli::list_models::tests::load_error_warning_matches_the_oracle ... FAILED
+test coding_agent::cli::project_trust::tests::context_mode_mapping ... ok
+test coding_agent::cli::project_trust::tests::notify_in_non_interactive_mode_writes_plain_text ... ok
+test coding_agent::cli::project_trust::tests::ui_gating_short_circuits_without_ui_or_interactive ... ok
+test coding_agent::cli::session_picker::tests::select_session_returns_the_selected_path ... ok
+test coding_agent::cli::session_picker::tests::select_session_returns_none_on_cancel ... ok
+test coding_agent::cli::setup::tests::setup_cli_configures_the_http_dispatcher ... ok
+test coding_agent::cli::setup::tests::setup_cli_sets_the_upstream_env_markers ... ok
+test coding_agent::cli::startup_ui::tests::official_distribution_identity ... ok
+test coding_agent::cli::startup_ui::tests::startup_host_routes_selector_and_input ... ok
+test coding_agent::cli::startup_ui::tests::theme_loading_dedupes_by_name ... ok
+test coding_agent::cli::startup_ui::tests::first_time_setup_gate ... ok
+test coding_agent::cli::auth_check::tests::creates_an_auth_check_runtime_without_catalog_storage ... ok
+test coding_agent::cli::auth_check::tests::auth_check_requires_provider_or_model ... ok
+test coding_agent::cli::auth_check::tests::malformed_auth_state_is_invalid ... ok
+test coding_agent::cli::auth_check::tests::reports_a_configured_provider_as_ready ... ok
+test coding_agent::cli::auth_check::tests::reports_an_unknown_provider_as_not_ready ... ok
+test coding_agent::cli::auth_check::tests::does_not_create_the_auth_file_or_parent_directory ... ok
+test coding_agent::cli::auth_check::tests::unresolved_env_reference_is_not_configured ... ok
+test coding_agent::cli::auth_check::tests::get_provider_credential_reads_the_stored_key_without_refresh ... ok
+test coding_agent::cli::credential_print::tests::api_key_kind_rejects_oauth_configured_providers ... ok
+test coding_agent::cli::credential_print::tests::prints_a_resolved_api_key ... ok
+test coding_agent::cli::credential_print::tests::unknown_provider_is_rejected ... ok
+test coding_agent::cli::credential_print::tests::requires_provider_or_model ... ok
+test coding_agent::cli::credential_print::tests::api_key_kind_does_not_print_the_oauth_token ... ok
+test coding_agent::cli::auth_command::tests::parse_auth_command_matches_the_node_oracle_byte_for_byte has been running for over 60 seconds

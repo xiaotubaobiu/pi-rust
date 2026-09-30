@@ -1,7 +1,7 @@
 //! Tests for the ported `coding-agent/src/core/model-resolver.ts`.
 //!
 //! Every table comes from
-//! `scratch/core_oracle_model/model_resolver.oracle.json` (the real upstream
+//! `tests/fixtures/core_oracle_model/model_resolver.oracle.json` (the real upstream
 //! module under node; generator `oracle_model_resolver.mjs`). The model
 //! fixtures mirror the oracle script's `model()` factory and the upstream
 //! test battery; results compare as canonical JSON (models render as
@@ -19,8 +19,8 @@ use crate::coding_agent::core::model_resolver::{
 };
 
 /// Upstream model-resolver capture (real upstream module under node;
-/// generator `scratch/core_oracle_model/oracle_model_resolver.mjs`).
-const ORACLE: &str = include_str!("../../../scratch/core_oracle_model/model_resolver.oracle.json");
+/// generator `tests/fixtures/core_oracle_model/oracle_model_resolver.mjs`).
+const ORACLE: &str = include_str!("../../../tests/fixtures/core_oracle_model/model_resolver.oracle.json");
 
 fn oracle() -> serde_json::Value {
     serde_json::from_str(ORACLE).unwrap()

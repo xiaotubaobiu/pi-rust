@@ -1,10 +1,10 @@
 //! Oracle-driven tests for the chord consumer-side slice. Expected values
 //! were captured from the read-only upstream TypeScript sources
 //! (`pi/packages/chord/src`, copied to
-//! `scratch/chord_consumer_oracle/upstream_src`) run under
+//! `tests/fixtures/chord_consumer_oracle/upstream_src`) run under
 //! `node --experimental-strip-types` by
-//! `scratch/chord_consumer_oracle/capture.mjs`; the captured output is
-//! `scratch/chord_consumer_oracle/oracle_output.jsonl` (sha256
+//! `tests/fixtures/chord_consumer_oracle/capture.mjs`; the captured output is
+//! `tests/fixtures/chord_consumer_oracle/oracle_output.jsonl` (sha256
 //! `33d371115f0e12fae3363e5c48e8c9a1548d3d561e8f0f341cbf25b4dae50dda`).
 //! Comparisons are byte-identical over the scenario traces.
 

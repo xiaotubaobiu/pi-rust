@@ -1,5 +1,5 @@
 //! Tests for `server.rs`: pinned to the node oracle captured from verbatim
-//! upstream bodies (scratch/experimental_final_oracle/oracle_misc_out.json,
+//! upstream bodies (tests/fixtures/experimental_final_oracle/oracle_misc_out.json,
 //! `server`, `serverLifetime`, `serverProfile` sections) plus the upstream
 //! `experimental-server-profile.test.ts` scenarios.
 

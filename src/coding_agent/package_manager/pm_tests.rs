@@ -1,6 +1,6 @@
 //! Tests for the package-manager port (slice M5 W3.9), two layers:
 //!
-//! 1. **Oracle replay**: every scenario in `scratch/pm_oracle/core.oracle.json`
+//! 1. **Oracle replay**: every scenario in `tests/fixtures/pm_oracle/core.oracle.json`
 //!    — captured by running the byte-identical upstream TypeScript sources
 //!    under node (`--experimental-strip-types`) with the pinned npm
 //!    `semver`/`minimatch`/`ignore`/`hosted-git-info` versions — is replayed
@@ -388,7 +388,7 @@ fn pm_from(
 // Oracle plumbing
 // ===========================================================================
 
-const ORACLE: &str = include_str!("../../../scratch/pm_oracle/core.oracle.json");
+const ORACLE: &str = include_str!("../../../tests/fixtures/pm_oracle/core.oracle.json");
 
 fn oracle() -> Value {
     serde_json::from_str(ORACLE).unwrap()
@@ -1196,7 +1196,7 @@ oracle_resolve_scenario!(
     oracle_agents_home_user_scoped,
     "agents-home-user-scoped",
     |s| {
-        let cwd = s.dir.join("scratch/nested");
+        let cwd = s.dir.join("tests/fixtures/nested");
         let local_agent_dir = s.dir.join(".pi/agent");
         std::fs::create_dir_all(&cwd).unwrap();
         std::fs::create_dir_all(&local_agent_dir).unwrap();

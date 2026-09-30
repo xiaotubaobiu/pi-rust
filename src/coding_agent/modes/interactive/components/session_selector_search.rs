@@ -336,7 +336,7 @@ mod tests {
         }
     }
 
-    /// Oracle: scratch/interactive_r19_oracle scenario `session_selector_search`.
+    /// Oracle: tests/fixtures/interactive_r19_oracle scenario `session_selector_search`.
     #[test]
     fn parse_search_query_matches_oracle() {
         // empty → no tokens

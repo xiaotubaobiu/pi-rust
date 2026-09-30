@@ -1,7 +1,7 @@
 //! Ports of `packages/server/test/server.test.ts` (127 lines, SHA256
 //! `468f0cf48a78449123b87a6c66ba5a6c18a6efb4fa0d678364611cf7dc5fdcfd`,
 //! non-unix scenarios) plus the oracle byte-compare contract: every
-//! deterministic section of `scratch/server_oracle/oracle.out.txt` is
+//! deterministic section of `tests/fixtures/server_oracle/oracle.out.txt` is
 //! reproduced live and compared byte-for-byte (frames) and text-for-text
 //! (error texts, captures).
 

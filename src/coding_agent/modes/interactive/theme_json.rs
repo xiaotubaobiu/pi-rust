@@ -11,7 +11,7 @@
 //! `string | 0..=255` ColorValue union, optional keys) are re-stated here and
 //! the upstream error-assembly body is reproduced verbatim. The
 //! required-colors / name-rule outputs are byte-exact against
-//! `scratch/interactive_r17_oracle/validate_theme_json_oracle.mjs`; typebox's
+//! `tests/fixtures/interactive_r17_oracle/validate_theme_json_oracle.mjs`; typebox's
 //! "Other errors" message wording is not exercised by the oracle.
 
 use std::collections::BTreeMap;

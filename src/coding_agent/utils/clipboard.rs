@@ -13,7 +13,7 @@
 //! `clipboard-image.ts` (`d38796e1f442…`) is **not** ported (divergence 5).
 //!
 //! Behavior was captured from the vendored, byte-identical upstream sources
-//! under node (`--experimental-strip-types`) in `scratch/clipboard_oracle/`:
+//! under node (`--experimental-strip-types`) in `tests/fixtures/clipboard_oracle/`:
 //! the recorder preload scripts `child_process.spawn` before the ESM graph
 //! loads (so argv sequences and `{stdio, windowsHide}` options are recorded
 //! per scenario), `process.platform` is faked per scenario, the native module

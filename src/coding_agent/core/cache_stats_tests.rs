@@ -1,7 +1,7 @@
 //! Tests for the ported `coding-agent/src/core/cache-stats.ts`: the upstream
 //! `test/cache-stats.test.ts` suite plus byte-level comparisons of the
 //! scenario battery captured from the real upstream module
-//! (`scratch/core_oracle/cache_stats.oracle.json`). Floats are compared
+//! (`tests/fixtures/core_oracle/cache_stats.oracle.json`). Floats are compared
 //! bit-exactly (both runtimes print shortest-round-trip forms).
 
 use std::sync::Mutex;

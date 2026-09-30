@@ -19,11 +19,11 @@
 //! Deterministic behavior — client hello/request/cancel/subscribe frames,
 //! the reconnect/handshake state sequences, and every surfaced error text —
 //! is pinned byte-for-byte against a node oracle run of the verbatim copied
-//! upstream sources (`scratch/client_oracle/`, driver `oracle.mjs`, captured
+//! upstream sources (`tests/fixtures/client_oracle/`, driver `oracle.mjs`, captured
 //! output `oracle.out.txt`). The oracle runs the real upstream
 //! client/connection/unix code plus the real copied `chord` package; the
 //! protocol package's TypeBox schema checker is replaced by a minimal
-//! descriptor evaluator (`scratch/client_oracle/vendor/typebox/`, offline
+//! descriptor evaluator (`tests/fixtures/client_oracle/vendor/typebox/`, offline
 //! provenance note inside) whose only behavioral surface is Check over the
 //! message schemas — every oracle scenario uses schema-valid messages, so
 //! the client/connection behavior captured is upstream's own. Message codec

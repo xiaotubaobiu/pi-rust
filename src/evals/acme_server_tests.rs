@@ -1,6 +1,6 @@
 //! Ports of `pi/packages/evals/test/acme-server.test.ts` (both fixtures, all
 //! five scenarios each) over the std-TCP server, plus a byte-level oracle
-//! comparison against the node server (`scratch/evals_m6/oracle/acme.json`).
+//! comparison against the node server (`tests/fixtures/evals_m6/oracle/acme.json`).
 
 use super::{
     AcmeServer, ServerMode, OPENAI_MODEL_ID, OPENAI_PROBE_PROMPT, OPENAI_PROBE_RESPONSE,
@@ -275,7 +275,7 @@ fn stream_fixture_behaviors() {
 fn oracle() -> serde_json::Value {
     let path = concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/scratch/evals_m6/oracle/acme.json"
+        "/tests/fixtures/evals_m6/oracle/acme.json"
     );
     serde_json::from_str(&std::fs::read_to_string(path).expect("acme oracle")).expect("JSON")
 }

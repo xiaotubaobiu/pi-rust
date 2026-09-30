@@ -1,6 +1,6 @@
 //! Tests for the [`to_json_event`] projection (upstream
 //! `modes/json-event.ts`): byte oracle comparisons against
-//! `scratch/modes_oracle/expected/json_event.jsonl`, captured from the
+//! `tests/fixtures/modes_oracle/expected/json_event.jsonl`, captured from the
 //! verbatim upstream function under node (`--experimental-strip-types`).
 //!
 //! Every record in the oracle carries the upstream output for an equivalent
@@ -30,7 +30,7 @@ use crate::ai::types::primitives::UsageCost;
 use crate::ai::TextOrImageBlock;
 use crate::coding_agent::agent_session::AgentSessionEvent;
 
-const ORACLE: &str = include_str!("../../../scratch/modes_oracle/expected/json_event.jsonl");
+const ORACLE: &str = include_str!("../../../tests/fixtures/modes_oracle/expected/json_event.jsonl");
 
 fn oracle_records() -> &'static Vec<Value> {
     static RECORDS: OnceLock<Vec<Value>> = OnceLock::new();

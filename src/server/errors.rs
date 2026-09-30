@@ -6,7 +6,7 @@
 //! distinguished by `name`; the port is a [`ServerError`] value carrying the
 //! same `code`/`message` pairs plus named constructors. Error *texts* are
 //! pinned byte-for-byte against the node oracle
-//! (`scratch/server_oracle/oracle.out.txt`).
+//! (`tests/fixtures/server_oracle/oracle.out.txt`).
 //!
 //! The module also defines [`OperationError`], the closed error tree that
 //! flows through the port's async seams. Upstream distributes these over

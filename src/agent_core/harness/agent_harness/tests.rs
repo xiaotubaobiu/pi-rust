@@ -6,7 +6,7 @@
 //! `drive-public.test.ts`, plus a serialization-seam oracle test whose
 //! expected JSON lines were captured by running the upstream event literals
 //! with node `--experimental-strip-types`
-//! (`scratch/agent_harness_oracle/agent_harness_oracle.ts`).
+//! (`tests/fixtures/agent_harness_oracle/agent_harness_oracle.ts`).
 //!
 //! The lane-slice cases of both upstream files (the queue/append/drive-install
 //! surface and the drive-public `lane.*` convenience compositions) are ported
@@ -172,7 +172,7 @@ const CONFIGURED: fn() -> LaneConfiguration = || LaneConfiguration {
 fn oracle_lines() -> Vec<String> {
     let path = concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/scratch/agent_harness_oracle/oracle_output.txt"
+        "/tests/fixtures/agent_harness_oracle/oracle_output.txt"
     );
     let oracle = std::fs::read_to_string(path).expect("oracle output file");
     oracle.lines().map(str::to_owned).collect()

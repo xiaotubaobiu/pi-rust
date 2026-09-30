@@ -123,7 +123,7 @@ async fn spawns_a_real_detached_child_and_terminates_it() {
 
 #[test]
 fn encode_control_line_matches_node_byte_oracle() {
-    // scratch/experimental_oracle/oracle_output.json: encodeControlLine[0..5]
+    // tests/fixtures/experimental_oracle/oracle_output.json: encodeControlLine[0..5]
     let frames: Vec<serde_json::Value> = vec![
         serde_json::json!({ "type": "shutdown" }),
         serde_json::json!({

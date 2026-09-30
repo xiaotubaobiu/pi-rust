@@ -1,6 +1,6 @@
 //! Ports of `pi/packages/evals/test/report.test.ts` and
 //! `test/comparison.test.ts`, plus oracle comparisons against the upstream
-//! module executed with node (`scratch/evals_m6/oracle/report.json`,
+//! module executed with node (`tests/fixtures/evals_m6/oracle/report.json`,
 //! `report_formatted.txt`).
 
 use super::{
@@ -638,7 +638,7 @@ fn errored_observation_carries_only_the_task_identity() {
 fn oracle() -> serde_json::Value {
     let path = concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/scratch/evals_m6/oracle/report.json"
+        "/tests/fixtures/evals_m6/oracle/report.json"
     );
     serde_json::from_str(&std::fs::read_to_string(path).expect("report oracle")).expect("JSON")
 }
@@ -821,7 +821,7 @@ fn oracle_report4_and_empty_match_upstream() {
 fn oracle_formatted() -> String {
     let path = concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/scratch/evals_m6/oracle/report_formatted.txt"
+        "/tests/fixtures/evals_m6/oracle/report_formatted.txt"
     );
     std::fs::read_to_string(path).expect("formatted oracle")
 }

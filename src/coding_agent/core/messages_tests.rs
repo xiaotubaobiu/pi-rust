@@ -2,7 +2,7 @@
 //! constants, `bashExecutionToText` over the oracle scenario battery,
 //! constructor behavior (including ISO timestamp parsing), and `convertToLlm`
 //! producing byte-identical serialization against the real upstream module
-//! (`scratch/core_oracle/messages.oracle.json`).
+//! (`tests/fixtures/core_oracle/messages.oracle.json`).
 
 use serde_json::Value;
 

@@ -1,7 +1,7 @@
 //! Tests for the ported `coding-agent/src/cli/args.ts`.
 //!
 //! Source of truth: upstream `test/args.test.ts` plus the node-captured
-//! oracle (`scratch/cli_oracle/oracle.json`, 92 `parseArgs` batteries, help
+//! oracle (`tests/fixtures/cli_oracle/oracle.json`, 92 `parseArgs` batteries, help
 //! text, `normalizeSessionName`) captured from the real upstream module under
 //! `node --experimental-strip-types`. Comparisons are byte-exact.
 
@@ -11,7 +11,7 @@ use crate::coding_agent::cli::args::*;
 
 const ORACLE: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/scratch/cli_oracle/oracle.json"
+    "/tests/fixtures/cli_oracle/oracle.json"
 ));
 
 fn oracle() -> &'static Value {

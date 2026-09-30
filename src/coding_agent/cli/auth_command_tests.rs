@@ -10,7 +10,7 @@ use crate::coding_agent::cli::auth_command::*;
 
 const ORACLE: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/scratch/cli_oracle/oracle.json"
+    "/tests/fixtures/cli_oracle/oracle.json"
 ));
 
 fn oracle() -> &'static Value {

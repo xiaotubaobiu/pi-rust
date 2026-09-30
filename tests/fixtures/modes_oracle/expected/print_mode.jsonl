@@ -1,0 +1,8 @@
+{"name":"text_mode_shutdown","exitCode":0,"promptCalls":[{"message":"Say done","options":{"images":[{"type":"image","mimeType":"image/png","data":"abc"}]}}],"emitCalls":[{"type":"session_shutdown","reason":"quit"}],"errors":[],"writes":["done\n"]}
+{"name":"json_mode_shutdown","exitCode":0,"promptCalls":[{"message":"hello"}],"emitCalls":[{"type":"session_shutdown","reason":"quit"}],"errors":[],"writes":[]}
+{"name":"error_stop_reason","exitCode":1,"promptCalls":[],"emitCalls":[{"type":"session_shutdown","reason":"quit"}],"errors":["provider failure"],"writes":[]}
+{"name":"text_mode_multi_block","exitCode":0,"promptCalls":[],"emitCalls":[{"type":"session_shutdown","reason":"quit"}],"errors":[],"writes":["first\n","second\n"]}
+{"name":"aborted_stop_reason","exitCode":1,"promptCalls":[],"emitCalls":[{"type":"session_shutdown","reason":"quit"}],"errors":["Request aborted"],"writes":[]}
+{"name":"json_mode_header","exitCode":0,"promptCalls":[{"message":"go","options":{}}],"emitCalls":[{"type":"session_shutdown","reason":"quit"}],"errors":[],"writes":["{\"type\":\"session\",\"id\":\"sess-123\",\"timestamp\":\"2026-01-01T00:00:00.000Z\",\"cwd\":\"/work\"}\n"]}
+{"name":"last_message_not_assistant","exitCode":0,"promptCalls":[{"message":"hi","options":{}}],"emitCalls":[{"type":"session_shutdown","reason":"quit"}],"errors":[],"writes":[]}
+{"name":"no_messages","exitCode":0,"promptCalls":[],"emitCalls":[{"type":"session_shutdown","reason":"quit"}],"errors":[],"writes":[]}

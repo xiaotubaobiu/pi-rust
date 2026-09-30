@@ -167,7 +167,7 @@ mod tests {
     use super::*;
     use std::sync::Arc;
 
-    /// Oracle: scratch/interactive_r19_oracle scenario `mermaid_code_span` —
+    /// Oracle: tests/fixtures/interactive_r19_oracle scenario `mermaid_code_span` —
     /// byte-exact fences/padding and the token predicate truth table.
     #[test]
     fn code_span_and_predicate_match_oracle() {

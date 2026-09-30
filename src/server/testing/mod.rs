@@ -221,7 +221,7 @@ pub fn client_frame_hex(message: &ClientMessage) -> String {
 // Oracle reader
 // ---------------------------------------------------------------------------
 
-/// Loads `scratch/server_oracle/oracle.out.txt` (the captured node run of the
+/// Loads `tests/fixtures/server_oracle/oracle.out.txt` (the captured node run of the
 /// verbatim upstream sources).
 pub fn oracle_lines() -> Vec<String> {
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))

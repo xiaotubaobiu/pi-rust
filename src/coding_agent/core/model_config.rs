@@ -8,7 +8,7 @@
 //! boolean, literal, null, array+maxItems, record, anyOf-union, unknown).
 //! Error *rendering* is byte-pinned against the real typebox (1.3.11, from a
 //! local install; upstream pins 1.3.27) in
-//! `scratch/core_oracle/model_config.oracle.json`:
+//! `tests/fixtures/core_oracle/model_config.oracle.json`:
 //!
 //! - type mismatches: `must be object` / `must be string` / `must be number`
 //!   / `must be boolean` / `must be array` / `must be null`

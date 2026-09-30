@@ -1,6 +1,6 @@
 //! Ports of `pi/packages/evals/test/plan.test.ts` plus byte-level oracle
 //! comparisons against the upstream module executed with node
-//! (`scratch/evals_m6/oracle/plan.json`).
+//! (`tests/fixtures/evals_m6/oracle/plan.json`).
 
 use super::{create_task_plan, parse_discovered_cases, DocumentationVariant};
 use crate::serde_support::to_json_string_with_js_numbers;
@@ -79,7 +79,7 @@ fn rejects_invalid_model_identities_and_repetitions() {
 fn oracle() -> serde_json::Value {
     let path = concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/scratch/evals_m6/oracle/plan.json"
+        "/tests/fixtures/evals_m6/oracle/plan.json"
     );
     serde_json::from_str(&std::fs::read_to_string(path).expect("plan oracle"))
         .expect("plan oracle JSON")

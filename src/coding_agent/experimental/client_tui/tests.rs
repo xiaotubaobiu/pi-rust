@@ -1,5 +1,5 @@
 //! Tests for `client_tui.rs`: pinned to the node oracle
-//! (scratch/experimental_final_oracle/oracle_misc_out.json, `clientTui`
+//! (tests/fixtures/experimental_final_oracle/oracle_misc_out.json, `clientTui`
 //! section).
 
 use super::*;

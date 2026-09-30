@@ -3,7 +3,7 @@
 //! Two layers, mirroring the repo's oracle convention:
 //!
 //! 1. **Byte oracle comparisons** against
-//!    `scratch/agent_session_oracle/oracle.json`, captured from the real
+//!    `tests/fixtures/agent_session_oracle/oracle.json`, captured from the real
 //!    upstream TypeScript pure functions under node
 //!    (`--experimental-strip-types`; the capture script copies the upstream
 //!    function bodies verbatim where npm dependencies block direct imports and
@@ -58,7 +58,7 @@ use crate::coding_agent::extensions::loader::{ExtensionApi, ExtensionFactory};
 use crate::coding_agent::extensions::types::{ExtensionContext, HandlerFn, SendUserMessageOptions};
 use crate::coding_agent::session_manager::{SessionEntry, SessionManager};
 
-const ORACLE: &str = include_str!("../../../scratch/agent_session_oracle/oracle.json");
+const ORACLE: &str = include_str!("../../../tests/fixtures/agent_session_oracle/oracle.json");
 
 // ============================================================================
 // Oracle comparisons (upstream pure functions under node)

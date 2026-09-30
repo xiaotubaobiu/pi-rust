@@ -530,7 +530,7 @@ mod tests {
         }
     }
 
-    /// Oracle: scratch/interactive_r19_oracle scenario `footer` —
+    /// Oracle: tests/fixtures/interactive_r19_oracle scenario `footer` —
     /// formatTokens/cwd arrays byte-exact; renders byte-exact.
     #[test]
     fn format_tokens_and_cwd_match_oracle() {

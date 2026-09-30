@@ -1,6 +1,6 @@
 //! Tests for the ported `coding-agent/src/core/provider-composer.ts`.
 //!
-//! Every scenario mirrors `scratch/core_oracle_model/provider_composer.oracle.json`
+//! Every scenario mirrors `tests/fixtures/core_oracle_model/provider_composer.oracle.json`
 //! (the real upstream module under node; generator
 //! `oracle_provider_composer.mjs`): the same base-provider stubs, the same
 //! models.json fixtures (loaded through the real [`ModelConfig`], like the
@@ -33,9 +33,9 @@ use crate::coding_agent::core::provider_composer::{
 use crate::coding_agent::core::resolve_config_value::ConfigEnv;
 
 /// Upstream provider-composer capture (real upstream module under node;
-/// generator `scratch/core_oracle_model/oracle_provider_composer.mjs`).
+/// generator `tests/fixtures/core_oracle_model/oracle_provider_composer.mjs`).
 const ORACLE: &str =
-    include_str!("../../../scratch/core_oracle_model/provider_composer.oracle.json");
+    include_str!("../../../tests/fixtures/core_oracle_model/provider_composer.oracle.json");
 
 fn oracle() -> serde_json::Value {
     serde_json::from_str(ORACLE).unwrap()

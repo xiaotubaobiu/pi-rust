@@ -1,0 +1,55 @@
+   Compiling pi-rust v0.1.0 (C:\Users\13063\Desktop\code\agent work\pi-rust)
+warning: unused import: `std::sync::Arc`
+ --> src\coding_agent\cli\experimental\tests.rs:7:5
+  |
+7 | use std::sync::Arc;
+  |     ^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `ParsedCommandInput`
+  --> src\coding_agent\cli\experimental\tests.rs:13:44
+   |
+13 |     BuiltInvocation, CommandActionContext, ParsedCommandInput,
+   |                                            ^^^^^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+   --> src\coding_agent\experimental\services.rs:479:71
+    |
+479 |                 std::collections::hash_map::Entry::Occupied(entry) => entry.get().clone(),
+    |                                                                       ^^^^^^^^^^^^^^^^^^^ expected `&Arc<_, _>`, found `Arc<ScopedChordEndpoint>`
+    |
+    = note: expected reference `&std::sync::Arc<_, _>`
+                  found struct `std::sync::Arc<ScopedChordEndpoint, std::alloc::Global>`
+help: consider borrowing here
+    |
+479 |                 std::collections::hash_map::Entry::Occupied(entry) => &entry.get().clone(),
+    |                                                                       +
+
+error[E0282]: type annotations needed
+   --> src\coding_agent\experimental\services.rs:506:34
+    |
+506 |                 .unwrap_or_else(|poisoned| poisoned.into_inner())
+    |                                  ^^^^^^^^  -------- type must be known at this point
+    |
+help: consider giving this closure parameter an explicit type
+    |
+506 |                 .unwrap_or_else(|poisoned: /* Type */| poisoned.into_inner())
+    |                                          ++++++++++++
+
+error[E0282]: type annotations needed
+   --> src\coding_agent\experimental\services.rs:510:35
+    |
+510 |                 Err(error) => Err(error.to_string()),
+    |                                   ^^^^^ cannot infer type
+
+warning: unused import: `ProjectTrustUi`
+ --> src\coding_agent\cli\project_trust_tests.rs:8:56
+  |
+8 |     create_project_trust_context, AppMode, NotifyType, ProjectTrustUi,
+  |                                                        ^^^^^^^^^^^^^^
+
+Some errors have detailed explanations: E0282, E0308.
+For more information about an error, try `rustc --explain E0282`.
+warning: `pi-rust` (lib test) generated 3 warnings
+error: could not compile `pi-rust` (lib test) due to 3 previous errors; 3 warnings emitted

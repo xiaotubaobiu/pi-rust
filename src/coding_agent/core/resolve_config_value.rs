@@ -9,7 +9,7 @@
 //! patterns, resolution precedence (`env overlay → process.env`, JS `||`
 //! semantics), and the `resolveConfigValueOrThrow` / `resolveHeadersOrThrow`
 //! error texts are byte-pinned against the real upstream module in
-//! `scratch/core_oracle_model/resolve_config_value.oracle.json` (generator
+//! `tests/fixtures/core_oracle_model/resolve_config_value.oracle.json` (generator
 //! `oracle_config_value.mjs`).
 //!
 //! Disclosures:

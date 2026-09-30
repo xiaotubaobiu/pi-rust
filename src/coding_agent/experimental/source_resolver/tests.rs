@@ -1,7 +1,7 @@
 //! Tests for `source_resolver.rs`: upstream has no dedicated vitest file
 //! (the module is exercised through `experimental-cli-resolution.test.ts`);
 //! the expectations here are pinned to the node oracle captured from the
-//! verbatim upstream functions (scratch/experimental_oracle/oracle_output.json).
+//! verbatim upstream functions (tests/fixtures/experimental_oracle/oracle_output.json).
 
 use super::*;
 use std::fs;
@@ -21,7 +21,7 @@ const TSCONFIG: &str = r#"{
 
 fn root() -> std::path::PathBuf {
     std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("scratch/experimental_oracle/resolver_root")
+        .join("tests/fixtures/experimental_oracle/resolver_root")
 }
 
 fn setup() -> Vec<SourceAlias> {

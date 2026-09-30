@@ -481,7 +481,7 @@ fn demand_key_and_scope_helpers_match_upstream() {
 //
 // Upstream authority: experimental/session-worker.ts
 // (sha256 f2ec55d9f48eb8ddb39f40e8681ce8424298742e7a2893db8f7d12923262b043).
-// Byte oracles: scratch/experimental_d1236_oracle/oracle_output.json
+// Byte oracles: tests/fixtures/experimental_d1236_oracle/oracle_output.json
 // (sha256 a820ff137137a3bb8f07c802f984ea1175741a64265c8a9b44cae3a328496188).
 
 const ORACLE_REGISTER_PEER_LINE: &str =

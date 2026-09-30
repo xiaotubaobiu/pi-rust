@@ -1,7 +1,7 @@
 //! Tests for the ported `coding-agent/src/core/http-dispatcher.ts`.
 //!
 //! The parse/format tables come from
-//! `scratch/core_oracle_model/http_dispatcher.oracle.json` (real upstream
+//! `tests/fixtures/core_oracle_model/http_dispatcher.oracle.json` (real upstream
 //! module under node; generator `oracle_http_dispatcher.mjs`). The proxy-env
 //! scenarios mirror the upstream `http proxy settings` describe-block,
 //! including the save/restore discipline around the process environment.
@@ -10,8 +10,8 @@ use super::*;
 use serde_json::Value;
 
 /// Upstream `http-dispatcher.ts` parse/format tables (real upstream module
-/// under node; generator `scratch/core_oracle_model/oracle_http_dispatcher.mjs`).
-const ORACLE: &str = include_str!("../../../scratch/core_oracle_model/http_dispatcher.oracle.json");
+/// under node; generator `tests/fixtures/core_oracle_model/oracle_http_dispatcher.mjs`).
+const ORACLE: &str = include_str!("../../../tests/fixtures/core_oracle_model/http_dispatcher.oracle.json");
 
 /// Serializes the process-env mutation in [`apply_http_proxy_settings`] tests
 /// (cargo runs test targets in threads; upstream tests are per-file workers).

@@ -4,7 +4,7 @@
 //!
 //! Every byte-layout branch (marker walk, TIFF endianness, IFD bounds checks,
 //! RIFF chunk padding) mirrors upstream exactly; parse outcomes were captured
-//! from the real upstream sources under node (see `scratch/image_oracle/`) and
+//! from the real upstream sources under node (see `tests/fixtures/image_oracle/`) and
 //! are pinned by `exif_orientation_tests` against `image_oracle.json`.
 //! Upstream `rotate90`/Photon `fliph`/`flipv` map to pure index permutations
 //! over the RGBA buffer; these are byte-exact against the Photon WASM behavior

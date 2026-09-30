@@ -1,6 +1,6 @@
 //! Tests for the ported `coding-agent/src/core/auth-guidance.ts`.
 //!
-//! Source of truth: `scratch/core_oracle_w37/auth_guidance.oracle.json`
+//! Source of truth: `tests/fixtures/core_oracle_w37/auth_guidance.oracle.json`
 //! (captured from the real upstream module under node with
 //! `PI_PACKAGE_DIR=/pi-oracle-w37-pkg`; win32 join/resolve semantics — the
 //! Windows platform pin).
@@ -16,7 +16,7 @@ static ENV_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
 fn oracle() -> serde_json::Value {
     serde_json::from_str(include_str!(
-        "../../../scratch/core_oracle_w37/auth_guidance.oracle.json"
+        "../../../tests/fixtures/core_oracle_w37/auth_guidance.oracle.json"
     ))
     .unwrap()
 }

@@ -1,4 +1,4 @@
-// Test-only access to the oracle captures in `scratch/ext_oracle/`. Both
+// Test-only access to the oracle captures in `tests/fixtures/ext_oracle/`. Both
 // files were produced by running the actual upstream TypeScript extension
 // sources with node (type stripping); see the generator scripts next to the
 // captures (`oracle_loader.mjs`, `oracle_runner.mjs`).
@@ -20,7 +20,7 @@
 //   command-context passthrough, session shutdown, flags/renderers.
 
 /// Upstream loader behavior over the scenario battery.
-pub const LOADER: &str = include_str!("../../../scratch/ext_oracle/loader.oracle.json");
+pub const LOADER: &str = include_str!("../../../tests/fixtures/ext_oracle/loader.oracle.json");
 
 /// Upstream runner behavior over the scenario battery.
-pub const RUNNER: &str = include_str!("../../../scratch/ext_oracle/runner.oracle.json");
+pub const RUNNER: &str = include_str!("../../../tests/fixtures/ext_oracle/runner.oracle.json");

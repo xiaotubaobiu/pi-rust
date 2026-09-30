@@ -2,7 +2,7 @@
 //! Deterministic surfaces (passthrough bytes, decisions, dimensions, hint
 //! strings, omitted messages) are pinned against `image_oracle.json`, captured
 //! from the real upstream TS sources under node with the real Photon WASM
-//! backend (see `scratch/image_oracle/capture.mjs`).
+//! backend (see `tests/fixtures/image_oracle/capture.mjs`).
 use super::*;
 use crate::ai::types::{ImageContent, TextContent, TextOrImageBlock};
 use crate::coding_agent::agent_session::tool_result_images::normalize_tool_result_images;

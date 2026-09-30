@@ -4,7 +4,7 @@
 //! `tui-alt-screen.test.ts` "does not emit Kitty graphics commands or OSC 133
 //! zones in iTerm2" case) and a byte-for-byte oracle replay.
 //!
-//! Evidence: `scratch/component_image_oracle/oracle.mjs` ran the REAL
+//! Evidence: `tests/fixtures/component_image_oracle/oracle.mjs` ran the REAL
 //! upstream component (with the real `terminal-image.ts` and `utils.ts`)
 //! under node v25.8.2 and captured 20 scenarios / 28 render probes into the
 //! embedded JSON below (canonical form, sha256

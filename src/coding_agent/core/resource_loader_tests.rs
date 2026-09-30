@@ -1,7 +1,7 @@
 //! Tests for the resource-loader port.
 //!
 //! The `oracle_*` tests pin the port's deterministic outputs against
-//! `scratch/core_oracle_w38/resource_loader.oracle.json`, captured by running
+//! `tests/fixtures/core_oracle_w38/resource_loader.oracle.json`, captured by running
 //! the real upstream `resource-loader.ts` (with its real settings-manager /
 //! package-manager / extensions-loader dependency graph) under node —
 //! generator script next to the capture. The scenario tags (`s01`…`s32`,
@@ -40,7 +40,7 @@ use crate::coding_agent::package_manager::{
     PathMetadata, PathMetadataOrigin, SourceScope as PmSourceScope,
 };
 
-const ORACLE: &str = include_str!("../../../scratch/core_oracle_w38/resource_loader.oracle.json");
+const ORACLE: &str = include_str!("../../../tests/fixtures/core_oracle_w38/resource_loader.oracle.json");
 
 fn oracle() -> &'static Value {
     static PARSED: OnceLock<Value> = OnceLock::new();

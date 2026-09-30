@@ -9,7 +9,7 @@
 //! drain semantics, disclosed seam S5). Abort signals use the repo's
 //! cancellation-token seam (S3). All observable behavior — request/cancel id
 //! allocation, wire frames, error texts, state listener sequences — is pinned
-//! against the node oracle (`scratch/client_oracle/oracle.out.txt`).
+//! against the node oracle (`tests/fixtures/client_oracle/oracle.out.txt`).
 
 use std::collections::{HashMap, VecDeque};
 use std::future::Future;

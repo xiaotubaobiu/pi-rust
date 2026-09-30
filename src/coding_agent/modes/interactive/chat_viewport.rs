@@ -158,7 +158,7 @@ mod tests {
         }
     }
 
-    /// Oracle: scratch/interactive_r19_oracle scenario `chat_viewport`
+    /// Oracle: tests/fixtures/interactive_r19_oracle scenario `chat_viewport`
     /// (`full`): transcript options and the full 5-entry dock layout.
     #[test]
     fn full_layout_matches_oracle() {

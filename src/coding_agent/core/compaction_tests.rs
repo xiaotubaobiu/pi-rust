@@ -7,7 +7,7 @@
 //!    `test/compaction-serialization.test.ts`) ported assertion-for-assertion
 //!    against scripted [`super::StreamFn`] transports.
 //! 2. Oracle byte-comparisons against
-//!    `scratch/core_oracle_compaction/compaction.oracle.json`, captured from
+//!    `tests/fixtures/core_oracle_compaction/compaction.oracle.json`, captured from
 //!    the real upstream TypeScript under node (see the generator script next
 //!    to the capture). Structured values compare as canonical JSON
 //!    (recursively key-sorted on both sides); timestamps and abort signals are
@@ -45,7 +45,7 @@ use crate::ai::types::primitives::ToolChoice;
 // Oracle plumbing
 // ---------------------------------------------------------------------------
 
-const ORACLE: &str = include_str!("../../../scratch/core_oracle_compaction/compaction.oracle.json");
+const ORACLE: &str = include_str!("../../../tests/fixtures/core_oracle_compaction/compaction.oracle.json");
 
 /// The capture is a static JSON document; parsed fresh per test.
 fn oracle() -> Value {

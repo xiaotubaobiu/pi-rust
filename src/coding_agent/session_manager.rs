@@ -10,7 +10,7 @@
 //! Deterministic outputs (context projections, migration results, JSONL file
 //! bytes, discovery order, error texts) were captured from the real upstream
 //! TypeScript under node into
-//! `scratch/session_manager_oracle/session_manager.oracle.json` (sha256
+//! `tests/fixtures/session_manager_oracle/session_manager.oracle.json` (sha256
 //! `d0d016fb…ee84bd`) and compared byte-for-byte in the [`tests`] module. The oracle runs the verbatim
 //! upstream source under `node --experimental-strip-types` with two
 //! deterministic stubs mirrored by test seams here: `crypto.randomUUID`

@@ -171,7 +171,7 @@ mod tests {
     use super::*;
     use std::sync::atomic::{AtomicUsize, Ordering};
 
-    const ORACLE: &str = include_str!("../../../scratch/core_oracle/event_bus.oracle.json");
+    const ORACLE: &str = include_str!("../../../tests/fixtures/core_oracle/event_bus.oracle.json");
 
     /// Build the same trace the oracle script recorded, using the port.
     fn build_trace() -> (Vec<String>, Vec<String>) {

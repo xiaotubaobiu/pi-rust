@@ -3,7 +3,7 @@
 #![allow(clippy::type_complexity)]
 //! r20/r21 shell-oracle replay: drives the ported interactive shell through
 //! the same seams the node harness recorded
-//! (`scratch/interactive_r20_oracle/lower_oracle.json`, 134 scenarios over
+//! (`tests/fixtures/interactive_r20_oracle/lower_oracle.json`, 134 scenarios over
 //! verbatim upstream bodies) and compares the collaborator log byte-for-byte.
 //!
 //! Recording vocabulary (S1/S1a): containers/components/indicators through the
@@ -2241,7 +2241,7 @@ fn oracle() -> &'static Value {
     static ORACLE: std::sync::OnceLock<Value> = std::sync::OnceLock::new();
     ORACLE.get_or_init(|| {
         serde_json::from_str(include_str!(
-            "../../../../scratch/interactive_r20_oracle/lower_oracle.json"
+            "../../../../tests/fixtures/interactive_r20_oracle/lower_oracle.json"
         ))
         .expect("lower oracle parses")
     })
@@ -4284,7 +4284,7 @@ mod lower_oracle {
 // ---------------------------------------------------------------------------
 // r18 shell-oracle replay (upper half): drives the ported session shell
 // through the same seams the r18 node harness recorded
-// (`scratch/interactive_r18_oracle/shell_oracle.json`, 210 scenarios over
+// (`tests/fixtures/interactive_r18_oracle/shell_oracle.json`, 210 scenarios over
 // verbatim upstream bodies spread on a fake `this`). Second fixture family:
 // the r18 harness vocabulary differs from the r20 lower-half one in several
 // places, reproduced here:
@@ -4346,7 +4346,7 @@ mod upper_oracle {
         static ORACLE: std::sync::OnceLock<Value> = std::sync::OnceLock::new();
         ORACLE.get_or_init(|| {
             serde_json::from_str(include_str!(
-                "../../../../scratch/interactive_r18_oracle/shell_oracle.json"
+                "../../../../tests/fixtures/interactive_r18_oracle/shell_oracle.json"
             ))
             .expect("upper oracle parses")
         })

@@ -6,7 +6,7 @@
 //!   coverage), and `test/settings-manager-bug.test.ts` (external-edit
 //!   preservation) — all reachable scenarios are ported,
 //! - oracle captures of the real upstream module
-//!   (`scratch/core_oracle_w37/settings_manager.oracle.json`): rewritten
+//!   (`tests/fixtures/core_oracle_w37/settings_manager.oracle.json`): rewritten
 //!   settings.json bytes (migration key order, modified-field merge order,
 //!   nested-field persistence, undefined-drops-key), the full validation
 //!   error text battery, getter batteries, and drainErrors structure.
@@ -25,7 +25,7 @@ use crate::coding_agent::core::http_dispatcher::DEFAULT_HTTP_IDLE_TIMEOUT_MS;
 
 fn oracle() -> serde_json::Value {
     serde_json::from_str(include_str!(
-        "../../../scratch/core_oracle_w37/settings_manager.oracle.json"
+        "../../../tests/fixtures/core_oracle_w37/settings_manager.oracle.json"
     ))
     .unwrap()
 }

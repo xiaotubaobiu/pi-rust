@@ -1,7 +1,7 @@
 //! Tests for the skills port.
 //!
 //! Every `oracle_*` test pins the port's deterministic outputs against
-//! `scratch/core_oracle_w38/skills.oracle.json`, captured by running the real
+//! `tests/fixtures/core_oracle_w38/skills.oracle.json`, captured by running the real
 //! upstream `skills.ts` under node (type stripping) — generator script next
 //! to the capture. Path strings in the capture are rooted placeholders
 //! (`<root>`, `<fixtures>`) with separators normalized to `/`; the tests
@@ -21,7 +21,7 @@ use crate::coding_agent::extensions::types::SourceOrigin;
 
 use super::*;
 
-const ORACLE: &str = include_str!("../../../scratch/core_oracle_w38/skills.oracle.json");
+const ORACLE: &str = include_str!("../../../tests/fixtures/core_oracle_w38/skills.oracle.json");
 
 fn oracle() -> &'static Value {
     static PARSED: OnceLock<Value> = OnceLock::new();

@@ -1,5 +1,5 @@
 //! Tests for `commands.rs`: pinned to the node oracle
-//! (scratch/experimental_final_oracle/oracle_misc_out.json, `commands`
+//! (tests/fixtures/experimental_final_oracle/oracle_misc_out.json, `commands`
 //! section).
 
 use super::*;

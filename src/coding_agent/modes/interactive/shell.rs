@@ -3,7 +3,7 @@
 #![allow(clippy::type_complexity)]
 //! The interactive session shell (upstream `class InteractiveMode`, ported
 //! from the byte-verbatim oracle bodies in
-//! `scratch/interactive_r18_oracle/` + `scratch/interactive_r20_oracle/`).
+//! `tests/fixtures/interactive_r18_oracle/` + `tests/fixtures/interactive_r20_oracle/`).
 //!
 //! Decision and data-shape parity is enforced by replaying both node-captured
 //! oracles byte-for-byte (`interactive_tests.rs`, `shell_oracle` and

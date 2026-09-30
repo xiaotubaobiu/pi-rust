@@ -733,7 +733,7 @@ mod unix_sigkill {
 // importing `decodeServiceControlCall`/`createServiceUnsubscribeCall` from
 // `@earendil-works/chord`; the port delegates to
 // `crate::chord::services::wire`. Byte oracles:
-// scratch/experimental_d1236_oracle/oracle_output.json (`controlCalls`,
+// tests/fixtures/experimental_d1236_oracle/oracle_output.json (`controlCalls`,
 // `serverError`, `plainOperationError`).
 
 use crate::coding_agent::experimental::session_worker::ServiceCallInstance;

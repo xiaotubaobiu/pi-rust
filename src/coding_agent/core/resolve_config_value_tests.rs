@@ -1,7 +1,7 @@
 //! Tests for the ported `coding-agent/src/core/resolve-config-value.ts`
 //! (vendored dependency of the W3.6 model stack).
 //!
-//! Every table comes from `scratch/core_oracle_model/resolve_config_value.oracle.json`
+//! Every table comes from `tests/fixtures/core_oracle_model/resolve_config_value.oracle.json`
 //! (the real upstream module under node; generator `oracle_config_value.mjs`).
 //! Live shell-command output is platform dependent and deliberately not in
 //! the capture; the failing-command error text is (both failure channels
@@ -11,9 +11,9 @@ use super::*;
 use serde_json::Value;
 
 /// Upstream `resolve-config-value.ts` capture (real upstream module under
-/// node; generator `scratch/core_oracle_model/oracle_config_value.mjs`).
+/// node; generator `tests/fixtures/core_oracle_model/oracle_config_value.mjs`).
 const ORACLE: &str =
-    include_str!("../../../scratch/core_oracle_model/resolve_config_value.oracle.json");
+    include_str!("../../../tests/fixtures/core_oracle_model/resolve_config_value.oracle.json");
 
 /// Serializes the process-env reads/mutations against the fixed oracle env
 /// names (cargo runs test targets in threads).

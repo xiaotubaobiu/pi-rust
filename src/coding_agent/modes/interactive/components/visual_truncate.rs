@@ -59,7 +59,7 @@ pub fn truncate_to_visual_lines(
 mod tests {
     use super::*;
 
-    /// Oracle: scratch/interactive_r19_oracle scenario `visual_truncate` —
+    /// Oracle: tests/fixtures/interactive_r19_oracle scenario `visual_truncate` —
     /// byte-identical against the real upstream `Text` wrapping.
     #[test]
     fn matches_oracle() {

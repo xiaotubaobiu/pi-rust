@@ -4,7 +4,7 @@
 //! - upstream `test/extensions-discovery.test.ts` (adapted to the module
 //!   loader seam — see module docs; the jiti node_modules resolution test is
 //!   seam-owned and cannot exist here),
-//! - the loader oracle capture (`scratch/ext_oracle/loader.oracle.json`,
+//! - the loader oracle capture (`tests/fixtures/ext_oracle/loader.oracle.json`,
 //!   generator `oracle_loader.mjs`): byte comparisons against the verbatim
 //!   upstream sources under node, machine paths relativized to `<root>`.
 

@@ -1,5 +1,5 @@
 //! Tests for `client.rs`: pinned to the node oracle
-//! (scratch/experimental_final_oracle/oracle_misc_out.json, `client` section).
+//! (tests/fixtures/experimental_final_oracle/oracle_misc_out.json, `client` section).
 
 use super::*;
 

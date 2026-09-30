@@ -4714,7 +4714,7 @@ mod upstream_token_tests {
     use super::*;
     use serde_json::{json, Value};
 
-    /// Mirrors `snap` in scratch/marked-18.0.11-oracle/oracle/gen-tokens.mjs:
+    /// Mirrors `snap` in tests/fixtures/marked-18.0.11-oracle/oracle/gen-tokens.mjs:
     /// the ACTUAL marked 18.0.11 `Lexer.lex` token tree, with raw/text/href as
     /// JS UTF-16 unit arrays so astral boundaries compare byte-exactly.
     fn snapshot(token: &Token) -> Value {

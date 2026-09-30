@@ -156,7 +156,7 @@ mod tests {
         Arc::new(load_builtin_theme("dark", Some(ColorMode::Truecolor)).expect("dark"))
     }
 
-    /// Oracle: scratch/interactive_r19_oracle scenario `message_components`
+    /// Oracle: tests/fixtures/interactive_r19_oracle scenario `message_components`
     /// (`branchCollapsed` / `branchToggled` structures and the collapsed label
     /// bytes; the expanded face feeds `**Branch Summary**` into Markdown).
     #[test]

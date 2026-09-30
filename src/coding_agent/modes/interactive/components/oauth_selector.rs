@@ -450,7 +450,7 @@ mod tests {
         ]
     }
 
-    /// Oracle: scratch/interactive_r19_oracle scenario `oauth_selector` —
+    /// Oracle: tests/fixtures/interactive_r19_oracle scenario `oauth_selector` —
     /// type labels, list rows (status indicators/auth labels), filter results,
     /// selections.
     #[test]

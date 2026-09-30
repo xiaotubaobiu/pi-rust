@@ -11,7 +11,7 @@
 //! no-env fallback has no Rust install-layout equivalent, so it resolves the
 //! bare `docs` segment against the cwd (disclosed divergence — the override
 //! is the path every oracle/test pins). The captured texts
-//! (`scratch/core_oracle_w37/auth_guidance.oracle.json`) are the Windows
+//! (`tests/fixtures/core_oracle_w37/auth_guidance.oracle.json`) are the Windows
 //! platform pin (same convention as `keybindings_win32.oracle.json`).
 
 use crate::coding_agent::core::path_join;

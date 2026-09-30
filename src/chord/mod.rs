@@ -55,7 +55,7 @@
 //!
 //! Upstream JS objects iterate in insertion order; `serde_json`'s default map
 //! sorts keys (BTreeMap). The oracle comparison therefore canonicalizes both
-//! sides with recursively sorted object keys (see `scratch/chord_oracle/`),
+//! sides with recursively sorted object keys (see `tests/fixtures/chord_oracle/`),
 //! and oracle scenarios build multi-key objects in sorted key order so
 //! diff/iteration orders coincide. Value-level semantics are unaffected:
 //! upstream's own contract states object key order is not replicated

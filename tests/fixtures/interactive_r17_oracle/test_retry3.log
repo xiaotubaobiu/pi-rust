@@ -1,0 +1,51 @@
+    Blocking waiting for file lock on artifact directory
+   Compiling pi-rust v0.1.0 (C:\Users\13063\Desktop\code\agent work\pi-rust)
+warning: unused import: `std::sync::Arc`
+ --> src\coding_agent\cli\experimental\tests.rs:7:5
+  |
+7 | use std::sync::Arc;
+  |     ^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `ParsedCommandInput`
+  --> src\coding_agent\cli\experimental\tests.rs:13:44
+   |
+13 |     BuiltInvocation, CommandActionContext, ParsedCommandInput,
+   |                                            ^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `super::transport::ControlSocket`
+   --> src\coding_agent\experimental\coordinator\tests.rs:313:9
+    |
+313 |     use super::transport::ControlSocket as _;
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `ProjectTrustUi`
+ --> src\coding_agent\cli\project_trust_tests.rs:8:56
+  |
+8 |     create_project_trust_context, AppMode, NotifyType, ProjectTrustUi,
+  |                                                        ^^^^^^^^^^^^^^
+
+warning: function `light_value` is never used
+   --> src\coding_agent\modes\interactive\interactive_tests.rs:809:8
+    |
+809 |     fn light_value() -> Value {
+    |        ^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `host` is never used
+  --> src\coding_agent\cli\project_trust_tests.rs:34:4
+   |
+34 | fn host() -> Arc<dyn StartupUiHost + Send + Sync> {
+   |    ^^^^
+
+error: linking with `link.exe` failed: exit code: 1104
+  |
+  = note: "C:\\Program Files\\Microsoft Visual Studio\\18\\Community\\VC\\Tools\\MSVC\\14.50.35717\\bin\\HostX64\\x64\\link.exe" "/NOLOGO" "C:\\Users\\13063\\Desktop\\code\\agent work\\pi-rust\\target\\debug\\deps\\rustcEq8p1p\\symbols.o" "<257 object files omitted>" "ntdll.lib" "C:\\Users\\13063\\Desktop\\code\\agent work\\pi-rust\\target\\debug\\deps/{libtoml-df478fe549df51cd,libtoml_writer-61c7400a063df482,libtoml_parser-f54325048b5d5478,libwinnow-4639f6bb0302b482,libserde_spanned-f8abca581eb006a7,libtoml_datetime-d6884e9172bb9894,libzstd-f6d8eb6cd2075da9,libzstd_safe-4267bf06fea444b1,libzstd_sys-55c744066d3b820f,libreqwest-8fc1e17994b44509,librustls_platform_verifier-7d78806fa27561f3,libbase64-22a75f6e427e8fe2,libhyper_rustls-1320d739cd159c82,libmime-a962d4c6a07196aa,libencoding_rs-5d131a77d83a460c,libsimdutf8-4c1fbdc957af25d1,libcore_detect-e20d12d1bc357322,libtower_http-0276f084b15a2cd0,libtower-4ff9fbc47d20b76d,libtower_layer-4ebf1d944d0651a7,libsync_wrapper-226bbfeb0a6b1845,libdirs-e24e060135142536,libdirs_sys-ddd397c82f46de74,liboption_ext-fc8a87742b3ee687,libfs2-5bfd48046bb5250a,libwinapi-770bc9dd7bb0e8ce}.rlib" "<sysroot>\\lib\\rustlib\\x86_64-pc-windows-msvc\\lib/{libtest-*,libgetopts-*,librustc_std_workspace_std-*}.rlib" "C:\\Users\\13063\\Desktop\\code\\agent work\\pi-rust\\target\\debug\\deps/{librustyline-b53217c33e700924,libclipboard_win-21e58a7e9e7e6f74,liberror_code-157aa9fd9b5d3392,libbitflags-052dea6ec05613dc,libunicode_width-9ee56973de09465b,libunicode_segmentation-435b7c3dab6a4ba1,libhome-a4a23258326ca22d,libradix_trie-3e6468ad5c020439,libnibble_vec-7162aa9ec1469510,libendian_type-a5237214e1854be0,librsa-91d5f6753c1163ac,libpkcs1-faae1a073126e228,libpkcs8-3b6c38d0f8b69fd5,libspki-8881675267bfa210,libder-eec4b84802edc40e,libpem_rfc7468-15a74c9f49dbce08,libbase64ct-4099f2bd4eeaad8b,libcrypto_primes-45153bc639f77c1d,libsignature-e8a287658dc4db2e,libcrypto_bigint-5998497efe827b3f,libcpubits-2b93575f7ae7f0f0,libtempfile-421549a5147b0ac7,libfastrand-501a2aa89947cf56,libtokio_tungstenite-9e348aaa2f2f95c3,librustls_native_certs-bac14df8dc45071d,libschannel-f7fcb9197f89e9b7,libtokio_rustls-bf07462dedc5d11a,libtungstenite-bd63fad14e1f4720,libdata_encoding-5bee82f516a70410,librand-7256641f3476b5f7,libgetrandom-74ae9aaa4a3e91fc,libchacha20-32dbde5f982e79c1,librand_core-27b304ff4cc9f00b,librustls-61ad66d63ad3f65f,libsubtle-fbcc2cdc46500e81,libwebpki-5277a782749d073d,libuntrusted-b5da092954893860,libaws_lc_rs-f743e143a53017db,libaws_lc_sys-f21ac1c02de7e13a,librustls_pki_types-455ee67b3f7e68cc,libsha1-cde2dacc2092fded,libthiserror-0b7a301448fc3687,libaws_sigv4-a971597e7eae9e67,libhex-0dcbc79a6cc00104,libaws_smithy_http-31a0dab3ceaf5b38,libsha2-1ad371b47e1a1e19,libcpufeatures-8d5a59fd33358255,libhmac-98a217a4a530192f,libdigest-94a32f2b771e6dc5,libctutils-8cf182769084666a,libcmov-e073fc177b34b2a4,libconst_oid-43970b7557f8c5f0,libcrypto_common-aa0c61f823beab88,libblock_buffer-3017a857c7268fc4,libhybrid_array-5ba5f014e0c29ac7,libtypenum-43bbd8ca6fd9f364,libaws_credential_types-85f3f71a674a1d5e,libaws_smithy_runtime_api-7ca3301d1ad09f84,libaws_smithy_async-cd12f52a0d5bb466,libzeroize-09cde6c04821fd24,libaws_smithy_types-e834c52d46b0cf4e,libryu-319f509a7d8a8133,libpin_utils-7d2f4d70d17baa95,libtime-b9a78a85f99ffec6,libpowerfmt-3b1cc4c5d9f5fa9c,libnum_conv-4dcde3ff670f237f,libderanged-99e31d62d9b7f498,libtime_core-60b69c3b138d529a,libnum_integer-0d0d96bbcd67e948,libnum_traits-6b1d36928e0d5b82,libbytes_utils-018517c6bb15581f,libeither-720f75c93dfbdd3a,libhttp_body-c16717cc2ad52c04,libhttp-f271313edab91d80,libbase64_simd-e975c52f49e9f655,liboutref-ebee8d5a6a90c009,libvsimd-fcc78a0554300008,libeventsource_stream-3cc54187995c9576,libnom-dd6c1c54566dfd5b,libschemars-b3d00ad40b214e0b,libdyn_clone-a3cf4b7c1216be0d,libref_cast-7b3c1222ae871217,libignore-5c3e414bb4302e38,libwalkdir-38d0bd3aca89332e,libsame_file-63a06bfdd8c6ad7e,libcrossbeam_deque-57afb2a0b6760031,libcrossbeam_epoch-9e3f472a2e447c26,libcrossbeam_utils-e520a3079bf5d775,libwinapi_util-7df78a5d3a822c51,libglobset-04f309421a3abbb8,libbstr-1fb2309fc3846861,libwiremock-5546c8e1a2ff6d97,libdeadpool-735c0ea4e2325218,libnum_cpus-c2a2122baa3c56ef,liblazy_static-9fac0106aed43c0e,libdeadpool_runtime-6b037002557edf2a,libhyper_util-23cb4a6f9185d2d1,libwindows_registry-3556904755b4346e,libwindows_strings-033374ff882b8b69,libwindows_result-6f6ee6a51e3f41a3,libipnet-d0c48a2361aea0a7,libtower_service-5bfa3f3a5a7cf07a,libhyper-5fde42f161a54696,libwant-82bed3fd0327e222,libtry_lock-c9043eadb5863ffd,libhttparse-f872281f9aa945e8,libh2-c26c1294b58e5b60,libtracing-781ddcb5de483fb5,libtracing_core-b42ca0c604a40622,libonce_cell-c74ed1f5792c849f,libfnv-39571206bdee82c0,libatomic_waker-485e4734f94945b4,libhttpdate-2c94269f43af4c0b,libhttp_body_util-3aebbddb8c521de9,libhttp_body-43e80f99999a1186,liblog-6159fbc468b6c748,libbase64-00384957a60007b4,libassert_json_diff-de9846fa185d546b,liburl-1abc696f9d380136,libidna-396531e776741d36,libidna_adapter-cff778dc373b9c41,libicu_properties-6cb3e22e1d0832cc,libicu_properties_data-1f3acdcda4f3ddb6,libicu_normalizer-169f4b566a5e31ae,libicu_normalizer_data-4c90c899552f5299,libicu_collections-6fee013ef899fc00,libutf8_iter-f228e7e8efe56842,libpotential_utf-bbdf1a174bc15ab6,libicu_provider-6aa48603ec535875,libicu_locale_core-1ac47a9c29d0bc82,libtinystr-3ddb00df5bb32e03,liblitemap-b31f7da67d1748cf,libwriteable-5eae5e34818dc042,libzerovec-4dfc0011bf23f3b7,libzerotrie-e2164980c04c9be6,libyoke-410246e86ea48272,libstable_deref_trait-c1a18707beb8878e,libzerofrom-374af624e0b15857,libform_urlencoded-deda46429777287e,libpercent_encoding-ff5ab4ec61499fe2,libhttp-1bd6d7a8f2e1b19d,libyaml_rust2-7e1a96115c299379,libarraydeque-122e7e1d20e6a4d4,libhashlink-5db07afaf3892d09,libregex-841295924df2602c,libregex_automata-69e916df1e9d1d0e,libaho_corasick-795321478d6dc217,libregex_syntax-cbae2ade9a322208,libserde-2b37feb84a848fa3,libserde_json-35c24a945ec22291,libzmij-a85cdc5c72c618d5,libitoa-35525c49b7e45c6c,libindexmap-392cd6939c8d2ef1,libequivalent-dc36cde4901cc6a6,libhashbrown-92e0d4f97010b8ee,libfoldhash-5ce0d2e39fd0a55b,libserde_core-48b6579132e728c2,libtokio_util-a6160d46d233305e,libtokio-950242f3136ab0f0,libsocket2-34499f492a949729,libbytes-5200f67038723175,libmio-3d6797d03b0338ad,libwindows_sys-4440c913d7dd5866,libparking_lot-f84d6ba898852242,libparking_lot_core-ecb5c304914f7ef6,libwindows_link-bc01748f223d1f99,libcfg_if-26027c64544a2a0e,libsmallvec-56843ab8c958cf31,liblock_api-a52a2fbddb4ed2a4,libscopeguard-bbf2bc2b401ee9c7,libfutures-4a558a3468e17480,libfutures_executor-eacd7c58a5288ef2,libfutures_util-09ad246dac0c69c3,libmemchr-138e63d34a953cdb,libfutures_io-ab6219708243cba4,libslab-9959c0b1edf3aa32,libfutures_channel-627764c8140655f8,libpin_project_lite-53ba8b2f4c52301c,libfutures_sink-640b3e9ff71136e2,libfutures_task-a99ff10437dfbca4,libfutures_core-64a878fb57b1aa98,libanyhow-b99cdc898a050827}.rlib" "<sysroot>\\lib\\rustlib\\x86_64-pc-windows-msvc\\lib/{libstd-*,libpanic_unwind-*,libcfg_if-*,libwindows_targets-*,librustc_demangle-*,libstd_detect-*,libhashbrown-*,librustc_std_workspace_alloc-*,libunwind-*,librustc_std_workspace_core-*,liballoc-*,libcore-*,libcompiler_builtins-*}.rlib" "advapi32.lib" "cfgmgr32.lib" "kernel32.lib" "user32.lib" "kernel32.lib" "kernel32.lib" "user32.lib" "shell32.lib" "gdi32.lib" "advapi32.lib" "kernel32.lib" "kernel32.lib" "kernel32.lib" "ntdll.lib" "userenv.lib" "ws2_32.lib" "dbghelp.lib" "/defaultlib:msvcrt" "/NXCOMPAT" "/LIBPATH:C:\\Users\\13063\\Desktop\\code\\agent work\\pi-rust\\target\\debug\\build\\aws-lc-sys-928e31135375c2e0\\out" "/LIBPATH:C:\\Users\\13063\\Desktop\\code\\agent work\\pi-rust\\target\\debug\\build\\zstd-sys-21b4602183e4cd5c\\out" "/OUT:C:\\Users\\13063\\Desktop\\code\\agent work\\pi-rust\\target\\debug\\deps\\pi_rust-953d71bb277c10ea.exe" "/OPT:REF,NOICF" "/DEBUG" "/PDBALTPATH:%_PDB%" "/NATVIS:<sysroot>\\lib\\rustlib\\etc\\intrinsic.natvis" "/NATVIS:<sysroot>\\lib\\rustlib\\etc\\liballoc.natvis" "/NATVIS:<sysroot>\\lib\\rustlib\\etc\\libcore.natvis" "/NATVIS:<sysroot>\\lib\\rustlib\\etc\\libstd.natvis" "/NATVIS:C:\\Users\\13063\\Desktop\\code\\agent work\\pi-rust\\target\\debug\\deps\\rustcEq8p1p\\pi_rust-0.natvis" "/NATVIS:C:\\Users\\13063\\Desktop\\code\\agent work\\pi-rust\\target\\debug\\deps\\rustcEq8p1p\\pi_rust-1.natvis"
+  = note: some arguments are omitted. use `--verbose` to show all linker arguments
+  = note: LINK : fatal error LNK1104: 无法打开文件“C:\Users\13063\Desktop\code\agent work\pi-rust\target\debug\deps\pi_rust-953d71bb277c10ea.exe”
+          
+
+warning: `pi-rust` (lib test) generated 6 warnings
+error: could not compile `pi-rust` (lib test) due to 1 previous error; 6 warnings emitted

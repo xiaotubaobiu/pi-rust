@@ -79,7 +79,7 @@ mod tests {
     use super::*;
     use std::rc::Rc;
 
-    /// Oracle: scratch/interactive_r19_oracle scenario `countdown_timer`
+    /// Oracle: tests/fixtures/interactive_r19_oracle scenario `countdown_timer`
     /// (3500ms → ticks [4,3,2,1,0], one expiry, cleared interval afterwards).
     #[test]
     fn countdown_matches_oracle() {

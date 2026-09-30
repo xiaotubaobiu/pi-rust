@@ -9,7 +9,7 @@
 //! | `src/package-manager-cli.ts`    | [`cli`]          | `8f75c01f9c2c2e07d2144eaef43a0739435844cacf28a6fd6b316692e510a1c0` |
 //!
 //! Both upstream sources are vendored byte-identical under
-//! `scratch/pm_oracle/src/` and driven under node (type stripping) by the
+//! `tests/fixtures/pm_oracle/src/` and driven under node (type stripping) by the
 //! capture scripts next to them; the captured determinism surfaces
 //! (`core.oracle.json`, `cli.oracle.json`) are pinned by the tests here.
 //! Vendored library behavior (npm `semver` 7.8.5 / `minimatch` 10.2.6 /

@@ -1,0 +1,6 @@
+{"name":"serialize_unicode_separators","lines":["{\"text\":\"a b c\"}\n"]}
+{"name":"split_lf_only","lines":["{\"text\":\"a b c\"}"]}
+{"name":"crlf_input","lines":["{\"a\":1}","{\"b\":2}"]}
+{"name":"final_line_no_lf","lines":["{\"a\":1}"]}
+{"name":"utf8_chunk_split","lines":["{\"t\":\"héllo wörld\"}","{\"t\":\" again\"}"]}
+{"name":"empty_tail","lines":["{\"a\":1}"]}

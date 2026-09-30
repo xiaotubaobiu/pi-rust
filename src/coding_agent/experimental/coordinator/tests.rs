@@ -1,7 +1,7 @@
 //! Tests for `coordinator.rs`: validation messages and reply-frame shapes
 //! pinned to upstream `coordinator.ts` (`registerServer`, `registerPeer`,
 //! `handleRoutedMessage`) and node-oracle byte output
-//! (scratch/experimental_oracle/oracle_output.json).
+//! (tests/fixtures/experimental_oracle/oracle_output.json).
 
 use super::*;
 

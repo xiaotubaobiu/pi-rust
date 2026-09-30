@@ -2,7 +2,7 @@
 //!
 //! Deterministic surface (idle-timeout parse/format tables, proxy-env
 //! application) is byte-pinned against the real upstream module under node in
-//! `scratch/core_oracle_model/http_dispatcher.oracle.json` (generator
+//! `tests/fixtures/core_oracle_model/http_dispatcher.oracle.json` (generator
 //! `oracle_http_dispatcher.mjs`).
 //!
 //! Disclosure (transport seam): upstream `configureHttpDispatcher` installs a

@@ -1,6 +1,6 @@
 //! Ports of `packages/client/test/client.test.ts` (384 lines, SHA256
 //! `308b1bb3d0b6f498d7671865e09b83cf8f942fec357e75f04eef12bba4afc694`) plus
-//! the additional oracle scenarios from `scratch/client_oracle/oracle.mjs`.
+//! the additional oracle scenarios from `tests/fixtures/client_oracle/oracle.mjs`.
 //! Byte frames, state sequences, and error texts assert against the captured
 //! node oracle output; the seam divergences (S3 abort reason, D10 void
 //! results) are asserted at their disclosed seam values.

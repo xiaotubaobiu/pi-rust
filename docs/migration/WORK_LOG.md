@@ -2553,3 +2553,10 @@ WORK_LOG追加前缀：386287 bytes / cadeaf51fe906e35a1531ffc26058289e7d44c061d
 - 最后一项:real_discovery_matches_upstream(57030a3 修复)——上游 listAll 的 mtime 稳定排序在活动时间平局时退化为 readdir 枚举序(NTFS 按名字典序,ext4 哈希序),oracle 钉的是捕获机 NTFS 序;修法=收集文件后按名排序使平局在所有文件系统上确定地等于捕获序,非平局结果不变。另:unix-only 分支的 5 处 clippy lint(宿主 Windows clippy 不编译这些分支)+ CI 工具链钉 1.98.1(防 stable 漂移再破)。
 - release 流水线两轮修复:①publish 找不到 dist/pirs-macos-* —— 各 unix 目标构建产物本名都是 pirs,merge-multiple 下载互相覆盖;修=上传前 cp 成资产名。②v0.1.1 重打至修复提交。四平台构建首跑全绿(linux-x64/macos-arm64/macos-x64/windows-x64)。
 - 前缀完整性:本条前 WORK_LOG 513,224 bytes,仅二进制 UTF-8 追加。
+
+## 2026-09-30 cleanup-1 (repo restructure per user goal)
+- Removed: HANDOFF.md, AGENTS.md, .superpowers/ (16M ignored), 20 stale docs/migration status/handoff/WIP docs, 17 unreferenced fixture .rs harness files (r18/r20 part*/upper_part*, tui expected_consts), 1.7G ignored scratch run residue.
+- Renamed scratch/ -> tests/fixtures/ (504 tracked fixture files; 225 references rewritten across 151 .rs files; all include_str! compile-time, no runtime fs reads found).
+- Kept during delta migration: docs/migration/{WORK_LOG,ORACLE_COVERAGE}.md + tools/ + reference/ + oracles/ + validation/.
+- Verified: cargo check --all-targets green; protocol::cbor spot-run 20/20.
+- Next: upstream delta migration v0.86.0-590144609 -> v0.99.1-2bbfcca43 (~45k prod lines: tui 1.3k, ai 3.5k incl oauth, agent 0.3k refactor, chord 3.9k delta-tracker, coding-agent 14k incl MCP+codemode+tool-search exts; new packages pi-mcp 3k, pi-codemode 1.6k quickjs, pi-durable 16.6k zero-consumer last).

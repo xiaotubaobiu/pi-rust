@@ -357,7 +357,7 @@ mod tests {
         Arc::new(load_builtin_theme("dark", Some(ColorMode::Truecolor)).expect("dark"))
     }
 
-    /// Oracle: scratch/interactive_r19_oracle scenario `bash_execution` —
+    /// Oracle: tests/fixtures/interactive_r19_oracle scenario `bash_execution` —
     /// output accumulation, preview lines, status lines, expansion.
     #[test]
     fn bash_execution_matches_oracle() {

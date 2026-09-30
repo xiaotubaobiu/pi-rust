@@ -7,7 +7,7 @@
 //! system-prompt discovery, collision diagnostics, extension load order and
 //! conflict error texts) were captured from the real upstream sources under
 //! node (type stripping) into
-//! `scratch/core_oracle_w38/resource_loader.oracle.json` (generator
+//! `tests/fixtures/core_oracle_w38/resource_loader.oracle.json` (generator
 //! `oracle_resource_loader.mjs`) and are pinned byte-for-byte by the tests.
 //!
 //! Shared seams (upstream imports modules outside this slice; disclosed):

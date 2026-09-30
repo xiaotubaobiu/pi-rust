@@ -262,7 +262,7 @@ pub struct ParsedSkillBlock {
 
 /// Upstream `parseSkillBlock` (agent-session.ts:139-148). Returns `None` when
 /// the text doesn't contain a skill block. Oracle:
-/// `scratch/agent_session_oracle/oracle.json` (`skill_block` cases).
+/// `tests/fixtures/agent_session_oracle/oracle.json` (`skill_block` cases).
 pub fn parse_skill_block(text: &str) -> Option<ParsedSkillBlock> {
     static SKILL_BLOCK: std::sync::LazyLock<regex::Regex> = std::sync::LazyLock::new(|| {
         regex::Regex::new(

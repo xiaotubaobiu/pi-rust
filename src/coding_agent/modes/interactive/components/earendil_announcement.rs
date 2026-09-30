@@ -122,7 +122,7 @@ mod tests {
         Arc::new(load_builtin_theme("dark", Some(ColorMode::Truecolor)).expect("dark"))
     }
 
-    /// Oracle: scratch/interactive_r19_oracle scenario `earendil_announcement`
+    /// Oracle: tests/fixtures/interactive_r19_oracle scenario `earendil_announcement`
     /// — border/text/spacer sequence with the byte-exact themed strings (no
     /// bundled asset → no image child).
     #[test]

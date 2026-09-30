@@ -1,5 +1,5 @@
 //! Tests for `client_runtime.rs`: pinned to the node oracle
-//! (scratch/experimental_final_oracle/oracle_misc_out.json, `clientRuntime`
+//! (tests/fixtures/experimental_final_oracle/oracle_misc_out.json, `clientRuntime`
 //! section) plus upstream behavior notes.
 
 use super::*;

@@ -1,6 +1,6 @@
 //! Offline loopback tests for the process-local request callbacks
 //! (mistral-conversations.ts:147 onPayload, :311 onResponse): the seam
-//! semantics pinned by `scratch/callback_seam_oracle` — a replacement reaches
+//! semantics pinned by `tests/fixtures/callback_seam_oracle` — a replacement reaches
 //! the wire, onResponse fires after the fetch resolves and BEFORE the ok
 //! check (the hook observes non-success responses too), and hook rejections
 //! take the pre-send (payload) / pre-start (response) error paths.

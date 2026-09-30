@@ -5,7 +5,7 @@
 //!   coalescing, abort and serialization flows; the unix file-mode cases are
 //!   cfg'd out on Windows exactly like upstream `skipIf`),
 //! - oracle captures of the real upstream module
-//!   (`scratch/core_oracle_w37/auth_storage.oracle.json`) including exact
+//!   (`tests/fixtures/core_oracle_w37/auth_storage.oracle.json`) including exact
 //!   `auth.json` bytes for the `JSON.stringify(merged, null, 2)` rewrites.
 //!
 //! Two upstream tests are mock-shaped and re-expressed against the real lock
@@ -33,7 +33,7 @@ use crate::coding_agent::core::models_store::LOCK_CALLS;
 
 fn oracle() -> serde_json::Value {
     serde_json::from_str(include_str!(
-        "../../../scratch/core_oracle_w37/auth_storage.oracle.json"
+        "../../../tests/fixtures/core_oracle_w37/auth_storage.oracle.json"
     ))
     .unwrap()
 }

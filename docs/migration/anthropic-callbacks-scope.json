@@ -1,8 +1,0 @@
-[
-  "src/ai/api/anthropic/request.rs",
-  "src/ai/api/anthropic/stream.rs",
-  "src/ai/api/anthropic/stream/callback_tests.rs",
-  "src/ai/api/anthropic/stream/callback_oracle.json",
-  "src/agent_core/harness/runtime/drive/generation/tests.rs",
-  "src/agent_core/harness/runtime/drive/generation/tests/anthropic_callbacks.rs"
-]

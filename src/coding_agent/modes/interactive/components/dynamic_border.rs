@@ -39,7 +39,7 @@ mod tests {
     use super::*;
     use crate::coding_agent::modes::interactive::theme::{load_builtin_theme, ColorMode};
 
-    /// Oracle: scratch/interactive_r19_oracle scenario `keybinding_hints`
+    /// Oracle: tests/fixtures/interactive_r19_oracle scenario `keybinding_hints`
     /// (`border` rows) — a full-width `─` rule in the border color.
     #[test]
     fn dynamic_border_matches_oracle() {

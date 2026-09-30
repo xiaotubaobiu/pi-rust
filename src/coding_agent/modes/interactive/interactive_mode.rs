@@ -9,7 +9,7 @@
 //! status data sources, resize/mode handling, and the pure label/path helpers.
 //!
 //! Every decision core was captured as a byte oracle from the REAL upstream
-//! file (`scratch/interactive_r18_oracle/`: the extractor brace-matches the
+//! file (`tests/fixtures/interactive_r18_oracle/`: the extractor brace-matches the
 //! upstream method bodies verbatim and drives 210 scenarios over recording
 //! stubs; output `shell_oracle.json`, sha256 `2b7ca1a258a538a7b987a65331af5c500994bc10f57208ced89449e68b7afc1e`).
 //! The Rust tests replay the scenarios through the same seams and compare the

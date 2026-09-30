@@ -1,5 +1,5 @@
 //! Port of upstream `src/package-manager-cli.ts` (byte-identical copy under
-//! `scratch/pm_oracle/src/`; oracle capture `cli.oracle.json` pins the help
+//! `tests/fixtures/pm_oracle/src/`; oracle capture `cli.oracle.json` pins the help
 //! texts, argument-error texts, list rendering, trust gates, self-update
 //! plan messaging and managed-install flows).
 //!

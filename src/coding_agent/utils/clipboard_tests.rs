@@ -7,7 +7,7 @@
 //!    (the upstream suite mocks `runClipboardCommand` exactly the same way)
 //!    with argv sequences, options, error texts and OSC 52 bytes pinned to the
 //!    oracle captured from the vendored byte-identical upstream sources under
-//!    node (`scratch/clipboard_oracle/clipboard.oracle.json`, capture script
+//!    node (`tests/fixtures/clipboard_oracle/clipboard.oracle.json`, capture script
 //!    `capture_clipboard_oracle.mjs`). Oracle scenario ids are cited in
 //!    comments.
 //! 2. Real-subprocess integration tests of [`RealClipboardCommandRunner`]
@@ -30,7 +30,7 @@ use super::{
 };
 
 // ---------------------------------------------------------------------------
-// Oracle-pinned values (scratch/clipboard_oracle/clipboard.oracle.json).
+// Oracle-pinned values (tests/fixtures/clipboard_oracle/clipboard.oracle.json).
 // ---------------------------------------------------------------------------
 
 /// Oracle `copy:linux-fail-termux-error` / `copy:linux-fail-wayland-error` /

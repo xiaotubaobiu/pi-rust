@@ -1,7 +1,7 @@
 //! Tests for the `plugins/` port: pinned to the node oracle captured from
 //! the verbatim upstream files
-//! (scratch/experimental_final_oracle/oracle_view_out.json, `plugins` section;
-//! oracle harness scratch/experimental_final_oracle/oracle_view.ts).
+//! (tests/fixtures/experimental_final_oracle/oracle_view_out.json, `plugins` section;
+//! oracle harness tests/fixtures/experimental_final_oracle/oracle_view.ts).
 
 use super::bundled::{
     create_presentation_facet_data, presentation_facet_artifacts, session_facet_loader_needed,

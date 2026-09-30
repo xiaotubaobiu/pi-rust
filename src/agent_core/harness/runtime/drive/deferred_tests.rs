@@ -1025,7 +1025,7 @@ async fn stream_deferred_bridge_reaches_the_faux_deferred_surface() {
 /// deferred.ts:47-54, the `pollDeferred` waiting-outcome literal, the
 /// `publishPollIntent` turn-id composition, and the `DeferredHandle` wire
 /// shape) with node `--experimental-strip-types`
-/// (`scratch/deferred_oracle/deferred_oracle.ts`, timestamp-free seams).
+/// (`tests/fixtures/deferred_oracle/deferred_oracle.ts`, timestamp-free seams).
 #[test]
 fn serialization_seams_match_the_upstream_node_oracle() {
     let expected = [
@@ -1040,7 +1040,7 @@ fn serialization_seams_match_the_upstream_node_oracle() {
     ];
     let captured = std::fs::read_to_string(concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/scratch/deferred_oracle/oracle_output.txt"
+        "/tests/fixtures/deferred_oracle/oracle_output.txt"
     ))
     .expect("oracle capture");
     let lines: Vec<&str> = captured.lines().map(str::trim_end).collect();

@@ -1,7 +1,7 @@
 //! Oracle-driven tests for the chord services surface. Expected values were
 //! captured from the read-only upstream TypeScript sources
 //! (`pi/packages/chord/src`) run under `node --experimental-strip-types` by
-//! `scratch/chord_oracle/capture_services.mjs` and stored in
+//! `tests/fixtures/chord_oracle/capture_services.mjs` and stored in
 //! `src/chord/testdata/services_oracle.json`. Comparison is byte-identical
 //! over the canonical serialization (compact JSON with explicitly sorted object keys).
 

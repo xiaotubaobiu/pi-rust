@@ -3,7 +3,7 @@
 //! an in-memory byte server that performs the server side of the handshake
 //! over fake transports.
 //!
-//! Also carries the oracle reader (`scratch/client_oracle/oracle.out.txt`)
+//! Also carries the oracle reader (`tests/fixtures/client_oracle/oracle.out.txt`)
 //! and an order-preserving JSON parser so assertions compare delivered JSON
 //! values against `JSON.stringify` output byte-for-byte (serde_json would
 //! sort object keys).
@@ -264,7 +264,7 @@ pub(crate) fn hex(bytes: &[u8]) -> String {
 // Oracle reader
 // ---------------------------------------------------------------------------
 
-/// Loads `scratch/client_oracle/oracle.out.txt` (the captured node run of the
+/// Loads `tests/fixtures/client_oracle/oracle.out.txt` (the captured node run of the
 /// verbatim upstream sources).
 pub(crate) fn oracle_lines() -> Vec<String> {
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))

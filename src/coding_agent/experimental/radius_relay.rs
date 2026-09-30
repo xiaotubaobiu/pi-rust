@@ -20,7 +20,7 @@
 //! plumbing and the `bufferedAmount` drain polling stay embedder-owned (the
 //! pending-byte budget that guard is for is ported as
 //! [`PendingWriteBudget`]). Frames, status transitions and error strings are
-//! oracle-identical (scratch/experimental_final_oracle/oracle_relay_out.json).
+//! oracle-identical (tests/fixtures/experimental_final_oracle/oracle_relay_out.json).
 
 use std::collections::HashMap;
 use std::sync::Arc;

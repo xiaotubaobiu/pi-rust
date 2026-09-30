@@ -126,7 +126,7 @@ mod tests {
         Arc::new(load_builtin_theme("dark", Some(ColorMode::Truecolor)).expect("dark"))
     }
 
-    /// Oracle: scratch/interactive_r19_oracle scenario `bordered_loader` —
+    /// Oracle: tests/fixtures/interactive_r19_oracle scenario `bordered_loader` —
     /// child sequence, abort flag and the rendered block bytes.
     #[test]
     fn bordered_loader_matches_oracle() {

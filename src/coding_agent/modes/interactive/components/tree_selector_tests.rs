@@ -15,7 +15,7 @@ use serde_json::Value;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
-/// The oracle's FakeDate instant (`scratch/interactive_r20_components_oracle`).
+/// The oracle's FakeDate instant (`tests/fixtures/interactive_r20_components_oracle`).
 const FIXED_NOW: i64 = 1_780_000_000_000;
 
 fn fixed_now() -> i64 {
@@ -274,7 +274,7 @@ fn attach_label(node: &mut SessionTreeNode, label: &str, timestamp: &str) {
 
 fn oracle() -> Value {
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("scratch/interactive_r20_components_oracle/component_r20_oracle.json");
+        .join("tests/fixtures/interactive_r20_components_oracle/component_r20_oracle.json");
     let raw = std::fs::read_to_string(&path).expect("oracle json");
     serde_json::from_str(&raw).expect("oracle json parse")
 }

@@ -1,6 +1,6 @@
 //! Ports of the CLI argument parser behavior plus byte-level oracle
 //! comparisons against the upstream module executed with node
-//! (`scratch/evals_m6/oracle/cli.json`).
+//! (`tests/fixtures/evals_m6/oracle/cli.json`).
 
 use super::{container_path, ensure_distinct_images, normalize_discovered_file, parse_eval_cli};
 use crate::evals::docker::{BuiltImages, VariantImage};
@@ -242,7 +242,7 @@ fn rejects_identical_variant_images() {
 fn oracle_parse_eval_cli_matches_upstream() {
     let path = concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/scratch/evals_m6/oracle/cli.json"
+        "/tests/fixtures/evals_m6/oracle/cli.json"
     );
     let oracle: serde_json::Value =
         serde_json::from_str(&std::fs::read_to_string(path).expect("cli oracle")).expect("JSON");

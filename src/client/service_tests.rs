@@ -1,7 +1,7 @@
 //! Tests for the chord-face seam (S1): the wire-grammar validators, the path
 //! interning decoder, the per-state codec registry, and the service call
 //! faces. Error texts and decoded values are pinned against the node oracle
-//! (`scratch/client_oracle/oracle.out.txt` runs the real upstream chord
+//! (`tests/fixtures/client_oracle/oracle.out.txt` runs the real upstream chord
 //! code); the wire-grammar edges below follow `chord/src/delta/index.ts`
 //! assertions directly.
 

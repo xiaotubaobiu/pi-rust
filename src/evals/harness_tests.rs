@@ -1,6 +1,6 @@
 //! Ports of `pi/packages/evals/test/harness.test.ts`, plus oracle
 //! comparisons against the upstream pure helpers executed with node
-//! (`scratch/evals_m6/oracle/harness.json`).
+//! (`tests/fixtures/evals_m6/oracle/harness.json`).
 
 use super::{
     apply_isolated_environment, create_pi_documentation_eval_harness, exclude_pi_documentation,
@@ -210,7 +210,7 @@ fn rejects_documentation_harnesses_outside_the_container_sandbox() {
 fn oracle() -> serde_json::Value {
     let path = concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/scratch/evals_m6/oracle/harness.json"
+        "/tests/fixtures/evals_m6/oracle/harness.json"
     );
     serde_json::from_str(&std::fs::read_to_string(path).expect("harness oracle")).expect("JSON")
 }

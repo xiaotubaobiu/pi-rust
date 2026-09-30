@@ -7,7 +7,7 @@
 //! oneshot handshake resolvers, and a per-attempt transport pump. State
 //! transitions, message routing, error texts, and the `send`/`close`
 //! sequencing are pinned against the node oracle
-//! (`scratch/client_oracle/oracle.out.txt`).
+//! (`tests/fixtures/client_oracle/oracle.out.txt`).
 
 use std::sync::{Arc, Mutex};
 

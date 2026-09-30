@@ -5,10 +5,10 @@
 //! load-entries `fd0ce2facdce`, migration `7e936fe5402e`,
 //! save-entry `530b961602e3`, tree-traversal `3a80de63661b`) plus byte-for-byte
 //! comparisons against the node oracle
-//! (`scratch/session_manager_oracle/session_manager.oracle.json`).
+//! (`tests/fixtures/session_manager_oracle/session_manager.oracle.json`).
 //!
 //! Oracle scrub contract (mirrors the JS side documented in
-//! scratch/session_manager_oracle/oracle_session_manager.mjs):
+//! tests/fixtures/session_manager_oracle/oracle_session_manager.mjs):
 //! - scenario root path occurrences → `<root>`, process cwd → `<cwd>`
 //! - `<date>T<hh>-<mm>-<ss>-<mmm>Z_` filename stamps → `<stamp>_`
 //! - string values under `timestamp` shaped as ISO-Z →
@@ -49,7 +49,7 @@ use crate::coding_agent::session_manager::test_id_seam;
 // ---------------------------------------------------------------------------
 
 const ORACLE_JSON: &str =
-    include_str!("../../scratch/session_manager_oracle/session_manager.oracle.json");
+    include_str!("../../tests/fixtures/session_manager_oracle/session_manager.oracle.json");
 
 fn oracle() -> &'static Value {
     static ORACLE: OnceLock<Value> = OnceLock::new();

@@ -5,7 +5,7 @@
 //!
 //! Every rule here was captured empirically from the runtime that runs the
 //! upstream module and is locked by `tests::oracle_base64` against
-//! `scratch/terminal_image_oracle/oracle_output.json` (29 probe inputs):
+//! `tests/fixtures/terminal_image_oracle/oracle_output.json` (29 probe inputs):
 //!
 //! - decoding skips characters outside the standard + base64url alphabets
 //!   (whitespace and garbage included),

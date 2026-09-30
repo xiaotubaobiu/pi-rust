@@ -3,7 +3,7 @@
 #![allow(clippy::field_reassign_with_default)]
 //! Offline loopback tests for the process-local request callbacks
 //! (bedrock-converse-stream.ts:280 onPayload, :251-255/:510-526 onResponse):
-//! the seam semantics pinned by `scratch/callback_seam_oracle` — a
+//! the seam semantics pinned by `tests/fixtures/callback_seam_oracle` — a
 //! replacement reaches the wire body (the replacement is serialized and
 //! signed, since upstream replaces the command input before the command is
 //! built), onResponse fires once the send resolves with the raw HTTP response

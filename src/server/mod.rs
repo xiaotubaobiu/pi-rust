@@ -27,7 +27,7 @@
 //! their full error texts, dispatch order, subscription snapshot/update
 //! frames (through the real ported chord state codec), and shutdown error
 //! texts — is pinned byte-for-byte against a node oracle run of the verbatim
-//! copied upstream sources (`scratch/server_oracle/`, driver `oracle.mjs`,
+//! copied upstream sources (`tests/fixtures/server_oracle/`, driver `oracle.mjs`,
 //! captured output `oracle.out.txt`). The oracle runs the real upstream
 //! server code against the real copied `pi-protocol` + `chord` packages, a
 //! minimal `pi-agent-core` shim, and the `typebox` descriptor evaluator from

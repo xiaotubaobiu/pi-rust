@@ -1,7 +1,7 @@
 //! Oracle-driven tests for the chord delta port. Expected values were
 //! captured from the read-only upstream TypeScript sources
 //! (`pi/packages/chord/src/delta/index.ts`) run under
-//! `node --experimental-strip-types` by `scratch/chord_oracle/capture_delta.mjs`
+//! `node --experimental-strip-types` by `tests/fixtures/chord_oracle/capture_delta.mjs`
 //! and stored in `src/chord/testdata/delta_oracle.json`. Comparison is
 //! byte-identical over the canonical serialization (compact JSON with sorted
 //! object keys, explicitly sorted by the test helper below).
@@ -1802,7 +1802,7 @@ fn wire_validation_tables_match_oracle() {
 }
 
 // Raw JSON wire witnesses, not the canonicalized legacy oracle above.
-// Actual upstream capture: scratch/modes_order_audit/capture_delete_contracts.mjs.
+// Actual upstream capture: tests/fixtures/modes_order_audit/capture_delete_contracts.mjs.
 #[test]
 fn json_order_delete_apply_and_tracker_fold_match_upstream_bytes() {
     let input = json!({"drop":0,"z":1,"a":2,"nested":{"drop":0,"y":3,"b":4}});

@@ -5,7 +5,7 @@
 //!
 //! Error strings, accept/reject sets, decoder stickiness after failure, and
 //! wire bytes are pinned against upstream tests and the node oracle
-//! (`scratch/protocol_oracle/`). Non-JSON payloads (byte strings, non-finite
+//! (`tests/fixtures/protocol_oracle/`). Non-JSON payloads (byte strings, non-finite
 //! floats) are rejected during CBOR-to-JSON conversion with the identical
 //! "Invalid client/server protocol message" text (divergence D5).
 

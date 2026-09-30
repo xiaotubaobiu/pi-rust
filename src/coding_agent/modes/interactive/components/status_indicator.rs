@@ -310,7 +310,7 @@ mod tests {
         Arc::new(load_builtin_theme("dark", Some(ColorMode::Truecolor)).expect("dark"))
     }
 
-    /// Oracle: scratch/interactive_r19_oracle scenario `status_indicator` —
+    /// Oracle: tests/fixtures/interactive_r19_oracle scenario `status_indicator` —
     /// labels, kinds and the border-rendered spinner bytes.
     #[test]
     fn status_indicator_matches_oracle() {

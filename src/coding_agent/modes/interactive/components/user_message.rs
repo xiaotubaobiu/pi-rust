@@ -139,7 +139,7 @@ mod tests {
         )
     }
 
-    /// Oracle zone-wrapper probe (scratch/interactive_r19_oracle scenario
+    /// Oracle zone-wrapper probe (tests/fixtures/interactive_r19_oracle scenario
     /// `message_components` `userZoneProbe`): the OSC-133 markers wrap the
     /// first/last line of the Box output.
     #[test]

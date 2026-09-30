@@ -1,0 +1,210 @@
+   Compiling pi-rust v0.1.0 (C:\Users\13063\Desktop\code\agent work\pi-rust)
+warning: unused import: `std::sync::Arc`
+ --> src\coding_agent\cli\experimental\tests.rs:7:5
+  |
+7 | use std::sync::Arc;
+  |     ^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `ParsedCommandInput`
+  --> src\coding_agent\cli\experimental\tests.rs:13:44
+   |
+13 |     BuiltInvocation, CommandActionContext, ParsedCommandInput,
+   |                                            ^^^^^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+   --> src\coding_agent\experimental\coordinator\server.rs:719:51
+    |
+719 |         *self.inner.socket.lock().unwrap() = Some(socket);
+    |                                              ---- ^^^^^^ expected `SharedSocket`, found `Arc<SharedSocket>`
+    |                                              |
+    |                                              arguments to this enum variant are incorrect
+    |
+    = note: expected struct `SharedSocket`
+               found struct `std::sync::Arc<SharedSocket>`
+help: the type constructed contains `std::sync::Arc<SharedSocket>` due to the type of the argument passed
+   --> src\coding_agent\experimental\coordinator\server.rs:719:46
+    |
+719 |         *self.inner.socket.lock().unwrap() = Some(socket);
+    |                                              ^^^^^------^
+    |                                                   |
+    |                                                   this argument influences the type of `Some`
+note: tuple variant defined here
+   --> /rustc/e408947bfd200af42db322daf0fadfe7e26d3bd1/library\core\src\option.rs:608:4
+
+error[E0599]: no method named `close` found for struct `std::sync::Arc<std::sync::Mutex<std::boxed::Box<(dyn ControlListener + 'static)>>>` in the current scope
+   --> src\coding_agent\experimental\coordinator\server.rs:562:31
+    |
+562 |         self.control_listener.close();
+    |                               ^^^^^
+    |
+    = help: items from traits can only be used if the trait is implemented and in scope
+    = note: the following traits define an item `close`, perhaps you need to implement one of them:
+            candidate #1: `AgentHarness`
+            candidate #2: `ByteConnection`
+            candidate #3: `ByteTransport`
+            candidate #4: `ControlListener`
+            candidate #5: `ServerListener`
+            candidate #6: `WireChannel`
+            candidate #7: `agent_core::harness::session::types::Session`
+            candidate #8: `agent_core::harness::session::types::Storage`
+            candidate #9: `agent_core::harness::types::TextLineReader`
+            candidate #10: `pico3::types::Storage`
+            candidate #11: `server::types::RoutedSessionHandle`
+help: there is a method `clone` with a similar name
+    |
+562 -         self.control_listener.close();
+562 +         self.control_listener.clone();
+    |
+
+warning: unused import: `ProjectTrustUi`
+ --> src\coding_agent\cli\project_trust_tests.rs:8:56
+  |
+8 |     create_project_trust_context, AppMode, NotifyType, ProjectTrustUi,
+  |                                                        ^^^^^^^^^^^^^^
+
+warning: variable does not need to be mutable
+   --> src\coding_agent\experimental\coordinator\server.rs:368:25
+    |
+368 |                     let mut listener = server.control_listener.lock().unwrap();
+    |                         ----^^^^^^^^
+    |                         |
+    |                         help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+error[E0382]: borrow of moved value: `server`
+   --> src\coding_agent\experimental\coordinator\server.rs:380:9
+    |
+360 |         let server = Arc::clone(self);
+    |             ------ move occurs because `server` has type `std::sync::Arc<CoordinatorServer>`, which does not implement the `Copy` trait
+...
+363 |             .spawn(move || loop {
+    |                    ------- ---- inside of this loop
+    |                    |
+    |                    value moved into closure here
+364 |                 if server.shutdown_flag.load(Ordering::SeqCst) {
+    |                    ------ variable moved due to use in closure
+...
+380 |         server.threads.lock().unwrap().push(thread);
+    |         ^^^^^^ value borrowed here after move
+    |
+    = note: borrow occurs due to deref coercion to `CoordinatorServer`
+help: consider cloning the value before moving it into the closure
+    |
+361 ~         let value = server.clone();
+362 ~         let thread = std::thread::Builder::new()
+363 |             .name("coordinator-control-accept".to_owned())
+364 |             .spawn(move || loop {
+365 ~                 if value.shutdown_flag.load(Ordering::SeqCst) {
+    |
+
+warning: variable does not need to be mutable
+   --> src\coding_agent\experimental\coordinator\server.rs:392:25
+    |
+392 |                     let mut listener = public_listener.lock().unwrap();
+    |                         ----^^^^^^^^
+    |                         |
+    |                         help: remove this `mut`
+
+warning: variable does not need to be mutable
+   --> src\coding_agent\experimental\coordinator\server.rs:402:25
+    |
+402 |                     let mut state = server.state.lock().unwrap();
+    |                         ----^^^^^
+    |                         |
+    |                         help: remove this `mut`
+
+error[E0382]: borrow of moved value: `server`
+   --> src\coding_agent\experimental\coordinator\server.rs:427:9
+    |
+384 |         let server = Arc::clone(self);
+    |             ------ move occurs because `server` has type `std::sync::Arc<CoordinatorServer>`, which does not implement the `Copy` trait
+...
+387 |             .spawn(move || loop {
+    |                    ------- ---- inside of this loop
+    |                    |
+    |                    value moved into closure here
+388 |                 if server.shutdown_flag.load(Ordering::SeqCst) {
+    |                    ------ variable moved due to use in closure
+...
+427 |         server.threads.lock().unwrap().push(thread);
+    |         ^^^^^^ value borrowed here after move
+    |
+    = note: borrow occurs due to deref coercion to `CoordinatorServer`
+help: consider cloning the value before moving it into the closure
+    |
+385 ~         let value = server.clone();
+386 ~         let thread = std::thread::Builder::new()
+387 |             .name("coordinator-public-accept".to_owned())
+388 |             .spawn(move || loop {
+389 ~                 if value.shutdown_flag.load(Ordering::SeqCst) {
+    |
+
+error[E0382]: borrow of moved value: `server`
+   --> src\coding_agent\experimental\coordinator\server.rs:463:13
+    |
+434 |         ] {            let server = Arc::clone(self);
+    |                            ------ move occurs because `server` has type `std::sync::Arc<CoordinatorServer>`, which does not implement the `Copy` trait
+...
+437 |                 .spawn(move || {
+    |                        ------- value moved into closure here
+...
+459 |                     let mut state = server.state.lock().unwrap();
+    |                                     ------ variable moved due to use in closure
+...
+463 |             server.threads.lock().unwrap().push(thread);
+    |             ^^^^^^ value borrowed here after move
+    |
+    = note: borrow occurs due to deref coercion to `CoordinatorServer`
+help: consider cloning the value before moving it into the closure
+    |
+435 ~             let value = server.clone();
+436 ~             let thread = std::thread::Builder::new()
+437 |                 .name("coordinator-public-proxy".to_owned())
+...
+459 |                     to.as_socket().shutdown();
+460 ~                     let mut state = value.state.lock().unwrap();
+    |
+
+error[E0382]: borrow of moved value: `server`
+   --> src\coding_agent\experimental\coordinator\server.rs:502:9
+    |
+476 |         let server = Arc::clone(self);
+    |             ------ move occurs because `server` has type `std::sync::Arc<CoordinatorServer>`, which does not implement the `Copy` trait
+...
+479 |             .spawn(move || loop {
+    |                    ------- ---- inside of this loop
+    |                    |
+    |                    value moved into closure here
+...
+486 |                     server.drop_connection(&connection_id, error);
+    |                     ------ variable moved due to use in closure
+...
+502 |         server.threads.lock().unwrap().push(thread);
+    |         ^^^^^^ value borrowed here after move
+    |
+    = note: borrow occurs due to deref coercion to `CoordinatorServer`
+help: consider cloning the value before moving it into the closure
+    |
+477 ~         let value = server.clone();
+478 ~         let thread = std::thread::Builder::new()
+479 |             .name("coordinator-control-reader".to_owned())
+...
+486 |                     let error = read.err().map(|error| error.to_string());
+487 ~                     value.drop_connection(&connection_id, error);
+    |
+
+warning: variable does not need to be mutable
+   --> src\coding_agent\experimental\coordinator\transport.rs:244:23
+    |
+244 |             if let Ok(mut writer) = self.writer.lock() {
+    |                       ----^^^^^^
+    |                       |
+    |                       help: remove this `mut`
+
+Some errors have detailed explanations: E0308, E0382, E0599.
+For more information about an error, try `rustc --explain E0308`.
+warning: `pi-rust` (lib test) generated 7 warnings
+error: could not compile `pi-rust` (lib test) due to 6 previous errors; 7 warnings emitted

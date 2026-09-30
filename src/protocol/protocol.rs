@@ -303,7 +303,7 @@ mod tests {
     #[test]
     fn encodes_messages_in_schema_field_order() {
         // Expected wires are the node oracle's payload hex for the same
-        // plain objects (scratch/protocol_oracle/oracle.out.txt).
+        // plain objects (tests/fixtures/protocol_oracle/oracle.out.txt).
         let server_id = "00000000-0000-4000-8000-000000000001";
         let hex = |value: &CborValue| -> String {
             crate::protocol::cbor::encode_cbor(value, crate::protocol::cbor::CborOptions::new())

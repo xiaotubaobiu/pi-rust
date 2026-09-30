@@ -1,6 +1,6 @@
 //! Tests for the ported `coding-agent/src/core/model-config.ts`.
 //!
-//! The fixture battery in `scratch/core_oracle/model_config.oracle.json` was
+//! The fixture battery in `tests/fixtures/core_oracle/model_config.oracle.json` was
 //! captured from the real upstream `ModelConfig.load` running under node with
 //! the local typebox install (upstream pins typebox 1.3.27; the capture used
 //! 1.3.11 — patch-level, disclosed). The port's hand-written typebox-faithful

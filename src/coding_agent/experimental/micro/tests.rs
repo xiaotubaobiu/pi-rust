@@ -1,5 +1,5 @@
 //! Tests for the `micro/` port: pinned to the node oracle
-//! (scratch/experimental_final_oracle/oracle_view_out.json, `microTui` and
+//! (tests/fixtures/experimental_final_oracle/oracle_view_out.json, `microTui` and
 //! `microUsage` sections).
 
 use super::api::{

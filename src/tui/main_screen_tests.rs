@@ -1,7 +1,7 @@
 //! Tests for the `tui-main-screen.ts` port: the full upstream scenario set
 //! (tui-render.test.ts, tui-shrink.test.ts) plus byte-exact oracle
 //! comparisons against the real upstream `TuiMainScreen` run under node
-//! (`scratch/main_screen_oracle/`). Every write array is a FakeTerminal write
+//! (`tests/fixtures/main_screen_oracle/`). Every write array is a FakeTerminal write
 //! boundary sequence (one entry per `terminal.write` call), captured by the
 //! actual `TuiMainScreen` — including the Kitty-image branches, the bounded
 //! 1 MiB chunking, the crash dump, the redraw debug log and the Termux
