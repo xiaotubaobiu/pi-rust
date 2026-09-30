@@ -647,6 +647,22 @@ fn cli_oracle_flow_update_models_and_self() {
         ("flow/update-self-newer-unmanaged", "0.86.0"),
         ("flow/update-self-newer-note", "0.86.0"),
     ] {
+        // win32-only capture: upstream gates the unmanaged-self-update
+        // rejection on `process.platform === "win32"` (upstream
+        // package-manager-cli.ts: "pi self-update on Windows is only
+        // supported for npm and pnpm installs."). On POSIX the same scenario
+        // falls through to the platform-neutral `printSelfUpdateUnavailable`
+        // path (both scenarios pin the win32 branch — the note scenario only
+        // reaches `printSelfUpdateNote` after a self-update command exists),
+        // so the oracle reply is unobservable off-Windows.
+        if !cfg!(windows)
+            && matches!(
+                name,
+                "flow/update-self-newer-unmanaged" | "flow/update-self-newer-note"
+            )
+        {
+            continue;
+        }
         let (temp, dir) = scenario_root(name.replace('/', "-").as_str());
         let host = TestHost::new(&dir);
         host.set_latest_release(LatestPiRelease {

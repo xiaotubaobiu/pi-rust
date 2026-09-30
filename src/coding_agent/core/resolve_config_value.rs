@@ -378,15 +378,58 @@ fn execute_with_configured_shell(command: &str) -> Option<Option<String>> {
     Some(if value.is_empty() { None } else { Some(value) })
 }
 
-/// Upstream `executeWithDefaultShell` (`execSync`): trimmed stdout or `None`
-/// on any failure.
+/// Upstream `executeWithDefaultShell` (`execSync`, resolve-config-value.ts
+/// 185-196): node runs the command STRING through the platform shell —
+/// `/bin/sh -c` on posix, `cmd.exe /d /s /c` on win32 — with a 10s timeout,
+/// stdin ignored and stderr ignored; trimmed stdout or `None` on any failure.
 fn execute_with_default_shell(command: &str) -> Option<String> {
-    let output = std::process::Command::new(command).output().ok()?;
-    if !output.status.success() {
-        return None;
-    }
-    let text = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    if text.is_empty() {
+    #[cfg(unix)]
+    let mut spawn = {
+        let mut cmd = std::process::Command::new("/bin/sh");
+        cmd.arg("-c").arg(command);
+        cmd
+    };
+    #[cfg(windows)]
+    let mut spawn = {
+        let comspec = std::env::var("COMSPEC").unwrap_or_else(|_| "cmd.exe".to_string());
+        let mut cmd = std::process::Command::new(comspec);
+        cmd.arg("/d").arg("/s").arg("/c").arg(command);
+        cmd
+    };
+    let mut child = spawn
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::null())
+        .spawn()
+        .ok()?;
+    // read stdout concurrently with the deadline wait so a child producing
+    // more than the pipe buffer cannot deadlock the 10s timeout
+    let stdout = child.stdout.take();
+    let reader = std::thread::spawn(move || {
+        let mut buffer = Vec::new();
+        if let Some(mut stdout) = stdout {
+            use std::io::Read;
+            let _ = stdout.read_to_end(&mut buffer);
+        }
+        buffer
+    });
+    let deadline = std::time::Instant::now() + std::time::Duration::from_millis(10_000);
+    let status = loop {
+        match child.try_wait() {
+            Ok(Some(status)) => break status,
+            Ok(None) if std::time::Instant::now() >= deadline => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return None;
+            }
+            Ok(None) => std::thread::sleep(std::time::Duration::from_millis(25)),
+            Err(_) => return None,
+        }
+    };
+    let text = String::from_utf8_lossy(&reader.join().unwrap_or_default())
+        .trim()
+        .to_string();
+    if !status.success() || text.is_empty() {
         None
     } else {
         Some(text)

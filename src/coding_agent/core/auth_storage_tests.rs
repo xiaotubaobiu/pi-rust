@@ -355,9 +355,17 @@ async fn resolves_command_backed_api_key_credentials() {
 
     let dir = temp_dir("command");
     let path = dir.join("auth.json");
+    // `printf` is a shell builtin: the win32 capture feeds it through the
+    // configured shell, and on posix the upstream `execSync` wrapping is
+    // `/bin/sh -c`, which `resolve_config_value.rs::execute_with_default_shell`
+    // reproduces. One input verifies both platforms resolve `command-key`.
+    let key_value = r#"!printf 'command-key'"#.to_string();
     std::fs::write(
         &path,
-        r#"{"anthropic":{"type":"api_key","key":"!printf 'command-key'"}}"#,
+        serde_json::json!({
+            "anthropic": {"type": "api_key", "key": key_value},
+        })
+        .to_string(),
     )
     .unwrap();
     let storage = AuthStorage::create(path.to_str().unwrap());

@@ -1334,6 +1334,10 @@ mod tests {
 
     #[test]
     fn per_device_cwd_falls_back_to_cwd() {
+        // Per-drive cwd entries (`=Z:`) are a Windows env convention; glibc
+        // rejects `=` in env names, so the removal is a no-op there and the
+        // variable can never be set to begin with.
+        #[cfg(windows)]
         std::env::remove_var("=Z:");
         assert!(per_device_cwd("Z:").is_none());
     }

@@ -250,10 +250,19 @@ fn keybindings_tables_match_the_oracle_on_all_platforms() {
 /// host platform: user bindings, effective config, and reload behavior.
 #[test]
 fn manager_file_loads_match_the_oracle() {
+    // The manager resolves host defaults (like upstream's
+    // `useWindowsKeybindings()`): on a linux host it still detects WSL from
+    // `WSL_DISTRO_NAME`/`WSL_INTEROP` and switches to the windows defaults
+    // (e.g. `tui.editor.undo` -> `alt+z` instead of the plain-linux
+    // `ctrl+-`), so the host-matching capture is the WSL one there — running
+    // the plain-linux capture inside WSL would compare against defaults
+    // upstream itself would not produce on that host.
     let host_capture = oracle(if cfg!(windows) {
         oracle_data::KEYBINDINGS_WIN32
     } else if cfg!(target_os = "macos") {
         oracle_data::KEYBINDINGS_DARWIN
+    } else if use_windows_keybindings() {
+        oracle_data::KEYBINDINGS_LINUX_WSL
     } else {
         oracle_data::KEYBINDINGS_LINUX
     });

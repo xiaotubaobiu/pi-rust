@@ -102,6 +102,32 @@ body
     }
 }
 
+/// environment-anchored (capture platform replayed): the docs section embeds
+/// the package-dir paths the way the host resolves them (node
+/// `path.resolve(getPackageDir(), segment)`), and the oracle captured
+/// upstream-on-win32 where the synthetic `C:\abs\pkg` package dir is
+/// absolute. On posix, node resolves that drive string relative to the
+/// process cwd, so the tests feed a platform-native synthetic dir
+/// (`/abs/pkg`) and rewrite the oracle's package-dir entries by the same
+/// rule; on windows both sides keep the captured bytes exactly.
+fn synthetic_package_dir() -> &'static str {
+    if cfg!(windows) {
+        r"C:\abs\pkg"
+    } else {
+        "/abs/pkg"
+    }
+}
+
+/// Normalize the oracle's win32 package-dir resolutions to their posix
+/// resolution of the same inputs (identity on the capture platform).
+fn scrub_oracle_package_dir(text: &str) -> String {
+    if cfg!(windows) {
+        return text.to_string();
+    }
+    text.replace(r"C:\abs\pkg\", "/abs/pkg/")
+        .replace(r"C:\abs\pkg", "/abs/pkg")
+}
+
 fn option_string(input: &Value, key: &str) -> Option<String> {
     input.get(key).and_then(Value::as_str).map(str::to_string)
 }
@@ -183,8 +209,9 @@ fn case2_options() -> system_prompt::BuildSystemPromptOptions {
 #[test]
 fn build_system_prompt_sections_match_oracle() {
     // The docs section embeds the package-dir paths; pin the same
-    // PI_PACKAGE_DIR the oracle run used.
-    std::env::set_var("PI_PACKAGE_DIR", r"C:\abs\pkg");
+    // PI_PACKAGE_DIR the oracle run used (platform-native form; see
+    // `synthetic_package_dir`).
+    std::env::set_var("PI_PACKAGE_DIR", synthetic_package_dir());
     let cases = oracle()["sections"].as_array().expect("sections array");
     assert_eq!(cases.len(), 3);
 
@@ -222,10 +249,13 @@ fn build_system_prompt_sections_match_oracle() {
         let actual_order: Vec<&str> = sections.iter().map(|(name, _)| name.as_str()).collect();
         assert_eq!(&actual_order, order, "{name}: section order");
 
-        // Every section's rendered text matches the oracle byte for byte.
+        // Every section's rendered text matches the oracle byte for byte
+        // (package-dir anchors normalized per host, see
+        // `scrub_oracle_package_dir`).
         let expected = owned_sections(&case["sections"]);
         assert_eq!(sections.len(), expected.len(), "{name}: section count");
         for (section_name, expected_text) in &expected {
+            let expected_text = scrub_oracle_package_dir(expected_text);
             let actual_text = sections
                 .iter()
                 .find(|(name, _)| name == section_name)
@@ -269,7 +299,7 @@ fn owned_sections(value: &Value) -> Vec<(String, String)> {
 
 #[test]
 fn diff_system_prompt_sections_matches_oracle() {
-    std::env::set_var("PI_PACKAGE_DIR", r"C:\abs\pkg");
+    std::env::set_var("PI_PACKAGE_DIR", synthetic_package_dir());
     // previous: {preamble: "old preamble", removed_section: "gone", same: "same"}
     let current = system_prompt::build_system_prompt_sections(&case0_options()).unwrap();
     let previous = crate::ai::types::message::Sections::new(vec![
@@ -292,7 +322,7 @@ fn diff_system_prompt_sections_matches_oracle() {
         let expected_value = if text.is_null() {
             None
         } else {
-            Some(text.as_str().unwrap().to_string())
+            Some(scrub_oracle_package_dir(text.as_str().unwrap()))
         };
         assert_eq!(actual, expected_value, "patch[{name}]");
     }
@@ -301,7 +331,7 @@ fn diff_system_prompt_sections_matches_oracle() {
 
 #[test]
 fn build_system_prompt_matches_oracle() {
-    std::env::set_var("PI_PACKAGE_DIR", r"C:\abs\pkg");
+    std::env::set_var("PI_PACKAGE_DIR", synthetic_package_dir());
     // forced-prompt case
     let forced = system_prompt::BuildSystemPromptOptions {
         cwd: "/a/b".to_string(),
@@ -314,8 +344,9 @@ fn build_system_prompt_matches_oracle() {
     );
     // full render equals getSystemMessageText over the first case's sections
     let rendered = system_prompt::build_system_prompt(&case0_options()).unwrap();
-    let expected_full = &oracle()["prompt_full"][0]["text"];
-    assert_eq!(rendered, expected_full.as_str().unwrap());
+    let expected_full =
+        scrub_oracle_package_dir(oracle()["prompt_full"][0]["text"].as_str().unwrap());
+    assert_eq!(rendered, expected_full);
 }
 
 #[test]

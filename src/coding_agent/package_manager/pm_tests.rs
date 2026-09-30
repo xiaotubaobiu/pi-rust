@@ -408,25 +408,39 @@ fn oracle_entry(name: &str) -> Value {
 fn scrub_identity_drive(text: &str) -> String {
     let out = crate::coding_agent::oracle_scrub::scrub_str(text);
     // `local:/absolute/...` (drive-less resolution on POSIX) shares the
-    // capture's `local:<DRV>:/...` anchor.
+    // capture's `local:<DRV>:/...` anchor. On POSIX, scrub_str's `X:/`
+    // drive rewrite consumes the `l:/` inside the `local:/` prefix itself
+    // (yielding `loca<DRV>:/`), so recognize that mangled form; on win32
+    // the identity already carries the live drive (`local:C:/...`), which
+    // scrubs straight to `local:<DRV>:/`.
     if let Some(rest) = out.strip_prefix("local:/") {
+        return format!("local:<DRV>:/{rest}");
+    }
+    if let Some(rest) = out.strip_prefix("loca<DRV>:/") {
         return format!("local:<DRV>:/{rest}");
     }
     out
 }
 
 /// Mask the temp root and normalize separators on every string (both sides).
+/// Object keys are normalized too: the `flow-update-batch-per-scope` counts
+/// map keys embed spawn command lines with the platform's separators (the
+/// capture stored win32 `\` forms), and keys would otherwise survive the
+/// value-level walk.
 fn normalize(value: &mut Value, root: &Path) {
     let root_text = root.to_string_lossy().into_owned();
+    let scrub_string = |text: &str| -> String {
+        let replaced = if root_text.is_empty() {
+            text.to_string()
+        } else {
+            text.replace(&root_text, "$T")
+        };
+        let unified = replaced.replace('\\', "/");
+        scrub_identity_drive(&unified)
+    };
     match value {
         Value::String(text) => {
-            let replaced = if root_text.is_empty() {
-                text.clone()
-            } else {
-                text.replace(&root_text, "$T")
-            };
-            let unified = replaced.replace('\\', "/");
-            *text = scrub_identity_drive(&unified);
+            *text = scrub_string(text);
         }
         Value::Array(entries) => {
             for entry in entries {
@@ -434,8 +448,80 @@ fn normalize(value: &mut Value, root: &Path) {
             }
         }
         Value::Object(object) => {
+            let remaps: Vec<(String, String)> = object
+                .keys()
+                .map(|key| (key.clone(), scrub_string(key)))
+                .collect();
+            for (old, new) in remaps {
+                if old != new {
+                    if let Some(entry) = object.shift_remove(&old) {
+                        object.insert(new, entry);
+                    }
+                }
+            }
             for (_, entry) in object.iter_mut() {
                 normalize(entry, root);
+            }
+        }
+        _ => {}
+    }
+}
+
+/// Upstream orders resolved resources by precedence rank only (a stable
+/// `Array#sort` in `toResolvedPaths`); within one rank the order is the
+/// directory-read order, which the OS defines (NTFS enumerates names sorted,
+/// ext4 does not), so the win32 capture cannot pin it and upstream-on-linux
+/// would enumerate in the local readdir order too. Sort both sides by
+/// (rank, rel): the comparison still pins rank grouping, membership, enabled
+/// flags and per-resource metadata, abstracting only the readdir order.
+fn canonicalize_resource_order(value: &mut Value) {
+    fn resource_rank(entry: &Value) -> (u8, String) {
+        let rel = entry
+            .get("rel")
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .to_string();
+        let rank = match entry.get("metadata") {
+            Some(metadata) => {
+                let origin = metadata
+                    .get("origin")
+                    .and_then(Value::as_str)
+                    .unwrap_or_default();
+                if origin == "package" {
+                    4
+                } else {
+                    let scope = metadata
+                        .get("scope")
+                        .and_then(Value::as_str)
+                        .unwrap_or_default();
+                    let source = metadata
+                        .get("source")
+                        .and_then(Value::as_str)
+                        .unwrap_or_default();
+                    (if scope == "project" { 0 } else { 2 }) + u8::from(source != "local")
+                }
+            }
+            None => 0,
+        };
+        (rank, rel)
+    }
+
+    match value {
+        Value::Object(object) => {
+            for key in ["extensions", "skills", "prompts", "themes"] {
+                if let Some(Value::Array(entries)) = object.get_mut(key) {
+                    if entries.iter().all(|entry| entry.get("rel").is_some()) {
+                        entries.sort_by(|a, b| resource_rank(a).cmp(&resource_rank(b)));
+                    }
+                }
+            }
+            for (_, entry) in object.iter_mut() {
+                canonicalize_resource_order(entry);
+            }
+        }
+        Value::Array(entries) => {
+            for entry in entries {
+                canonicalize_resource_order(entry);
             }
         }
         _ => {}
@@ -447,6 +533,8 @@ fn assert_matches_oracle(name: &str, actual: &Value, root: &Path) {
     normalize(&mut expected, root);
     let mut actual = actual.clone();
     normalize(&mut actual, root);
+    canonicalize_resource_order(&mut expected);
+    canonicalize_resource_order(&mut actual);
     assert_eq!(
         &actual, &expected,
         "scenario {name} diverged from the upstream oracle"

@@ -989,6 +989,20 @@ impl IgnoreMatcher {
         let Some(matcher) = &self.matcher else {
             return false;
         };
+        // Upstream probes directories as `${relPath}/` (upstream
+        // `collectSkillEntries`: `ig.ignores(`${relPath}/`)`), and npm
+        // `ignore` is pure JS — a trailing slash does not change segment
+        // matching. The `ignore` crate's gitignore `strip` is byte-wise on
+        // unix and keeps the trailing slash in the match candidate, so
+        // `**/venv` would never match `<root>/venv/` there (on windows the
+        // component-based strip drops it). Trim it; directory-ness stays in
+        // `is_dir`.
+        let trimmed = absolute_path.trim_end_matches('/');
+        let absolute_path: &str = if trimmed.is_empty() {
+            absolute_path
+        } else {
+            trimmed
+        };
         let path = Path::new(absolute_path);
         // An excluded parent directory excludes everything beneath it (the
         // npm `ignore` package implements git's no-descent rule): scan

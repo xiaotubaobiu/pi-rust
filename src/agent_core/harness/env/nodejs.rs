@@ -485,9 +485,11 @@ fn kill_process_tree(pid: u32) {
     {
         // `process.kill(-pid, "SIGKILL")`: the child was spawned as its own
         // process-group leader, so the negative pid kills the whole tree.
-        // Fall back to the single process (`nodejs.ts:281-289`).
+        // The `--` end-of-options marker is required: procps kill otherwise
+        // parses the negative pid as an option and exits 0 having signalled
+        // nothing. Fall back to the single process (`nodejs.ts:281-289`).
         let group = std::process::Command::new("kill")
-            .args(["-9", &format!("-{pid}")])
+            .args(["-9", "--", &format!("-{pid}")])
             .status();
         if !group.is_ok_and(|status| status.success()) {
             let _ = std::process::Command::new("kill")

@@ -808,6 +808,39 @@ async fn uses_stdin_command_transport_for_legacy_wsl_bash_paths() {
         )
         .expect("chmod");
     }
+    // Upstream `process.chdir(root)` + PATH prepend (nodejs-env.test.ts:409):
+    // the custom shell path is checked and spawned as given, so on unix it
+    // must resolve against the fixture root, and since the backslash name
+    // contains no `/` the spawn PATH-searches — find it via the prepended
+    // root, exactly like upstream.
+    struct RestoreProcessEnv {
+        cwd: String,
+        path_set: bool,
+        path: String,
+    }
+    impl Drop for RestoreProcessEnv {
+        fn drop(&mut self) {
+            let _ = std::env::set_current_dir(&self.cwd);
+            if self.path_set {
+                std::env::set_var("PATH", &self.path);
+            } else {
+                std::env::remove_var("PATH");
+            }
+        }
+    }
+    let _env_guard = RestoreProcessEnv {
+        cwd: std::env::current_dir()
+            .expect("cwd")
+            .to_string_lossy()
+            .into_owned(),
+        path_set: std::env::var("PATH").is_ok(),
+        path: std::env::var("PATH").unwrap_or_default(),
+    };
+    std::env::set_current_dir(&root).expect("chdir to fixture root");
+    std::env::set_var(
+        "PATH",
+        format!("{root}:{}", std::env::var("PATH").unwrap_or_default()),
+    );
     let wsl_env = env_at(&root).with_shell_path(shell_path);
     let (result, output) = collect_shell_output(
         &wsl_env,

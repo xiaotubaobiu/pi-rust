@@ -9,9 +9,12 @@ use crate::coding_agent::cli::file_processor::{
 use crate::tui::terminal_image::base64 as vendored_base64;
 
 fn write_file(dir: &str, name: &str, contents: &[u8]) -> String {
-    let path = format!("{dir}\\{name}");
+    // Host-native join: the temp dir string is platform-flavored (posix
+    // separators on linux), so a literal `\` would create a file whose name
+    // embeds a backslash instead of a child of the directory.
+    let path = std::path::Path::new(dir).join(name);
     std::fs::write(&path, contents).unwrap();
-    path
+    path.to_string_lossy().into_owned()
 }
 
 fn temp_dir(name: &str) -> String {
@@ -128,9 +131,15 @@ fn images_embed_base64_with_reference_text() {
 fn resolve_read_path_tries_the_macos_screenshot_variant() {
     let dir = temp_dir("screenshot");
     // Upstream replace: " AM." -> U+202F + "AM." (the plain space is consumed).
-    let narrow = format!("{dir}\\Screenshot\u{202F}AM.");
+    // Host-native join so the fixture file is a child of the temp dir on both
+    // platforms and the expectation matches `resolve_read_path`'s own
+    // separator flavor.
+    let narrow = std::path::Path::new(&dir).join(format!("Screenshot\u{202F}AM."));
     std::fs::write(&narrow, b"x").unwrap();
-    assert_eq!(resolve_read_path("Screenshot AM.", &dir), narrow);
+    assert_eq!(
+        resolve_read_path("Screenshot AM.", &dir),
+        narrow.to_string_lossy()
+    );
     std::fs::remove_dir_all(&dir).ok();
 }
 
@@ -138,9 +147,13 @@ fn resolve_read_path_tries_the_macos_screenshot_variant() {
 #[test]
 fn resolve_read_path_tries_the_curly_quote_variant() {
     let dir = temp_dir("curly");
-    let curly = format!("{dir}\\Capture d\u{2019}cran.txt");
+    // Host-native join (see the screenshot variant above).
+    let curly = std::path::Path::new(&dir).join(format!("Capture d\u{2019}cran.txt"));
     std::fs::write(&curly, b"x").unwrap();
-    assert_eq!(resolve_read_path("Capture d'cran.txt", &dir), curly);
+    assert_eq!(
+        resolve_read_path("Capture d'cran.txt", &dir),
+        curly.to_string_lossy()
+    );
     std::fs::remove_dir_all(&dir).ok();
 }
 

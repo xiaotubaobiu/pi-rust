@@ -130,6 +130,20 @@ fn oracle_component_scenarios_byte_exact() {
     let mut masked_probes = 0usize;
     let mut render_probes = 0usize;
     for (i, scenario) in oracle["scenarios"].as_array().unwrap().iter().enumerate() {
+        // environment-anchored: the two wrap scenarios pin win32
+        // `pathToFileURL` semantics (`file:///C:/...`); the `url` crate
+        // resolves paths per host platform, so a `C:/` input has no URL form
+        // on unix and the fallback renders unwrapped there. The wrap flow on
+        // unix is covered by terminal_image's
+        // `image_fallback_wraps_native_posix_paths`.
+        if !cfg!(windows)
+            && matches!(
+                scenario["name"].as_str(),
+                Some("hyperlinks wrap absolute path") | Some("home path shortened and hyperlinked")
+            )
+        {
+            continue;
+        }
         set_capabilities(capabilities_from_json(&scenario["caps"]));
         set_cell_dimensions(cell_from_json(&scenario["cell"]));
         let ctor = &scenario["ctorOptions"];
@@ -231,8 +245,14 @@ fn oracle_component_scenarios_byte_exact() {
         masked_probes >= 2,
         "the upstream tests allocate ids in two scenarios; got {masked_probes}"
     );
+    // the two win32-URL wrap scenarios (one render probe each) are skipped
+    // on unix — see the loop head for the platform seam
+    #[cfg(windows)]
+    let expected_render_probes = 27;
+    #[cfg(unix)]
+    let expected_render_probes = 25;
     assert_eq!(
-        render_probes, 27,
+        render_probes, expected_render_probes,
         "every captured render probe was replayed (plus one invalidate probe)"
     );
     reset_capabilities_cache();

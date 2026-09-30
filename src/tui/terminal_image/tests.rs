@@ -118,7 +118,10 @@ fn oracle_detect_capabilities_matrix() {
                 probe_calls.set(probe_calls.get() + 1);
                 probe_answer
             },
-            cfg!(windows),
+            // environment-anchored: the matrix was captured upstream on win32,
+            // where an empty environment means a Windows console; replay that
+            // console kind on every platform (env and probe are synthetic).
+            true,
         );
         let expected_images = row["images"].as_str();
         assert_eq!(
@@ -723,6 +726,14 @@ fn oracle_image_fallback_strings() {
     let _guard = state_lock().lock().unwrap();
     let home = oracle["fallbackHome"].as_str().unwrap();
     for case in rows(oracle, "fallback") {
+        // environment-anchored: this row pins win32 `pathToFileURL` semantics
+        // (`file:///C:/...`); the `url` crate resolves paths per host
+        // platform, so a `C:/` input has no URL form on unix. The wrap flow
+        // itself is replayed with a native absolute path in
+        // `image_fallback_wraps_native_posix_paths`.
+        if !cfg!(windows) && case["name"] == "hyperlinks wrap shortened path" {
+            continue;
+        }
         set_capabilities(capabilities_from_json(&case["caps"]));
         let dims = &case["dims"];
         let actual = image_fallback_with_home(
@@ -742,6 +753,40 @@ fn oracle_image_fallback_strings() {
             case["name"]
         );
     }
+    reset_capabilities_cache();
+}
+
+/// Unix replay of the win32-oracle wrap row ("hyperlinks wrap shortened
+/// path"): a native absolute home path still wraps in an OSC 8 file URL whose
+/// body is the shortened display path — the flow the url crate realizes on
+/// this platform.
+#[cfg(unix)]
+#[test]
+fn image_fallback_wraps_native_posix_paths() {
+    let _guard = state_lock().lock().unwrap();
+    let home = dirs::home_dir()
+        .expect("home dir exists")
+        .to_string_lossy()
+        .into_owned();
+    let abs = format!("{home}/.pi/agent/shot.png");
+    set_capabilities(TerminalCapabilities {
+        images: None,
+        true_color: false,
+        hyperlinks: true,
+    });
+    let result = image_fallback_with_home(
+        "image/png",
+        Some(ImageDimensions {
+            width_px: 10,
+            height_px: 10,
+        }),
+        Some(&abs),
+        Some(&home),
+    );
+    let expected = format!(
+        "[Image: \u{1b}]8;;file://{abs}\u{1b}\\~/.pi/agent/shot.png\u{1b}]8;;\u{1b}\\ [image/png] 10x10]"
+    );
+    assert_eq!(result, expected);
     reset_capabilities_cache();
 }
 

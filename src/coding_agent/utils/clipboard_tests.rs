@@ -1038,7 +1038,12 @@ async fn real_runner_captures_shell_echo_probe() {
             read_options(None, None),
         )
         .await;
+    // cmd echoes CRLF on windows and sh echoes LF on unix; the probe asserts
+    // the bytes survive the spawn pipeline verbatim on each platform.
+    #[cfg(windows)]
     assert_eq!(output.as_deref(), Some("hello\r\n".as_bytes()));
+    #[cfg(unix)]
+    assert_eq!(output.as_deref(), Some("hello\n".as_bytes()));
 }
 
 #[cfg(windows)]
