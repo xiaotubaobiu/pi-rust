@@ -712,6 +712,9 @@ mod theme_r17_tests {
 
     use serde_json::{json, Value};
 
+    // `edit_in_external_editor` is exercised by the windows-gated tests
+    // below; keep the import honest on unix too.
+    #[cfg_attr(not(windows), allow(unused_imports))]
     use super::super::external_editor::{
         edit_in_external_editor, edit_in_external_editor_with, EditorRunner, ExternalEditorOptions,
         ExternalEditorResult,

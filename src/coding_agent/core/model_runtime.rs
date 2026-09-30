@@ -582,7 +582,7 @@ impl ModelRuntime {
             + 1;
         {
             let mut provider_seqs = lock(&self.0.provider_availability_seq);
-            for (_, provider_seq) in provider_seqs.iter_mut() {
+            for provider_seq in provider_seqs.values_mut() {
                 *provider_seq += 1;
             }
         }
@@ -1002,6 +1002,10 @@ impl ModelRuntime {
     }
 
     /// Upstream `synchronizeCredentialState`.
+    // The error intentionally carries the full credential payload (upstream
+    // shape), so `clippy::result_large_err` is accepted here rather than
+    // boxing the variant and changing the public API.
+    #[allow(clippy::result_large_err)]
     async fn synchronize_credential_state(
         &self,
         provider_id: &str,

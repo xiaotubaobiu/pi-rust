@@ -424,10 +424,8 @@ fn osc8_url(ansi_code: &str) -> Option<Option<&str>> {
     let body = ansi_code.strip_prefix("\x1b]8;")?;
     let url = if let Some(rest) = body.strip_suffix('\x07') {
         rest
-    } else if let Some(rest) = body.strip_suffix("\x1b\\") {
-        rest
     } else {
-        return None;
+        body.strip_suffix("\x1b\\")?
     };
     let (params, url) = url.split_once(';')?;
     if url.is_empty() || url.contains(['\x07', '\x1b']) {
@@ -891,10 +889,9 @@ fn parse_osc8_hyperlink(ansi_code: &str) -> Option<Option<ActiveHyperlink>> {
     let body = ansi_code.strip_prefix("\x1b]8;")?;
     let (inner, terminator) = if let Some(rest) = body.strip_suffix('\x07') {
         (rest, Osc8Terminator::Bel)
-    } else if let Some(rest) = body.strip_suffix("\x1b\\") {
-        (rest, Osc8Terminator::St)
     } else {
-        return None;
+        let rest = body.strip_suffix("\x1b\\")?;
+        (rest, Osc8Terminator::St)
     };
     let (params, url) = inner.split_once(';')?;
     if url.is_empty() {

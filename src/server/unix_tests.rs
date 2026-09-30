@@ -33,23 +33,21 @@ fn tokio_test() -> tokio::runtime::Runtime {
 }
 
 fn make_server(path: &str) -> Arc<Server> {
-    Arc::new(
-        create_unix_server(
-            TestServerHost::new() as Arc<dyn ServerHost>,
-            UnixServerOptions {
-                path: path.to_string(),
-                server_id: SERVER_ID.to_string(),
-                mode: None,
-                max_pending_bytes: None,
-                graceful_close_timeout_ms: None,
-                max_frame_length: None,
-                handshake_timeout_ms: None,
-                on_connection_count_changed: None,
-                on_error: None,
-            },
-        )
-        .expect("valid unix server options"),
+    create_unix_server(
+        TestServerHost::new() as Arc<dyn ServerHost>,
+        UnixServerOptions {
+            path: path.to_string(),
+            server_id: SERVER_ID.to_string(),
+            mode: None,
+            max_pending_bytes: None,
+            graceful_close_timeout_ms: None,
+            max_frame_length: None,
+            handshake_timeout_ms: None,
+            on_connection_count_changed: None,
+            on_error: None,
+        },
     )
+    .expect("valid unix server options")
 }
 
 fn temp_directory(label: &str) -> String {
@@ -69,15 +67,19 @@ async fn connect_unix_test_client(path: &str) -> Arc<ProtocolTestClient> {
         .await
         .expect("connect unix socket");
     let (mut read_half, write_half) = split(stream);
-    struct Channel(std::sync::Mutex<tokio::net::unix::WriteHalf<UnixStream>>);
+    // `tokio::io::split` halves: the write half is shared behind a tokio
+    // `Mutex` so the `'static` futures may hold it across `.await`s.
+    struct Channel(Arc<tokio::sync::Mutex<tokio::io::WriteHalf<UnixStream>>>);
     impl crate::server::testing::client::WireChannel for Channel {
         fn send(
             &self,
             chunk: Vec<u8>,
         ) -> futures::future::BoxFuture<'static, Result<(), OperationError>> {
-            let mut half = self.0.lock().unwrap();
+            let half = Arc::clone(&self.0);
             Box::pin(async move {
-                half.write_all(&chunk)
+                half.lock()
+                    .await
+                    .write_all(&chunk)
                     .await
                     .map_err(|error| OperationError::Other(error.to_string()))
             })
@@ -87,9 +89,10 @@ async fn connect_unix_test_client(path: &str) -> Arc<ProtocolTestClient> {
             chunk: Vec<u8>,
             split_at: usize,
         ) -> futures::future::BoxFuture<'static, Result<(), OperationError>> {
-            let (head, tail) = chunk.split_at(split_at.min(chunk.len()));
-            let mut half = self.0.lock().unwrap();
+            let half = Arc::clone(&self.0);
             Box::pin(async move {
+                let (head, tail) = chunk.split_at(split_at.min(chunk.len()));
+                let mut half = half.lock().await;
                 half.write_all(head)
                     .await
                     .map_err(|error| OperationError::Other(error.to_string()))?;
@@ -99,15 +102,17 @@ async fn connect_unix_test_client(path: &str) -> Arc<ProtocolTestClient> {
             })
         }
         fn close(&self) -> futures::future::BoxFuture<'static, Result<(), OperationError>> {
-            let mut half = self.0.lock().unwrap();
+            let half = Arc::clone(&self.0);
             Box::pin(async move {
-                half.shutdown()
+                half.lock()
+                    .await
+                    .shutdown()
                     .await
                     .map_err(|error| OperationError::Other(error.to_string()))
             })
         }
     }
-    let channel = Arc::new(Channel(std::sync::Mutex::new(write_half)));
+    let channel = Arc::new(Channel(Arc::new(tokio::sync::Mutex::new(write_half))));
     let client = Arc::new(ProtocolTestClient::new(channel));
     let pump = client.clone();
     tokio::spawn(async move {
@@ -164,35 +169,37 @@ async fn rejects_a_live_listener_without_unlinking_it() {
     let directory = temp_directory("live");
     let path = std::path::Path::new(&directory).join("server.sock");
     let path = path.to_string_lossy().into_owned();
-    // The live competing listener: held for the whole scenario.
-    let holder = std::os::unix::net::UnixListener::bind(&path).expect("bind competing listener");
-
+    // Upstream (`unix.test.ts:68-89`): the first server starts; a competing
+    // start on the same path is rejected as "already running" without
+    // unlinking the live socket, which still serves clients.
     let first = make_server(&path);
-    assert!(
-        first.start().await.is_err(),
-        "bind must fail while another listener is live"
-    );
+    first.start().await.unwrap();
 
     let identity = std::fs::metadata(&path).expect("socket file survives");
     assert_eq!(identity.mode() & 0o170000, 0o140000, "still a socket");
     let first_identity = (identity.dev(), identity.ino());
 
-    // Retry once the competing listener is gone: the socket must still work.
-    drop(holder);
     let second = make_server(&path);
-    second.start().await.unwrap();
+    let error = second.start().await.expect_err("second start rejected");
+    assert!(
+        error.message().contains("already running"),
+        "unexpected error: {error}"
+    );
+
+    let identity = std::fs::metadata(&path).expect("socket file survives");
+    assert_eq!(
+        (identity.dev(), identity.ino()),
+        first_identity,
+        "live socket not unlinked"
+    );
+
     let client = connect_unix_test_client(&path).await;
     match client.hello().await.unwrap() {
         ServerMessage::Hello(_) => {}
         other => panic!("expected hello, got {other:?}"),
     }
-    let identity = std::fs::metadata(&path).unwrap();
-    assert_eq!(
-        (identity.dev(), identity.ino()),
-        first_identity,
-        "inode preserved across retries"
-    );
-    second.close().await.unwrap();
+    client.close().await.unwrap();
+    first.close().await.unwrap();
     std::fs::remove_dir_all(&directory).ok();
 }
 
@@ -302,7 +309,8 @@ fn rejects_timeout_values_above_the_maximum_timer_delay() {
             on_error: None,
         },
     )
-    .unwrap_err();
+    .err()
+    .expect("handshakeTimeoutMs rejected");
     assert!(error.message().contains("handshakeTimeoutMs"));
     let error = create_unix_server(
         host,
@@ -318,7 +326,8 @@ fn rejects_timeout_values_above_the_maximum_timer_delay() {
             on_error: None,
         },
     )
-    .unwrap_err();
+    .err()
+    .expect("gracefulCloseTimeoutMs rejected");
     assert!(error.message().contains("gracefulCloseTimeoutMs"));
 }
 
@@ -338,7 +347,8 @@ fn rejects_pending_byte_limits_smaller_than_one_maximum_frame() {
             on_error: None,
         },
     )
-    .unwrap_err();
+    .err()
+    .expect("maxPendingBytes rejected");
     assert!(
         error.message().contains("maxPendingBytes"),
         "{}",
@@ -370,13 +380,12 @@ async fn rejects_concurrent_start_calls_without_leaking_the_unix_listener() {
 /// texts, byte-for-byte against the captured node run.
 #[test]
 fn oracle_unix_option_validation() {
-    let host = TestServerHost::new() as Arc<dyn ServerHost>;
-    let mut messages: Vec<String> = Vec::new();
-    let mut attempt = |result: Result<Arc<Server>, OperationError>| match result {
-        Ok(_) => messages.push("(no error)".to_string()),
-        Err(error) => messages.push(error.message().to_string()),
-    };
-    let options = |mutate: impl FnOnce(&mut UnixServerOptions)| {
+    // `impl Trait` is not allowed in closure parameters, so the option
+    // builder is a local generic function.
+    fn options(
+        host: &Arc<dyn ServerHost>,
+        mutate: impl FnOnce(&mut UnixServerOptions),
+    ) -> Result<Arc<Server>, OperationError> {
         let mut options = UnixServerOptions {
             path: "/tmp/x.sock".to_string(),
             server_id: SERVER_ID.to_string(),
@@ -389,17 +398,25 @@ fn oracle_unix_option_validation() {
             on_error: None,
         };
         mutate(&mut options);
-        create_unix_server(host.clone(), options)
+        create_unix_server(Arc::clone(host), options)
+    }
+    let host = TestServerHost::new() as Arc<dyn ServerHost>;
+    let mut messages: Vec<String> = Vec::new();
+    let mut attempt = |result: Result<Arc<Server>, OperationError>| match result {
+        Ok(_) => messages.push("(no error)".to_string()),
+        Err(error) => messages.push(error.message().to_string()),
     };
-    attempt(options(|o| o.path = String::new()));
-    attempt(options(|o| o.mode = Some(0o1000)));
-    attempt(options(|o| o.max_frame_length = Some(0)));
-    attempt(options(|o| {
+    attempt(options(&host, |o| o.path = String::new()));
+    attempt(options(&host, |o| o.mode = Some(0o1000)));
+    attempt(options(&host, |o| o.max_frame_length = Some(0)));
+    attempt(options(&host, |o| {
         o.max_frame_length = Some(128);
         o.max_pending_bytes = Some(131);
     }));
-    attempt(options(|o| o.graceful_close_timeout_ms = Some(0)));
-    attempt(options(|o| o.handshake_timeout_ms = Some(2_147_483_648)));
+    attempt(options(&host, |o| o.graceful_close_timeout_ms = Some(0)));
+    attempt(options(&host, |o| {
+        o.handshake_timeout_ms = Some(2_147_483_648)
+    }));
     match get_unix_socket_path("nope", "/tmp") {
         Ok(_) => messages.push("(no error)".to_string()),
         Err(error) => messages.push(error.message().to_string()),

@@ -77,7 +77,7 @@ impl Watch {
             return;
         }
         state.listener = Some(listener);
-        let buffered: Vec<Envelope> = state.buffer.drain(..).collect();
+        let buffered: Vec<Envelope> = std::mem::take(&mut state.buffer);
         let listener = state.listener.clone().expect("just set");
         drop(state);
         for envelope in buffered {

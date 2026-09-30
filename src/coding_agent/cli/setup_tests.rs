@@ -19,7 +19,7 @@ fn setup_cli_configures_the_http_dispatcher() {
     let config = crate::coding_agent::core::http_dispatcher::global_http_dispatcher_config()
         .expect("dispatcher configured");
     assert_eq!(
-        config.body_timeout_ms as u64,
+        config.body_timeout_ms,
         crate::coding_agent::core::http_dispatcher::DEFAULT_HTTP_IDLE_TIMEOUT_MS
     );
     assert!(config.proxy_tunnel);

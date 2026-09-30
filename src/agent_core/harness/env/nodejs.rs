@@ -1790,7 +1790,7 @@ fn exit_code_of(status: &std::process::ExitStatus) -> Option<i32> {
     use std::os::unix::process::ExitStatusExt;
     status
         .code()
-        .or_else(|| status.signal().map(|signal| 128 + i32::from(signal)))
+        .or_else(|| status.signal().map(|signal| 128 + signal))
 }
 
 #[cfg(not(unix))]

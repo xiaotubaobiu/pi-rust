@@ -273,11 +273,10 @@ mod tests {
             "should not wait for the descendant's EOF, took {:?}",
             start.elapsed()
         );
-        let output = String::from_utf8_lossy(
-            &stdout_data
-                .lock()
-                .unwrap_or_else(|poisoned| poisoned.into_inner()),
-        );
+        let stdout_guard = stdout_data
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let output = String::from_utf8_lossy(&stdout_guard);
         assert!(
             output.contains("done"),
             "output must still be drained: {output:?}"

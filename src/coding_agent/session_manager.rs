@@ -984,15 +984,15 @@ fn migrate_v2_to_v3(entries: &mut [FileEntry]) {
                     }
                 }
             }
-            FileEntry::Unparsed(value) => {
-                if value.get("type").and_then(Value::as_str) == Some("message") {
-                    let role = value
-                        .get("message")
-                        .and_then(|message| message.get("role"))
-                        .and_then(Value::as_str);
-                    if role == Some("hookMessage") {
-                        value["message"]["role"] = Value::String("custom".to_string());
-                    }
+            FileEntry::Unparsed(value)
+                if value.get("type").and_then(Value::as_str) == Some("message") =>
+            {
+                let role = value
+                    .get("message")
+                    .and_then(|message| message.get("role"))
+                    .and_then(Value::as_str);
+                if role == Some("hookMessage") {
+                    value["message"]["role"] = Value::String("custom".to_string());
                 }
             }
             _ => {}
@@ -1850,7 +1850,7 @@ pub fn find_most_recent_session(session_dir: &str, cwd: Option<&str>) -> Option<
     }
 
     // Most recently modified first; ties keep directory order (stable sort).
-    files.sort_by(|a, b| b.1.cmp(&a.1));
+    files.sort_by_key(|a| std::cmp::Reverse(a.1));
     files.into_iter().next().map(|(path, _)| path)
 }
 
@@ -2994,7 +2994,7 @@ impl SessionManager {
             .into_iter()
             .filter(|session| !filter_cwd || session_cwd_matches(Some(&session.cwd), &resolved_cwd))
             .collect();
-        sessions.sort_by(|a, b| b.modified.cmp(&a.modified));
+        sessions.sort_by_key(|a| std::cmp::Reverse(a.modified));
         sessions
     }
 
@@ -3009,7 +3009,7 @@ impl SessionManager {
                 .unwrap_or_else(|_| custom_session_dir.to_string());
             let mut sessions =
                 list_sessions_from_dir(&custom_session_dir, on_progress.as_deref_mut(), 0, None);
-            sessions.sort_by(|a, b| b.modified.cmp(&a.modified));
+            sessions.sort_by_key(|a| std::cmp::Reverse(a.modified));
             return sessions;
         }
 
@@ -3062,7 +3062,7 @@ impl SessionManager {
         for info in results.into_iter().flatten() {
             sessions.push(info);
         }
-        sessions.sort_by(|a, b| b.modified.cmp(&a.modified));
+        sessions.sort_by_key(|a| std::cmp::Reverse(a.modified));
         sessions
     }
 }

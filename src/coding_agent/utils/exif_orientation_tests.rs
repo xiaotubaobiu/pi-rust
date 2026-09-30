@@ -16,7 +16,7 @@ fn oracle() -> Value {
 /// The 2x3 RGBA grid used by the capture: pixel p -> [16+3p, 32+3p, 48+3p, 255].
 fn grid_2x3() -> Vec<u8> {
     let mut px = vec![0u8; 2 * 3 * 4];
-    for (p, px) in px.chunks_exact_mut(4).enumerate() {
+    for (p, px) in px.as_chunks_mut::<4>().0.iter_mut().enumerate() {
         let p = p as u8;
         px[0] = 16 + 3 * p;
         px[1] = 32 + 3 * p;

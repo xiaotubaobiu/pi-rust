@@ -281,7 +281,6 @@ impl CombinedAutocompleteProvider {
 
     fn get_file_suggestions(&self, prefix: &str) -> Vec<AutocompleteItem> {
         let search_dir;
-        let search_prefix;
         let (raw_prefix, is_at_prefix, is_quoted_prefix) = parse_path_prefix(prefix);
         let mut expanded_prefix = raw_prefix.clone();
 
@@ -299,7 +298,7 @@ impl CombinedAutocompleteProvider {
 
         // is_root_prefix and trailing-"/" prefixes resolve the same way: the
         // search directory comes from the prefix and completes its contents.
-        if is_root_prefix || raw_prefix.ends_with('/') {
+        let search_prefix = if is_root_prefix || raw_prefix.ends_with('/') {
             if raw_prefix.starts_with('~') || expanded_prefix.starts_with('/') {
                 search_dir = expanded_prefix.clone();
             } else {
@@ -309,7 +308,7 @@ impl CombinedAutocompleteProvider {
                     .to_string_lossy()
                     .into_owned();
             }
-            search_prefix = String::new();
+            String::new()
         } else {
             let dir = Path::new(&expanded_prefix)
                 .parent()
@@ -324,8 +323,8 @@ impl CombinedAutocompleteProvider {
             } else {
                 search_dir = self.base_path.join(&dir).to_string_lossy().into_owned();
             }
-            search_prefix = file;
-        }
+            file
+        };
 
         let Ok(entries) = std::fs::read_dir(&search_dir) else {
             return Vec::new();

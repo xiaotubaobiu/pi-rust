@@ -332,10 +332,7 @@ fn latex_block_start(src: &str) -> Option<usize> {
         if line[lead..].starts_with("$$") || line[lead..].starts_with("\\[") {
             return Some(offset);
         }
-        match line_end {
-            Some(e) => offset = e + 1,
-            None => return None,
-        }
+        offset = line_end? + 1;
     }
 }
 
@@ -1312,11 +1309,10 @@ impl Markdown {
                     .iter()
                     .map(|&w| {
                         let weight = w.saturating_sub(1);
-                        if total_weight > 0 {
-                            weight * remaining / total_weight
-                        } else {
-                            0
-                        }
+                        weight
+                            .checked_mul(remaining)
+                            .and_then(|weighted| weighted.checked_div(total_weight))
+                            .unwrap_or(0)
                     })
                     .collect();
                 for (i, width) in min_column_widths.iter_mut().enumerate() {
@@ -1335,11 +1331,10 @@ impl Markdown {
         }
 
         let total_natural_width: usize = natural_widths.iter().sum::<usize>() + border_overhead;
-        let column_widths: Vec<usize>;
-        if total_natural_width <= available_width {
-            column_widths = (0..num_cols)
+        let column_widths: Vec<usize> = if total_natural_width <= available_width {
+            (0..num_cols)
                 .map(|i| natural_widths[i].max(min_column_widths[i]))
-                .collect();
+                .collect()
         } else {
             let total_grow_potential: usize = natural_widths
                 .iter()
@@ -1352,11 +1347,10 @@ impl Markdown {
                 .zip(natural_widths.iter())
                 .map(|(&min_width, &natural_width)| {
                     let min_width_delta = natural_width.saturating_sub(min_width);
-                    let grow = if total_grow_potential > 0 {
-                        min_width_delta * extra_width / total_grow_potential
-                    } else {
-                        0
-                    };
+                    let grow = min_width_delta
+                        .checked_mul(extra_width)
+                        .and_then(|weighted| weighted.checked_div(total_grow_potential))
+                        .unwrap_or(0);
                     min_width + grow
                 })
                 .collect();
@@ -1375,8 +1369,8 @@ impl Markdown {
                     break;
                 }
             }
-            column_widths = widths;
-        }
+            widths
+        };
 
         let top_cells: Vec<String> = column_widths.iter().map(|&w| "─".repeat(w)).collect();
         lines.push(Utf16Text::from(format!("┌─{}─┐", top_cells.join("─┬─"))));

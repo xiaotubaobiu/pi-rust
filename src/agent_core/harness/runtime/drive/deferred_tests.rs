@@ -899,8 +899,6 @@ async fn abandons_unknown_ids_and_frames_into_configuration_failure() {
     let suspended = submit_deferred(&fixture, done_message()).await;
     let unknown = install_unknown_poll(&fixture, &suspended).await;
     let crate::agent_core::harness::runtime::durable::OperationPhase::DeferredEffectPending {
-        deferred: _,
-        response_entry_id: _,
         ..
     } = &unknown.phase
     else {

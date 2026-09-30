@@ -90,7 +90,7 @@ pub fn build_aliases(
             replacements: replacements.clone(),
         });
     }
-    aliases.sort_by(|left, right| right.pattern.len().cmp(&left.pattern.len()));
+    aliases.sort_by_key(|left| std::cmp::Reverse(left.pattern.len()));
     let _ = repository_root;
     Ok(aliases)
 }

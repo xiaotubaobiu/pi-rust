@@ -701,15 +701,14 @@ fn rx_list_item(src: &str, ordered: bool, bullet_char: char) -> Option<(usize, S
         }
     }
     let group2_start = bullet_start + bullet.len();
-    let group2_end;
-    if i < len && b[i] == b'\n' {
+    let group2_end = if i < len && b[i] == b'\n' {
         i += 1;
-        group2_end = i;
+        i
     } else if i == len {
-        group2_end = i;
+        i
     } else {
         return None;
-    }
+    };
     Some((
         group2_end,
         bullet,
@@ -1794,8 +1793,7 @@ fn rx_table(src: &str) -> Option<(usize, String, String, String)> {
         return None;
     };
     let mut body = String::new();
-    let end;
-    if body_start < len {
+    let end = if body_start < len {
         let mut k = body_start;
         loop {
             if k >= len {
@@ -1821,10 +1819,10 @@ fn rx_table(src: &str) -> Option<(usize, String, String, String)> {
         while e < len && b[e] == b'\n' {
             e += 1;
         }
-        end = e;
+        e
     } else {
-        end = len;
-    }
+        len
+    };
     Some((end, header, align, body))
 }
 

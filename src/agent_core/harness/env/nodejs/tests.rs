@@ -93,11 +93,15 @@ async fn collect_shell_output(
 }
 
 /// The oracle's `toBashSingleQuotedArg` (`nodejs-env.test.ts:56-58`).
+// Only the windows-gated detached-descendant scenario consumes these helpers
+// today; keep them out of the unix compilation to stay dead-code clean.
+#[cfg(windows)]
 fn to_bash_single_quoted_arg(value: &str) -> String {
     format!("'{}'", value.replace('\\', "/").replace('\'', "'\"'\"'"))
 }
 
 /// The oracle's `createInheritedStdioCommand` (`nodejs-env.test.ts:60-72`).
+#[cfg(windows)]
 fn create_inherited_stdio_command(pid_file: &str) -> String {
     format!(
         "node -e \"{}\" {}",
@@ -112,6 +116,7 @@ fn create_inherited_stdio_command(pid_file: &str) -> String {
 }
 
 /// The oracle's `cleanupDetachedChild` (`nodejs-env.test.ts:74-81`).
+#[cfg(windows)]
 fn cleanup_detached_child(pid_file: &Path) {
     let Ok(text) = std::fs::read_to_string(pid_file) else {
         return;

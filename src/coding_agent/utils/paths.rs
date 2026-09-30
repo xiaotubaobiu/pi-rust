@@ -302,8 +302,8 @@ pub fn get_file_revision(path: &str) -> Option<String> {
 #[cfg(unix)]
 fn file_revision_from_metadata(metadata: &std::fs::Metadata) -> String {
     use std::os::unix::fs::MetadataExt;
-    let mtime_ns = metadata.mtime_nsec() as i128 + metadata.mtime_sec() as i128 * 1_000_000_000;
-    let ctime_ns = metadata.ctime_nsec() as i128 + metadata.ctime_sec() as i128 * 1_000_000_000;
+    let mtime_ns = metadata.mtime_nsec() as i128 + metadata.mtime() as i128 * 1_000_000_000;
+    let ctime_ns = metadata.ctime_nsec() as i128 + metadata.ctime() as i128 * 1_000_000_000;
     format!(
         "{}:{}:{}:{}:{}",
         metadata.dev(),
@@ -443,12 +443,11 @@ pub fn mark_path_ignored_by_cloud_sync(path: &str) {
     #[cfg(target_os = "linux")]
     {
         use super::child_process;
-        for attr in ["user.com.dropbox.ignored"] {
-            let _ = child_process::spawn_process_sync_discarding_output(
-                "setfattr",
-                &["-n", attr, "-v", "1", path],
-            );
-        }
+        let attr = "user.com.dropbox.ignored";
+        let _ = child_process::spawn_process_sync_discarding_output(
+            "setfattr",
+            &["-n", attr, "-v", "1", path],
+        );
     }
     #[cfg(not(any(target_os = "macos", target_os = "linux")))]
     {

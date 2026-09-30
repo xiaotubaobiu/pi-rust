@@ -269,7 +269,7 @@ mod tests {
     fn loader_renders_indicator_and_message() {
         let mut loader = Loader::new(spinner(), muted(), "Working...", None);
         let rendered = loader.get_rendered_indicator();
-        assert_eq!(rendered, format!("\x1b[38;2;138;190;183m⠋\x1b[39m"));
+        assert_eq!(rendered, "\x1b[38;2;138;190;183m⠋\x1b[39m".to_string());
         loader.advance_frame();
         assert!(loader.get_rendered_indicator().contains("⠙"));
         // advance wraps after the last frame

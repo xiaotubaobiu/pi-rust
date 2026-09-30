@@ -5,7 +5,9 @@ use std::time::Duration;
 fn bytes(chunk: &Value) -> Vec<u8> {
     if let Some(hex) = chunk["hex"].as_str() {
         hex.as_bytes()
-            .chunks_exact(2)
+            .as_chunks::<2>()
+            .0
+            .iter()
             .map(|p| u8::from_str_radix(std::str::from_utf8(p).unwrap(), 16).unwrap())
             .collect()
     } else {

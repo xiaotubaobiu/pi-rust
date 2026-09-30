@@ -1074,10 +1074,10 @@ impl Tracker {
                     }
                     _ => {}
                 },
-                Op::Splice { .. } if previous_verb == Some("p") => {
-                    if self.coalesce_splices(live, &op) {
-                        return;
-                    }
+                Op::Splice { .. }
+                    if previous_verb == Some("p") && self.coalesce_splices(live, &op) =>
+                {
+                    return;
                 }
                 _ => {}
             }

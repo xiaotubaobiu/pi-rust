@@ -14,7 +14,7 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use tokio::io::AsyncReadExt;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{UnixListener, UnixStream};
 
 use crate::client::support::{parse_ordered_json, SERVER_ID};
@@ -23,21 +23,24 @@ use crate::client::unix::{
     UnixTransportOptions,
 };
 use crate::client::{Client, ClientError};
-use crate::protocol::codec::encode_server_message;
-use crate::protocol::protocol::{ServerHello, ServerMessage};
+use crate::protocol::codec::{encode_server_message, ClientMessageDecoder};
+use crate::protocol::protocol::{ClientMessage, ServerHello, ServerMessage};
 
 fn server_id(value: u32) -> String {
     format!("00000000-0000-4000-8000-{:012x}", value)
 }
 
 /// Minimal stand-in for upstream's `RuntimeServer` + `createUnixListener`:
-/// accepts connections and completes the server half of the handshake.
-async fn start_handshake_server(path: &std::path::Path, server_id: &str) -> UnixListener {
-    let listener = UnixListener::bind(path).expect("bind unix listener");
+/// accepts connections and completes the server half of the handshake. The
+/// accept task owns the listener (it must outlive the caller's handle), so
+/// the returned `Arc` is only a keep-alive convenience.
+async fn start_handshake_server(path: &std::path::Path, server_id: &str) -> Arc<UnixListener> {
+    let listener = Arc::new(UnixListener::bind(path).expect("bind unix listener"));
     let server_id = server_id.to_string();
+    let accept_listener = Arc::clone(&listener);
     tokio::spawn(async move {
         loop {
-            let Ok((mut socket, _)) = listener.accept() else {
+            let Ok((mut socket, _)) = accept_listener.accept().await else {
                 return;
             };
             let hello = encode_server_message(
@@ -82,18 +85,21 @@ async fn start_handshake_server(path: &std::path::Path, server_id: &str) -> Unix
 #[tokio::test]
 async fn rejects_invalid_unix_transport_options() {
     // `unix-transport.test.ts:49-52`.
+    // (`.err().expect` — the factory value is not `Debug`.)
     let error = create_unix_transport_factory(UnixTransportOptions {
         path: String::new(),
         max_pending_bytes: None,
     })
-    .expect_err("empty path");
+    .err()
+    .expect("empty path");
     assert!(error.message().contains("must not be empty"));
 
     let error = create_unix_transport_factory(UnixTransportOptions {
         path: "/tmp/pi.sock".to_string(),
         max_pending_bytes: Some(0),
     })
-    .expect_err("zero pending");
+    .err()
+    .expect("zero pending");
     assert!(error.message().contains("positive"));
 }
 
@@ -121,7 +127,7 @@ async fn reports_truncated_final_frames_through_client() {
     let path = directory.path().join("pi.sock");
     let listener = UnixListener::bind(&path).expect("bind");
     tokio::spawn(async move {
-        let Ok((mut socket, _)) = listener.accept() else {
+        let Ok((mut socket, _)) = listener.accept().await else {
             return;
         };
         let hello = encode_server_message(
@@ -132,18 +138,31 @@ async fn reports_truncated_final_frames_through_client() {
         )
         .expect("encodes");
         let mut buffer = [0u8; 512];
+        // Upstream answers each decoded `hello` with the server hello and
+        // ends the socket with the truncated frame on any other message
+        // (`unix-transport.test.ts:99-113`).
+        let mut decoder = ClientMessageDecoder::new(None).expect("decoder");
         loop {
             let read = match socket.read(&mut buffer).await {
                 Ok(0) | Err(_) => return,
                 Ok(read) => read,
             };
-            let _ = read;
-            if socket.write_all(&hello).await.is_err() {
+            let Ok(messages) = decoder.push(&buffer[..read]) else {
                 return;
+            };
+            for message in messages {
+                if matches!(message, ClientMessage::Hello(_)) {
+                    if socket.write_all(&hello).await.is_err() {
+                        return;
+                    }
+                } else {
+                    // Truncated frame: length prefix 2, one byte of payload,
+                    // then end of stream (`unix-transport.test.ts:115`).
+                    let _ = socket.write_all(&[0, 0, 0, 2, 1]).await;
+                    let _ = socket.shutdown().await;
+                    return;
+                }
             }
-            // Truncated frame: length prefix 2, one byte of payload, then end
-            // of stream (`unix-transport.test.ts:115`).
-            let _ = socket.write_all(&[0, 0, 0, 2, 1]).await;
         }
     });
 
@@ -189,7 +208,8 @@ async fn rejects_connection_attempts_to_missing_sockets() {
         on_error: Arc::new(|_| {}),
     })
     .await
-    .expect_err("missing socket");
+    .err()
+    .expect("missing socket");
     assert!(error.error_code_is("ENOENT"));
 }
 
@@ -240,7 +260,7 @@ async fn discovery_ignores_an_endpoint_that_closes_before_its_handshake() {
     let listener = UnixListener::bind(&path).expect("bind");
     tokio::spawn(async move {
         loop {
-            let Ok((socket, _)) = listener.accept() else {
+            let Ok((socket, _)) = listener.accept().await else {
                 return;
             };
             drop(socket); // destroy immediately

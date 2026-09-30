@@ -28,15 +28,14 @@
 use std::collections::hash_map::RandomState;
 use std::hash::{BuildHasher, Hasher};
 use std::io::ErrorKind;
-use std::os::unix::fs::{FileTypeExt, MetadataExt, PermissionsExt};
+use std::os::unix::fs::{DirBuilderExt, FileTypeExt, MetadataExt, PermissionsExt};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
-use std::sync::{Arc, Mutex, OnceLock};
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use futures::future::BoxFuture;
-use tokio::io::unix::{ReadHalf, WriteHalf};
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::{AsyncReadExt, AsyncWriteExt, ReadHalf};
 use tokio::net::{UnixListener as TokioUnixListener, UnixStream};
 use tokio::sync::{mpsc, oneshot, OnceCell};
 use tokio_util::sync::CancellationToken;
@@ -184,7 +183,7 @@ fn io_error(error: &std::io::Error) -> OperationError {
 }
 
 fn io_other(message: impl Into<String>) -> std::io::Error {
-    std::io::Error::new(ErrorKind::Other, message.into())
+    std::io::Error::other(message.into())
 }
 
 /// `listener.ts` `getOwnedBindPath` (`listener.ts:294-297`).
@@ -273,7 +272,10 @@ fn is_socket_live(path: &Path) -> bool {
     });
     match rx.recv_timeout(Duration::from_millis(SOCKET_PROBE_TIMEOUT_MS)) {
         Ok(Ok(_stream)) => true,
-        Ok(Err(error)) => matches!(
+        // Upstream `isSocketLive`: a refused/missing/reset probe means the
+        // socket is stale (not live); other errors reject upstream and are
+        // collapsed into the conservative "live" verdict here.
+        Ok(Err(error)) => !matches!(
             error.kind(),
             ErrorKind::ConnectionRefused
                 | ErrorKind::NotFound
@@ -376,6 +378,8 @@ impl UnixListener {
         remove_stale_socket(&owned_bind_path).map_err(|error| io_error(&error))?;
         *state.owned_bind_path.lock().unwrap() = Some(owned_bind_path.clone());
 
+        // tokio refuses to register a blocking socket (tokio#7172); node's
+        // net.Server also drives the accepted socket non-blocking.
         let std_listener = match std::os::unix::net::UnixListener::bind(&owned_bind_path) {
             Ok(listener) => listener,
             Err(error) => {
@@ -383,6 +387,10 @@ impl UnixListener {
                 return Err(io_error(&error));
             }
         };
+        if let Err(error) = std_listener.set_nonblocking(true) {
+            self.close_server_and_cleanup().await;
+            return Err(io_error(&error));
+        }
         let listener = match TokioUnixListener::from_std(std_listener) {
             Ok(listener) => Arc::new(listener),
             Err(error) => {
@@ -457,15 +465,20 @@ impl UnixListener {
         // Read pump: data → `onData`; EOF/error → teardown + `onClose`
         // (upstream socket `close` event).
         let pump_connection = connection.clone();
-        let pump_connections = Arc::clone(&state.connections);
+        let pump_state = Arc::clone(state);
         tokio::spawn(async move {
-            let mut read_half = pump_connection.read_half().clone();
+            // The read half is installed by the connection constructor and
+            // handed to this pump (the generic split halves are not `Clone`).
+            let Some(mut read_half) = pump_connection.take_read_half() else {
+                return;
+            };
             let mut buffer = vec![0u8; 64 * 1024];
             loop {
                 match read_half.read(&mut buffer).await {
                     Ok(0) | Err(_) => {
                         pump_connection.mark_closed();
-                        pump_connections
+                        pump_state
+                            .connections
                             .lock()
                             .unwrap_or_else(std::sync::PoisonError::into_inner)
                             .retain(|candidate| !Arc::ptr_eq(candidate, &pump_connection));
@@ -585,24 +598,41 @@ impl ServerListener for UnixListener {
         &self,
         accept: ByteConnectionAcceptor,
     ) -> BoxFuture<'static, Result<(), OperationError>> {
-        Box::pin(async move { UnixListener::start(self, accept).await })
+        let state = Arc::clone(&self.state);
+        Box::pin(async move {
+            // The trait method takes `&self`; rebuild the shared handle so
+            // the future is `'static` (the shared state is the `Arc`).
+            let listener = UnixListener { state };
+            UnixListener::start(&listener, accept).await
+        })
     }
 
     fn close(&self) -> BoxFuture<'static, Result<(), OperationError>> {
+        let state = Arc::clone(&self.state);
         Box::pin(async move {
             // The trait method takes `&self`; rebuild the shared handle for
-            // the memoized close.
+            // the memoized close (upstream `closePromise` memoization).
             let listener = Arc::new(UnixListener {
-                state: Arc::clone(&self.state),
+                state: Arc::clone(&state),
             });
-            listener.close().await
+            state
+                .close_once
+                .get_or_init(move || async move { close_internal(&listener).await })
+                .await
+                .clone()
         })
     }
 }
 
-struct QueuedWrite {
-    chunk: Vec<u8>,
-    done: oneshot::Sender<Result<(), OperationError>>,
+/// Commands for the single writer task (`listener.ts` `writeTail`): chunks
+/// queue in send order; `End` half-closes the socket behind every queued
+/// write (upstream `socket.end(...)`).
+enum WriterCommand {
+    Chunk {
+        chunk: Vec<u8>,
+        done: oneshot::Sender<Result<(), OperationError>>,
+    },
+    End,
 }
 
 /// The shared per-connection state (`listener.ts` `UnixByteConnection`
@@ -613,9 +643,10 @@ struct ConnectionInner {
     pending_bytes: Arc<AtomicUsize>,
     closed_value: AtomicBool,
     closing: AtomicBool,
-    writes: mpsc::UnboundedSender<QueuedWrite>,
-    write_half: Mutex<Option<WriteHalf<UnixStream>>>,
-    read_half: OnceLock<ReadHalf<UnixStream>>,
+    writes: mpsc::UnboundedSender<WriterCommand>,
+    /// Installed by the constructor, taken once by the read pump (the
+    /// generic split halves are not `Clone`).
+    read_half: Mutex<Option<ReadHalf<UnixStream>>>,
     close_once: OnceCell<Result<(), OperationError>>,
     closed_signal: super::testing::host::Deferred<()>,
 }
@@ -633,21 +664,29 @@ impl UnixByteConnection {
         graceful_close_timeout_ms: u64,
         max_pending_bytes: u64,
     ) -> UnixByteConnection {
-        let (read_half, write_half) = tokio::io::split(stream);
-        let (writes, mut rx) = mpsc::unbounded_channel::<QueuedWrite>();
+        let (read_half, mut write_half) = tokio::io::split(stream);
+        let (writes, mut rx) = mpsc::unbounded_channel::<WriterCommand>();
         // The single writer task serializes writes like the upstream
         // `writeTail` promise chain; pending-byte accounting unwinds on
-        // completion.
+        // completion. It owns the write half, so `End` (the half-close)
+        // queues behind every pending write.
         let pending: Arc<AtomicUsize> = Arc::new(AtomicUsize::new(0));
         let writer_pending = Arc::clone(&pending);
         tokio::spawn(async move {
-            while let Some(QueuedWrite { chunk, done }) = rx.recv().await {
-                let result = match write_half.write_all(&chunk).await {
-                    Ok(()) => Ok(()),
-                    Err(error) => Err(OperationError::Other(io_message(&error))),
-                };
-                writer_pending.fetch_sub(chunk.len(), Ordering::SeqCst);
-                let _ = done.send(result);
+            while let Some(command) = rx.recv().await {
+                match command {
+                    WriterCommand::Chunk { chunk, done } => {
+                        let result = match write_half.write_all(&chunk).await {
+                            Ok(()) => Ok(()),
+                            Err(error) => Err(OperationError::Other(io_message(&error))),
+                        };
+                        writer_pending.fetch_sub(chunk.len(), Ordering::SeqCst);
+                        let _ = done.send(result);
+                    }
+                    WriterCommand::End => {
+                        let _ = write_half.shutdown().await;
+                    }
+                }
             }
         });
         let inner = Arc::new(ConnectionInner {
@@ -657,12 +696,10 @@ impl UnixByteConnection {
             closed_value: AtomicBool::new(false),
             closing: AtomicBool::new(false),
             writes,
-            write_half: Mutex::new(Some(write_half)),
-            read_half: OnceLock::new(),
+            read_half: Mutex::new(Some(read_half)),
             close_once: OnceCell::new(),
             closed_signal: super::testing::host::Deferred::new(),
         });
-        let _ = inner.read_half.set(read_half);
         UnixByteConnection { inner }
     }
     pub fn closed(&self) -> bool {
@@ -677,8 +714,13 @@ impl UnixByteConnection {
         self.inner.closed_signal.resolve(());
     }
 
-    fn read_half(&self) -> &ReadHalf<UnixStream> {
-        self.inner.read_half.get().expect("read half installed")
+    /// Hands the read half to the connection's read pump.
+    fn take_read_half(&self) -> Option<ReadHalf<UnixStream>> {
+        self.inner
+            .read_half
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .take()
     }
 
     pub fn send(&self, chunk: Vec<u8>) -> BoxFuture<'static, Result<(), OperationError>> {
@@ -697,7 +739,7 @@ impl UnixByteConnection {
                 ));
             }
             let (done, receipt) = oneshot::channel();
-            let _ = inner.writes.send(QueuedWrite { chunk, done });
+            let _ = inner.writes.send(WriterCommand::Chunk { chunk, done });
             match receipt.await {
                 Ok(result) => result,
                 // The writer dropped the sender mid-write (upstream "Unix
@@ -718,14 +760,13 @@ impl UnixByteConnection {
             if inner.closed_value.load(Ordering::SeqCst) {
                 return Ok(());
             }
+            // Memoized like the upstream `closePromise`; the first call's
+            // final chunk wins.
+            let init_inner = Arc::clone(&inner);
             inner
                 .close_once
-                .get_or_init(move || {
-                    // Memoized like the upstream `closePromise`; the first
-                    // call's final chunk wins.
-                    let inner = inner.clone();
-                    async move { graceful_close(&inner, final_chunk).await }
-                })
+                .get_or_init(move || async move { graceful_close(&init_inner, final_chunk).await })
+                .await
                 .clone()
         })
     }
@@ -742,23 +783,17 @@ async fn graceful_close(
     inner.closing.store(true, Ordering::SeqCst);
     if let Some(final_chunk) = final_chunk {
         let (done, receipt) = oneshot::channel();
-        let _ = inner.writes.send(QueuedWrite {
+        let _ = inner.writes.send(WriterCommand::Chunk {
             chunk: final_chunk,
             done,
         });
         let _ = receipt.await;
     }
-    // `socket.end(...)` — half-close the write side.
-    {
-        let mut write_half = inner
-            .write_half
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
-        if let Some(half) = write_half.as_mut() {
-            let _ = half.shutdown().await;
-        }
-    }
-    let _ = tokio::select! {
+    // `socket.end(...)` — half-close the write side. The writer task owns
+    // the half, so the end queues behind every pending write (the final
+    // chunk above has already been written by the time we get here).
+    let _ = inner.writes.send(WriterCommand::End);
+    tokio::select! {
         closed = inner.closed_signal.promise() => closed,
         _ = tokio::time::sleep(Duration::from_millis(inner.graceful_close_timeout_ms)) => {
             // Timeout destroys the socket (`socket.destroy()`).
@@ -790,7 +825,7 @@ impl ByteConnection for UnixByteConnection {
 pub fn create_unix_server(
     host: Arc<dyn ServerHost>,
     options: UnixServerOptions,
-) -> Result<Server, OperationError> {
+) -> Result<Arc<Server>, OperationError> {
     let listener = create_unix_listener(UnixListenerOptions {
         path: options.path,
         mode: options.mode,

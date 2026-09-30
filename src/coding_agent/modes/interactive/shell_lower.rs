@@ -4206,11 +4206,7 @@ impl InteractiveMode {
 
     /// Upstream `clearExtensionTerminalInputListeners`.
     pub fn clear_extension_terminal_input_listeners(&self) {
-        let ids: Vec<u64> = self
-            .lock()
-            .extension_terminal_input_subscriptions
-            .drain(..)
-            .collect();
+        let ids: Vec<u64> = std::mem::take(&mut self.lock().extension_terminal_input_subscriptions);
         for id in ids {
             self.io.view.remove_input_listener(id);
         }

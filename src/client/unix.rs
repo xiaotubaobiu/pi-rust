@@ -21,6 +21,7 @@ use futures::future::BoxFuture;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::UnixStream;
 use tokio::sync::{mpsc, oneshot, Semaphore};
+use tokio_util::sync::CancellationToken;
 
 use crate::protocol::framing::DEFAULT_MAX_FRAME_LENGTH;
 use crate::protocol::protocol::{is_server_id, ServerId};
@@ -43,7 +44,7 @@ pub struct UnixTransportOptions {
 }
 
 /// `unix.ts:24-27`.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct UnixServerRoute {
     pub server_id: ServerId,
     pub path: String,
@@ -241,14 +242,13 @@ fn connect_unix_socket(
 ) -> BoxFuture<'static, Result<Arc<dyn ByteTransport>, ClientError>> {
     Box::pin(async move {
         let stream = match UnixStream::connect(&path).await {
-            Ok(stream) => Arc::new(stream),
+            Ok(stream) => stream,
             Err(error) => return Err(io_transport_error(&error)),
         };
-        Ok(Arc::new(UnixByteTransport::new(
-            stream,
-            max_pending_bytes,
-            handlers,
-        )))
+        Ok(
+            Arc::new(UnixByteTransport::new(stream, max_pending_bytes, handlers))
+                as Arc<dyn ByteTransport>,
+        )
     })
 }
 
@@ -264,15 +264,17 @@ struct WriteCommand {
 /// reports `onClose` (upstream `markLocalClose` gates the outer close
 /// handler).
 struct UnixByteTransport {
-    stream: Arc<UnixStream>,
     writes: mpsc::UnboundedSender<WriteCommand>,
     pending: Arc<Semaphore>,
     closed: Arc<AtomicBool>,
+    /// Wakes the writer and read pump on local close; dropping both socket
+    /// halves ends the socket (upstream `socket.destroy()`).
+    destroy: CancellationToken,
 }
 
 impl UnixByteTransport {
     fn new(
-        stream: Arc<UnixStream>,
+        stream: UnixStream,
         max_pending_bytes: u64,
         handlers: ByteTransportHandlers,
     ) -> UnixByteTransport {
@@ -280,13 +282,22 @@ impl UnixByteTransport {
             u32::try_from(max_pending_bytes).unwrap_or(u32::MAX) as usize,
         ));
         let closed = Arc::new(AtomicBool::new(false));
+        let destroy = CancellationToken::new();
         let (writes, mut rx) = mpsc::unbounded_channel::<WriteCommand>();
+        let (read_half, mut write_half) = stream.into_split();
 
         // Writer task: one chunk at a time, in send order.
-        let write_stream = stream.clone();
         let write_closed = closed.clone();
+        let writer_destroy = destroy.clone();
         tokio::spawn(async move {
-            while let Some(command) = rx.recv().await {
+            loop {
+                let command = tokio::select! {
+                    _ = writer_destroy.cancelled() => return,
+                    command = rx.recv() => match command {
+                        Some(command) => command,
+                        None => return,
+                    },
+                };
                 let WriteCommand {
                     chunk,
                     permit,
@@ -298,7 +309,7 @@ impl UnixByteTransport {
                     ))));
                     continue;
                 }
-                let result = write_stream.write_all(&chunk).await;
+                let result = write_half.write_all(&chunk).await;
                 drop(permit);
                 let _ = match result {
                     Ok(()) => done.send(Ok(())),
@@ -309,13 +320,18 @@ impl UnixByteTransport {
 
         // Read pump: delivers inbound bytes; a peer close reports `onClose`
         // exactly once and only when the close was not local.
-        let read_stream = stream.clone();
         let read_closed = closed.clone();
         let pump_handlers = handlers.clone();
+        let pump_destroy = destroy.clone();
         tokio::spawn(async move {
+            let mut read_half = read_half;
             let mut buffer = vec![0u8; 64 * 1024];
             loop {
-                match read_stream.read(&mut buffer).await {
+                let read = tokio::select! {
+                    _ = pump_destroy.cancelled() => return,
+                    read = read_half.read(&mut buffer) => read,
+                };
+                match read {
                     Ok(0) => {
                         if !read_closed.load(Ordering::SeqCst) {
                             (pump_handlers.on_close)();
@@ -335,10 +351,10 @@ impl UnixByteTransport {
         });
 
         UnixByteTransport {
-            stream,
             writes,
             pending,
             closed,
+            destroy,
         }
     }
 }
@@ -391,8 +407,10 @@ impl ByteTransport for UnixByteTransport {
         if self.closed.swap(true, Ordering::SeqCst) {
             return;
         }
-        // Destroy: wake the writer and drop the socket handles.
-        let _ = self.stream.shutdown();
+        // Destroy: wake the writer and the read pump; dropping both socket
+        // halves ends the socket (the write half shuts the write direction
+        // down on drop).
+        self.destroy.cancel();
     }
 }
 
@@ -433,11 +451,7 @@ async fn probe_unix_server(route: &UnixServerRoute, timeout_ms: u64) -> Result<b
         route.server_id.clone(),
     ))?;
     let connect = client.connect();
-    let outcome = tokio::time::timeout(
-        Duration::from_millis(timeout_ms),
-        async move { connect.await },
-    )
-    .await;
+    let outcome = tokio::time::timeout(Duration::from_millis(timeout_ms), connect).await;
     let reachable = match outcome {
         // The probe socket is destroyed and the route omitted on timeout
         // (`unix.ts:250-257`).
