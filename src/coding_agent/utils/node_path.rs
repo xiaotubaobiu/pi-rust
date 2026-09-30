@@ -1079,14 +1079,19 @@ mod tests {
             // in no grid path, so no retargeted grid path shares a prefix
             // with the synthetic directory.
             let device = if original.starts_with("\\\\") {
-                let parts: Vec<&str> =
-                    original.split('\\').filter(|part| !part.is_empty()).collect();
+                let parts: Vec<&str> = original
+                    .split('\\')
+                    .filter(|part| !part.is_empty())
+                    .collect();
                 match parts.as_slice() {
                     [server, share, ..] => format!("\\\\{server}\\{share}\\"),
                     _ => original.clone(),
                 }
             } else {
-                let end = original.find('\\').map(|index| index + 1).unwrap_or(original.len());
+                let end = original
+                    .find('\\')
+                    .map(|index| index + 1)
+                    .unwrap_or(original.len());
                 original[..end].to_string()
             };
             let device = if device.ends_with('\\') {
