@@ -11,11 +11,27 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
+    env:
+      # keep the debug target dir off the ubuntu runner's ~20 GB free disk
+      CARGO_INCREMENTAL: "0"
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
+      # ubuntu-latest ships ~45 GB of preinstalled toolchains the build never
+      # touches; the workspace's debug target dir exceeds the remaining free
+      # space, which killed the job mid-`cargo test` at ~50 min
+      - name: Free disk space (ubuntu)
+        if: runner.os == 'Linux'
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL /usr/local/share/boost || true
+          sudo docker image prune -af || true
+          df -h /
       - run: cargo fmt --check
       - run: cargo clippy --all-targets -- -D warnings
-      - run: cargo test
+      # serial matches the verified gate protocol; parallel load on shared
+      # runners pushed process-spawning tests past their oracle deadlines
+      - run: cargo test -- --test-threads=1
+        env:
+          NO_PROXY: 127.0.0.1,localhost
