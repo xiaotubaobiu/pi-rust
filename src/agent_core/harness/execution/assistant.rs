@@ -19,16 +19,15 @@
 //!   ai-layer substitution, documented there).
 //! - **Request options.** Upstream `createRequestOptions` returns
 //!   `SimpleStreamOptions` including `onPayload`/`onResponse` and
-//!   `telemetryContext`. The ai-layer options struct omits those three (M2a
-//!   disclosure, `ai/types/options.rs`), so the port wraps
-//!   [`SimpleStreamOptions`] in [`AssistantRequestOptions`] carrying the two
-//!   callbacks; `telemetryContext` lands with the telemetry module (M3b Task
-//!   10). The port's `onPayload` also receives the `Context` (upstream
+//!   `telemetryContext`. [`AssistantRequestOptions`] keeps context-aware
+//!   callbacks; generation bridges them into the ai-layer process-local
+//!   `RequestCallbacks`. Telemetry context is still unported. The port's
+//!   `onPayload` also receives the `Context` (upstream
 //!   captures it in the closure) so callers can invoke it directly.
 //! - **`afterResponse` errors.** Upstream rethrows non-`AbortRequested`
 //!   errors and awaits `error.cancellation` for the abort kind; the port
-//!   downcasts the `anyhow::Error` to [`AbortRequested`] and observes its
-//!   token — identity and control flow are identical.
+//!   recognizes both [`AbortRequested`] and the gate's typed abort refusal,
+//!   then awaits the cancellation token before keeping the raw settlement.
 //! - **Headers.** `AssistantResponseMetadata.headers` is a
 //!   `BTreeMap<String, String>` (upstream `Record<string, string>`).
 
@@ -70,7 +69,11 @@ pub struct AssistantResponseMetadata {
 /// The `(payload, model, context) => unknown | undefined` before-payload
 /// callback (upstream `beforePayload`, `assistant.ts:47-51`); `None` keeps
 /// the payload, `Some` replaces it.
-pub type PayloadCallback = dyn Fn(serde_json::Value, Model, Context) -> BoxFuture<'static, Option<serde_json::Value>>
+pub type PayloadCallback = dyn Fn(
+        serde_json::Value,
+        Model,
+        Context,
+    ) -> BoxFuture<'static, anyhow::Result<Option<serde_json::Value>>>
     + Send
     + Sync;
 
@@ -109,8 +112,8 @@ pub type AssistantRequestFn = dyn Fn(
     + Sync;
 
 /// Upstream `SimpleStreamOptions` for one request plus the two callback
-/// fields the ai-layer options struct omits (module docs; upstream carries
-/// them on `SimpleStreamOptions` directly).
+/// context-aware callback fields (generation bridges these to the ai-layer
+/// callbacks; upstream carries them on `SimpleStreamOptions` directly).
 #[derive(Clone, Default)]
 pub struct AssistantRequestOptions {
     /// The ai-layer simple stream options (transport, timeouts, headers,
@@ -146,11 +149,46 @@ pub trait AssistantStreamObserver: Send + Sync {
     /// Upstream `end(message, context)` — the final (possibly patched)
     /// settlement.
     fn end<'a>(&'a self, message: SettledAssistantMessage, context: Context) -> BoxFuture<'a, ()>;
+
+    // Fallible observer entry points mirror rejected TS observer promises.
+    // Default wrappers retain the existing infallible Rust observer API.
+    fn try_start<'a>(
+        &'a self,
+        message: AssistantMessage,
+        event: AssistantMessageEvent,
+        context: Context,
+    ) -> BoxFuture<'a, anyhow::Result<()>> {
+        Box::pin(async move {
+            self.start(message, event, context).await;
+            Ok(())
+        })
+    }
+    fn try_update<'a>(
+        &'a self,
+        message: AssistantMessage,
+        event: AssistantMessageEvent,
+        context: Context,
+    ) -> BoxFuture<'a, anyhow::Result<()>> {
+        Box::pin(async move {
+            self.update(message, event, context).await;
+            Ok(())
+        })
+    }
+    fn try_end<'a>(
+        &'a self,
+        message: SettledAssistantMessage,
+        context: Context,
+    ) -> BoxFuture<'a, anyhow::Result<()>> {
+        Box::pin(async move {
+            self.end(message, context).await;
+            Ok(())
+        })
+    }
 }
 
 /// Upstream `transformContext` (`assistant.ts:42-45`): an infallible
 /// transform over the request context.
-pub type TransformContextFn = dyn Fn(HarnessRequestContext, Context) -> BoxFuture<'static, HarnessRequestContext>
+pub type TransformContextFn = dyn Fn(HarnessRequestContext, Context) -> BoxFuture<'static, anyhow::Result<HarnessRequestContext>>
     + Send
     + Sync;
 
@@ -263,8 +301,8 @@ pub async fn consume_assistant_stream(
                 started = true;
                 let _ = partial.apply(&event);
                 observer
-                    .start(message.clone(), event.clone(), context.clone())
-                    .await;
+                    .try_start(message.clone(), event.clone(), context.clone())
+                    .await?;
             }
             AssistantMessageEvent::Done { message, .. } => {
                 if !started {
@@ -291,8 +329,8 @@ pub async fn consume_assistant_stream(
                 let _ = partial.apply(other);
                 if let Some(snapshot) = partial.message().cloned() {
                     observer
-                        .update(snapshot, other.clone(), context.clone())
-                        .await;
+                        .try_update(snapshot, other.clone(), context.clone())
+                        .await?;
                 }
             }
         }
@@ -304,17 +342,27 @@ pub async fn consume_assistant_stream(
     if let Some(after) = after_response {
         match after(settled.clone(), context.clone()).await {
             Ok(message) => final_message = message,
-            Err(error) => match error.downcast::<AbortRequested>() {
-                Ok(abort) => {
-                    // `await error.cancellation` (assistant.ts:127-129): the
-                    // raw settlement is kept.
-                    abort.cancellation.cancelled().await;
+            Err(error) => {
+                let cancellation = error
+                    .downcast_ref::<AbortRequested>()
+                    .map(|a| a.cancellation.clone())
+                    .or_else(
+                        || match error.downcast_ref::<super::effect_gate::GateRejection>() {
+                            Some(super::effect_gate::GateRejection::AbortRequested(a)) => {
+                                Some(a.cancellation.clone())
+                            }
+                            _ => None,
+                        },
+                    );
+                if let Some(cancellation) = cancellation {
+                    cancellation.cancelled().await;
+                } else {
+                    return Err(error);
                 }
-                Err(error) => return Err(error),
-            },
+            }
         }
     }
-    observer.end(final_message.clone(), context).await;
+    observer.try_end(final_message.clone(), context).await?;
     Ok(final_message)
 }
 
@@ -331,7 +379,7 @@ pub async fn stream_harness_assistant(
         system_prompt: config.system_prompt.clone(),
     };
     if let Some(transform) = &config.transform_context {
-        request_context = transform(request_context, context.clone()).await;
+        request_context = transform(request_context, context.clone()).await?;
     }
 
     let provider_messages =

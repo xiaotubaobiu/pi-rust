@@ -22,6 +22,7 @@ pub mod agent_loop;
 pub mod chord_support;
 pub mod harness;
 pub mod session;
+pub mod telemetry;
 pub mod tools;
 pub mod types;
 

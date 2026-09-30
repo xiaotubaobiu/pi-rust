@@ -30,7 +30,7 @@ fn first_result_text(result: &serde_json::Value) -> &str {
 /// errors no longer have a dedicated event — they settle as an assistant
 /// message carrying `error_message`, which the REPL surfaces after the run.
 pub fn render_event(ev: &AgentEvent) {
-    match ev {
+    match ev.kind() {
         AgentEvent::AgentStart
         | AgentEvent::AgentEnd { .. }
         | AgentEvent::TurnStart
@@ -69,6 +69,7 @@ pub fn render_event(ev: &AgentEvent) {
             );
         }
         AgentEvent::ToolExecutionUpdate { .. } => {}
+        AgentEvent::Preserved(_) => unreachable!("kind() unwraps ingress"),
     }
 }
 

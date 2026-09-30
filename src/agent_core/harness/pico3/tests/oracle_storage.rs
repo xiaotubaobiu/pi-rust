@@ -955,3 +955,112 @@ async fn rejected_batches_leave_cached_documents_unpublished() {
         "the rejected cut left no namespace slice behind"
     );
 }
+
+/// Upstream memory.ts scanTasks iterates a JS Map, not sorted ids. A patch
+/// does not change position; JSONL replay must retain the same iteration order.
+#[tokio::test]
+async fn task_scans_preserve_insertion_order_through_patches_filters_and_replay() {
+    use crate::agent_core::harness::pico3::types::{TaskPatch, TaskScan, TaskStatus};
+
+    let dir = tempfile::tempdir().unwrap();
+    for jsonl in [false, true] {
+        let storage: Arc<dyn Storage> = if jsonl {
+            JsonlStorage::open(dir.path(), true).await.unwrap()
+        } else {
+            Arc::new(MemoryStorage::new())
+        };
+        let task = |id, conversation_id, kind: &str| Write::Task {
+            task: Task {
+                id,
+                conversation_id,
+                kind: kind.to_owned(),
+                input: Value::Null,
+                status: TaskStatus::Pending,
+                checkpoint: None,
+                abort: None,
+                outcome: None,
+                after: vec![],
+                owns: vec![],
+                background: None,
+            },
+        };
+        storage
+            .commit(
+                vec![
+                    conversation(1),
+                    conversation(2),
+                    task(90, 1, "a"),
+                    task(7, 1, "a"),
+                    task(50, 2, "b"),
+                ],
+                ctx(),
+            )
+            .await
+            .unwrap();
+        let mut patch = TaskPatch::new(90);
+        patch.status = Some(TaskStatus::Terminal);
+        storage
+            .commit(vec![Write::TaskPatch { patch }, task(12, 1, "b")], ctx())
+            .await
+            .unwrap();
+        let ids = |tasks: Vec<Task>| tasks.into_iter().map(|t| t.id).collect::<Vec<_>>();
+        assert_eq!(
+            ids(storage
+                .scan_tasks(&TaskScan::default(), ctx())
+                .await
+                .unwrap()),
+            vec![90, 7, 50, 12]
+        );
+        assert_eq!(
+            ids(storage
+                .scan_tasks(
+                    &TaskScan {
+                        conversation_id: Some(1),
+                        ..Default::default()
+                    },
+                    ctx()
+                )
+                .await
+                .unwrap()),
+            vec![90, 7, 12]
+        );
+        assert_eq!(
+            ids(storage
+                .scan_tasks(
+                    &TaskScan {
+                        status: Some(vec![TaskStatus::Pending]),
+                        ..Default::default()
+                    },
+                    ctx()
+                )
+                .await
+                .unwrap()),
+            vec![7, 50, 12]
+        );
+        assert_eq!(
+            ids(storage
+                .scan_tasks(
+                    &TaskScan {
+                        kind: Some("a".to_owned()),
+                        ..Default::default()
+                    },
+                    ctx()
+                )
+                .await
+                .unwrap()),
+            vec![90, 7]
+        );
+        storage.close(ctx()).await.unwrap();
+        if jsonl {
+            let reopened = JsonlStorage::open(dir.path(), false).await.unwrap();
+            assert_eq!(
+                ids(reopened
+                    .scan_tasks(&TaskScan::default(), ctx())
+                    .await
+                    .unwrap()),
+                vec![90, 7, 50, 12]
+            );
+            reopened.close(ctx()).await.unwrap();
+        }
+    }
+}

@@ -682,25 +682,27 @@ fn get_shell_env(
 }
 
 /// Upstream `resolveTimeoutMs` (`nodejs.ts:46-57`) over the port's
-/// whole-second timeout type.
-fn resolve_timeout_ms(timeout: Option<u64>) -> Result<Option<u64>, ExecutionError> {
+/// floating-point seconds, including fractional durations.
+fn resolve_timeout_ms(timeout: Option<f64>) -> Result<Option<u64>, ExecutionError> {
     let Some(timeout) = timeout else {
         return Ok(None);
     };
-    if timeout == 0 {
+    if !timeout.is_finite() || timeout <= 0.0 {
         return Err(ExecutionError::new(
             ExecutionErrorCode::Timeout,
             "Invalid timeout: must be a finite number of seconds",
         ));
     }
-    let timeout_ms = timeout.saturating_mul(1000);
-    if timeout_ms > MAX_TIMEOUT_MS {
+    let timeout_ms = timeout * 1000.0;
+    if timeout_ms > MAX_TIMEOUT_MS as f64 {
         return Err(ExecutionError::new(
             ExecutionErrorCode::Timeout,
             "Invalid timeout: maximum is 2147483.647 seconds",
         ));
     }
-    Ok(Some(timeout_ms))
+    // Node timers truncate fractional milliseconds and clamp positive sub-ms
+    // delays to one millisecond.
+    Ok(Some((timeout_ms as u64).max(1)))
 }
 
 // ---------------------------------------------------------------------------

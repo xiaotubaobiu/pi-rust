@@ -1,7 +1,8 @@
 //! Shared plumbing for the M2b API ports: the uniform [`ApiImpl`] stream
 //! contract (upstream `ProviderStreams`, `packages/ai/src/types.ts:272-285`,
-//! minus the optional deferred-response methods) and the shared HTTP client
-//! factory used by every provider request.
+//! with the deferred-response members as additive capabilities:
+//! `stream_deferred` and the `cancel_deferred`/`supports_deferred_cancel`
+//! pair) and the shared HTTP client factory used by every provider request.
 
 pub mod anthropic;
 pub mod azure_openai_responses;
@@ -44,13 +45,83 @@ pub(crate) fn request_signal(signal: &Option<CancellationToken>) -> Cancellation
     signal.clone().unwrap_or_default()
 }
 
-/// Upstream `ProviderStreams` (types.ts:272-285) without the optional
-/// deferred-response methods: the two entry points every API implementation
-/// module exports upstream (`stream`, `streamSimple`). Both replay the
-/// normalized [`TranscriptContext`] against one endpoint/model pair and flow
-/// events out of the returned channel following the upstream
-/// `AssistantMessageEvent` protocol (`start` first, `done`/`error` last).
+/// Upstream `ProviderStreams` (types.ts:272-285): the two entry points every
+/// API implementation module exports upstream (`stream`, `streamSimple`),
+/// plus the deferred-response capabilities as additive trait methods. Both
+/// stream entries replay the normalized [`TranscriptContext`] against one
+/// endpoint/model pair and flow events out of the returned channel following
+/// the upstream `AssistantMessageEvent` protocol (`start` first,
+/// `done`/`error` last).
 pub trait ApiImpl: Send + Sync {
+    /// Whether this adapter implements the request lifecycle callbacks.
+    /// Legacy adapters remain usable without callbacks; Models refuses a
+    /// callback-bearing request rather than silently dropping a harness hook.
+    fn supports_request_callbacks(&self) -> bool {
+        false
+    }
+
+    /// Upstream optional `provider.fetchDeferred` (`models.ts:726-732`): a
+    /// provider capability, not a requirement. The trait default reproduces
+    /// the upstream absence path — a setup-error stream carrying
+    /// `ModelsError("provider", "Provider X does not support deferred
+    /// responses")` — so capability upgrades stay additive.
+    fn stream_deferred(
+        &self,
+        _cfg: &ProviderConfig,
+        model: &Model,
+        _handle: &crate::ai::types::options::DeferredHandle,
+        _options: &StreamOptions,
+    ) -> mpsc::Receiver<AssistantMessageEvent> {
+        let (tx, rx) = mpsc::channel(4);
+        let model = model.clone();
+        tokio::spawn(async move {
+            let _ = tx
+                .send(AssistantMessageEvent::Error {
+                    reason: crate::ai::types::events::ErrorReason::Error,
+                    error: crate::ai::models::setup_error_message(
+                        &model,
+                        format!(
+                            "Provider {} does not support deferred responses",
+                            model.provider
+                        ),
+                    ),
+                })
+                .await;
+        });
+        rx
+    }
+
+    /// Upstream `provider.cancelDeferred !== undefined` (models.ts:749): the
+    /// capability probe [`Models::cancel_deferred`](crate::ai::models::Models::cancel_deferred)
+    /// checks before auth resolution, exactly like the upstream capability
+    /// check runs before `applyAuth`. The trait default reproduces the
+    /// upstream absence (`false`); capability upgrades stay additive.
+    fn supports_deferred_cancel(&self) -> bool {
+        false
+    }
+
+    /// Upstream optional `provider.cancelDeferred` (models.ts:155, attached
+    /// conditionally at models.ts:870-881): best-effort remote cancellation
+    /// of one deferred response. `Models::cancel_deferred` gates on
+    /// [`ApiImpl::supports_deferred_cancel`], so the default here is only
+    /// reachable through direct callers; it carries the same upstream
+    /// `ModelsError("provider", "Provider X does not support deferred
+    /// responses")` message as the routing-side rejection. The error channel
+    /// is the port's plain-message form (the `route_stream` precedent);
+    /// upstream throws, and every production call site swallows.
+    fn cancel_deferred(
+        &self,
+        _cfg: &ProviderConfig,
+        model: &Model,
+        _handle: &crate::ai::types::options::DeferredHandle,
+        _options: &StreamOptions,
+    ) -> futures::future::BoxFuture<'static, Result<(), String>> {
+        let message = format!(
+            "Provider {} does not support deferred responses",
+            model.provider
+        );
+        Box::pin(async move { Err(message) })
+    }
     fn stream(
         &self,
         cfg: &ProviderConfig,

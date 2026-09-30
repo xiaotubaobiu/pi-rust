@@ -75,8 +75,9 @@ use crate::ai::types::Model;
 use crate::ai::ProviderConfig;
 
 /// The pure output of [`build_request`]: the JSON request body and the ordered
-/// header pairs an HTTP layer would put on the wire (upstream assembles both
-/// in `buildParams` + `createClient`).
+/// header pairs from `buildParams` + `createClient`. The body retains SDK
+/// params (including `betas`); the stream transport materializes SDK-only
+/// header fields after onPayload, before putting the body on the wire.
 #[derive(Debug, Clone, PartialEq)]
 pub struct RequestAssembly {
     pub body: Value,
@@ -539,6 +540,26 @@ pub fn build_request(
     ctx: &TranscriptContext,
     options: &AnthropicOptions,
 ) -> Result<RequestAssembly, String> {
+    // Preserve the pure builder's historical params + computed-header API.
+    // The streaming path starts with client headers instead: callbacks can
+    // replace/remove betas before the SDK generates request-time headers.
+    let mut assembly = prepare_request(model, cfg, ctx, options)?;
+    if let Some(betas) = assembly.body.get("betas").and_then(Value::as_array) {
+        let betas: Vec<_> = betas.iter().filter_map(Value::as_str).collect();
+        if !betas.is_empty() {
+            set_header(&mut assembly.headers, "anthropic-beta", &betas.join(","));
+        }
+    }
+    Ok(assembly)
+}
+
+/// Build SDK params and client-level headers, before process-local callbacks.
+pub(super) fn prepare_request(
+    model: &Model,
+    cfg: &ProviderConfig,
+    ctx: &TranscriptContext,
+    options: &AnthropicOptions,
+) -> Result<RequestAssembly, String> {
     let compat = get_anthropic_compat(model);
     // Upstream `stream` resolves the transcript once up front (line 517).
     let normalized =
@@ -555,7 +576,7 @@ pub fn build_request(
         .then(|| options.stream.session_id.clone())
         .flatten();
 
-    let (body, betas) = build_params(model, &normalized, options, is_oauth, &compat)?;
+    let (body, _) = build_params(model, &normalized, options, is_oauth, &compat)?;
     let headers = build_headers(
         model,
         options,
@@ -565,9 +586,100 @@ pub fn build_request(
         &normalized,
         &compat,
         cache_session_id.as_deref(),
-        &betas,
+        &[],
     );
     Ok(RequestAssembly { body, headers })
+}
+
+/// JSON-representable object spread used by upstream `{ ...nextParams }`.
+/// Rust/serde strings cannot hold isolated UTF-16 surrogates; a top-level
+/// non-BMP string is rejected rather than silently corrupting its indexed values.
+pub(super) fn spread_params(value: Value) -> Result<Map<String, Value>, String> {
+    match value {
+        Value::Object(object) => Ok(object),
+        Value::Array(values) => Ok(values
+            .into_iter()
+            .enumerate()
+            .map(|(index, value)| (index.to_string(), value))
+            .collect()),
+        Value::String(text) => text
+            .encode_utf16()
+            .enumerate()
+            .map(|(index, unit)| {
+                char::from_u32(u32::from(unit))
+                    .map(|ch| (index.to_string(), Value::String(ch.to_string())))
+                    .ok_or_else(|| "Anthropic payload string spread contains an isolated UTF-16 surrogate; use an object payload".to_string())
+            })
+            .collect(),
+        Value::Null | Value::Bool(_) | Value::Number(_) => Ok(Map::new()),
+    }
+}
+
+fn json_truthy(value: &Value) -> bool {
+    match value {
+        Value::Null => false,
+        Value::Bool(value) => *value,
+        Value::Number(value) => value.as_f64().is_some_and(|value| value != 0.0),
+        Value::String(value) => !value.is_empty(),
+        Value::Array(_) | Value::Object(_) => true,
+    }
+}
+
+/// SDK betas?.toString() / Headers string coercion, for JSON payload values.
+fn header_string(value: &Value) -> String {
+    match value {
+        Value::String(value) => value.clone(),
+        Value::Array(values) => values
+            .iter()
+            .map(|value| {
+                if value.is_null() {
+                    String::new()
+                } else {
+                    header_string(value)
+                }
+            })
+            .collect::<Vec<_>>()
+            .join(","),
+        Value::Object(_) => "[object Object]".into(),
+        _ => value.to_string(),
+    }
+}
+
+/// SDK 0.124.0 `Messages.create`: output_format migration and header-only
+/// fields. Run AFTER onPayload; preflight errors must not be HTTP-retried.
+/// Unlike the historical pure builder, this body is the actual wire body.
+pub(super) fn sdk_request(assembly: &RequestAssembly) -> Result<RequestAssembly, String> {
+    let mut body = spread_params(assembly.body.clone())?;
+    if body.get("output_format").is_some_and(json_truthy) {
+        if body
+            .get("output_config")
+            .and_then(|v| v.get("format"))
+            .is_some_and(json_truthy)
+        {
+            return Err("Both output_format and output_config.format were provided. Please use only output_config.format (output_format is deprecated).".into());
+        }
+        let format = body
+            .shift_remove("output_format")
+            .expect("truthy format exists");
+        let mut config = spread_params(body.get("output_config").cloned().unwrap_or(Value::Null))?;
+        config.insert("format".into(), format);
+        body.insert("output_config".into(), Value::Object(config));
+    }
+    let mut headers = assembly.headers.clone();
+    for (field, header) in [
+        ("betas", "anthropic-beta"),
+        ("user_profile_id", "anthropic-user-profile-id"),
+        ("workspace_id", "anthropic-workspace-id"),
+    ] {
+        if let Some(value) = body.shift_remove(field).filter(|value| !value.is_null()) {
+            // [] deliberately produces an empty header, not omission.
+            set_header(&mut headers, header, &header_string(&value));
+        }
+    }
+    Ok(RequestAssembly {
+        body: Value::Object(body),
+        headers,
+    })
 }
 
 // ---- request body (upstream buildParams, anthropic-messages.ts:1035-1205) ----
@@ -1416,6 +1528,7 @@ pub fn options_from_simple(
     );
     let mut result = AnthropicOptions {
         stream: StreamOptions {
+            callbacks: options.stream.callbacks.clone(),
             signal: options.stream.signal.clone(),
             temperature: options.stream.temperature,
             sampling_params,
@@ -1478,6 +1591,36 @@ mod tests {
     use std::collections::BTreeMap;
 
     const TS: i64 = 1758240000000;
+
+    #[test]
+    fn sdk_request_preserves_surviving_and_overwritten_field_order() {
+        for (input, expected) in [
+            (
+                r#"{"betas":[],"z":1,"user_profile_id":"u","a":2,"workspace_id":"w","b":3}"#,
+                r#"{"z":1,"a":2,"b":3}"#,
+            ),
+            (
+                r#"{"z":1,"output_format":{"type":"json_schema"},"a":2,"output_config":{"effort":"high"},"b":3}"#,
+                r#"{"z":1,"a":2,"output_config":{"effort":"high","format":{"type":"json_schema"}},"b":3}"#,
+            ),
+            (
+                r#"{"z":1,"output_format":{"type":"json_schema"},"a":2,"b":3}"#,
+                r#"{"z":1,"a":2,"b":3,"output_config":{"format":{"type":"json_schema"}}}"#,
+            ),
+        ] {
+            let assembly = RequestAssembly {
+                body: serde_json::from_str(input).unwrap(),
+                headers: vec![],
+            };
+            let actual = sdk_request(&assembly).unwrap();
+            assert_eq!(actual.body.to_string(), expected);
+            assert_eq!(
+                assembly.body.to_string(),
+                input,
+                "input must stay untouched"
+            );
+        }
+    }
 
     // ---- fixtures ----
 
@@ -2228,9 +2371,8 @@ mod tests {
 
         // Supported: strict flag + strict-transformed schema (title preserved,
         // nullable wrapping against the ORIGINAL required list, full required).
-        // serde_json sorts object keys, so `required` follows the sorted
-        // property order (upstream JS keeps insertion order) — documented
-        // deviation. The schema declares no required keys, so every property
+        // Upstream Object.keys(properties) retains property insertion order.
+        // The schema declares no required keys, so every property
         // gets the null-union wrap (upstream lines 100-113).
         let model = make_model(json!({"supportsStrictTools": true}));
         let assembly = build(&model, &ctx, &opts());
@@ -2244,7 +2386,7 @@ mod tests {
                     "value": {"anyOf": [{"type": "string"}, {"type": "null"}]},
                     "optional": {"anyOf": [{"type": "number"}, {"type": "null"}]}
                 },
-                "required": ["optional", "value"],
+                "required": ["value", "optional"],
                 "additionalProperties": false
             })
         );

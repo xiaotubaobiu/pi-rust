@@ -489,6 +489,7 @@ async fn view_config_includes_declared_nulls() {
                 crate::agent_core::harness::pico3::types::KindConfig {
                     rewindable: Default::default(),
                     sticky: json!({ "note": null }).as_object().cloned().unwrap(),
+                    declared_absent: Default::default(),
                 },
             ),
         ),

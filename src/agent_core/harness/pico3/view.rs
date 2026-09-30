@@ -225,11 +225,39 @@ impl ViewManager {
         conversation: &Conversation,
         entries: Vec<Entry>,
     ) -> anyhow::Result<Arc<Watch>> {
+        self.watch_using(conversation, || self.build(conversation, &entries))
+    }
+
+    /// Capture and subscribe while the Session line is held. Preloaded trackers
+    /// belong to Tx until commit returns, so the shared cache is not readable here.
+    pub(crate) fn watch_in_tx(
+        &self,
+        conversation: &Conversation,
+        entries: Vec<Entry>,
+        tx: &mut super::session::Tx,
+    ) -> anyhow::Result<Arc<Watch>> {
+        self.watch_using(conversation, || {
+            let rewindable = tx.snapshot(super::types::DocRef::Rewindable {
+                conversation_id: conversation.id,
+            })?;
+            let sticky = tx.snapshot(super::types::DocRef::Sticky {
+                conversation_id: conversation.id,
+            })?;
+            let session = tx.snapshot(super::types::DocRef::Session)?;
+            self.build_with_docs(conversation, &entries, &rewindable, &sticky, &session)
+        })
+    }
+
+    fn watch_using(
+        &self,
+        conversation: &Conversation,
+        build: impl FnOnce() -> anyhow::Result<ConversationView>,
+    ) -> anyhow::Result<Arc<Watch>> {
         let mut records = self.inner.records.lock().expect("view records");
         let record = match records.get_mut(&conversation.id) {
             Some(record) => record,
             None => {
-                let view = self.build(conversation, &entries)?;
+                let view = build()?;
                 let mut tracker = track(serde_json::to_value(&view)?);
                 // Consume the synthetic base flush (`view.ts:59`).
                 let _ = tracker.flush();
@@ -579,22 +607,33 @@ impl ViewManager {
             conversation_id: conversation.id,
         })?;
         let session = self.document_json(&super::types::DocRef::Session)?;
+        self.build_with_docs(conversation, entries, &rewindable, &sticky, &session)
+    }
+
+    fn build_with_docs(
+        &self,
+        conversation: &Conversation,
+        entries: &[Entry],
+        rewindable: &JsonObject,
+        sticky: &JsonObject,
+        session: &JsonObject,
+    ) -> anyhow::Result<ConversationView> {
         // `Omit<Conversation, "sections">` (`view.ts:153`).
         let mut public_conversation = serde_json::to_value(conversation)?;
         if let Some(object) = public_conversation.as_object_mut() {
-            object.remove("sections");
+            object.shift_remove("sections");
         }
         let mut view = ConversationView {
             conversation: public_conversation,
             entries: entries.to_vec(),
-            config: self.config(&rewindable, &sticky)?,
-            inbox: sticky_inbox(&sticky)?,
+            config: self.config(rewindable, sticky)?,
+            inbox: sticky_inbox(sticky)?,
             turn: None,
             compaction: None,
-            tasks: self.tasks(conversation.id, &sticky)?,
-            plugins: self.plugins(&rewindable, &sticky, &session)?,
+            tasks: self.tasks(conversation.id, sticky)?,
+            plugins: self.plugins(rewindable, sticky, session)?,
         };
-        view.turn = self.turn(conversation.id, &sticky)?;
+        view.turn = self.turn(conversation.id, sticky)?;
         view.compaction = self.compaction(conversation.id);
         Ok(view)
     }
@@ -635,6 +674,8 @@ impl ViewManager {
 
     /// Upstream `turn` (`view.ts:182-199`).
     fn turn(&self, conversation_id: Id, sticky: &JsonObject) -> anyhow::Result<Option<TurnView>> {
+        let kinds = self.inner.session.kinds();
+        let kinds = kinds.read().expect("kind registry");
         let live_tasks = self.inner.session.live_tasks();
         let mut live: Vec<&Task> = live_tasks
             .values()
@@ -645,11 +686,9 @@ impl ViewManager {
             .iter()
             .copied()
             .filter(|task| {
-                self.inner
-                    .session
-                    .kinds()
+                kinds
                     .get(&task.kind)
-                    .map(|kind| kind.turn())
+                    .map(|kind: &Arc<dyn super::types::AnyKind>| kind.turn())
                     .unwrap_or(false)
             })
             .collect();
@@ -742,6 +781,8 @@ impl ViewManager {
         sticky: &JsonObject,
     ) -> anyhow::Result<HashMap<String, super::types::TaskViewSummary>> {
         let mut out = HashMap::new();
+        let kinds = self.inner.session.kinds();
+        let kinds = kinds.read().expect("kind registry");
         let live_tasks = self.inner.session.live_tasks();
         let mut live: Vec<&Task> = live_tasks
             .values()
@@ -749,7 +790,7 @@ impl ViewManager {
             .collect();
         live.sort_by_key(|task| task.id);
         for task in live {
-            let Some(kind) = self.inner.session.kinds().get(&task.kind) else {
+            let Some(kind) = kinds.get(&task.kind) else {
                 continue;
             };
             if kind.turn() || task.kind == "pi.collapse" {
@@ -758,7 +799,14 @@ impl ViewManager {
             let slot = sticky
                 .get("tasks")
                 .and_then(|tasks| tasks.get(task.id.to_string()))
-                .and_then(Value::as_object);
+                .and_then(Value::as_object)
+                .cloned()
+                .map(|mut slot| {
+                    // Private coordination memos are never passed to user-defined
+                    // describe callbacks, not merely removed from their output.
+                    slot.shift_remove("memos");
+                    slot
+                });
             out.insert(
                 task.id.to_string(),
                 super::types::TaskViewSummary {
@@ -770,7 +818,7 @@ impl ViewManager {
                         None
                     },
                     status: strict_json(
-                        &kind.describe(task, slot)?,
+                        &kind.describe(task, slot.as_ref())?,
                         &format!("task kind {}", task.kind),
                     )?,
                 },
@@ -916,7 +964,7 @@ impl GenerationStatus {
 fn strip_private_tool_state(slot: &Value) -> Value {
     let mut slot = slot.clone();
     if let Some(object) = slot.as_object_mut() {
-        object.remove("memos");
+        object.shift_remove("memos");
     }
     slot
 }
@@ -960,4 +1008,20 @@ fn sticky_streaming(sticky: &JsonObject) -> bool {
         .and_then(|turn| turn.get("message"))
         .map(|message| !message.is_null())
         .unwrap_or(false)
+}
+
+#[cfg(test)]
+mod json_order_tests {
+    use super::*;
+
+    #[test]
+    fn json_order_private_memos_do_not_reorder_public_tool_state() {
+        let slot = serde_json::json!({"memos":{"x":1},"z":2,"a":3,"b":4});
+        let before = slot.to_string();
+        assert_eq!(
+            strip_private_tool_state(&slot).to_string(),
+            r#"{"z":2,"a":3,"b":4}"#
+        );
+        assert_eq!(slot.to_string(), before);
+    }
 }

@@ -286,7 +286,7 @@ async fn maps_curated_options_and_runs_the_assistant_lifecycle_without_mutating_
             transform_order("transform_context");
             context.messages.push(user("injected"));
             context.system_prompt = "transformed system".into();
-            Box::pin(async move { context })
+            Box::pin(async move { Ok(context) })
         })),
         to_provider_messages: Arc::new(move |messages, _ctx| {
             convert_order("to_provider_messages");
@@ -301,7 +301,7 @@ async fn maps_curated_options_and_runs_the_assistant_lifecycle_without_mutating_
             before_payload_order("before_payload");
             assert_eq!(seen_model.id, "resolved");
             *before_payload_writer.lock().unwrap() = Some(payload.clone());
-            Box::pin(async move { Some(serde_json::json!({ "replaced": true })) })
+            Box::pin(async move { Ok(Some(serde_json::json!({ "replaced": true }))) })
         })),
         after_response: Some(Arc::new(move |message, metadata, _ctx| {
             response_order("after_response");
@@ -328,7 +328,7 @@ async fn maps_curated_options_and_runs_the_assistant_lifecycle_without_mutating_
                         },
                         background_context(),
                     )
-                    .await;
+                    .await?;
                     assert_eq!(replaced, Some(serde_json::json!({ "replaced": true })));
                 }
                 // `await options.onResponse?.(...)` — metadata captured.

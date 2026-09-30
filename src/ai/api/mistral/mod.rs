@@ -11,16 +11,20 @@
 //! Magistral, `reasoning_effort` for Mistral Small 4 / Medium / zai-glm-5-2).
 //!
 //! Deviations from upstream, all structural (mirroring the sibling ports):
-//! - `onPayload`/`onResponse` have no port surface (M2a options omission).
-//!   Upstream builds an SDK-style camelCase payload, lets `onPayload` mutate
+//! - Upstream builds an SDK-style camelCase payload, lets `onPayload` mutate
 //!   it, then remaps to the snake_case wire format (`toMistralWirePayload`).
-//!   Without the hook the port builds the wire payload directly, so the remap
-//!   pass and the `onPayload`-only fields (`topP`, `randomSeed`,
+//!   The port builds the wire payload directly, so the remap pass and the
+//!   `onPayload`-only fields (`topP`, `randomSeed`,
 //!   `responseFormat`/`json_schema`, `presencePenalty`, `frequencyPenalty`,
 //!   `parallelToolCalls`, `safePrompt`) have no port input and are not ported.
 //!   The oracle assertions against those fields are covered on the fields the
 //!   port does set (max_tokens, prompt_mode, reasoning_effort, prompt_cache_key,
-//!   tools, messages).
+//!   tools, messages). The hooks themselves are wired (M2 correction):
+//!   `onPayload` (line 147) is awaited before the request and observes the
+//!   port's built payload — the only payload representation the port has,
+//!   where upstream's hook saw the pre-remap camelCase shape — and
+//!   `onResponse` (line 311) fires after the fetch resolves and before the
+//!   ok check (non-success responses included).
 //! - Ambient auth: gcloud CLI variant is a named error (bedrock/vertex env chains landed in M2d): the key resolves from
 //!   `options.apiKey` then `ProviderConfig.api_key`, and a missing key is the
 //!   async error event (upstream `streamSimple` throws synchronously; port
@@ -42,6 +46,13 @@
 //!   ([`crate::ai::retry::retry_provider_request`]) with `options.max_retries`
 //!   (default 0 — no retry unless requested); once stream bytes flow an error
 //!   is never retried.
+//! - `onPayload` (mistral-conversations.ts:147) and `onResponse` (line 311)
+//!   ride the port's process-local `RequestCallbacks`: onPayload is awaited
+//!   before the request (`undefined` keeps the built payload, any other
+//!   value — including `null` — replaces it), and onResponse fires after the
+//!   fetch resolves and BEFORE the ok check — the hook observes non-success
+//!   responses too, and a hook rejection fails the attempt ahead of the HTTP
+//!   error path.
 //! - SSE framing uses the shared spec-compliant parser
 //!   (`eventsource_stream`): CR/LF/CRLF line terminators, blank-line event
 //!   boundaries, multi-line `data:` joined with `\n`, exactly the shapes
@@ -76,6 +87,9 @@
 //!   message (upstream: the same TypeError-into-catch shape, different text).
 //! - JSON object key order follows `serde_json` (sorted), not JS insertion
 //!   order — same documented deviation as the request-builder ports.
+
+#[cfg(test)]
+mod callback_tests;
 
 use std::collections::HashMap;
 use std::time::Duration;
@@ -153,6 +167,13 @@ struct MistralOptions {
 pub struct MistralConversations;
 
 impl ApiImpl for MistralConversations {
+    // Upstream wires both `options?.onPayload?.(payload, model)`
+    // (mistral-conversations.ts:147) and `options?.onResponse?.(...)`
+    // (line 311, before the ok check).
+    fn supports_request_callbacks(&self) -> bool {
+        true
+    }
+
     fn stream(
         &self,
         cfg: &ProviderConfig,
@@ -379,11 +400,21 @@ async fn run_stream_task(
             normalizer.borrow_mut().normalize(id)
         });
         let payload = build_payload(&model, &ctx, &transformed, &options)?;
+        // Upstream lines 147-150: onPayload is awaited before the request; JS
+        // `undefined` preserves the built payload while any other value —
+        // including `null` — replaces it. A hook rejection throws into the
+        // catch block before any HTTP traffic.
+        let payload = options
+            .stream
+            .callbacks
+            .payload(payload, &model)
+            .await
+            .map_err(|error| error.to_string())?;
         let url = resolve_endpoint(&model.base_url)?;
         let headers = build_headers(&model, &api_key, &options.stream);
 
         let response =
-            send_stream_request(&url, headers, &payload, &options.stream, &signal).await?;
+            send_stream_request(&url, headers, &payload, &model, &options.stream, &signal).await?;
 
         // Upstream line 152: `start` after the response arrives.
         let _ = tx
@@ -1294,6 +1325,7 @@ async fn send_stream_request(
     url: &str,
     headers: Vec<(String, String)>,
     payload: &Value,
+    model: &Model,
     stream_options: &StreamOptions,
     signal: &CancellationToken,
 ) -> Result<reqwest::Response, String> {
@@ -1318,6 +1350,16 @@ async fn send_stream_request(
             .send()
             .await
             .map_err(|error| ProviderError::transport(format_transport_error(&error)))?;
+        // Upstream line 311: onResponse fires after the fetch resolves and
+        // BEFORE the ok check — the hook observes non-success responses too,
+        // and a hook rejection fails the attempt ahead of the HTTP error
+        // path (upstream plain `fetch` performs no retries; with the port's
+        // default `maxRetries: 0` the rejection surfaces immediately).
+        stream_options
+            .callbacks
+            .http_response(&response, model)
+            .await
+            .map_err(|error| ProviderError::transport(error.to_string()))?;
         let status = response.status();
         if status.is_success() {
             return Ok(response);

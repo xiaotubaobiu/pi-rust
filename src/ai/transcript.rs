@@ -278,10 +278,9 @@ pub fn to_tool_declaration(tool: &Tool) -> Tool {
 
 /// Upstream `declarationsEqual` (transcript.ts:140-142): whether two tools
 /// declare the same interface to the model, by comparing the serialized
-/// declarations. Note: serde_json object keys are stored sorted, so the
-/// comparison is insensitive to parameter key order (JS upstream preserves
-/// each side's insertion order and would call reordered-but-identical
-/// parameters different); array order stays significant.
+/// declarations. Parameter object insertion order is significant, matching
+/// upstream JSON.stringify; serde_json preserve_order retains that order.
+/// Array order also stays significant.
 pub fn declarations_equal(left: &Tool, right: &Tool) -> bool {
     // Tool serialization cannot fail (all fields are JSON data).
     let left_json =
@@ -935,10 +934,8 @@ mod tests {
             ..read.clone()
         };
         assert!(!declarations_equal(&read, &disabled));
-        // Parameters written with different object key order still compare
-        // equal: serde_json::Value stores object keys sorted, so the serialized
-        // declarations are canonical (upstream JS preserves each side's
-        // insertion order; see the module docs for the disclosed deviation).
+        // Upstream JSON.stringify preserves parameter insertion order, so
+        // reordered parameter objects declare different interfaces.
         let left: Tool = serde_json::from_str(
             r#"{"name":"read","description":"r","parameters":{"type":"object","properties":{}}}"#,
         )
@@ -947,7 +944,8 @@ mod tests {
             r#"{"name":"read","description":"r","parameters":{"properties":{},"type":"object"}}"#,
         )
         .unwrap();
-        assert!(declarations_equal(&left, &right));
+        assert!(!declarations_equal(&left, &right));
+        assert!(declarations_equal(&left, &left.clone()));
     }
 
     #[test]

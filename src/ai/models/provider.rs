@@ -19,8 +19,11 @@
 //!   `Models.get_available` (models.ts:534-554), alongside refresh in the
 //!   same task.
 //! - Upstream `fetchDeferred`/`cancelDeferred` (models.ts:150-155, attached
-//!   conditionally at models.ts:856-881) are not ported: the M2b `ApiImpl`
-//!   port dropped the deferred-response surface.
+//!   conditionally at models.ts:856-881) are not trait methods here: the
+//!   port carries both as additive `ApiImpl` capabilities
+//!   (`stream_deferred`, `cancel_deferred` + `supports_deferred_cancel`)
+//!   routed by the `Models` collection, mirroring how `apiFor` dispatches
+//!   the upstream optional members.
 
 use std::collections::BTreeMap;
 use std::sync::{Arc, RwLock};

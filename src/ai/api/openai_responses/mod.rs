@@ -13,9 +13,30 @@
 //! Deviations from upstream, all structural:
 //! - Upstream events carry the live `partial`; the port emits events without
 //!   it and consumers reconstruct via `PartialAssistant` (the M2a contract).
-//! - Upstream `options.signal` aborts have no equivalent here: `StreamOptions`
-//!   carries no signal in the port, so the two abort checks (lines 186-188)
-//!   and the catch block's `"aborted"` branch have no input to act on.
+//! - Upstream `options.signal` is the port's non-serialized
+//!   [`CancellationToken`](tokio_util::sync::CancellationToken): a
+//!   pre-cancelled token or cancellation during the initial request fails
+//!   before `Start` with the retry seam's `"Request aborted"` abort error and
+//!   is never retried; a cancellation after `Start` breaks the SSE read and
+//!   the catch block settles `stopReason: "aborted"` with
+//!   `"Request was aborted"` (upstream lines 186-188).
+//! - Process-local onPayload/onResponse are awaited around the actual request
+//!   (upstream lines 160-163 and 177): onPayload runs before the send/retry
+//!   seam, where JS `undefined` preserves the built params while any other
+//!   value — including `null` — replaces them by direct assignment (no
+//!   Anthropic-style spread and no forced `stream:true`); onResponse runs
+//!   after the successful response is in and before `Start`. Hook failures
+//!   are plain errors and never HTTP-retried. The pinned OpenAI SDK's
+//!   `responses.create` preflight is reproduced: it reads
+//!   `stream: body.stream ?? false` before sending (responses.ts:113), so a
+//!   `null` replacement fails before any HTTP, and a replacement whose
+//!   `stream` is not truthy takes the non-stream path — the full JSON body is
+//!   parsed before `withResponse` settles (pinned `defaultParseResponse`),
+//!   the create unwrap check rejects primitive documents before the metadata
+//!   hook, and the parsed document is never an async-iterable SSE stream, so
+//!   the stream step fails after `Start` exactly like upstream's
+//!   `for await` over `openaiStream`. Mid-flight stream errors and callback
+//!   rejections are never retried.
 //! - The API-specific option extensions `reasoningSummary` and `serviceTier`
 //!   (`OpenAIResponsesOptions`, lines 103-108) have no port option surface:
 //!   `reasoning` is always sent with `summary: "auto"` when an explicit
@@ -49,18 +70,23 @@ use crate::ai::api::openai_completions::request::{
     create_grammar_tool_input_properties, level_key, map_level, remove_header,
     resolve_cache_retention, set_header, MappedLevel,
 };
-use crate::ai::api::openai_completions::stream::{format_http_error, get_client_api_key};
+use crate::ai::api::openai_completions::stream::{
+    format_http_error, get_client_api_key, truncate_error_text, MAX_PROVIDER_ERROR_BODY_CHARS,
+};
 use crate::ai::api::openai_responses_shared::{
     convert_responses_messages, convert_responses_tools, detect_session_affinity_format,
     session_affinity_headers, ConvertResponsesMessagesOptions, ConvertResponsesToolsOptions,
     ResponsesStreamEvent, ResponsesStreamOptions, ResponsesStreamProcessor,
 };
-use crate::ai::api::{http_client, pi_user_agent, request_signal, ApiImpl, REQUEST_WAS_ABORTED};
+use crate::ai::api::{
+    http_client, pi_user_agent, request_signal, ApiImpl, REQUEST_ABORTED, REQUEST_WAS_ABORTED,
+};
 use crate::ai::retry::{retry_provider_request, ProviderError};
 use crate::ai::transcript::{get_declared_tools, resolve_transcript, TranscriptContext};
 use crate::ai::types::events::{AssistantMessageEvent, ErrorReason, SuccessReason};
 use crate::ai::types::options::{SimpleStreamOptions, StreamOptions};
 use crate::ai::types::primitives::{CacheRetention, SessionAffinityFormat, StopReason};
+use crate::ai::types::request_callbacks::ProviderResponse;
 use crate::ai::types::Model;
 use crate::ai::ProviderConfig;
 use tokio::sync::mpsc;
@@ -77,6 +103,10 @@ const OPENAI_RESPONSES_MIN_OUTPUT_TOKENS: u64 = 16;
 pub struct OpenAiResponses;
 
 impl ApiImpl for OpenAiResponses {
+    fn supports_request_callbacks(&self) -> bool {
+        true
+    }
+
     fn stream(
         &self,
         cfg: &ProviderConfig,
@@ -398,6 +428,77 @@ fn build_params(
     Ok(Value::Object(params))
 }
 
+/// Upstream catch block's error composition (openai-responses.ts:207-210):
+/// `formatProviderError(normalizeProviderError(error), prefix)` with the
+/// provider prefix. For HTTP failures the pinned SDK folds the parsed body
+/// into `error.error`, so a plain non-empty JSON body object composes
+/// `"{prefix} ({status}): {body}"`; every other shape keeps the SDK's own
+/// message, which is not pinned — the port substitutes the shared
+/// `format_http_error` composition there.
+fn compose_http_error(provider: &str, status: u16, body_text: &str) -> String {
+    let prefix = if provider == "openai" {
+        "OpenAI"
+    } else {
+        provider
+    };
+    let body = serde_json::from_str::<Value>(body_text.trim())
+        .ok()
+        .filter(|document| matches!(document, Value::Object(map) if !map.is_empty()))
+        .map(|document| truncate_error_text(&document.to_string(), MAX_PROVIDER_ERROR_BODY_CHARS));
+    match body {
+        Some(body) => format!("{prefix} API error ({status}): {body}"),
+        None => format!(
+            "{prefix} API error ({status}): {}",
+            format_http_error(status, body_text)
+        ),
+    }
+}
+
+/// JS truthiness of the pinned create's `stream: body.stream ?? false` mode
+/// option (responses.ts:113): only `null`/absence collapse to `false`; every
+/// other value keeps its JS truthiness (empty arrays/objects are truthy).
+fn js_stream_mode(stream: Option<&Value>) -> bool {
+    match stream {
+        None | Some(Value::Null) => false,
+        Some(Value::Bool(flag)) => *flag,
+        Some(Value::Number(number)) => number.as_f64().is_some_and(|value| value != 0.0),
+        Some(Value::String(text)) => !text.is_empty(),
+        Some(Value::Array(_) | Value::Object(_)) => true,
+    }
+}
+
+/// The JS `String(value)` rendering used in the pinned create's unwrap error
+/// (`'object' in rsp` over a primitive document).
+fn js_value_text(value: &Value) -> String {
+    match value {
+        Value::String(text) => text.clone(),
+        Value::Null => "null".to_string(),
+        other => other.to_string(),
+    }
+}
+
+/// Pinned `defaultParseResponse` JSON branch (parse.ts): an
+/// `application/json` body is parsed; a parse failure falls back to the raw
+/// text document.
+fn parse_nonstream_document(bytes: &[u8]) -> Value {
+    serde_json::from_slice(bytes)
+        .unwrap_or_else(|_| Value::String(String::from_utf8_lossy(bytes).into_owned()))
+}
+
+fn header_record(
+    headers: &reqwest::header::HeaderMap,
+) -> std::collections::BTreeMap<String, String> {
+    headers
+        .iter()
+        .map(|(name, value)| {
+            (
+                name.as_str().to_owned(),
+                String::from_utf8_lossy(value.as_bytes()).into_owned(),
+            )
+        })
+        .collect()
+}
+
 /// Send the assembled request (upstream
 /// `client.responses.create(params, requestOptions).withResponse()`), wrapped
 /// in the provider retry policy with `options.maxRetries`/`maxRetryDelayMs`.
@@ -409,6 +510,7 @@ async fn send_stream_request(
     api_key: &str,
     assembly: &RequestAssembly,
     options: &SimpleStreamOptions,
+    model: &Model,
     signal: &CancellationToken,
 ) -> Result<reqwest::Response, String> {
     let url = format!("{}/responses", cfg.base_url.trim_end_matches('/'));
@@ -453,7 +555,7 @@ async fn send_stream_request(
         Err(ProviderError::http(
             status_code,
             response_headers,
-            format_http_error(status_code, &body),
+            compose_http_error(&model.provider, status_code, &body),
         ))
     })
     .await
@@ -497,15 +599,85 @@ async fn run_stream_task(
             options.stream.headers.as_ref(),
         )?;
         let grammar_tool_input_properties = grammar_result?;
-        let assembly = assemble(
+        let mut assembly = assemble(
             &model,
             &normalized,
             &options,
             &compat,
             &grammar_tool_input_properties,
         )?;
+        // Upstream lines 160-163: onPayload is awaited before the SDK request;
+        // JS `undefined` preserves the built params while any other value —
+        // including `null` — replaces them by direct assignment (no
+        // Anthropic-style spread and no forced `stream:true`).
+        assembly.body = options
+            .stream
+            .callbacks
+            .payload(assembly.body, &model)
+            .await
+            .map_err(|error| error.to_string())?;
+        // Pinned SDK `responses.create` preflight (responses.ts:113): reading
+        // `stream: body.stream ?? false` throws for a null body before any HTTP.
+        if assembly.body.is_null() {
+            return Err("Cannot read properties of null (reading 'stream')".to_string());
+        }
+        // The pinned create computes the stream mode from the (possibly
+        // replaced) body; `buildParams` always sends `stream:true`, so only a
+        // hook replacement can unset it.
+        let stream_mode = js_stream_mode(assembly.body.get("stream"));
+        let response =
+            send_stream_request(&cfg, &api_key, &assembly, &options, &model, &signal).await?;
 
-        let response = send_stream_request(&cfg, &api_key, &assembly, &options, &signal).await?;
+        if !stream_mode {
+            // Non-stream replacement path: the pinned `defaultParseResponse`
+            // consumes the full JSON body before `withResponse` settles and
+            // the create unwrap check runs BEFORE the metadata callback
+            // (responses.ts:117-120). A primitive document throws there —
+            // exactly like `'object' in rsp` — while object/array documents
+            // reach the metadata callback, `Start`, and then the deterministic
+            // iteration failure: the parsed document is never an
+            // async-iterable SSE stream, so upstream's
+            // `for await (const event of openaiStream)` cannot consume it.
+            let status = response.status();
+            let headers = response.headers().clone();
+            let bytes = tokio::select! {
+                biased;
+                _ = signal.cancelled() => return Err(REQUEST_ABORTED.to_string()),
+                bytes = response.bytes() => bytes.map_err(|error| error.to_string())?,
+            };
+            let document = parse_nonstream_document(&bytes);
+            if !document.is_object() && !document.is_array() {
+                return Err(format!(
+                    "Cannot use 'in' operator to search for 'object' in {}",
+                    js_value_text(&document)
+                ));
+            }
+            options
+                .stream
+                .callbacks
+                .response(
+                    ProviderResponse {
+                        status: status.as_u16(),
+                        headers: header_record(&headers),
+                    },
+                    &model,
+                )
+                .await
+                .map_err(|error| error.to_string())?;
+            let _ = tx
+                .send(AssistantMessageEvent::Start {
+                    message: processor.output().clone(),
+                })
+                .await;
+            return Err("openaiStream is not async iterable".to_string());
+        }
+
+        options
+            .stream
+            .callbacks
+            .http_response(&response, &model)
+            .await
+            .map_err(|error| error.to_string())?;
 
         // Upstream line 178: `start` after the response arrives, before any
         // event.
@@ -1942,3 +2114,6 @@ mod tests {
         }
     }
 }
+
+#[cfg(test)]
+mod callback_tests;

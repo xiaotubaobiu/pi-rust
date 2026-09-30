@@ -3331,8 +3331,8 @@ mod tests {
         assert_eq!(parameters["additionalProperties"], json!(false));
         assert_eq!(
             parameters["required"],
-            json!(["note", "value"]),
-            "strict schemas require every property"
+            json!(["value", "note"]),
+            "strict schemas require every property in upstream insertion order"
         );
         assert_eq!(
             parameters["properties"]["value"],

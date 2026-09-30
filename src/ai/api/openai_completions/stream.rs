@@ -23,8 +23,8 @@
 //!   partial-parse step is approximated by closing open strings/brackets and
 //!   completing dangling values (see [`parse_streaming_json`]). The never-throw
 //!   `{}` fallback contract is preserved.
-//! - `onPayload` and `onResponse` hooks land with a later task. The send seam
-//!   is [`send_stream_request`], which applies the T8 provider-request retry
+//! - Process-local `onPayload`/`onResponse` are awaited around the actual
+//!   HTTP request and before Start/body consumption. The send seam is [`send_stream_request`], which applies the T8 provider-request retry
 //!   port ([`crate::ai::retry::retry_provider_request`]) to the initial HTTP
 //!   request; mid-flight stream errors are never retried.
 //! - HTTP error bodies are surfaced as `"{status}: {body}"` (the upstream
@@ -73,6 +73,10 @@ pub(crate) const MAX_PROVIDER_ERROR_BODY_CHARS: usize = 4000;
 pub struct OpenAiCompletions;
 
 impl ApiImpl for OpenAiCompletions {
+    fn supports_request_callbacks(&self) -> bool {
+        true
+    }
+
     fn stream(
         &self,
         cfg: &ProviderConfig,
@@ -413,9 +417,21 @@ async fn drive_stream(
         &get_declared_tools(normalized.messages()),
         compat.supports_openai_grammar_tools == Some(true),
     )?;
-    let assembly = build_request(model, cfg, &normalized, options, &compat)?;
+    let mut assembly = build_request(model, cfg, &normalized, options, &compat)?;
+    assembly.body = options
+        .stream
+        .callbacks
+        .payload(assembly.body, model)
+        .await
+        .map_err(|e| e.to_string())?;
 
     let response = send_stream_request(cfg, &api_key, &assembly, options, signal).await?;
+    options
+        .stream
+        .callbacks
+        .http_response(&response, model)
+        .await
+        .map_err(|e| e.to_string())?;
 
     // Upstream line 379: `start` after the response arrives, before any chunk.
     let _ = tx
@@ -3270,5 +3286,158 @@ mod tests {
             }
             other => panic!("expected terminal error event, got {other:?}"),
         }
+    }
+
+    #[tokio::test]
+    async fn request_callbacks_replace_the_actual_wire_body_and_await_metadata_before_start() {
+        use std::sync::Arc;
+        let server = wiremock::MockServer::start().await;
+        wiremock::Mock::given(wiremock::matchers::method("POST"))
+            .and(wiremock::matchers::body_json(
+                serde_json::json!({"patched":true}),
+            ))
+            .respond_with(
+                sse(&(data_line(content_chunk("ok"))
+                    + &data_line(finish_chunk("stop"))
+                    + &done_line()))
+                .insert_header("x-callback-test", "observed"),
+            )
+            .expect(1)
+            .mount(&server)
+            .await;
+        let entered = Arc::new(tokio::sync::Notify::new());
+        let release = Arc::new(tokio::sync::Notify::new());
+        let mut options = StreamOptions::default();
+        options.callbacks.on_payload = Some(Arc::new(|payload, model| {
+            assert_eq!(model.id, "gpt-test");
+            assert_eq!(payload["model"], "gpt-test");
+            Box::pin(async { Ok(Some(serde_json::json!({"patched":true}))) })
+        }));
+        let hook_entered = Arc::clone(&entered);
+        let hook_release = Arc::clone(&release);
+        options.callbacks.on_response = Some(Arc::new(move |metadata, model| {
+            assert_eq!(model.id, "gpt-test");
+            assert_eq!(metadata.status, 200);
+            assert_eq!(
+                metadata.headers.get("x-callback-test").map(String::as_str),
+                Some("observed")
+            );
+            let entered = Arc::clone(&hook_entered);
+            let release = Arc::clone(&hook_release);
+            Box::pin(async move {
+                entered.notify_one();
+                release.notified().await;
+                Ok(())
+            })
+        }));
+        let mut stream = OpenAiCompletions.stream(
+            &cfg(&server),
+            &base_model(),
+            &user_ctx(vec![user_msg("hi")]),
+            &options,
+        );
+        tokio::time::timeout(Duration::from_secs(5), entered.notified())
+            .await
+            .unwrap();
+        assert!(
+            matches!(
+                stream.try_recv(),
+                Err(tokio::sync::mpsc::error::TryRecvError::Empty)
+            ),
+            "Start must wait for onResponse"
+        );
+        release.notify_one();
+        let mut events = Vec::new();
+        while let Some(event) = stream.recv().await {
+            events.push(event);
+        }
+        assert_eq!(events.first().unwrap().event_type(), "start");
+        assert_eq!(events.last().unwrap().event_type(), "done");
+        assert_eq!(server.received_requests().await.unwrap().len(), 1);
+    }
+
+    #[tokio::test]
+    async fn request_callbacks_none_preserves_payload_but_some_null_replaces_it() {
+        use std::sync::Arc;
+        for replacement in [None, Some(serde_json::Value::Null)] {
+            let server = wiremock::MockServer::start().await;
+            wiremock::Mock::given(wiremock::matchers::method("POST"))
+                .respond_with(sse(&(data_line(finish_chunk("stop")) + &done_line())))
+                .expect(1)
+                .mount(&server)
+                .await;
+            let expected = replacement.clone();
+            let mut options = SimpleStreamOptions::default();
+            options.stream.callbacks.on_payload = Some(Arc::new(move |_, _| {
+                let replacement = replacement.clone();
+                Box::pin(async move { Ok(replacement) })
+            }));
+            let events = collect_simple(&server, &base_model(), &user_ctx(vec![]), &options).await;
+            assert_eq!(events.last().unwrap().event_type(), "done");
+            let requests = server.received_requests().await.unwrap();
+            let body: serde_json::Value = serde_json::from_slice(&requests[0].body).unwrap();
+            match expected {
+                None => assert_eq!(body["model"], "gpt-test"),
+                Some(_) => assert!(body.is_null()),
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn request_callbacks_payload_failure_is_pre_send_and_response_failure_is_pre_start() {
+        use std::sync::Arc;
+        for payload_failure in [true, false] {
+            let server = wiremock::MockServer::start().await;
+            wiremock::Mock::given(wiremock::matchers::method("POST"))
+                .respond_with(sse(&(data_line(finish_chunk("stop")) + &done_line())))
+                .mount(&server)
+                .await;
+            let mut options = SimpleStreamOptions::default();
+            options.stream.max_retries = Some(2);
+            if payload_failure {
+                options.stream.callbacks.on_payload = Some(Arc::new(|_, _| {
+                    Box::pin(async { anyhow::bail!("payload refused") })
+                }));
+            } else {
+                options.stream.callbacks.on_response = Some(Arc::new(|_, _| {
+                    Box::pin(async { anyhow::bail!("response refused") })
+                }));
+            }
+            let events = collect_simple(&server, &base_model(), &user_ctx(vec![]), &options).await;
+            assert_eq!(event_types(&events), vec!["error"]);
+            let AssistantMessageEvent::Error { error, .. } = &events[0] else {
+                panic!("error settlement")
+            };
+            assert_eq!(
+                error.error_message.as_deref(),
+                Some(if payload_failure {
+                    "payload refused"
+                } else {
+                    "response refused"
+                })
+            );
+            assert_eq!(
+                server.received_requests().await.unwrap().len(),
+                usize::from(!payload_failure),
+                "hook rejection must not be retried"
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn request_callbacks_non_success_response_never_invokes_success_metadata_hook() {
+        use std::sync::Arc;
+        let server = wiremock::MockServer::start().await;
+        wiremock::Mock::given(wiremock::matchers::method("POST"))
+            .respond_with(wiremock::ResponseTemplate::new(401).set_body_string("denied"))
+            .expect(1)
+            .mount(&server)
+            .await;
+        let mut options = SimpleStreamOptions::default();
+        options.stream.callbacks.on_response = Some(Arc::new(|_, _| {
+            panic!("SDK failure must precede onResponse")
+        }));
+        let events = collect_simple(&server, &base_model(), &user_ctx(vec![]), &options).await;
+        assert_eq!(event_types(&events), vec!["error"]);
     }
 }

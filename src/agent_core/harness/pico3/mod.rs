@@ -1,29 +1,20 @@
 //! Port of `packages/agent/src/harness/pico3/` — the harness-v3 chord-
-//! transactional storage engine (M3b Task 8, amended): the strict-JSON record
-//! and document vocabulary ([`types`]), the revocable document membrane
-//! ([`membrane`]), the model-context projection ([`context`]), the in-memory
-//! reference backend ([`memory`]), the durable JSONL backend ([`jsonl`]), the
-//! line-serialized Session with capability-checked transactions ([`session`]),
-//! the commit-granular conversation view ([`view`]), and the chord-glue pure
-//! subset ([`chord`]).
+//! transactional storage engine (M3b Task 8) plus the Task 9 runtime: the
+//! strict-JSON record and document vocabulary ([`types`]), the revocable
+//! document membrane ([`membrane`]), the model-context projection
+//! ([`context`]), the in-memory reference backend ([`memory`]), the durable
+//! JSONL backend ([`jsonl`]), the line-serialized Session with
+//! capability-checked transactions ([`session`]), the commit-granular
+//! conversation view ([`view`]), the chord-glue pure subset ([`chord`]), the
+//! bounded output collector ([`bounded`]), the hook registry and runner
+//! ([`hooks`]), the bash tool ([`bash`]), the managed system-instructions
+//! layer ([`system`]), the kind-execution surface and runtime capability
+//! object ([`runtime`]), the built-in kinds ([`kinds`]), the erased-kind
+//! scheduler ([`scheduler`]), and the assembled [`harness::Harness`].
 //!
-//! Extra upstream files ported here as dependencies of `session.ts`, which
-//! imports them directly: `pico3/membrane.ts` and `pico3/context.ts`
-//! (`deriveContext`). Both are small and have no other consumers in scope.
-//!
-//! # Task-8 scope (disclosed)
-//!
-//! The amended brief lands the pico3 core: types, session, jsonl, memory,
-//! chord glue, view. The remaining pico3 files upstream are Task 9/10
-//! material and are NOT ported here: `harness.ts` (812), `scheduler.ts`
-//! (486), `system.ts` (376), `kinds/*` (the built-in turn kinds),
-//! `bounded.ts`, `bash.ts`, `hooks.ts`, and `index.ts` (a re-export barrel).
-//! The kind-execution surface of the erased kind ([`types::AnyKind`]'s
-//! `initial`/`phases`/`abort` handlers and [`types::Runtime`],
-//! [`types::Models`], [`types::ToolDeclaration`], [`types::ProcessHost`],
-//! hook bindings) lands with the scheduler/harness task; this module carries
-//! exactly the metadata surface the storage engine reads (`name`, `turn`,
-//! `config`, `slot`, `describe`, `inflight`).
+//! `pico3/index.ts` (153 lines) upstream is a re-export barrel; the port's
+//! equivalent is the `pub use` list at the bottom of this module (the Task 9
+//! brief's additions rule index.ts lands as module re-exports).
 //!
 //! # Disclosed substitutions (module docs carry the per-item notes)
 //!
@@ -52,23 +43,45 @@
 //!   the same objects upstream's scheduler would construct (disclosed in the
 //!   test module docs).
 
+pub mod bash;
+pub mod bounded;
 pub mod chord;
 pub mod context;
+pub mod harness;
+pub mod hooks;
 pub mod jsonl;
+pub mod kinds;
 pub mod membrane;
 pub mod memory;
+pub mod runtime;
+pub mod scheduler;
 pub mod session;
+pub mod system;
 pub mod types;
 pub mod view;
 
 #[cfg(test)]
 mod tests;
 
+pub use bash::bash_tool;
+pub use bounded::{Bounded, Retain as BoundedRetain};
 pub use chord::*;
 pub use context::*;
+pub use harness::{
+    apply_envelope as harness_apply_envelope, builtin_kinds, capture_active_transcript,
+    is_core_kind, ConversationHandle, Harness, HarnessOptions, InputHandle, RootOptions,
+    WATCH_CAPACITY as HARNESS_WATCH_CAPACITY,
+};
+pub use hooks::{HookRegistration, HookRunner};
 pub use jsonl::*;
 pub use membrane::*;
 pub use memory::*;
+pub use runtime::{
+    Kind, Models, Next, PhaseFn, ProcessHost, ProcessStatus, Runtime as PicoRuntime, Step, ToolApi,
+    ToolDeclaration, ToolResult,
+};
+pub use scheduler::{Scheduler, SchedulerDeps};
 pub use session::*;
+pub use system::{define_system_section, system_sections, SystemSection};
 pub use types::*;
 pub use view::*;

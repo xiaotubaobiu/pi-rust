@@ -1,0 +1,12 @@
+{
+  "downloadedAt": "2026-09-25T12:55:15.369540+09:00",
+  "source": "https://registry.npmjs.org/openai/-/openai-6.40.0.tgz",
+  "integrity": "sha512-MWtTjd/gQt4jpbji61NTgFWJLoY/PdRJ6wG9/ZDRMYNMlBKrCrSlkLI+KgHP1vR1qT6LKSAyAqIxno6lcK9JiA==",
+  "note": "Fetched once as a source reference from the upstream lockfile's exact registry URL (pi/package-lock.json pins openai 6.40.0); sha512 verified before selecting files. Vendored here read-only for offline oracle replay; no packages were installed and no upstream files were written.",
+  "sha256": {
+    "package/src/resources/responses/responses.ts": "d7413e4773b300ea8868c4cc441f3343ac326f03e9a3399169cdc3a14ca126ac",
+    "package/src/core/api-promise.ts": "8d937263b62a110d1da9a138d12cc81c43db12142ba50748a6175b4808ddd398",
+    "package/src/internal/parse.ts": "10e3721c526ace9514bffd4e5d91f22eb00bbe04f108306be1b47eb01ce1a46a",
+    "package/LICENSE": "636eb7d79da9bb6d515a4b3fd417aa26679eb3cf16396ddab4bc55fa74e616e4"
+  }
+}

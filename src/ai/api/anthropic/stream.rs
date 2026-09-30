@@ -27,10 +27,10 @@
 //!   is never retried; a cancellation after `Start` breaks the SSE read (the
 //!   `iterateSseMessages` abort check) and the catch block settles
 //!   `stopReason: "aborted"` with `"Request was aborted"`.
-//! - `onPayload` and `onResponse` hooks land with a later task. The send seam
-//!   is [`send_stream_request`], which applies the T8 provider-request retry
-//!   port (`crate::ai::retry::retry_provider_request`) to the initial HTTP
-//!   request; mid-flight stream errors are never retried.
+//! - Process-local onPayload runs before SDK serialization and request retry;
+//!   onResponse is awaited after successful HTTP headers and before Start.
+//!   SDK-only params become headers and replacements force stream:true.
+//!   Mid-flight stream errors and callback rejections are never retried.
 //! - HTTP error bodies are surfaced as `"{status}: {body}"` (the shared
 //!   `format_http_error` composition from the openai-completions port);
 //!   upstream delegates to the Anthropic SDK's `APIError` message, whose exact
@@ -51,8 +51,9 @@ use futures::StreamExt;
 use serde_json::{json, Map, Value};
 
 use crate::ai::api::anthropic::request::{
-    build_request, get_anthropic_compat, is_oauth_token, options_from_simple, resolve_api_key,
-    AnthropicCompat, AnthropicEffort, AnthropicOptions, RequestAssembly,
+    get_anthropic_compat, is_oauth_token, options_from_simple, prepare_request, resolve_api_key,
+    sdk_request, spread_params, AnthropicCompat, AnthropicEffort, AnthropicOptions,
+    RequestAssembly,
 };
 use crate::ai::api::openai_completions::stream::{format_http_error, parse_streaming_json};
 use crate::ai::api::{http_client, request_signal, ApiImpl, REQUEST_WAS_ABORTED};
@@ -89,6 +90,10 @@ const ANTHROPIC_MESSAGE_EVENTS: [&str; 6] = [
 pub struct AnthropicMessages;
 
 impl ApiImpl for AnthropicMessages {
+    fn supports_request_callbacks(&self) -> bool {
+        true
+    }
+
     fn stream(
         &self,
         cfg: &ProviderConfig,
@@ -225,7 +230,16 @@ async fn send_stream_request(
     options: &AnthropicOptions,
     signal: &CancellationToken,
 ) -> Result<reqwest::Response, String> {
-    let url = format!("{}/v1/messages", cfg.base_url.trim_end_matches('/'));
+    if signal.is_cancelled() {
+        return Err(crate::ai::api::REQUEST_ABORTED.into());
+    }
+    // SDK preflight errors are plain errors, not retryable ProviderErrors.
+    // Materialize its deterministic transformation once before HTTP retries.
+    let assembly = sdk_request(assembly)?;
+    let url = format!(
+        "{}/v1/messages?beta=true",
+        cfg.base_url.trim_end_matches('/')
+    );
     // The assembly headers carry the full SDK header set including the
     // injected auth pair (`x-api-key` / `Authorization`) and
     // `anthropic-version`.
@@ -328,9 +342,29 @@ async fn drive_stream(
     let api_key = resolve_api_key(model, cfg, options)?;
     let copilot = model.provider == "github-copilot";
     let is_oauth = !copilot && api_key.as_deref().is_some_and(is_oauth_token);
-    let assembly = build_request(model, cfg, &normalized, options)?;
+    let mut assembly = prepare_request(model, cfg, &normalized, options)?;
+    // Upstream awaits both hooks without racing the signal. A cancellation
+    // during onPayload is observed by the request seam after the hook returns.
+    // `undefined` preserves params; even null is a real replacement, spread
+    // into an object with stream:true. This differs from OpenAI Completions.
+    if let Some(callback) = &options.stream.callbacks.on_payload {
+        if let Some(replacement) = callback(assembly.body.clone(), model.clone())
+            .await
+            .map_err(|error| error.to_string())?
+        {
+            let mut params = spread_params(replacement)?;
+            params.insert("stream".into(), Value::Bool(true));
+            assembly.body = Value::Object(params);
+        }
+    }
 
     let response = send_stream_request(cfg, &assembly, options, signal).await?;
+    options
+        .stream
+        .callbacks
+        .http_response(&response, model)
+        .await
+        .map_err(|error| error.to_string())?;
 
     // Upstream line 596: `start` after the response arrives, before any event.
     let _ = tx
@@ -2898,3 +2932,6 @@ mod tests {
         assert_eq!(server.received_requests().await.unwrap().len(), 1);
     }
 }
+
+#[cfg(test)]
+mod callback_tests;

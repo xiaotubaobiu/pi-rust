@@ -94,15 +94,13 @@ fn serialize_conversation_sections_roles() {
         }),
     ];
     let text = serialize_conversation(&messages);
-    // Argument keys iterate in `serde_json::Map` (BTreeMap) order — the
-    // port-wide sorted-key substitution for JS object insertion order
-    // (disclosed in `agent_core/types.rs`; key order is not semantic).
+    // Upstream Object.entries(args) retains the caller's parameter order.
     assert_eq!(
         text,
         "[User]: hello there\n\n\
          [Assistant thinking]: pondering\n\n\
          [Assistant]: answer\n\n\
-         [Assistant tool calls]: read(n=2, path=\"a.ts\")"
+         [Assistant tool calls]: read(path=\"a.ts\", n=2)"
     );
 
     // Empty user content is skipped (`if (content)` upstream); an assistant

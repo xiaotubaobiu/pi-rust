@@ -223,6 +223,7 @@ async fn config_facade_defaults_null_and_reset() {
                         .cloned()
                         .unwrap(),
                     sticky: Default::default(),
+                    declared_absent: Default::default(),
                 },
             ),
         );
@@ -1464,7 +1465,13 @@ async fn checkpoint_and_slot_overlays_are_read_your_writes() {
                     Some("finish"),
                     "the checkpoint overlay is visible to the same transaction"
                 );
-                let kind = tx.kind_registry().get("pi.plugin").cloned().unwrap();
+                let kind = tx
+                    .kind_registry()
+                    .read()
+                    .expect("kind registry")
+                    .get("pi.plugin")
+                    .cloned()
+                    .unwrap();
                 let reference =
                     crate::agent_core::harness::pico3::session::TaskRef { id: task_id, kind };
                 let slot = tx.slot_get(&reference)?;
@@ -1520,7 +1527,13 @@ async fn retire_deletes_the_slot_and_requests_base_when_idle() {
     // Give the task a slot (task-scoped capability).
     env.commit_task(&token, task_id, move |tx, _ctx| {
         async move {
-            let kind = tx.kind_registry().get("pi.plugin").cloned().unwrap();
+            let kind = tx
+                .kind_registry()
+                .read()
+                .expect("kind registry")
+                .get("pi.plugin")
+                .cloned()
+                .unwrap();
             let reference =
                 crate::agent_core::harness::pico3::session::TaskRef { id: task_id, kind };
             tx.slot_update(&reference, |slot| {
@@ -1696,6 +1709,7 @@ async fn snapshot_applies_declared_null_fallbacks() {
                 crate::agent_core::harness::pico3::types::KindConfig {
                     rewindable: Default::default(),
                     sticky: json!({ "w": null }).as_object().cloned().unwrap(),
+                    declared_absent: Default::default(),
                 },
             ),
         );

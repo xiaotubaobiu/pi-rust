@@ -44,7 +44,13 @@
 //!   checks (lines 135-137) and the catch block's `"aborted"` branch have no
 //!   input to act on.
 //! - The `options.onPayload` / `options.onResponse` hooks (lines 113, 130)
-//!   have no port surface (the M2a options omission).
+//!   ride the port's process-local [`RequestCallbacks`]
+//!   (crate::ai::types::request_callbacks::RequestCallbacks): onPayload is
+//!   awaited before the retry-wrapped send (a replacement applies to every
+//!   attempt; JS `undefined` keeps the built body, `null` replaces it), and
+//!   onResponse fires once the send resolves — a failed send never reaches
+//!   it — before `start`. Hook rejections surface through the same catch
+//!   block as any other error.
 //! - HTTP error bodies are surfaced as
 //!   `"Azure OpenAI API error (<status>): <body>"` — the upstream
 //!   `formatProviderError(normalizeProviderError(...), "Azure OpenAI API
@@ -57,6 +63,9 @@
 //!   builder, so direct `stream` calls merge `model.samplingParams` too.
 //! - JSON object key order follows `serde_json` (sorted), not JS insertion
 //!   order — same documented deviation as the other request builders.
+
+#[cfg(test)]
+mod callback_tests;
 
 use std::collections::HashSet;
 use std::time::Duration;
@@ -110,6 +119,13 @@ const OPENAI_RESPONSES_MIN_OUTPUT_TOKENS: u64 = 16;
 pub struct AzureOpenAiResponses;
 
 impl ApiImpl for AzureOpenAiResponses {
+    // Upstream wires both `options?.onPayload?.(params, model)`
+    // (azure-openai-responses.ts:113) and `options?.onResponse?.(...)`
+    // (line 130) inside the stream body.
+    fn supports_request_callbacks(&self) -> bool {
+        true
+    }
+
     fn stream(
         &self,
         cfg: &ProviderConfig,
@@ -208,6 +224,17 @@ async fn run_stream_task(
             &deployment_name,
             &grammar_tool_input_properties,
         )?;
+        // Upstream lines 113-116: onPayload is awaited before the SDK request
+        // (and the retry seam — a replacement applies to every attempt); JS
+        // `undefined` preserves the built params while any other value —
+        // including `null` — replaces them. A hook rejection throws into the
+        // catch block before any HTTP traffic.
+        let body = options
+            .stream
+            .callbacks
+            .payload(body, &model)
+            .await
+            .map_err(|error| error.to_string())?;
         let headers = build_headers(&model, &options);
 
         let response = send_stream_request(
@@ -220,6 +247,16 @@ async fn run_stream_task(
             &signal,
         )
         .await?;
+
+        // Upstream line 130: onResponse after the request resolves (the retry
+        // seam settles first, so a failed send never reaches the hook) and
+        // before `start`; a hook rejection takes the same catch path.
+        options
+            .stream
+            .callbacks
+            .http_response(&response, &model)
+            .await
+            .map_err(|error| error.to_string())?;
 
         // Upstream line 131: `start` after the response arrives, before any
         // event.

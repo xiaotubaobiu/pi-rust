@@ -1,6 +1,7 @@
 //! Agent loop from upstream `packages/agent/src/agent-loop.ts`:
 //! prompt list -> per-turn context build (`declareToolChanges` +
-//! `convertToLlm`) -> `Models::stream_simple` -> assistant event mapping ->
+//! `convertToLlm`) -> normalized typed stream adapter (or Models fallback) ->
+//! assistant event mapping ->
 //! tool execution (sequential and parallel modes with
 //! before/after hooks and the batch early-termination rule) ->
 //! toolResult messages -> repeat, with steering messages polled and injected
@@ -58,9 +59,11 @@
 //! - Stream errors become the assistant message of a final aborted turn
 //!   (`turn_end` + `agent_end`, agent-loop.ts:221-225); they are never
 //!   converted to toolResult messages.
-//! - `getApiKey`/`apiKey` passthrough and the default-streamFn compatibility
-//!   layer are not carried; the port's loop resolves credentials through the
-//!   [`Models`] collection.
+//! - Typed stream/key factories and SimpleStreamOptions are forwarded; when
+//!   no factory is configured the supplied Models collection is the fallback
+//!   instead of a process-global default. Factory/key `Err` values propagate
+//!   from raw loops (upstream throw/reject); Agent catches them at its outer
+//!   lifecycle boundary. Abort does not implicitly drop a pending factory.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
@@ -72,14 +75,16 @@ use tokio_util::sync::CancellationToken;
 
 use crate::ai::models::{Models, ModelsSimpleStreamOptions};
 use crate::ai::now_ms;
-use crate::ai::transcript::{get_current_tools, get_tool_state_changes, Context, ToolStateChanges};
+use crate::ai::transcript::{
+    get_current_tools, get_tool_state_changes, normalize_context, Context, ToolStateChanges,
+};
 use crate::ai::types::content::{TextContent, ToolCall};
 use crate::ai::types::events::{AssistantMessageEvent, PartialAssistant};
 use crate::ai::types::message::{
     AssistantBlock, AssistantMessage, Message, StringOrBlocks, SystemMessage, TextOrImageBlock,
     ToolResultMessage,
 };
-use crate::ai::types::options::{SimpleStreamOptions, StreamOptions};
+use crate::ai::types::options::SimpleStreamOptions;
 use crate::ai::types::primitives::{
     StopReason, ThinkingBudgets, ThinkingLevel as RequestThinkingLevel, Usage,
 };
@@ -87,7 +92,8 @@ use crate::ai::validation::validate_tool_arguments;
 
 use super::types::{
     AfterToolCallResult, AgentEvent, AgentMessage, AgentTool, AgentToolResult,
-    AgentToolUpdateCallback, BeforeToolCallResult, QueueMode, ThinkingLevel, ToolExecutionMode,
+    AgentToolUpdateCallback, BeforeToolCallResult, GetApiKeyFn, QueueMode, StreamFn, ThinkingLevel,
+    ToolExecutionMode,
 };
 
 /// Upstream `AgentContext` (types.ts:434-439): the context snapshot passed
@@ -247,6 +253,15 @@ pub type GetQueuedMessagesHook = dyn Fn() -> BoxFuture<'static, Vec<AgentMessage
 /// Configuration for the low-level agent loop (upstream `AgentLoopConfig`,
 /// types.ts:156-301). `max_turns` is the M1-carried guard.
 pub struct AgentLoopConfig {
+    /// Optional stream factory. `None` retains the supplied Models fallback.
+    pub stream_fn: Option<Arc<StreamFn>>,
+    /// Resolve the active model provider's key after context conversion, per turn.
+    pub get_api_key: Option<Arc<GetApiKeyFn>>,
+    /// Upstream inherited SimpleStreamOptions, including callbacks/transport.
+    /// Existing typed thinking/session/retry fields below override when set;
+    /// `thinking_level = Some(Off)` explicitly clears inherited reasoning.
+    /// The active run's signal always replaces any signal stored here.
+    pub stream_options: SimpleStreamOptions,
     /// Model used for provider requests.
     pub model: crate::ai::types::Model,
     /// Requested reasoning level; `off` maps to absent in the request
@@ -291,6 +306,9 @@ impl AgentLoopConfig {
     /// parallel tool execution, 25 max turns, no hooks.
     pub fn new(model: crate::ai::types::Model, convert_to_llm: Arc<ConvertToLlmFn>) -> Self {
         Self {
+            stream_fn: None,
+            get_api_key: None,
+            stream_options: SimpleStreamOptions::default(),
             model,
             thinking_level: None,
             convert_to_llm,
@@ -557,12 +575,11 @@ async fn run_loop(
                         if let Some(model) = update.model {
                             config.model = model;
                         }
-                        // Upstream maps "off" to `undefined` (agent-loop.ts:194-196).
-                        config.thinking_level = match update.thinking_level {
-                            Some(ThinkingLevel::Off) => None,
-                            Some(level) => Some(level),
-                            None => config.thinking_level,
-                        };
+                        // Preserve an explicit Off until request construction so it
+                        // also clears reasoning inherited from stream_options.
+                        if let Some(level) = update.thinking_level {
+                            config.thinking_level = Some(level);
+                        }
                     }
                 }
                 // Preparation can be long-running (for example, compaction).
@@ -598,7 +615,7 @@ async fn run_loop(
             // Stream assistant response.
             let message =
                 stream_assistant_response(current_context, &config, models, signal.clone(), emit)
-                    .await;
+                    .await?;
             turns_executed += 1;
             new_messages.push(AgentMessage::Assistant(message.clone()));
 
@@ -826,7 +843,7 @@ async fn stream_assistant_response(
     models: &Models,
     signal: Option<CancellationToken>,
     emit: &AgentEventSink,
-) -> AssistantMessage {
+) -> anyhow::Result<AssistantMessage> {
     // Apply the context transform if configured (AgentMessage[] ->
     // AgentMessage[]).
     let mut messages = context.messages.clone();
@@ -837,18 +854,34 @@ async fn stream_assistant_response(
     // Convert to LLM-compatible messages (AgentMessage[] -> Message[]).
     let llm_messages = (config.convert_to_llm)(messages).await;
 
-    // Upstream normalizes the context and passes the transcript to the stream
-    // function; `Models::stream_simple` normalizes internally. Upstream
-    // `config.reasoning`: the agent-level thinking level minus "off" (the
-    // provider request has no "off" value, agent-loop.ts:194-196).
-    let options = SimpleStreamOptions {
-        stream: StreamOptions {
-            signal,
-            session_id: config.session_id.clone(),
-            max_retry_delay_ms: config.max_retry_delay_ms,
-            ..StreamOptions::default()
-        },
-        reasoning: config.thinking_level.and_then(|level| match level {
+    // Normalize before resolving the key or invoking a custom factory, just
+    // like upstream. The typed transcript cannot carry prompt/tool shorthand.
+    let request_context = Context {
+        system_prompt: None,
+        messages: llm_messages,
+        tools: None,
+    };
+    let transcript = normalize_context(&request_context);
+    let resolved_key = match &config.get_api_key {
+        Some(resolve) => resolve(config.model.provider.clone()).await?,
+        None => None,
+    };
+    let mut options = config.stream_options.clone();
+    options.stream.api_key = resolved_key
+        .filter(|key| !key.is_empty())
+        .or(options.stream.api_key);
+    options.stream.signal = signal;
+    if let Some(session_id) = &config.session_id {
+        options.stream.session_id = Some(session_id.clone());
+    }
+    if let Some(delay) = config.max_retry_delay_ms {
+        options.stream.max_retry_delay_ms = Some(delay);
+    }
+    if let Some(budgets) = config.thinking_budgets {
+        options.thinking_budgets = Some(budgets);
+    }
+    if let Some(level) = config.thinking_level {
+        options.reasoning = match level {
             ThinkingLevel::Off => None,
             ThinkingLevel::Minimal => Some(RequestThinkingLevel::Minimal),
             ThinkingLevel::Low => Some(RequestThinkingLevel::Low),
@@ -856,23 +889,19 @@ async fn stream_assistant_response(
             ThinkingLevel::High => Some(RequestThinkingLevel::High),
             ThinkingLevel::Xhigh => Some(RequestThinkingLevel::Xhigh),
             ThinkingLevel::Max => Some(RequestThinkingLevel::Max),
-        }),
-        thinking_budgets: config.thinking_budgets,
-        ..SimpleStreamOptions::default()
+        };
+    }
+    let mut rx = match &config.stream_fn {
+        Some(stream) => stream(config.model.clone(), transcript, options).await?,
+        None => models.stream_simple(
+            &config.model,
+            &request_context,
+            Some(ModelsSimpleStreamOptions {
+                simple: options,
+                transform_headers: None,
+            }),
+        ),
     };
-    let request_context = Context {
-        system_prompt: None,
-        messages: llm_messages,
-        tools: None,
-    };
-    let mut rx = models.stream_simple(
-        &config.model,
-        &request_context,
-        Some(ModelsSimpleStreamOptions {
-            simple: options,
-            transform_headers: None,
-        }),
-    );
 
     // The live partial (upstream events carry `event.partial`; the port
     // reconstructs it from the event sequence).
@@ -942,7 +971,7 @@ async fn stream_assistant_response(
         message: AgentMessage::Assistant(final_message.clone()),
     })
     .await;
-    final_message
+    Ok(final_message)
 }
 
 /// The defensive settlement for a stream that closed without a terminal
@@ -1668,6 +1697,7 @@ mod tests {
 
     fn event_name(event: &AgentEvent) -> &'static str {
         match event {
+            AgentEvent::Preserved(_) => event_name(event.kind()),
             AgentEvent::AgentStart => "agent_start",
             AgentEvent::AgentEnd { .. } => "agent_end",
             AgentEvent::TurnStart => "turn_start",

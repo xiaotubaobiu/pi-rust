@@ -283,7 +283,11 @@ pub struct ToolResultMessage {
     /// Tool output; supports text and images.
     pub content: Vec<TextOrImageBlock>,
     /// Structured execution details (upstream `JsonRepresentation<JsonValue>`).
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "crate::serde_support::present_json"
+    )]
     pub details: Option<serde_json::Value>,
     /// Usage from the tool execution itself, if available. Not part of main
     /// LLM context accounting.

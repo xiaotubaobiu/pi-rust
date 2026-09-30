@@ -539,3 +539,71 @@ mod torn {
         assert!(error.to_string().contains("missing header"), "{error}");
     }
 }
+
+#[tokio::test]
+async fn explicit_json_null_survives_entry_and_usage_jsonl_close_and_reopen() {
+    use crate::agent_core::harness::session::types::Entry;
+    let dir = tempfile::tempdir().unwrap();
+    let file_system = make_env(&dir);
+    let options = || crate::agent_core::harness::session::jsonl::types::JsonlStorageOptions {
+        file_system: file_system.clone(),
+        path: "nullable.jsonl".into(),
+        now: Some(Arc::new(|| NOW)),
+    };
+    let storage = JsonlStorage::create(options(), header("nullable"), vec![], background_context())
+        .await
+        .unwrap();
+    let mut usage = usage_row("u", Some("null"));
+    usage.details = Some(serde_json::Value::Null);
+    storage
+        .commit(
+            vec![
+                insert_entry(NewEntry::Custom {
+                    id: "null".into(),
+                    parent_id: None,
+                    custom_type: "null".into(),
+                    data: Some(serde_json::Value::Null),
+                }),
+                insert_entry(NewEntry::Custom {
+                    id: "absent".into(),
+                    parent_id: Some("null".into()),
+                    custom_type: "absent".into(),
+                    data: None,
+                }),
+                insert_usage(usage),
+            ],
+            background_context(),
+        )
+        .await
+        .unwrap();
+    storage.close(background_context()).await.unwrap();
+    let text = file_system
+        .read_text_file("nullable.jsonl", background_context())
+        .await
+        .unwrap();
+    assert!(text.contains("\"data\":null"));
+    assert!(text.contains("\"details\":null"));
+    let reopened = JsonlStorage::open(options(), background_context())
+        .await
+        .unwrap();
+    let entries = reopened
+        .get_entries(&["null".into(), "absent".into()], background_context())
+        .await
+        .unwrap();
+    let null = entries.get("null").unwrap();
+    assert!(matches!(
+        null,
+        Entry::Custom {
+            data: Some(serde_json::Value::Null),
+            ..
+        }
+    ));
+    let absent = entries.get("absent").unwrap();
+    assert!(matches!(absent, Entry::Custom { data: None, .. }));
+    let rows = reopened
+        .scan_usage(&Default::default(), background_context())
+        .await
+        .unwrap();
+    assert_eq!(rows[0].details, Some(serde_json::Value::Null));
+    reopened.close(background_context()).await.unwrap();
+}

@@ -559,7 +559,7 @@ fn apply_leaf(parent: &mut JsonValue, key: &Seg, op: &Op) -> Result<(), DeltaErr
             }
             // JS `delete obj.missing` is a no-op (delta/index.ts:1424).
             Op::Delete { .. } => {
-                object.remove(key);
+                object.shift_remove(key);
                 Ok(())
             }
             Op::Append { .. } | Op::Truncate { .. } => {

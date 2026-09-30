@@ -276,7 +276,8 @@ pub fn build_payload(model: &Model, ctx: &TranscriptContext, options: &PiMessage
 #[derive(Debug, Clone)]
 struct StreamFailure {
     message: String,
-    response: Option<ResponseFailure>,
+    // Diagnostics are only present on response failures; keep the common error small.
+    response: Option<Box<ResponseFailure>>,
 }
 
 impl StreamFailure {
@@ -471,7 +472,7 @@ async fn send_stream_request(
         Ok(response) => Ok(response),
         Err(error) => Err(StreamFailure {
             message: error.message,
-            response: last_failure.lock().unwrap().take(),
+            response: last_failure.lock().unwrap().take().map(Box::new),
         }),
     }
 }

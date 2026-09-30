@@ -85,6 +85,9 @@ use crate::ai::api::openai_completions::request::{
     clamp_max_tokens_to_context, make_strict_json_schema, resolve_json_schema_strict_sampling,
     set_header, thinking_budget_for_level, transform_messages, MIN_ANSWER_TOKENS,
 };
+#[cfg(test)]
+mod callback_tests;
+
 use crate::ai::api::openai_completions::stream::{parse_streaming_json, truncate_error_text};
 use crate::ai::api::{http_client, request_signal, ApiImpl, REQUEST_WAS_ABORTED};
 use crate::ai::cost::calculate_cost;
@@ -196,6 +199,14 @@ impl From<crate::ai::types::primitives::ToolChoice> for BedrockToolChoice {
 pub struct BedrockConverseStream;
 
 impl ApiImpl for BedrockConverseStream {
+    // Upstream wires both `options?.onPayload?.(commandInput, model)`
+    // (bedrock-converse-stream.ts:280) and onResponse (lines 251-255 install
+    // the deserialize-step response-headers middleware; line 293 is the
+    // synthesized-metadata fallback).
+    fn supports_request_callbacks(&self) -> bool {
+        true
+    }
+
     fn stream(
         &self,
         cfg: &ProviderConfig,
@@ -1493,6 +1504,17 @@ async fn run_stream_task(
             config_api_key,
         );
         let payload = build_payload(&model, &ctx, &options)?;
+        // Upstream lines 280-283: onPayload is awaited before the command is
+        // built, so the replacement (not the built input) is what gets
+        // serialized and signed; JS `undefined` preserves the built input
+        // while any other value — including `null` — replaces it. A hook
+        // rejection throws into the catch block before any HTTP traffic.
+        let payload = options
+            .stream
+            .callbacks
+            .payload(payload, &model)
+            .await
+            .map_err(|error| BedrockFailure::plain(error.to_string()))?;
         let body = serde_json::to_vec(&payload)
             .map_err(|error| BedrockFailure::plain(error.to_string()))?;
         let url = build_stream_url(&resolved, &model.id)
@@ -1537,6 +1559,19 @@ async fn run_stream_task(
         headers.extend(auth_headers);
 
         let response = send_stream_request(&url, headers, body, &options.stream, &signal).await?;
+        // Upstream lines 251-255 + 510-526: with onResponse set, the
+        // deserialize-step middleware fires with the raw Smithy HTTP response
+        // (status and raw headers) once the send resolves, before the event
+        // stream is consumed; a hook rejection throws into the catch block.
+        // (The `$metadata` fallback at lines 288-294 only runs when the
+        // middleware did not observe a raw response — unreachable with the
+        // real SDK — so the raw-response callback is the wired surface.)
+        options
+            .stream
+            .callbacks
+            .http_response(&response, &model)
+            .await
+            .map_err(|error| BedrockFailure::plain(error.to_string()))?;
         state.response_request_id = normalize_diagnostic_value(
             response
                 .headers()

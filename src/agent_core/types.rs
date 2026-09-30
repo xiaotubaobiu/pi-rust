@@ -7,7 +7,9 @@
 //!
 //! Wire format: `AgentMessage` is tagged by `role` and reuses the ai layer's
 //! heavily tested `Message` serialization for the four standard roles, so
-//! upstream pi session JSONL round-trips unchanged; the agent event `type`
+//! known wire fields keep their upstream shapes; standalone typed messages
+//! do not retain unknown standard-role fields. AgentEvent JSON ingress retains
+//! the original object alongside its validated typed view. The event `type`
 //! values are the upstream snake_case literals (`agent_start`, ...,
 //! `tool_execution_end`) and payload field names are camelCase
 //! (`toolCallId`, `toolResults`, `assistantMessageEvent`, `partialResult`,
@@ -33,18 +35,17 @@
 //!   same precedent as `ToolResultMessage.details`. Typed tools deserialize on
 //!   top (the loop validates before `execute`, mirroring upstream
 //!   `validateToolCall`).
-//! - `StreamFn`, `AgentLoopConfig`, the hook callbacks and `AgentContext`
-//!   (types.ts:33-37, 103-301, 434-439) reference the event-stream executor
-//!   and loop that later M3a tasks port; this module carries the pure data
-//!   they will consume. `AgentOptions` is ported "as data" per the task brief:
-//!   its option/mode/session fields live here, its callback fields attach with
-//!   the loop and Agent tasks.
+//! - Native `StreamFn` / `GetApiKeyFn` callbacks return poll-driven futures,
+//!   not eager JavaScript promises. Stream callbacks receive the typed
+//!   normalized transcript and a bounded receiver carries provider events.
+//!   `AgentLoopConfig` and the loop hook types live in `agent_loop`.
 //! - Upstream `AbortSignal` is the port's `tokio_util::sync::CancellationToken`
 //!   (same convention as the ai layer's stream and retry surfaces).
-//! - Custom-message payload key order is normalized to sorted order
-//!   (`serde_json::Map` is a `BTreeMap` without `preserve_order`) — the same
-//!   behavior as every other `serde_json::Value` field in the port. Key order
-//!   inside custom payloads is not semantic upstream.
+//! - Custom-message payload insertion order is retained through serde_json
+//!   preserve_order. The typed envelope emits the role field first.
+
+mod event_wire;
+pub use event_wire::PreservedAgentEvent;
 
 use schemars::JsonSchema;
 use serde::de::{Deserializer, Error as DeError};
@@ -142,9 +143,9 @@ pub struct CustomAgentMessage {
     /// The app-defined role discriminator (upstream `role`, e.g.
     /// `"notification"`).
     pub role: String,
-    /// Every other field of the message object. Key order is normalized to
-    /// sorted order on serialization (`serde_json::Map` is a `BTreeMap`) —
-    /// order is not semantic in custom payloads.
+    /// Every other field in insertion order (`serde_json/preserve_order`).
+    /// This standalone typed envelope emits `role` first; raw event ingress
+    /// preserves the original role position as well.
     pub data: serde_json::Map<String, serde_json::Value>,
 }
 
@@ -202,8 +203,9 @@ impl<'de> Deserialize<'de> for CustomAgentMessage {
 /// standard roles.
 ///
 /// Serialization is tagged by `role` and delegates to the ai layer `Message`
-/// impls for the standard roles, so session JSONL round-trips byte-for-byte
-/// with upstream pi (including custom messages, via [`Self::Custom`]).
+/// impls for the standard roles. This standalone typed union is not a
+/// lossless JSON carrier for unknown fields or original key order;
+/// [`AgentEvent`] ingress preserves those separately.
 ///
 /// The Assistant variant is intrinsically the largest payload (same reason
 /// `types::Message` carries the same allow); boxing it would add indirection
@@ -305,12 +307,18 @@ impl<'de> Deserialize<'de> for AgentMessage {
 /// `agent_end` is the last event emitted for a run, but awaited subscribers
 /// for that event are still part of run settlement.
 ///
+/// JSON decoding returns a preserving envelope. Use [`Self::kind`] when
+/// matching typed events; `PartialEq` on the full enum also distinguishes
+/// native and preserved representations. Serialization keeps ingress fields
+/// and order, but standalone AgentMessage/provider/storage boundaries remain
+/// typed and are not made lossless by this event wrapper.
+///
 /// The `MessageUpdate` variant is intrinsically the largest (partial assistant
 /// message plus the assistant stream event, both hot-path values during
 /// streaming); boxing either payload would add indirection on every streamed
 /// event for no functional gain.
 #[allow(clippy::large_enum_variant)]
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(
     tag = "type",
     rename_all = "snake_case",
@@ -384,6 +392,11 @@ pub enum AgentEvent {
         /// Whether the result is treated as an error.
         is_error: bool,
     },
+    /// Validated JSON ingress, including unknown fields and original key order.
+    /// Use [`Self::kind`] before pattern matching deserialized events.
+    /// The carrier exposes no mutable typed view, so wire data cannot go stale.
+    #[serde(untagged)]
+    Preserved(PreservedAgentEvent),
 }
 
 /// Upstream `BeforeToolCallResult` (types.ts:66-74): returned from the
@@ -418,7 +431,11 @@ pub struct AfterToolCallResult {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub content: Option<Vec<TextOrImageBlock>>,
     /// Replaces the tool result details value in full.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "crate::serde_support::present_json"
+    )]
     pub details: Option<serde_json::Value>,
     /// Replaces the tool result error flag.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -444,7 +461,11 @@ pub struct AgentToolResult {
     /// Text or image content returned to the model.
     pub content: Vec<TextOrImageBlock>,
     /// Arbitrary structured details for logs or UI rendering.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "crate::serde_support::present_json"
+    )]
     pub details: Option<serde_json::Value>,
     /// Usage from the tool execution itself, if available.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -689,14 +710,42 @@ pub struct AgentInitialState {
     pub messages: Vec<AgentMessage>,
 }
 
+/// Upstream `StreamFn` (types.ts:33-37). The transcript is normalized before
+/// invocation; the prompt and tool declarations live only in system messages.
+/// An immediately available stream uses `Box::pin(async move { Ok(receiver) })`.
+/// The factory may await setup without a thread or `block_on` bridge.
+///
+/// Request/model/runtime failures belong in terminal stream events. `Err`
+/// represents a contract-violating throw/rejection: raw loops propagate it,
+/// while `Agent` uses its existing error/aborted lifecycle choreography.
+/// Cancellation is cooperative through `options.stream.signal`; the loop
+/// does not race/drop the factory on abort (matching upstream's plain await).
+pub type StreamFn = dyn Fn(
+        Model,
+        crate::ai::transcript::TranscriptContext,
+        crate::ai::types::options::SimpleStreamOptions,
+    ) -> futures::future::BoxFuture<
+        'static,
+        anyhow::Result<tokio::sync::mpsc::Receiver<AssistantMessageEvent>>,
+    > + Send
+    + Sync;
+
+/// Upstream dynamic per-request API key resolver. Empty/absent results fall
+/// back to the low-level stream option's explicit key (JavaScript `||`).
+/// Like upstream, callers should return `None` rather than reject. `Err`
+/// retains the raw-loop versus Agent failure distinction for invalid hooks.
+pub type GetApiKeyFn = dyn Fn(String) -> futures::future::BoxFuture<'static, anyhow::Result<Option<String>>>
+    + Send
+    + Sync;
+
 /// Upstream `AgentOptions` (agent.ts:113-138): the full Agent constructor
 /// surface. The data fields landed with M3a Task 1; the callback/executor
 /// fields attach with the loop (Task 3) and the Agent class (Task 4).
 ///
-/// Port mapping: `streamFn`/`getApiKey`/`onPayload`/`onResponse`/`transport`
-/// are not carried — the port's loop resolves credentials, transport, and
-/// streaming through the [`Models`] collection, so the Agent takes
-/// `Arc<Models>` where upstream takes a `streamFn`. `prepareNextTurn` and
+/// Port mapping: `stream_fn` and `get_api_key` are typed native callbacks;
+/// `callbacks` carries upstream `onPayload`/`onResponse`. Without a custom
+/// stream function the supplied `Models` collection remains the default.
+/// Native futures are poll-driven rather than eager JS promises. `prepareNextTurn` and
 /// `prepareNextTurnWithContext` are one hook here: the port's
 /// [`PrepareNextTurnHook`] already receives the turn context. Upstream
 /// forwards the active run's `AbortSignal` to
@@ -711,6 +760,14 @@ pub struct AgentOptions {
     /// Initial state; `systemPrompt` and `tools` become the leading system
     /// message unless `messages` already starts with one.
     pub initial_state: AgentInitialState,
+    /// Optional native stream adapter; `None` retains the supplied Models fallback.
+    pub stream_fn: Option<Arc<StreamFn>>,
+    /// Resolved before every request, including subsequent tool/follow-up turns.
+    pub get_api_key: Option<Arc<GetApiKeyFn>>,
+    /// Upstream `onPayload` / `onResponse`, forwarded without serialization.
+    pub callbacks: crate::ai::types::request_callbacks::RequestCallbacks,
+    /// Upstream preferred transport; Agent defaults to `auto`.
+    pub transport: Option<crate::ai::types::primitives::Transport>,
     /// Transcript-to-LLM conversion before each call (upstream
     /// `convertToLlm`); defaults to the standard-role filter.
     pub convert_to_llm: Option<std::sync::Arc<super::agent_loop::ConvertToLlmFn>>,
@@ -750,6 +807,10 @@ impl std::fmt::Debug for AgentOptions {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("AgentOptions")
             .field("initial_state", &self.initial_state)
+            .field("stream_fn", &self.stream_fn.is_some())
+            .field("get_api_key", &self.get_api_key.is_some())
+            .field("callbacks", &self.callbacks)
+            .field("transport", &self.transport)
             .field("convert_to_llm", &self.convert_to_llm.is_some())
             .field("transform_context", &self.transform_context.is_some())
             .field("before_tool_call", &self.before_tool_call.is_some())
@@ -866,14 +927,12 @@ mod tests {
     }
 
     #[test]
-    fn custom_message_payload_keys_are_normalized_to_sorted_order() {
-        // serde_json::Map is a BTreeMap (no preserve_order feature): payload
-        // keys serialize sorted, and the result is a stable round-trip. Same
-        // precedent as every serde_json::Value field in the ai layer.
+    fn custom_message_payload_keys_preserve_insertion_order() {
+        // Arbitrary payloads retain their original key order, including nested data.
         let wire = r#"{"role":"artifact","zeta":1,"alpha":2}"#;
         let msg: AgentMessage = serde_json::from_str(wire).unwrap();
         let normalized = serde_json::to_string(&msg).unwrap();
-        assert_eq!(normalized, r#"{"role":"artifact","alpha":2,"zeta":1}"#);
+        assert_eq!(normalized, wire);
         let back: AgentMessage = serde_json::from_str(&normalized).unwrap();
         assert_eq!(serde_json::to_string(&back).unwrap(), normalized);
     }
@@ -1025,7 +1084,8 @@ mod tests {
             let encoded = serde_json::to_value(&event).unwrap();
             assert_eq!(encoded, wire, "event: {event:?}");
             let decoded: AgentEvent = serde_json::from_value(wire).unwrap();
-            assert_eq!(decoded, event);
+            assert_eq!(decoded.kind(), &event);
+            assert_eq!(serde_json::to_value(&decoded).unwrap(), encoded);
         }
     }
 
@@ -1181,6 +1241,10 @@ mod tests {
                 tools: tools.clone(),
                 messages: vec![user_message("Hello")],
             },
+            stream_fn: None,
+            get_api_key: None,
+            callbacks: Default::default(),
+            transport: None,
             convert_to_llm: None,
             transform_context: None,
             before_tool_call: None,
@@ -1342,5 +1406,32 @@ mod tests {
             .await
             .unwrap_err();
         assert!(error.to_string().contains("invalid arguments"), "{error}");
+    }
+
+    #[test]
+    fn tool_result_and_hook_override_details_distinguish_absent_from_explicit_null() {
+        use serde_json::{json, Value};
+        fn round_trip<T: serde::de::DeserializeOwned + serde::Serialize>(wire: Value) {
+            let restored: T = serde_json::from_value(wire.clone()).unwrap();
+            assert_eq!(serde_json::to_value(restored).unwrap(), wire);
+        }
+        for details in [
+            None,
+            Some(Value::Null),
+            Some(json!(false)),
+            Some(json!({"nested":null})),
+        ] {
+            let mut result = json!({"content":[]});
+            let mut hook = json!({});
+            let mut message = json!({"toolCallId":"call","toolName":"tool","content":[],"isError":false,"timestamp":1});
+            if let Some(details) = details {
+                result["details"] = details.clone();
+                hook["details"] = details.clone();
+                message["details"] = details;
+            }
+            round_trip::<AgentToolResult>(result);
+            round_trip::<AfterToolCallResult>(hook);
+            round_trip::<crate::ai::types::message::ToolResultMessage>(message);
+        }
     }
 }

@@ -39,6 +39,7 @@ fn config_key_collisions_are_rejected() {
             crate::agent_core::harness::pico3::types::KindConfig {
                 rewindable: json!({ "planMode": false }).as_object().cloned().unwrap(),
                 sticky: Default::default(),
+                declared_absent: Default::default(),
             },
         ));
     let second: std::sync::Arc<dyn crate::agent_core::harness::pico3::types::AnyKind> =
@@ -46,6 +47,7 @@ fn config_key_collisions_are_rejected() {
             crate::agent_core::harness::pico3::types::KindConfig {
                 rewindable: Default::default(),
                 sticky: json!({ "planMode": "" }).as_object().cloned().unwrap(),
+                declared_absent: Default::default(),
             },
         ));
     let _ = Defaults::new([first, second].into_iter());
@@ -60,6 +62,7 @@ fn validate_seed_rejects_foreign_or_unknown_keys() {
             crate::agent_core::harness::pico3::types::KindConfig {
                 rewindable: json!({ "planMode": false }).as_object().cloned().unwrap(),
                 sticky: Default::default(),
+                declared_absent: Default::default(),
             },
         ));
     let defaults = Defaults::new([kind].into_iter());

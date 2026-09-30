@@ -37,9 +37,14 @@
 //! - Ambient auth: gcloud CLI variant is a named error (bedrock/vertex env chains landed in M2d): the key resolves from
 //!   `options.apiKey` then `ProviderConfig.api_key`, and a missing key is the
 //!   async error event (upstream `streamSimple` throws synchronously; port
-//!   contract). `options.signal` aborts, `onPayload`/`onResponse`, and
-//!   `fetch` injection have no port surface (M2a options omission); the two
-//!   abort checks and the catch block's `"aborted"` branch are unreachable.
+//!   contract). `options.signal` aborts and `fetch` injection have no port
+//!   surface (M2a options omission); the two abort checks and the catch
+//!   block's `"aborted"` branch are unreachable. `onPayload`
+//!   (google-generative-ai.ts:96) rides the port's process-local
+//!   `RequestCallbacks`: awaited before the send, `undefined` keeps the built
+//!   params, any other value (including `null`) replaces them, and a hook
+//!   rejection takes the catch path. Upstream has no onResponse call site —
+//!   the response hook is accepted but never invoked.
 //! - The stream chunk `finishReason` is kept as a raw string on the message
 //!   (`rawStopReason`) and mapped by parsing it into the shared
 //!   `GoogleFinishReason` enum and applying `map_stop_reason` (STOP → stop,
@@ -70,6 +75,9 @@
 //! - URL resolution errors (`invalid model parameter`) happen before the
 //!   retry loop, so `maxRetries` does not multiply the attempts for that one
 //!   deterministic failure (upstream throws inside the retry callback).
+
+#[cfg(test)]
+mod callback_tests;
 
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::time::Duration;
@@ -161,6 +169,13 @@ pub(crate) struct GoogleOptions {
 pub struct GoogleGenerativeAi;
 
 impl ApiImpl for GoogleGenerativeAi {
+    // Upstream wires `options?.onPayload?.(params, model)`
+    // (google-generative-ai.ts:96); it has no onResponse call site, so only
+    // the payload hook is supported here.
+    fn supports_request_callbacks(&self) -> bool {
+        true
+    }
+
     fn stream(
         &self,
         cfg: &ProviderConfig,
@@ -381,6 +396,19 @@ async fn run_stream_task(
         };
         let headers = build_headers(&model, &google);
         let params = build_params(&model, &ctx, &google)?;
+        // Upstream lines 96-99: onPayload is awaited before the SDK request
+        // (and the retry seam — a replacement applies to every attempt); JS
+        // `undefined` preserves the built params while any other value —
+        // including `null` — replaces them. A hook rejection throws into the
+        // catch block before any HTTP traffic. The Google adapters have no
+        // upstream onResponse surface (the callback is never invoked), so
+        // only the payload hook is wired.
+        let params = google
+            .stream
+            .callbacks
+            .payload(params, &model)
+            .await
+            .map_err(|error| error.to_string())?;
         let url = resolve_endpoint(&model)?;
 
         let response = send_stream_request(&url, &api_key, &headers, &params, &google, &signal)
@@ -2327,8 +2355,7 @@ mod tests {
         let ctx = ctx_with(vec![user_msg("hello")]);
         let events = collect_simple(&server, &model, &ctx, &SimpleStreamOptions::default()).await;
         let error = error_of(&events);
-        // The @google/genai ApiError message is JSON.stringify(body); serde
-        // renders sorted keys.
+        // The @google/genai ApiError message retains the parsed body key order.
         assert_eq!(
             error.error_message.as_deref(),
             Some(r#"{"error":{"code":400,"message":"bad request","status":"INVALID_ARGUMENT"}}"#)
@@ -2355,7 +2382,7 @@ mod tests {
         let error = error_of(&events);
         assert_eq!(
             error.error_message.as_deref(),
-            Some(r#"{"error":{"code":401,"message":"bad key","status":"Unauthorized"}}"#)
+            Some(r#"{"error":{"message":"bad key","code":401,"status":"Unauthorized"}}"#)
         );
     }
 

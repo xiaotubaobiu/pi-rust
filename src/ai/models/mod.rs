@@ -269,14 +269,19 @@ pub struct ModelsRefreshResult {
     pub errors: BTreeMap<String, ModelsError>,
 }
 
+type ProviderEntries = Vec<(String, Arc<dyn Provider>)>;
+
 /// Upstream `Models` + `MutableModels` (models.ts:163-242): runtime collection
 /// of providers plus auth application and stream convenience. The upstream
 /// `Models`/`MutableModels` interface split (read surface vs registry
 /// mutation) is a JS capability boundary; the port is one struct. Providers
 /// are held in registration order (upstream `Map` insertion order — an upsert
-/// keeps the original position).
+/// keeps the original position). `Clone` is a shared-registration clone (all
+/// fields are `Arc`s — clones observe later `set_provider` calls), which the
+/// harness's injected `DeferredCancelFn` closure captures.
+#[derive(Clone)]
 pub struct Models {
-    providers: Vec<(String, Arc<dyn Provider>)>,
+    providers: Arc<Mutex<ProviderEntries>>,
     credentials: Arc<dyn CredentialStore>,
     auth_context: Arc<dyn AuthContext>,
     models_store: Arc<dyn ModelsStore>,
@@ -385,7 +390,7 @@ impl RefreshShared {
 /// Upstream `createModels` (models.ts:757-759).
 pub fn create_models(options: CreateModelsOptions) -> Models {
     Models {
-        providers: Vec::new(),
+        providers: Arc::new(Mutex::new(Vec::new())),
         credentials: options.credentials.unwrap_or_else(|| {
             Arc::new(InMemoryCredentialStore::default()) as Arc<dyn CredentialStore>
         }),
@@ -435,15 +440,21 @@ impl Models {
     /// by provider id — ids are unique and replacement keeps the original
     /// position. Any in-flight refresh for the id is superseded first.
     pub fn set_provider(&mut self, provider: Arc<dyn Provider>) {
-        self.refresh.supersede(provider.id());
-        match self
-            .providers
-            .iter_mut()
-            .find(|(id, _)| *id == provider.id())
-        {
+        // Never call provider code while holding the registry lock. Handles
+        // captured by requests/lanes observe registrations through this shared map.
+        let id = provider.id().to_string();
+        self.refresh.supersede(&id);
+        let mut providers = self.provider_entries();
+        match providers.iter_mut().find(|(existing, _)| existing == &id) {
             Some((_, existing)) => *existing = provider,
-            None => self.providers.push((provider.id().to_string(), provider)),
+            None => providers.push((id, provider)),
         }
+    }
+
+    fn provider_entries(&self) -> std::sync::MutexGuard<'_, ProviderEntries> {
+        self.providers
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
     }
 
     /// Upstream `MutableModels.deleteProvider` (models.ts:286-289): no-op for
@@ -451,7 +462,8 @@ impl Models {
     /// superseded first.
     pub fn delete_provider(&mut self, id: &str) {
         self.refresh.supersede(id);
-        self.providers.retain(|(existing, _)| existing != id);
+        self.provider_entries()
+            .retain(|(existing, _)| existing != id);
     }
 
     /// Upstream `MutableModels.clearProviders` (models.ts:291-296): supersede
@@ -459,17 +471,17 @@ impl Models {
     /// refresh is still tracked, then clear.
     pub fn clear_providers(&mut self) {
         let mut ids: HashSet<String> = self.refresh.tracked_ids();
-        ids.extend(self.providers.iter().map(|(id, _)| id.clone()));
+        ids.extend(self.provider_entries().iter().map(|(id, _)| id.clone()));
         for id in ids {
             self.refresh.supersede(&id);
         }
-        self.providers.clear();
+        self.provider_entries().clear();
     }
 
     /// Upstream `Models.getProviders` (models.ts:298-300), in provider
     /// registration order.
     pub fn get_providers(&self) -> Vec<Arc<dyn Provider>> {
-        self.providers
+        self.provider_entries()
             .iter()
             .map(|(_, provider)| Arc::clone(provider))
             .collect()
@@ -477,7 +489,7 @@ impl Models {
 
     /// Upstream `Models.getProvider` (models.ts:302-304).
     pub fn get_provider(&self, id: &str) -> Option<Arc<dyn Provider>> {
-        self.providers
+        self.provider_entries()
             .iter()
             .find(|(existing, _)| existing == id)
             .map(|(_, provider)| Arc::clone(provider))
@@ -495,9 +507,9 @@ impl Models {
                 .and_then(|entry| entry.get_models().ok())
                 .unwrap_or_default(),
             None => self
-                .providers
+                .get_providers()
                 .iter()
-                .filter_map(|(_, entry)| entry.get_models().ok())
+                .filter_map(|entry| entry.get_models().ok())
                 .flatten()
                 .collect(),
         }
@@ -765,6 +777,110 @@ impl Models {
         reduce_stream(self.stream_simple(model, context, options), model).await
     }
 
+    /// Upstream `Models.streamDeferred` (models.ts:719-735): dispatch to the
+    /// owning provider's optional `fetchDeferred` capability. Providers
+    /// without it yield the upstream setup-error stream.
+    pub fn stream_deferred(
+        &self,
+        model: &Model,
+        handle: &crate::ai::types::options::DeferredHandle,
+        context: &Context,
+        options: Option<ModelsDeferredFetchOptions>,
+    ) -> mpsc::Receiver<AssistantMessageEvent> {
+        let options = options.unwrap_or_default();
+        self.route(
+            model,
+            context,
+            RoutedOptions::Deferred {
+                handle: handle.clone(),
+                stream: options.stream,
+                transform_headers: options.transform_headers,
+            },
+        )
+    }
+
+    /// Upstream `Models.fetchDeferred` (models.ts:737-741): the stream's
+    /// final message.
+    pub async fn fetch_deferred(
+        &self,
+        model: &Model,
+        handle: &crate::ai::types::options::DeferredHandle,
+        context: &Context,
+        options: Option<ModelsDeferredFetchOptions>,
+    ) -> AssistantMessage {
+        reduce_stream(self.stream_deferred(model, handle, context, options), model).await
+    }
+
+    /// Upstream `Models.cancelDeferred` (models.ts:743-754): require the
+    /// owning provider, reject the missing capability *before* auth
+    /// resolution (models.ts:749-751), apply auth, then dispatch to the API
+    /// implementation. Unlike the stream entry points the failure channel
+    /// throws (upstream rejects with `ModelsError`); every production call
+    /// site (`cancelDeferredBestEffort`) swallows it.
+    ///
+    /// Disclosed substitution: upstream carries the capability on the
+    /// `Provider` object and re-dispatches per api (`apiFor`), so a
+    /// capability-bearing provider with an api-less model yields the
+    /// models.ts:874 "cannot cancel deferred responses for" literal; the
+    /// port's capability probe lives on the [`ApiImpl`](crate::ai::api::ApiImpl)
+    /// itself and an `api_for` miss keeps the "no API implementation" error
+    /// every other entry point produces.
+    pub async fn cancel_deferred(
+        &self,
+        model: &Model,
+        handle: &crate::ai::types::options::DeferredHandle,
+        options: Option<ModelsDeferredCancelOptions>,
+    ) -> anyhow::Result<()> {
+        let options = options.unwrap_or_default();
+        // requireProvider (models.ts:748).
+        let provider = self.get_provider(&model.provider).ok_or_else(|| {
+            ModelsError::new(
+                ModelsErrorCode::Provider,
+                format!("Unknown provider: {}", model.provider),
+            )
+        })?;
+        let implementation = provider.api_for(model).ok_or_else(|| {
+            ModelsError::new(
+                ModelsErrorCode::Stream,
+                format!(
+                    "Provider {} has no API implementation for \"{}\"",
+                    provider.id(),
+                    model.api
+                ),
+            )
+        })?;
+        // Capability check before auth resolution (models.ts:749-751).
+        if !implementation.supports_deferred_cancel() {
+            return Err(ModelsError::new(
+                ModelsErrorCode::Provider,
+                format!(
+                    "Provider {} does not support deferred responses",
+                    model.provider
+                ),
+            )
+            .into());
+        }
+        // applyAuth (models.ts:752), then the provider dispatch (models.ts:753).
+        let applied = apply_auth(
+            provider.as_ref(),
+            model,
+            self.credentials.as_ref(),
+            self.auth_context.as_ref(),
+            &options.stream,
+            options.transform_headers.clone(),
+        )
+        .await
+        .map_err(anyhow::Error::msg)?;
+        let mut stream = options.stream;
+        stream.api_key = applied.api_key;
+        stream.headers = applied.headers;
+        stream.env = applied.env;
+        implementation
+            .cancel_deferred(&applied.config, &applied.request_model, handle, &stream)
+            .await
+            .map_err(anyhow::Error::msg)
+    }
+
     /// Upstream `lazyStream` (api/lazy.ts:43-60) as a channel: the routing
     /// setup runs in a spawned task behind the returned receiver; setup
     /// failures emit a single error event (upstream `createSetupErrorMessage`)
@@ -825,6 +941,14 @@ enum RoutedOptions {
         simple: SimpleStreamOptions,
         transform_headers: Option<TransformHeaders>,
     },
+    /// Upstream `streamDeferred(model, handle, options)` (`models.ts:224`,
+    /// `719-735`): dispatch to the owning provider's optional
+    /// `fetchDeferred` capability.
+    Deferred {
+        handle: crate::ai::types::options::DeferredHandle,
+        stream: StreamOptions,
+        transform_headers: Option<TransformHeaders>,
+    },
 }
 
 /// Event-channel capacity for routed streams; the [`ApiImpl`] implementations
@@ -874,7 +998,10 @@ fn merge_model_headers(mut resolution: AuthResult, model: &Model) -> AuthResult 
 
 /// Upstream `createSetupErrorMessage` (api/lazy.ts:8-31): the message a
 /// routing failure settles its stream with.
-fn setup_error_message(model: &Model, message: impl std::fmt::Display) -> AssistantMessage {
+pub(crate) fn setup_error_message(
+    model: &Model,
+    message: impl std::fmt::Display,
+) -> AssistantMessage {
     AssistantMessage {
         content: Vec::new(),
         api: model.api.clone(),
@@ -917,59 +1044,40 @@ async fn reduce_stream(
         .unwrap_or_else(|| setup_error_message(model, "stream ended without events"))
 }
 
-/// Upstream `requireProvider` + `applyAuth` + the provider dispatch
-/// (models.ts:640-718): resolve auth through the owning provider, assemble
-/// the request (config/options), then route to the model's API
-/// implementation. Failures return the upstream error message verbatim; the
-/// caller settles the stream with it.
-async fn route_stream(
-    provider: Option<&dyn Provider>,
+/// Upstream `applyAuth`'s resolved request (models.ts:648-677): the
+/// request-model rewrite plus the assembled request options, collapsed into
+/// the port's routed-config channel (`ProviderConfig` carries what upstream
+/// passes as `requestModel.baseUrl` + `requestOptions.apiKey`).
+pub(crate) struct AppliedAuth {
+    /// Upstream `requestModel` (models.ts:671): the auth-derived `baseUrl`
+    /// overrides the model's.
+    pub request_model: Model,
+    pub config: ProviderConfig,
+    pub api_key: Option<String>,
+    pub headers: Option<ProviderHeaders>,
+    pub env: Option<ProviderEnv>,
+}
+
+/// Upstream `applyAuth` (models.ts:648-677) — `getAuth(model)` with the
+/// explicit per-field overrides (including the request signal: an abort
+/// during auth resolution rejects the setup), then the per-field merge where
+/// explicit request options win and the Models-only transform runs last.
+/// Failures return the upstream error message verbatim.
+async fn apply_auth(
+    provider: &dyn Provider,
     model: &Model,
-    transcript: TranscriptContext,
     credentials: &dyn CredentialStore,
     auth_context: &dyn AuthContext,
-    options: RoutedOptions,
-) -> Result<mpsc::Receiver<AssistantMessageEvent>, String> {
-    // requireProvider (models.ts:640-646).
-    let provider = provider.ok_or_else(|| {
-        ModelsError::new(
-            ModelsErrorCode::Provider,
-            format!("Unknown provider: {}", model.provider),
-        )
-        .to_string()
-    })?;
-
-    // applyAuth (models.ts:648-677) — getAuth(model) with the explicit
-    // per-field overrides, including the request signal (the M2d
-    // cancellation surface: an abort during auth resolution rejects the
-    // setup, surfacing as the routing error event).
-    let (options_api_key, options_env, options_headers, routed_signal, transform_headers) =
-        match &options {
-            RoutedOptions::Api {
-                stream,
-                transform_headers,
-            } => (
-                stream.api_key.clone(),
-                stream.env.clone(),
-                stream.headers.clone(),
-                stream.signal.clone(),
-                transform_headers.clone(),
-            ),
-            RoutedOptions::Simple {
-                simple,
-                transform_headers,
-            } => (
-                simple.stream.api_key.clone(),
-                simple.stream.env.clone(),
-                simple.stream.headers.clone(),
-                simple.stream.signal.clone(),
-                transform_headers.clone(),
-            ),
-        };
+    request_options: &StreamOptions,
+    transform_headers: Option<TransformHeaders>,
+) -> Result<AppliedAuth, String> {
+    let options_api_key = request_options.api_key.clone();
+    let options_env = request_options.env.clone();
+    let options_headers = request_options.headers.clone();
     let overrides = AuthResolutionOverrides {
         api_key: options_api_key.clone(),
         env: options_env.clone(),
-        signal: routed_signal,
+        signal: request_options.signal.clone(),
         ..AuthResolutionOverrides::default()
     };
     let resolution = resolve_provider_auth(
@@ -1030,6 +1138,66 @@ async fn route_stream(
     if let Some(auth_base_url) = auth.base_url.clone() {
         request_model.base_url = auth_base_url;
     }
+    Ok(AppliedAuth {
+        request_model,
+        config,
+        api_key,
+        headers,
+        env,
+    })
+}
+
+/// Upstream `requireProvider` + `applyAuth` + the provider dispatch
+/// (models.ts:640-718): resolve auth through the owning provider, assemble
+/// the request (config/options), then route to the model's API
+/// implementation. Failures return the upstream error message verbatim; the
+/// caller settles the stream with it.
+async fn route_stream(
+    provider: Option<&dyn Provider>,
+    model: &Model,
+    transcript: TranscriptContext,
+    credentials: &dyn CredentialStore,
+    auth_context: &dyn AuthContext,
+    options: RoutedOptions,
+) -> Result<mpsc::Receiver<AssistantMessageEvent>, String> {
+    // requireProvider (models.ts:640-646).
+    let provider = provider.ok_or_else(|| {
+        ModelsError::new(
+            ModelsErrorCode::Provider,
+            format!("Unknown provider: {}", model.provider),
+        )
+        .to_string()
+    })?;
+
+    // applyAuth (models.ts:648-677) — getAuth(model) with the explicit
+    // per-field overrides, including the request signal (the M2d
+    // cancellation surface: an abort during auth resolution rejects the
+    // setup, surfacing as the routing error event). The per-field overrides
+    // ride on the routed StreamOptions; the Models-only header transform is
+    // carried alongside.
+    let transform_headers = match &options {
+        RoutedOptions::Api {
+            transform_headers, ..
+        }
+        | RoutedOptions::Simple {
+            transform_headers, ..
+        }
+        | RoutedOptions::Deferred {
+            transform_headers, ..
+        } => transform_headers.clone(),
+    };
+    let applied = apply_auth(
+        provider,
+        model,
+        credentials,
+        auth_context,
+        match &options {
+            RoutedOptions::Api { stream, .. } | RoutedOptions::Deferred { stream, .. } => stream,
+            RoutedOptions::Simple { simple, .. } => &simple.stream,
+        },
+        transform_headers,
+    )
+    .await?;
 
     // Provider dispatch (models.ts:691, 708): the api-implementation lookup
     // doubles as the upstream `apiFor` check; `None` produces the
@@ -1046,21 +1214,71 @@ async fn route_stream(
         .to_string()
     })?;
 
+    let callbacks = match &options {
+        RoutedOptions::Api { stream, .. } | RoutedOptions::Deferred { stream, .. } => {
+            &stream.callbacks
+        }
+        RoutedOptions::Simple { simple, .. } => &simple.stream.callbacks,
+    };
+    if !callbacks.is_empty() && !implementation.supports_request_callbacks() {
+        return Err(format!(
+            "API {} does not yet support request lifecycle callbacks",
+            model.api
+        ));
+    }
     match options {
+        RoutedOptions::Deferred {
+            handle, mut stream, ..
+        } => {
+            stream.api_key = applied.api_key;
+            stream.headers = applied.headers;
+            stream.env = applied.env;
+            Ok(implementation.stream_deferred(
+                &applied.config,
+                &applied.request_model,
+                &handle,
+                &stream,
+            ))
+        }
         RoutedOptions::Api { mut stream, .. } => {
-            stream.api_key = api_key;
-            stream.headers = headers;
-            stream.env = env;
-            Ok(implementation.stream(&config, &request_model, &transcript, &stream))
+            stream.api_key = applied.api_key;
+            stream.headers = applied.headers;
+            stream.env = applied.env;
+            Ok(implementation.stream(
+                &applied.config,
+                &applied.request_model,
+                &transcript,
+                &stream,
+            ))
         }
         RoutedOptions::Simple { mut simple, .. } => {
-            simple.stream.api_key = api_key;
-            simple.stream.headers = headers;
-            simple.stream.env = env;
-            Ok(implementation.stream_simple(&config, &request_model, &transcript, &simple))
+            simple.stream.api_key = applied.api_key;
+            simple.stream.headers = applied.headers;
+            simple.stream.env = applied.env;
+            Ok(implementation.stream_simple(
+                &applied.config,
+                &applied.request_model,
+                &transcript,
+                &simple,
+            ))
         }
     }
 }
+
+/// Upstream `ModelsDeferredFetchOptions`: stream-level request options for
+/// deferred polls (the port keeps the transport-only subset).
+#[derive(Clone, Default)]
+pub struct ModelsDeferredFetchOptions {
+    pub stream: StreamOptions,
+    pub transform_headers: Option<TransformHeaders>,
+}
+
+/// Upstream `ModelsDeferredCancelOptions` (models.ts:88, `DeferredCancelOptions
+/// & ModelsRequestTransforms`): request options for remote deferred
+/// cancellation (`Models::cancel_deferred`). The port keeps the same
+/// transport-only subset as [`ModelsDeferredFetchOptions`] (module docs):
+/// the `StreamOptions` request fields plus the Models-only header transform.
+pub type ModelsDeferredCancelOptions = ModelsDeferredFetchOptions;
 
 /// [`ModelsStoreError`] surfaced through the refresh error channel (upstream
 /// records the raw store rejection; the message is preserved verbatim).
@@ -1352,11 +1570,17 @@ mod tests {
         AuthResult, AuthType, Credential, CredentialInfo, ModelAuth, OAuthAuth, OAuthCredential,
         ProviderAuth, ProviderAuthInteraction,
     };
+    use crate::ai::models::faux::{
+        faux_assistant_message, faux_provider, FauxMessageOptions, FauxProviderOptions,
+        FauxResponseStep,
+    };
     use crate::ai::now_ms;
     use crate::ai::transcript::TranscriptContext;
     use crate::ai::types::events::{AssistantMessageEvent, PartialAssistant, SuccessReason};
     use crate::ai::types::message::{AssistantMessage, Message, StringOrBlocks, UserMessage};
-    use crate::ai::types::options::{ProviderHeaders, SimpleStreamOptions, StreamOptions};
+    use crate::ai::types::options::{
+        DeferredFlag, DeferredHandle, ProviderHeaders, SimpleStreamOptions, StreamOptions,
+    };
     use crate::ai::types::primitives::{ModelCost, StopReason, Usage};
     use crate::ai::types::ModelInput;
     use crate::ai::{Context, ProviderConfig};
@@ -3831,4 +4055,172 @@ mod tests {
         assert_eq!(available, Err(AuthError::Cancelled));
         finish.notify_one();
     }
+
+    #[tokio::test]
+    async fn request_callbacks_are_explicitly_refused_by_unsupported_adapters_only() {
+        let model = test_model("callback-test", "model");
+        let mut models = create_models(CreateModelsOptions::default());
+        models.set_provider(test_provider("callback-test", vec![model.clone()]));
+        let mut simple = SimpleStreamOptions::default();
+        simple.stream.callbacks.on_response =
+            Some(Arc::new(|_, _| panic!("unsupported callback must not run")));
+        let mut stream = models.stream_simple(
+            &model,
+            &user_context(),
+            Some(ModelsSimpleStreamOptions {
+                simple,
+                transform_headers: None,
+            }),
+        );
+        let AssistantMessageEvent::Error { error, .. } =
+            stream.recv().await.expect("explicit setup failure")
+        else {
+            panic!("setup error")
+        };
+        assert_eq!(
+            error.error_message.as_deref(),
+            Some(
+                format!(
+                    "API {} does not yet support request lifecycle callbacks",
+                    model.api
+                )
+                .as_str()
+            )
+        );
+        assert!(stream.recv().await.is_none());
+        let mut original = models.stream_simple(&model, &user_context(), None);
+        assert!(
+            original.recv().await.is_none(),
+            "callback-free StubApi path remains unchanged"
+        );
+    }
+
+    // ------------------------------------------------------------------
+    // Models.cancelDeferred (models.ts:743-754)
+    // ------------------------------------------------------------------
+
+    fn deferred_handle(provider: &str, model_id: &str, api: &str, id: &str) -> DeferredHandle {
+        DeferredHandle {
+            provider: provider.to_string(),
+            model_id: model_id.to_string(),
+            api: api.to_string(),
+            id: id.to_string(),
+            expires_at: None,
+            poll_after_ms: None,
+            data: None,
+        }
+    }
+
+    fn deferred_submission() -> Option<ModelsSimpleStreamOptions> {
+        Some(ModelsSimpleStreamOptions {
+            simple: SimpleStreamOptions {
+                deferred: Some(DeferredFlag::Bool(true)),
+                ..SimpleStreamOptions::default()
+            },
+            transform_headers: None,
+        })
+    }
+
+    /// Upstream providers.test.ts "records cancellation and returns deferred
+    /// fetch failures in-band": the routed cancel reaches the faux provider's
+    /// `cancelDeferred` capability, which records the handle and poisons
+    /// later fetches.
+    #[tokio::test]
+    async fn cancel_deferred_routes_to_the_provider_capability() {
+        let faux = faux_provider(FauxProviderOptions::default());
+        let mut models = create_models(CreateModelsOptions::default());
+        models.set_provider(Arc::clone(&faux.provider));
+        let model = faux.get_model(None).expect("faux model");
+        faux.set_responses(vec![
+            FauxResponseStep::Factory(Arc::new(|_args| {
+                Box::pin(async { Err("deferred failed".to_owned()) })
+            })),
+            faux_assistant_message("cancelled", FauxMessageOptions::default()).into(),
+        ]);
+
+        let failed_submission = models
+            .complete_simple(&model, &user_context(), deferred_submission())
+            .await;
+        let failed_handle = failed_submission
+            .deferred
+            .clone()
+            .expect("the deferred submission carries a handle");
+        let failed = models
+            .fetch_deferred(&model, &failed_handle, &user_context(), None)
+            .await;
+        assert_eq!(failed.stop_reason, StopReason::Error);
+        assert_eq!(failed.error_message.as_deref(), Some("deferred failed"));
+
+        let cancelled_submission = models
+            .complete_simple(&model, &user_context(), deferred_submission())
+            .await;
+        let handle = cancelled_submission
+            .deferred
+            .clone()
+            .expect("the deferred submission carries a handle");
+        models
+            .cancel_deferred(&model, &handle, None)
+            .await
+            .expect("the routed cancel succeeds");
+        let cancelled = faux
+            .state()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .cancelled_deferred
+            .clone();
+        assert_eq!(cancelled, vec![handle.clone()], "the faux recorded it");
+        let poisoned = models
+            .fetch_deferred(&model, &handle, &user_context(), None)
+            .await;
+        assert_eq!(poisoned.stop_reason, StopReason::Error);
+        assert!(
+            poisoned
+                .error_message
+                .as_deref()
+                .unwrap_or_default()
+                .contains("was cancelled"),
+            "{:?}",
+            poisoned.error_message
+        );
+    }
+
+    /// Upstream models.ts:748 (`requireProvider`): an unregistered provider
+    /// rejects with the typed provider error.
+    #[tokio::test]
+    async fn cancel_deferred_reports_the_unknown_provider_error() {
+        let models = create_models(CreateModelsOptions::default());
+        let model = test_model("missing", "model");
+        let handle = deferred_handle("missing", "model", "test-api", "job-1");
+        let error = models
+            .cancel_deferred(&model, &handle, None)
+            .await
+            .expect_err("unknown provider rejected");
+        let models_error = error.downcast_ref::<ModelsError>().expect("typed error");
+        assert!(matches!(models_error.code, ModelsErrorCode::Provider));
+        assert_eq!(models_error.message, "Unknown provider: missing");
+    }
+
+    /// Upstream models.ts:749-751: the capability check runs before auth
+    /// resolution, so a configured-but-incapable provider rejects with the
+    /// upstream literal.
+    #[tokio::test]
+    async fn cancel_deferred_reports_the_missing_capability() {
+        let mut models = create_models(CreateModelsOptions::default());
+        models.set_provider(test_provider("stub", vec![test_model("stub", "model")]));
+        let model = test_model("stub", "model");
+        let handle = deferred_handle("stub", "model", "test-api", "job-1");
+        let error = models
+            .cancel_deferred(&model, &handle, None)
+            .await
+            .expect_err("capability-less provider rejected");
+        let models_error = error.downcast_ref::<ModelsError>().expect("typed error");
+        assert!(matches!(models_error.code, ModelsErrorCode::Provider));
+        assert_eq!(
+            models_error.message,
+            "Provider stub does not support deferred responses"
+        );
+    }
 }
+
+#[cfg(test)]
+mod shared_registry_tests;

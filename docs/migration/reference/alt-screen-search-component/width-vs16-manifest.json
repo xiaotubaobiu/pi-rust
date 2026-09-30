@@ -1,0 +1,21 @@
+{
+  "node": "v25.8.2",
+  "unicode": "17.0",
+  "rustfmt": "rustfmt 1.8.0-stable (e408947bfd 2026-03-25)",
+  "generatorSha256": "567e16a70b593f75b905bccead6d7a0829f8c22caf6c6317874cc7e44791ffa6",
+  "upstreamUtilsSha256": "014e017a0cb45d8f4e07af6e472c282c6dec7c5856a335a3e3beeb6054f385d3",
+  "upstreamComponentSha256": "7d339e83cf0f160847335dc9be0d1f1db2a0945c463c3d636c7b84ceb9665d40",
+  "scannedScalars": 1112064,
+  "acceptedBases": 207,
+  "cases": 1606,
+  "artifacts": {
+    "rgi_emoji_vs16.rs": {
+      "bytes": 2543,
+      "sha256": "ba828b5d7bbbc4a727a0546c5cc87bef2462ac0f47a11d9f57994573b1c6a84b"
+    },
+    "width-vs16-fixtures.json": {
+      "bytes": 448977,
+      "sha256": "c33fcce2982d00c13191424c39fd6f368f78f45d02ab90d3b7ec7ce882c06017"
+    }
+  }
+}

@@ -1003,6 +1003,8 @@ async fn resnapshot_boundary_and_concurrent_publications_do_not_deadlock_or_corr
     // contention (a WatchHandle may only start once, so use a fresh one).
     let seen: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
     let sink = Arc::clone(&seen);
+    let sentinel_delivered = Gate::new();
+    let delivered_for_listener = sentinel_delivered.clone();
     let sentinel_watcher = bus
         .watch(
             TestSnapshot {
@@ -1014,9 +1016,11 @@ async fn resnapshot_boundary_and_concurrent_publications_do_not_deadlock_or_corr
         .unwrap();
     sentinel_watcher.start(move |event, _context| {
         let sink = Arc::clone(&sink);
+        let delivered = delivered_for_listener.clone();
         Box::pin(async move {
             if let TestEvent::QueueUpdate { entry_ids, .. } = &*event {
                 sink.lock().unwrap().push(entry_ids[0].clone());
+                delivered.open();
             }
         })
     });
@@ -1028,7 +1032,12 @@ async fn resnapshot_boundary_and_concurrent_publications_do_not_deadlock_or_corr
         Context::background(),
     )
     .await;
-    settle().await;
+    // emit waits for delivery to the watcher, whose listener has its own
+    // asynchronous tail. A fixed number of yields on this thread is not a
+    // completion barrier for the four-worker runtime under full-suite load.
+    tokio::time::timeout(std::time::Duration::from_secs(8), sentinel_delivered.wait())
+        .await
+        .expect("sentinel watcher delivery must complete");
     assert_eq!(&*seen.lock().unwrap(), &["sentinel".to_string()]);
 }
 

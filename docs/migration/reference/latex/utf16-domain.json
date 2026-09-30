@@ -1,0 +1,281 @@
+{
+  "status": "regression corpus; assert both raw UTF-16 units and terminal UTF-8",
+  "cases": [
+    {
+      "source": "\\frac1😀",
+      "display": true,
+      "expectedUtf16": [
+        49,
+        10,
+        9472,
+        32,
+        56832,
+        10,
+        55357
+      ],
+      "expectedTerminalUtf8": "1\n─ �\n�"
+    },
+    {
+      "source": "\\frac{}😀",
+      "display": true,
+      "expectedUtf16": [
+        10,
+        9472,
+        32,
+        56832,
+        10,
+        55357
+      ],
+      "expectedTerminalUtf8": "\n─ �\n�"
+    },
+    {
+      "source": "\\sqrt😀",
+      "display": false,
+      "expectedUtf16": [
+        8730,
+        40,
+        55357,
+        41,
+        56832
+      ],
+      "expectedTerminalUtf8": "√(�)�"
+    },
+    {
+      "source": "\\sqrt😀",
+      "display": true,
+      "expectedUtf16": [
+        8730,
+        40,
+        55357,
+        41,
+        56832
+      ],
+      "expectedTerminalUtf8": "√(�)�"
+    },
+    {
+      "source": "\\hat😀",
+      "display": false,
+      "expectedUtf16": [
+        55357,
+        770,
+        56832
+      ],
+      "expectedTerminalUtf8": "�̂�"
+    },
+    {
+      "source": "\\hat😀",
+      "display": true,
+      "expectedUtf16": [
+        55357,
+        770,
+        56832
+      ],
+      "expectedTerminalUtf8": "�̂�"
+    },
+    {
+      "source": "\\frac😀x",
+      "display": false,
+      "expectedUtf16": [
+        40,
+        55357,
+        41,
+        47,
+        56832,
+        120
+      ],
+      "expectedTerminalUtf8": "(�)/�x"
+    },
+    {
+      "source": "\\frac😀x",
+      "display": true,
+      "expectedUtf16": [
+        55357,
+        10,
+        9472,
+        32,
+        120,
+        10,
+        56832
+      ],
+      "expectedTerminalUtf8": "�\n─ x\n�"
+    },
+    {
+      "source": "\\boxed😀",
+      "display": false,
+      "expectedUtf16": [
+        91,
+        55357,
+        93,
+        56832
+      ],
+      "expectedTerminalUtf8": "[�]�"
+    },
+    {
+      "source": "\\boxed😀",
+      "display": true,
+      "expectedUtf16": [
+        91,
+        55357,
+        93,
+        56832
+      ],
+      "expectedTerminalUtf8": "[�]�"
+    },
+    {
+      "source": "\\not😀",
+      "display": false,
+      "expectedUtf16": [
+        55357,
+        824,
+        32,
+        56832
+      ],
+      "expectedTerminalUtf8": "�̸ �"
+    },
+    {
+      "source": "\\not😀",
+      "display": true,
+      "expectedUtf16": [
+        55357,
+        824,
+        32,
+        56832
+      ],
+      "expectedTerminalUtf8": "�̸ �"
+    },
+    {
+      "source": "\\pmod😀",
+      "display": false,
+      "expectedUtf16": [
+        40,
+        109,
+        111,
+        100,
+        32,
+        55357,
+        41,
+        56832
+      ],
+      "expectedTerminalUtf8": "(mod �)�"
+    },
+    {
+      "source": "\\pmod😀",
+      "display": true,
+      "expectedUtf16": [
+        40,
+        109,
+        111,
+        100,
+        32,
+        55357,
+        41,
+        56832
+      ],
+      "expectedTerminalUtf8": "(mod �)�"
+    },
+    {
+      "source": "\\binom😀x",
+      "display": false,
+      "expectedUtf16": [
+        40,
+        55357,
+        32,
+        99,
+        104,
+        111,
+        111,
+        115,
+        101,
+        32,
+        56832,
+        41,
+        120
+      ],
+      "expectedTerminalUtf8": "(� choose �)x"
+    },
+    {
+      "source": "\\binom😀x",
+      "display": true,
+      "expectedUtf16": [
+        40,
+        55357,
+        32,
+        99,
+        104,
+        111,
+        111,
+        115,
+        101,
+        32,
+        56832,
+        41,
+        120
+      ],
+      "expectedTerminalUtf8": "(� choose �)x"
+    },
+    {
+      "source": "\\operatorname😀",
+      "display": false,
+      "expectedUtf16": [
+        55357,
+        32,
+        56832
+      ],
+      "expectedTerminalUtf8": "� �"
+    },
+    {
+      "source": "\\operatorname😀",
+      "display": true,
+      "expectedUtf16": [
+        55357,
+        32,
+        56832
+      ],
+      "expectedTerminalUtf8": "� �"
+    },
+    {
+      "source": "\\overset😀x",
+      "display": false,
+      "expectedUtf16": [
+        56832,
+        94,
+        55357,
+        120
+      ],
+      "expectedTerminalUtf8": "�^�x"
+    },
+    {
+      "source": "\\overset😀x",
+      "display": true,
+      "expectedUtf16": [
+        56832,
+        94,
+        55357,
+        120
+      ],
+      "expectedTerminalUtf8": "�^�x"
+    },
+    {
+      "source": "\\underset😀x",
+      "display": false,
+      "expectedUtf16": [
+        56832,
+        95,
+        55357,
+        120
+      ],
+      "expectedTerminalUtf8": "�_�x"
+    },
+    {
+      "source": "\\underset😀x",
+      "display": true,
+      "expectedUtf16": [
+        56832,
+        95,
+        55357,
+        120
+      ],
+      "expectedTerminalUtf8": "�_�x"
+    }
+  ]
+}

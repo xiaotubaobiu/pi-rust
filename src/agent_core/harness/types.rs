@@ -954,7 +954,7 @@ pub struct ShellExecOptions {
     pub inherit_env: Option<bool>,
     /// Timeout in seconds. Implementations return a timeout error when the
     /// command exceeds this duration; `None` means no timeout.
-    pub timeout: Option<u64>,
+    pub timeout: Option<f64>,
     /// Source-side bounded capture. Output is discarded when this and
     /// `on_update` are both absent.
     pub capture: Option<ShellOutputCaptureOptions>,

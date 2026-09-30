@@ -43,6 +43,8 @@ pub(crate) struct Tables {
     /// Ascending per conversation (`memory.ts:28`).
     entries_by_conversation: HashMap<Id, Vec<Entry>>,
     tasks_by_id: HashMap<Id, Task>,
+    /// JS Map iteration is insertion ordered, even for non-monotonic ids.
+    task_order: Vec<Id>,
     inputs_by_id: HashMap<Id, Input>,
     inputs_by_request: HashMap<String, Input>,
     /// Rewindable docs keep their full op history with the seq of each
@@ -219,6 +221,7 @@ impl StagedBatch {
                     tables.entries_by_id.insert(entry.id, entry);
                 }
                 Pending::Task { task } => {
+                    tables.task_order.push(task.id);
                     tables.tasks_by_id.insert(task.id, task);
                 }
                 Pending::TaskPatch { patch } => {
@@ -493,7 +496,8 @@ impl Storage for MemoryStorage {
         Box::pin(async move {
             let tables = self.inner.lock().expect("storage tables");
             let mut out = Vec::new();
-            for task in tables.tasks_by_id.values() {
+            for id in &tables.task_order {
+                let task = tables.tasks_by_id.get(id).expect("task order is indexed");
                 if let Some(conversation_id) = scan.conversation_id {
                     if task.conversation_id != conversation_id {
                         continue;

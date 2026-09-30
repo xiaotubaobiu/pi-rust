@@ -39,7 +39,7 @@ pub struct ShellCaptureOptions {
     pub cwd: Option<String>,
     pub env: Option<BTreeMap<String, String>>,
     pub inherit_env: Option<bool>,
-    pub timeout: Option<u64>,
+    pub timeout: Option<f64>,
     pub on_chunk: Option<Arc<OnChunkFn>>,
     /// Return shell execution failures with captured output instead of as a
     /// failed `Result` (`shell-output.ts:23-24`).

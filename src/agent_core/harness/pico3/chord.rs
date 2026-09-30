@@ -68,7 +68,7 @@ impl PublishedConversationView {
             })
             .transpose()?
             .unwrap_or_default();
-        object.remove("commit");
+        object.shift_remove("commit");
         Ok(PublishedConversationView {
             view: serde_json::from_value(Value::Object(object))?,
             commit_events: events,
@@ -131,7 +131,7 @@ pub fn apply_ops_to_view(root: &mut Value, ops: &[Op]) -> anyhow::Result<()> {
                 };
                 match other {
                     Op::Delete { .. } => {
-                        object.remove(key);
+                        object.shift_remove(key);
                     }
                     Op::Set { value, .. } => {
                         object.insert(key.clone(), value.clone());
@@ -182,3 +182,30 @@ fn resolve_mut<'a>(root: &'a mut Value, path: &[Seg]) -> anyhow::Result<&'a mut 
 
 /// The `JsonObject` re-export for the module surface.
 pub type ChordJsonObject = JsonObject;
+
+#[cfg(test)]
+mod json_order_tests {
+    use super::*;
+
+    #[test]
+    fn json_order_view_delete_preserves_surviving_fields() {
+        let mut root = serde_json::json!({"drop":0,"z":1,"a":2,"nested":{"drop":0,"y":3,"b":4}});
+        let key = |s: &str| Seg::Key(s.to_owned());
+        apply_ops_to_view(
+            &mut root,
+            &[
+                Op::Delete {
+                    path: vec![key("drop")],
+                },
+                Op::Delete {
+                    path: vec![key("nested"), key("drop")],
+                },
+                Op::Delete {
+                    path: vec![key("missing")],
+                },
+            ],
+        )
+        .unwrap();
+        assert_eq!(root.to_string(), r#"{"z":1,"a":2,"nested":{"y":3,"b":4}}"#);
+    }
+}

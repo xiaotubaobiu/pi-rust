@@ -162,14 +162,34 @@ impl Defaults {
     /// Upstream `register` (`session.ts:113-128`): a key declared by more
     /// than one kind is an error.
     pub fn register(&mut self, kind: &Arc<dyn super::types::AnyKind>) {
-        let mut declarations: Vec<(String, String, Value)> = Vec::new();
+        let mut declarations: Vec<(String, String, Option<Value>)> = Vec::new();
         for (doc, declared) in [
             ("rewindable", kind.config().map(|config| &config.rewindable)),
             ("sticky", kind.config().map(|config| &config.sticky)),
         ] {
             if let Some(declared) = declared {
                 for (key, value) in declared {
-                    declarations.push((doc.to_owned(), key.clone(), value.clone()));
+                    declarations.push((doc.to_owned(), key.clone(), Some(value.clone())));
+                }
+            }
+        }
+        // Task 9: upstream declares routed-but-valueless keys as
+        // `key: undefined` (`kinds/generation.ts:80`); the port lists them in
+        // `KindConfig::declared_absent` — same route, no seeded value.
+        for (doc, absent) in [
+            (
+                "rewindable",
+                kind.config()
+                    .map(|config| &config.declared_absent.rewindable),
+            ),
+            (
+                "sticky",
+                kind.config().map(|config| &config.declared_absent.sticky),
+            ),
+        ] {
+            if let Some(absent) = absent {
+                for key in absent {
+                    declarations.push((doc.to_owned(), key.clone(), None));
                 }
             }
         }
@@ -184,6 +204,11 @@ impl Defaults {
         for (doc, key, value) in declarations {
             self.route.insert(key.clone(), doc.clone());
             self.owners.insert(key.clone(), kind.name().to_owned());
+            let Some(value) = value else {
+                // Declared absent: routed, but seeds nothing
+                // (`session.ts:123-127` skips `undefined`).
+                continue;
+            };
             // Upstream skips `undefined`, not null: a declared null default
             // is a value (`session.ts:123-127`).
             let target = if doc == "rewindable" {
@@ -212,7 +237,7 @@ impl Defaults {
                 } else {
                     &mut self.sticky
                 };
-                target.remove(&key);
+                target.shift_remove(&key);
             }
             self.owners.remove(&key);
         }
@@ -262,7 +287,7 @@ impl Defaults {
         let mut base = JsonObject::from_iter([("plugins".to_owned(), Value::Object(Map::new()))]);
         self.fill("rewindable", &mut base);
         let mut over = over.clone();
-        let plugins = over.remove("plugins");
+        let plugins = over.shift_remove("plugins");
         let rest = if preserve_plugins {
             over
         } else {
@@ -294,7 +319,7 @@ impl Defaults {
         self.fill("sticky", &mut base);
         let mut over = over.clone();
         for reserved in ["inbox", "turn", "tasks", "plugins"] {
-            over.remove(reserved);
+            over.shift_remove(reserved);
         }
         let rest = self.validate_seed("sticky", &over)?;
         base.extend(rest);
@@ -434,10 +459,16 @@ struct SessionState {
     fault: Option<String>,
 }
 
+/// The kind registry. Task-9 note (disclosed): upstream `this.kinds` is a
+/// mutable `Map` the harness mutates through `registerTaskKind`
+/// (`harness.ts:427-439`); the port holds it behind a lock so the Session
+/// view/defaults projections see runtime registrations.
+type KindRegistry = Arc<RwLock<HashMap<String, Arc<dyn super::types::AnyKind>>>>;
+
 /// Upstream `Session` (`session.ts:1215-1495`): the line.
 pub struct Session {
     storage: Arc<dyn Storage>,
-    kinds: Arc<HashMap<String, Arc<dyn super::types::AnyKind>>>,
+    kinds: KindRegistry,
     namespaces: Arc<RwLock<HashMap<String, NamespaceRegistration>>>,
     state: Mutex<SessionState>,
     /// The serialized line (upstream `tail`, `session.ts:1219`).
@@ -533,7 +564,7 @@ impl Session {
         drop(owned);
         Ok(Arc::new(Session {
             storage,
-            kinds: Arc::new(kinds),
+            kinds: Arc::new(RwLock::new(kinds)),
             namespaces: Arc::new(RwLock::new(namespaces)),
             state: Mutex::new(SessionState::default()),
             line: tokio::sync::Mutex::new(()),
@@ -550,8 +581,25 @@ impl Session {
     }
 
     /// Upstream `readonly kinds`.
-    pub fn kinds(&self) -> &Arc<HashMap<String, Arc<dyn super::types::AnyKind>>> {
-        &self.kinds
+    pub fn kinds(&self) -> KindRegistry {
+        self.kinds.clone()
+    }
+
+    /// Register a kind at runtime (`harness.ts:431-432` /
+    /// `session.defaults.register(kind)`): the Session keeps the registry
+    /// the view and defaults derive from.
+    pub fn register_kind(&self, kind: Arc<dyn super::types::AnyKind>) -> anyhow::Result<()> {
+        let mut kinds = self.kinds.write().expect("kind registry");
+        if kinds.contains_key(kind.name()) {
+            anyhow::bail!("task kind \"{}\" already registered", kind.name());
+        }
+        kinds.insert(kind.name().to_owned(), kind);
+        Ok(())
+    }
+
+    /// Remove a runtime registration (`harness.ts:434-438`).
+    pub fn unregister_kind(&self, name: &str) {
+        self.kinds.write().expect("kind registry").remove(name);
     }
 
     /// Upstream `readonly namespaces`.
@@ -562,7 +610,7 @@ impl Session {
     /// Upstream `readonly defaults` (`session.ts:1224`), derived from the
     /// registered kinds at construction (`session.ts:1244`).
     pub fn defaults(&self) -> Defaults {
-        Defaults::new(self.kinds.values().cloned())
+        Defaults::new(self.kinds.read().expect("kind registry").values().cloned())
     }
 
     /// Upstream `now` (`session.ts:1222`).
@@ -603,6 +651,30 @@ impl Session {
     /// Upstream `liveTasks` snapshot.
     pub fn live_tasks(&self) -> HashMap<Id, Task> {
         self.state.lock().expect("session state").live_tasks.clone()
+    }
+
+    /// Harness-open population (`harness.ts:345-355`): records and live
+    /// tasks recovered from storage are inserted into the session's
+    /// in-memory indexes. Crate-visible: the harness constructs them before
+    /// any commit runs.
+    pub(crate) fn seed_recovered_state(
+        &self,
+        conversations: Vec<Conversation>,
+        live_tasks: Vec<Task>,
+        owner_tasks: Vec<Task>,
+    ) {
+        let mut state = self.state.lock().expect("session state");
+        for conversation in conversations {
+            state
+                .conversation_records
+                .insert(conversation.id, conversation);
+        }
+        for task in live_tasks {
+            state.live_tasks.insert(task.id, task);
+        }
+        for task in owner_tasks {
+            state.owner_task_cache.insert(task.id, task);
+        }
     }
 
     /// Upstream `conversationRecords` snapshot.
@@ -1022,7 +1094,7 @@ impl Session {
             }
         };
         let mut raw_overrides = spec.rewindable.clone().unwrap_or_default();
-        raw_overrides.remove("plugins");
+        raw_overrides.shift_remove("plugins");
         let defaults = self.defaults();
         let overrides = defaults.validate_seed("rewindable", &raw_overrides)?;
         let rewindable = match inherited {
@@ -1143,6 +1215,12 @@ struct TouchedDoc {
 /// capability-checked per method. Host operations are `pub`; core-only
 /// operations are `pub(crate)` (the upstream capability surface; see the
 /// module docs).
+/// The transaction does not expose its backing Session as an authority escape hatch.
+///
+/// ```compile_fail
+/// use pi_rust::agent_core::harness::pico3::session::Tx;
+/// fn cannot_escalate(tx: &Tx) { let _ = tx.session(); }
+/// ```
 pub struct Tx {
     writes: Vec<Write>,
     touched: HashMap<String, TouchedDoc>,
@@ -1489,7 +1567,7 @@ impl Tx {
     ) -> anyhow::Result<()> {
         self.with_doc(DocRef::Sticky { conversation_id }, |state| {
             if let Some(tasks) = state.get_mut("tasks").and_then(Value::as_object_mut) {
-                tasks.remove(&task_id.to_string());
+                tasks.shift_remove(&task_id.to_string());
             }
             Ok(())
         })
@@ -1825,7 +1903,7 @@ impl Tx {
     fn doc_delete(&mut self, reference: DocRef, key: &str) -> anyhow::Result<()> {
         self.with_doc(reference, |state| {
             if let Some(object) = state.as_object_mut() {
-                object.remove(key);
+                object.shift_remove(key);
             }
             Ok(())
         })
@@ -2003,10 +2081,14 @@ impl Tx {
         let _ = conversation_id;
         if let Invoker::Task { kind, .. } = &self.invoker {
             if let Some(config) = kind.config() {
-                if config.rewindable.contains_key(key) {
+                if config.rewindable.contains_key(key)
+                    || config.declared_absent.rewindable.iter().any(|k| k == key)
+                {
                     return Ok(("rewindable".to_owned(), config.rewindable.get(key).cloned()));
                 }
-                if config.sticky.contains_key(key) {
+                if config.sticky.contains_key(key)
+                    || config.declared_absent.sticky.iter().any(|k| k == key)
+                {
                     return Ok(("sticky".to_owned(), config.sticky.get(key).cloned()));
                 }
             }
@@ -2384,7 +2466,7 @@ impl Tx {
                 },
                 |state| {
                     if let Some(tasks) = state.get_mut("tasks").and_then(Value::as_object_mut) {
-                        tasks.remove(&task.id.to_string());
+                        tasks.shift_remove(&task.id.to_string());
                     }
                     Ok(())
                 },
@@ -2444,7 +2526,14 @@ impl Tx {
                     }
                     _ => {}
                 }
-            } else if self.session.kinds.get(&task.kind).map(|kind| kind.turn()) != Some(true)
+            } else if self
+                .session
+                .kinds
+                .read()
+                .expect("kind registry")
+                .get(&task.kind)
+                .map(|kind: &Arc<dyn super::types::AnyKind>| kind.turn())
+                != Some(true)
                 && task.outcome.is_some()
             {
                 self.changes.events.push((
@@ -2477,7 +2566,13 @@ impl Tx {
         input: Value,
         opts: CreateTaskOptions,
     ) -> anyhow::Result<TaskRef> {
-        let registered = self.session.kinds.get(kind.name()).cloned();
+        let registered = self
+            .session
+            .kinds
+            .read()
+            .expect("kind registry")
+            .get(kind.name())
+            .cloned();
         if registered.as_ref().map(Arc::as_ptr) != Some(Arc::as_ptr(kind)) {
             return Err(forbidden(format!(
                 "createTask: kind \"{}\" is not the registered token",
@@ -2501,7 +2596,10 @@ impl Tx {
         let kind = self
             .session
             .kinds
+            .read()
+            .expect("kind registry")
             .get(&spec.kind)
+            .cloned()
             .ok_or_else(|| anyhow::anyhow!("unknown task kind {}", spec.kind))?;
         let kind_is_turn = kind.turn();
         if is_core_kind(&spec.kind) && !self.core() {
@@ -2671,7 +2769,7 @@ impl Tx {
             None => None,
         };
         let mut raw_overrides = spec.rewindable.clone().unwrap_or_default();
-        raw_overrides.remove("plugins");
+        raw_overrides.shift_remove("plugins");
         let defaults = self.session.defaults();
         let overrides = defaults.validate_seed("rewindable", &raw_overrides)?;
         let inherited_plugins = inherited
@@ -2819,6 +2917,8 @@ impl Tx {
         let is_turn = |task: &Task| -> bool {
             self.session
                 .kinds
+                .read()
+                .expect("kind registry")
                 .get(&task.kind)
                 .map(|kind| kind.turn())
                 .unwrap_or(false)
@@ -3319,8 +3419,14 @@ impl Tx {
     }
 
     /// The registered kind registry (upstream `readonly kinds`).
-    pub fn kind_registry(&self) -> Arc<HashMap<String, Arc<dyn super::types::AnyKind>>> {
+    pub fn kind_registry(&self) -> crate::agent_core::harness::pico3::session::KindRegistry {
         self.session.kinds().clone()
+    }
+
+    /// The session behind this transaction (the kinds read the clock
+    /// through it). Not a public escape hatch from an ordinary task Tx.
+    pub(crate) fn session(&self) -> &Arc<Session> {
+        &self.session
     }
 }
 
@@ -3482,5 +3588,41 @@ impl PluginsView<'_> {
             slice.insert(key, value);
             Ok(())
         })
+    }
+}
+
+#[cfg(test)]
+mod json_order_tests {
+    use super::*;
+
+    #[test]
+    fn json_order_rewindable_defaults_preserve_override_rest() {
+        let defaults = Defaults::default();
+        let over = serde_json::json!({"plugins":{"p":1},"z":2,"a":3,"b":4});
+        let before = over.to_string();
+        let next = defaults
+            .fresh_rewindable(over.as_object().unwrap(), true)
+            .unwrap();
+        assert_eq!(
+            Value::Object(next).to_string(),
+            r#"{"plugins":{"p":1},"z":2,"a":3,"b":4}"#
+        );
+        assert_eq!(over.to_string(), before);
+    }
+
+    #[test]
+    fn json_order_sticky_defaults_strip_reserved_keys_without_reordering() {
+        let mut defaults = Defaults::default();
+        for key in ["z", "a", "b"] {
+            defaults.route.insert(key.to_owned(), "sticky".to_owned());
+        }
+        let over = serde_json::json!({"inbox":[],"z":1,"plugins":{"x":1},"a":2,"turn":{},"tasks":{},"b":3});
+        let before = over.to_string();
+        let next = defaults.fresh_sticky(over.as_object().unwrap()).unwrap();
+        assert_eq!(
+            Value::Object(next).to_string(),
+            r#"{"inbox":[],"turn":{"tools":[]},"tasks":{},"plugins":{},"z":1,"a":2,"b":3}"#
+        );
+        assert_eq!(over.to_string(), before);
     }
 }

@@ -793,8 +793,8 @@ fn request_body_without_input(body: &Value) -> Value {
     match body {
         Value::Object(map) => {
             let mut map = map.clone();
-            map.remove("input");
-            map.remove("previous_response_id");
+            map.shift_remove("input");
+            map.shift_remove("previous_response_id");
             Value::Object(map)
         }
         other => other.clone(),
@@ -802,9 +802,10 @@ fn request_body_without_input(body: &Value) -> Value {
 }
 
 /// Upstream `responseInputsEqual` (lines 1404-1406): JSON-string equality.
-/// Both sides are port-generated values, so the deterministic (sorted-key)
-/// serde serialization preserves the semantics; upstream's JS object key
-/// insertion order only mattered for hand-built literals.
+/// Arbitrary nested request/response JSON retains insertion order via
+/// `serde_json`'s `preserve_order` feature. Do not replace this with `Value`
+/// equality or sorted JSON: upstream treats reordered object fields as a
+/// different continuation prefix (including tool arguments and metadata).
 fn response_inputs_equal(a: &Value, b: &Value) -> bool {
     let empty = Value::Array(Vec::new());
     let a = if a.is_null() { &empty } else { a };
@@ -1295,4 +1296,63 @@ fn websocket_close_error(code: Option<u16>, reason: Option<String>) -> CodexStre
             .trim()
             .to_string(),
     )
+}
+
+#[cfg(test)]
+mod json_order_tests {
+    use super::*;
+
+    #[test]
+    fn json_order_request_rest_keeps_survivors_and_does_not_mutate_input() {
+        for raw in [
+            r#"{"input":[],"model":"m","temperature":0.2,"z":{"q":1,"a":2},"previous_response_id":"x"}"#,
+            r#"{"model":"m","previous_response_id":"y","temperature":0.2,"input":[1],"z":{"q":1,"a":2}}"#,
+            r#"{"model":"m","temperature":0.2,"z":{"q":1,"a":2},"input":[]}"#,
+        ] {
+            let value: Value = serde_json::from_str(raw).unwrap();
+            assert_eq!(
+                request_body_without_input(&value).to_string(),
+                r#"{"model":"m","temperature":0.2,"z":{"q":1,"a":2}}"#
+            );
+            assert_eq!(value.to_string(), raw);
+        }
+    }
+
+    #[test]
+    fn json_order_websocket_continuation_uses_ordered_bytes_not_value_equality() {
+        let last: Value = serde_json::from_str(
+            r#"{"input":[{"role":"user","content":"A"}],"model":"m","temperature":0.2,"z":1}"#,
+        )
+        .unwrap();
+        let current: Value = serde_json::from_str(r#"{"model":"m","input":[{"role":"user","content":"A"},{"role":"assistant","content":"ok"},{"role":"user","content":"B"}],"temperature":0.2,"z":1,"previous_response_id":"x"}"#).unwrap();
+        let continuation = ContinuationState {
+            last_request_body: last,
+            last_response_id: "r".into(),
+            last_response_items: vec![json!({"role":"assistant","content":"ok"})],
+        };
+        assert_eq!(
+            get_cached_websocket_input_delta(&current, &continuation)
+                .unwrap()
+                .to_string(),
+            r#"[{"role":"user","content":"B"}]"#
+        );
+        let mut changed = current.clone();
+        changed["input"][0] = json!({"content":"A","role":"user"});
+        assert_eq!(
+            changed["input"], current["input"],
+            "Value equality is intentionally order-insensitive"
+        );
+        assert!(get_cached_websocket_input_delta(&changed, &continuation).is_none());
+        let reordered = json!({"temperature":0.2,"model":"m","z":1,"input":current["input"]});
+        assert!(get_cached_websocket_input_delta(&reordered, &continuation).is_none());
+        assert!(!response_inputs_equal(
+            &json!([{"z":1,"a":2}]),
+            &json!([{"a":2,"z":1}])
+        ));
+        assert!(!request_bodies_match_except_input(
+            &json!({"model":"m","z":{"q":1,"a":2}}),
+            &json!({"model":"m","z":{"a":2,"q":1}})
+        ));
+        assert!(response_inputs_equal(&Value::Null, &json!([])));
+    }
 }

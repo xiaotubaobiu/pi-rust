@@ -27,6 +27,7 @@
 //!   argument type before the compaction task ports; the compaction module
 //!   will re-export it.
 
+pub mod agent_harness;
 pub mod compaction;
 pub mod config;
 pub mod context;
@@ -38,8 +39,11 @@ pub mod messages;
 pub mod pico3;
 pub mod prompt_templates;
 pub mod result;
+pub mod runtime;
 pub mod session;
 pub mod skills;
+pub mod telemetry;
+pub mod tools;
 pub mod types;
 pub mod utils;
 

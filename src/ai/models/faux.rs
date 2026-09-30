@@ -20,15 +20,21 @@
 //!   `AbortSignal`): a pre-aborted stream settles with the
 //!   `createAbortedMessage` error event before `start`, and a cancellation
 //!   between paced chunks (or before a block starts) settles the same way
-//!   (upstream `streamWithDeltas`'s `signal?.aborted` checks). `fetch`/
-//!   `onResponse` are not ported.
+//!   (upstream `streamWithDeltas`'s `signal?.aborted` checks). Stream
+//!   `onResponse` now reports the synthetic 200 response; injectable `fetch`
+//!   and callbacks on the separate deferred handle remain unported.
 //! - `fetchDeferred`/`cancelDeferred` live on the [`FauxCore`] handle (and
-//!   the [`FauxProviderHandle`]), not on the [`ApiImpl`] trait — the M2b
-//!   trait dropped the deferred-response surface. The bookkeeping
-//!   (`pendingFetches`, cancellation flags, final-message memoization) is
-//!   ported faithfully and joins the routing surface when the deferred
-//!   surface does; upstream's `fetchOptions.signal` has no port input there
-//!   yet, so deferred fetches run unabortable.
+//!   the [`FauxProviderHandle`]), not on the [`ApiImpl`] trait body's
+//!   required methods — the M2b trait kept the stream surface only.
+//!   [`FauxApi::stream_deferred`] bridges the routing-side
+//!   `Models::stream_deferred` dispatch onto [`FauxCore::fetch_deferred`]
+//!   (reporting the upstream synthetic 200 through
+//!   `options.callbacks.on_response`); `FauxApi::cancel_deferred` bridges
+//!   `Models::cancel_deferred` onto [`FauxCore::cancel_deferred`] the same
+//!   way (the capability probe answers `true`, faux.ts:695). The
+//!   bookkeeping (`pendingFetches`, cancellation flags, final-message
+//!   memoization) is ported faithfully; upstream's `fetchOptions.signal`
+//!   has no port input there yet, so deferred fetches run unabortable.
 
 use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, Mutex};
@@ -44,7 +50,7 @@ use crate::ai::types::events::{AssistantMessageEvent, ErrorReason, SuccessReason
 use crate::ai::types::message::{
     AssistantBlock, AssistantMessage, Message, StringOrBlocks, TextOrImageBlock,
 };
-use crate::ai::types::options::{DeferredHandle, SimpleStreamOptions};
+use crate::ai::types::options::{DeferredFlag, DeferredHandle, SimpleStreamOptions};
 use crate::ai::types::primitives::CacheRetention;
 use crate::ai::types::primitives::{ModelCost, StopReason, Usage, UsageCost};
 use crate::ai::types::{Model, ModelInput};
@@ -463,6 +469,25 @@ impl FauxCore {
             let signal = options
                 .as_ref()
                 .and_then(|options| options.stream.signal.clone());
+            // Upstream faux.ts:510: synthetic HTTP metadata precedes even
+            // the exhausted-response error. Faux has no onPayload boundary.
+            if let Some(options) = &options {
+                if let Err(error) = options
+                    .stream
+                    .callbacks
+                    .response(
+                        crate::ai::types::request_callbacks::ProviderResponse {
+                            status: 200,
+                            headers: Default::default(),
+                        },
+                        &model,
+                    )
+                    .await
+                {
+                    report_error(&tx, error.to_string(), &core, &model).await;
+                    return;
+                }
+            }
             let Some(step) = step else {
                 // Upstream faux.ts:511-521: exhausted queue settles the
                 // stream with an error message (usage-estimated).
@@ -486,11 +511,19 @@ impl FauxCore {
                 return;
             };
 
-            if options
+            // Upstream `if (options?.deferred)` (faux.ts:524): a TRUTHY
+            // `deferred` option submits for deferred resolution. `false`
+            // (and absent) is an ordinary request — the former existence
+            // check treated `Some(false)` as deferred, diverging from the
+            // JS truthiness semantics (structural-slice report).
+            let deferred_requested = options
                 .as_ref()
                 .and_then(|options| options.deferred.as_ref())
-                .is_some()
-            {
+                .is_some_and(|flag| match flag {
+                    DeferredFlag::Bool(value) => *value,
+                    DeferredFlag::Object { .. } => true,
+                });
+            if deferred_requested {
                 // Deferred request (faux.ts:524-550): register the entry and
                 // stream the handle-carrying deferred message.
                 let handle = DeferredHandle {
@@ -573,7 +606,7 @@ impl FauxCore {
                 Resolve(
                     Box<FauxResponseStep>,
                     TranscriptContext,
-                    Option<SimpleStreamOptions>,
+                    Box<Option<SimpleStreamOptions>>,
                     Box<Model>,
                 ),
                 Fail(String),
@@ -604,7 +637,7 @@ impl FauxCore {
                                 None => Outcome::Resolve(
                                     Box::new(entry.step.clone()),
                                     entry.context.clone(),
-                                    entry.options.clone(),
+                                    Box::new(entry.options.clone()),
                                     Box::new(entry.model.clone()),
                                 ),
                             }
@@ -626,7 +659,7 @@ impl FauxCore {
                     // Submission options drop the deferred flag
                     // (faux.ts:602-608); a thrown factory memoizes the error
                     // message as the final response (faux.ts:609-614).
-                    let mut submission = options.clone();
+                    let mut submission = *options;
                     if let Some(options) = submission.as_mut() {
                         options.deferred = None;
                     }
@@ -1294,6 +1327,10 @@ const EVENT_CHANNEL_CAPACITY: usize = 64;
 struct FauxApi(FauxCore);
 
 impl ApiImpl for FauxApi {
+    fn supports_request_callbacks(&self) -> bool {
+        true
+    }
+
     fn stream(
         &self,
         _cfg: &ProviderConfig,
@@ -1311,6 +1348,46 @@ impl ApiImpl for FauxApi {
         )
     }
 
+    /// Upstream `provider.fetchDeferred` (faux.ts:567-631) joined to the
+    /// routing surface: `Models::stream_deferred` dispatches here and the
+    /// call delegates to [`FauxCore::fetch_deferred`]. The upstream
+    /// `fetchOptions.onResponse` synthetic 200 (faux.ts:581) is reported
+    /// through `options.callbacks.on_response` before any event flows, so
+    /// response metadata is captured first. `signal`/`onPayload` remain
+    /// unported (see the module docs: deferred fetches run unabortable and
+    /// faux builds no request payload).
+    fn stream_deferred(
+        &self,
+        _cfg: &ProviderConfig,
+        model: &Model,
+        handle: &DeferredHandle,
+        options: &crate::ai::types::options::StreamOptions,
+    ) -> tokio::sync::mpsc::Receiver<AssistantMessageEvent> {
+        let inner = self.0.fetch_deferred(model, handle);
+        let (tx, rx) = tokio::sync::mpsc::channel(EVENT_CHANNEL_CAPACITY);
+        let on_response = options.callbacks.on_response.clone();
+        let model = model.clone();
+        tokio::spawn(async move {
+            if let Some(on_response) = on_response {
+                let _ = on_response(
+                    crate::ai::types::request_callbacks::ProviderResponse {
+                        status: 200,
+                        headers: Default::default(),
+                    },
+                    model,
+                )
+                .await;
+            }
+            let mut inner = inner;
+            while let Some(event) = inner.recv().await {
+                if tx.send(event).await.is_err() {
+                    break;
+                }
+            }
+        });
+        rx
+    }
+
     fn stream_simple(
         &self,
         _cfg: &ProviderConfig,
@@ -1319,6 +1396,29 @@ impl ApiImpl for FauxApi {
         options: &SimpleStreamOptions,
     ) -> tokio::sync::mpsc::Receiver<AssistantMessageEvent> {
         self.0.stream_internal(model, ctx, Some(options.clone()))
+    }
+
+    /// Upstream `faux.ts:695` attaches `cancelDeferred: core.cancelDeferred`
+    /// to the provider's api object: the faux provider carries the deferred
+    /// cancellation capability, so the probe answers true and the routed
+    /// dispatch lands on [`FauxCore::cancel_deferred`].
+    fn supports_deferred_cancel(&self) -> bool {
+        true
+    }
+
+    fn cancel_deferred(
+        &self,
+        _cfg: &ProviderConfig,
+        _model: &Model,
+        handle: &DeferredHandle,
+        _options: &crate::ai::types::options::StreamOptions,
+    ) -> futures::future::BoxFuture<'static, Result<(), String>> {
+        let core = self.0.clone();
+        let handle = handle.clone();
+        Box::pin(async move {
+            core.cancel_deferred(&handle).await;
+            Ok(())
+        })
     }
 }
 
@@ -2029,6 +2129,39 @@ mod tests {
         };
         assert_eq!(error.stop_reason, StopReason::Error);
         assert_eq!(error.error_message.as_deref(), Some("boom"));
+    }
+
+    /// Upstream checks the `deferred` option for TRUTHINESS
+    /// (`if (options?.deferred)`, faux.ts:524): `false` is an ordinary
+    /// request — the message resolves immediately without a deferred handle.
+    #[tokio::test]
+    async fn deferred_false_is_an_ordinary_request() {
+        let handle = faux();
+        handle.set_responses(vec![faux_assistant_message(
+            "final",
+            FauxMessageOptions::default(),
+        )
+        .into()]);
+        let deferred_options = SimpleStreamOptions {
+            deferred: Some(DeferredFlag::Bool(false)),
+            ..SimpleStreamOptions::default()
+        };
+        let events = drain(stream_simple(
+            &handle,
+            &transcript("hi"),
+            Some(deferred_options),
+        ))
+        .await;
+        // An ordinary request streams the full text choreography and
+        // resolves immediately — no deferred handle, no deferred bookkeeping.
+        assert_eq!(
+            event_names(&events),
+            ["start", "text_start", "text_delta", "text_end", "done"]
+        );
+        let message = done_message(&events);
+        assert_eq!(message.stop_reason, StopReason::Stop);
+        assert!(message.deferred.is_none());
+        assert_eq!(handle.state().lock().unwrap().deferred_fetch_count, 0);
     }
 
     /// Deferred requests: the stream settles with the handle, pending

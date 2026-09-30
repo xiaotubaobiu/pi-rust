@@ -972,7 +972,7 @@ async fn returns_timeout_errors_for_commands_exceeding_the_timeout() {
     let (_dir, root) = temp_root();
     let env = env_at(&root);
     let options = ShellExecOptions {
-        timeout: Some(1),
+        timeout: Some(1.0),
         ..Default::default()
     };
     let result = env.exec("sleep 5", Some(&options), ctx()).await;

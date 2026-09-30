@@ -1,0 +1,52 @@
+{
+  "upstreamHead": "5901446094988aa5cd8e11efdaa131c3949106f1",
+  "node": "v25.8.2",
+  "sources": {
+    "components/stack.ts": "93208d326fa43431b930eaa3250a1e19747063d696e97ec2f002f5feaa54fc18",
+    "components/h-stack.ts": "6622e1e2605e500a420c3cdf3ffcae0548b2d86ec496a0f6bf1dd5c95aeb0b6b",
+    "components/v-stack.ts": "0f36c9417bfffe5f6b9cc5fd40d420390cf9bebae70a073a409ac5f931f1f813",
+    "layout-node.ts": "31dd68c9edafdc4f882bbb6c16f8deb1c514111020b647f0037b34d6b8c70a85",
+    "layout.ts": "7530a8eaa30f44fef82e8b7020b5068ba89d34884463c6cb526073b20fcdeef0",
+    "components/scroll-view.ts": "76dfd9f8a88cabc064f0652b83f16a945fbc988c9fe7c0423a4cd796907ef77d",
+    "components/text.ts": "3042e09dd8dcb870c23506e6fafb2dfcc095e7e375adad2fb62e447da17e5e3b",
+    "tui.ts": "2ca47c56f4a4f24b8c6a4c9c9f2a06004bfc312d9dbcd0ac1921a2cae32bc675",
+    "keys.ts": "b972facce4233a4623239fc38029e28cae15d0fb326558c0c09dc02cf4345fa7",
+    "terminal-colors.ts": "2aa702f6e59dc51d78be64516f40c46981780a00d1f0900fb5504ad9da67b9e6",
+    "terminal-image.ts": "f29572354977fd4ef4cc76878d31cce3cb5c45cebdfc9b5c49b50ad9cfb3171f",
+    "utils.ts": "014e017a0cb45d8f4e07af6e472c282c6dec7c5856a335a3e3beeb6054f385d3",
+    "tui-alt-screen.ts": "472be375227c254d30e2f2d3d24d68a841e5b8f4b3e7d1df58e78154aa0c3055",
+    "alt-screen-search.ts": "7d339e83cf0f160847335dc9be0d1f1db2a0945c463c3d636c7b84ceb9665d40",
+    "components/alt-screen-flash.ts": "6d341546b59958e93e4d33fdc1766b10d13c98a779031e2c01b827f0a4c6e30c",
+    "keybindings.ts": "eea5e3fe258ad50337595bb5320955a6d97bac0c8f6c0a838f988d75079bcf38",
+    "components/input.ts": "416ceeb28f10b7146f6a284f276589797763b604d439574fbdc2a3ca52c00234",
+    "kill-ring.ts": "d829ae816560b12d2800a38db9f7278f76d9ef43d0e53e004a86add9b56c559a",
+    "undo-stack.ts": "1373c1e0a1e2c58ac90c93d32a9e5c1226d7f53314c77dd3d0f8ec349d2b3627",
+    "word-navigation.ts": "b73e915a524926ac8881731e89026b0bc7b5b0bd465de67257af81a420465c7f",
+    "components/select-list.ts": "0fc369801e745eff15567d72829bf67887f5efec8bc6816aaf1ee65338618373",
+    "components/mouse-region.ts": "9dbcac616e8f8271b522b374bae29ab0b829d3771ce0ed228d6ae3da1c2be759"
+  },
+  "referenceTests": {
+    "tui-alt-screen.test.ts": "9be15e6cf3896ffd872449792d051044288dab3b3634f4b4806e5d5c04128703",
+    "mouse-components.test.ts": "2f24456f3d3a0cda99e6018e055f9522b64fa51d37315bd97b0cb6d2cb2a6e63",
+    "virtual-terminal.ts": "5c9ff8da3b5afb888448bfd6eb4dede89d301db1dc1fd3ca7e32d8149f10085a"
+  },
+  "nativeTestsExecuted": false,
+  "dependencies": {
+    "get-east-asian-width": "1.6.0"
+  },
+  "generatorSha256": "d1f9faee5865928a0a2e78c277619eba90ffbc801e98602b74ecf830c49ecbc5",
+  "artifacts": {
+    "fixtures.json": {
+      "bytes": 905040,
+      "sha256": "62ee97d24e8c9be1d376cab4059bb63f342f5b9dc744c8801d485c1ebb3f0024",
+      "counts": {
+        "gestures": 70,
+        "routes": 66,
+        "clicks": 8,
+        "retained": 9,
+        "lifecycle": 4
+      }
+    }
+  },
+  "scope": "Actual complete TuiAltScreen.handleMouseEvent/applyMouseDispatchResult/target dispatch/click counter, real Container/layout routing. Leaf responses and host search/overlay/focus/scrollbar/paste/selection are explicit controlled seams. Lifecycle compares only component-gesture state after actual focus-out/before-start/before-stop. No full host/OS integration or native alt-screen test execution."
+}

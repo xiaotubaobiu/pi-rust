@@ -9,13 +9,12 @@
 //! fields are string-keyed JSON objects (`BTreeMap` here for deterministic
 //! key order, `serde_json::Value` for open-ended values).
 //!
-//! Upstream options intentionally absent in M2a (all land with the M2b stream
-//! signatures):
+//! Process-local request callbacks now live in `RequestCallbacks` and are
+//! skipped by serde. Models capability-checks adapters rather than silently
+//! discarding callbacks. Remaining omitted options:
 //! - `telemetryContext` (types.ts:127): telemetry is not ported in M2a.
 //! - `fetch` (types.ts:134): Rust uses `reqwest` as the HTTP client; there is
 //!   no injectable fetch function. Revisit only if an adapter needs one.
-//! - `onPayload` / `onResponse` (types.ts:145, 184): callbacks require the
-//!   M2b stream signature plumbing; deferred there.
 //!
 //! Upstream's `ProviderStreamOptions` (types.ts:225, an index-signature
 //! intersection) has no runtime existence and no Rust equivalent in M2a;
@@ -40,12 +39,15 @@ pub type ProviderHeaders = BTreeMap<String, Option<String>>;
 
 /// Upstream `ProviderRequestOptions` (types.ts:124-177): authentication, HTTP
 /// transport tuning, and provider-scoped overrides shared by all provider
-/// requests. The four upstream fields absent here (`telemetryContext`,
-/// `fetch`, `onPayload`, `onResponse`) are documented on the module — all
-/// land with the M2b stream signatures.
+/// requests. `onPayload`/`onResponse` are process-local `callbacks`, skipped
+/// by serde. The remaining `telemetryContext`/`fetch` omissions and adapter
+/// capability boundaries are documented on the module.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProviderRequestOptions {
+    /// Process-local lifecycle callbacks; never part of the wire representation.
+    #[serde(skip)]
+    pub callbacks: super::request_callbacks::RequestCallbacks,
     /// Request cancellation (types.ts:125, upstream `AbortSignal`). The port
     /// carries a [`CancellationToken`]; `None` (upstream `undefined`) runs
     /// unabortable. Transport-only: never serialized or deserialized, so no
@@ -86,6 +88,9 @@ pub struct ProviderRequestOptions {
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StreamOptions {
+    /// Process-local lifecycle callbacks; never part of the wire representation.
+    #[serde(skip)]
+    pub callbacks: super::request_callbacks::RequestCallbacks,
     // ---- Upstream `ProviderRequestOptions` (types.ts:124-177). ----
     /// Request cancellation (types.ts:125, upstream `AbortSignal`): aborts
     /// the request setup (before `Start`, not retried) and the mid-stream
@@ -229,7 +234,11 @@ pub struct DeferredHandle {
     pub poll_after_ms: Option<u64>,
     /// Provider conversion data required to reconstruct the final assistant
     /// message.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "crate::serde_support::present_json"
+    )]
     pub data: Option<serde_json::Value>,
 }
 

@@ -795,10 +795,27 @@ pub trait Storage: Send + Sync {
 /// order via `serde_json`'s preserve-order feature when present, otherwise
 /// sorted (disclosed: the port's disjointness/duplicate checks do not depend
 /// on order).
+///
+/// Task-9 note (disclosed): upstream declares keys with an `undefined`
+/// fallback (generation's `model: undefined as ModelRef | undefined`) —
+/// routed, validated, but seeding no value. Rust's `Value` has no
+/// `undefined`, and Task 8 ruled a declared `null` IS a value, so
+/// declared-absent keys are listed in [`KindConfig::declared_absent`]
+/// instead: they land in the route (and validate) without seeding a default.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct KindConfig {
     pub rewindable: JsonObject,
     pub sticky: JsonObject,
+    /// Keys routed without a default value (upstream `x: undefined`
+    /// declarations).
+    pub declared_absent: DeclaredAbsent,
+}
+
+/// The per-document declared-absent key lists ([`KindConfig`]).
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct DeclaredAbsent {
+    pub rewindable: Vec<String>,
+    pub sticky: Vec<String>,
 }
 
 /// Upstream `AnyKind` (`types.ts:503-514`), erased to the metadata surface

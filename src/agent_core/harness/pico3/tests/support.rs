@@ -48,6 +48,7 @@ pub fn stub_kinds() -> HashMap<String, Arc<dyn crate::agent_core::harness::pico3
         .as_object()
         .cloned()
         .unwrap(),
+        ..Default::default()
     });
     let kinds: Vec<Arc<dyn crate::agent_core::harness::pico3::types::AnyKind>> = vec![
         Arc::new(BasicKind::new("pi.generation").turn(true)),
@@ -339,6 +340,8 @@ impl Env {
         let kind = self
             .session
             .kinds()
+            .read()
+            .expect("kind registry")
             .get("pi.plugin")
             .cloned()
             .expect("pi.plugin stub kind");
@@ -366,6 +369,8 @@ impl Env {
         let kind = self
             .session
             .kinds()
+            .read()
+            .expect("kind registry")
             .get("pi.plugin")
             .cloned()
             .expect("registered");
@@ -443,6 +448,8 @@ impl Env {
 pub fn plugin_kind(env: &Env) -> Arc<dyn crate::agent_core::harness::pico3::types::AnyKind> {
     env.session
         .kinds()
+        .read()
+        .expect("kind registry")
         .get("pi.plugin")
         .cloned()
         .expect("registered")
@@ -452,6 +459,8 @@ pub fn plugin_kind(env: &Env) -> Arc<dyn crate::agent_core::harness::pico3::type
 pub fn generation_kind(env: &Env) -> Arc<dyn crate::agent_core::harness::pico3::types::AnyKind> {
     env.session
         .kinds()
+        .read()
+        .expect("kind registry")
         .get("pi.generation")
         .cloned()
         .expect("registered")

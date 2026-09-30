@@ -485,9 +485,9 @@ fn file_content_and_shell_options_construct() {
     assert!(matches!(content, FileContent::Binary(_)));
     let options = ShellExecOptions {
         cwd: Some("/tmp".into()),
-        timeout: Some(10),
+        timeout: Some(10.0),
         ..ShellExecOptions::default()
     };
-    assert_eq!(options.timeout, Some(10));
-    assert!(format!("{options:?}").contains("timeout: Some(10)"));
+    assert_eq!(options.timeout, Some(10.0));
+    assert!(format!("{options:?}").contains("timeout: Some(10.0)"));
 }

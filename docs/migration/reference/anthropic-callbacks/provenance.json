@@ -1,0 +1,10 @@
+{
+  "source": "https://registry.npmjs.org/@anthropic-ai/sdk/-/sdk-0.124.0.tgz",
+  "integrity": "sha512-cN5O8i9UVxHeOQAzj/XjshWXG8KiibJDw9OGpH2Z/eR3n/RBxdoLxDJOcfqAJWvjaMDFfHTBADU04hWRJVkDyA==",
+  "sha256": {
+    "package/src/resources/beta/messages/messages.ts": "e06cb53cf85b4f8bb7d071b86ef86a7ee8a735b78c702f8fa636750d2973492a",
+    "package/src/internal/headers.ts": "2cc330e337adaebe7f9cd9611f658feba7a18f85fbc68ff05ce1f2e10cdd4591",
+    "package/src/client.ts": "f10ce5731305a469b95177a1f44d684f95ea2a2bf503b50a33fd13b6dc007170",
+    "package/LICENSE": "8bf96984ff8bcfae7e48cae76a529e8a25317ba9e02abf7fd3cc64fdf95657a6"
+  }
+}

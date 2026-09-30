@@ -37,6 +37,23 @@ mod support;
 mod oracle_chord;
 mod oracle_kinds;
 mod oracle_membrane;
+mod oracle_runtime_lifecycle;
+mod oracle_runtime_queue;
+mod oracle_runtime_turn;
+mod oracle_runtime_waiters;
 mod oracle_session;
 mod oracle_storage;
 mod oracle_view;
+#[path = "tests/support_runtime.rs"]
+mod support_runtime;
+
+mod oracle_runtime_hooks;
+
+mod oracle_runtime_authority;
+mod oracle_runtime_recovery;
+mod oracle_runtime_tool_bounds;
+
+mod oracle_runtime_process;
+mod support_process;
+
+mod oracle_runtime_scheduler;

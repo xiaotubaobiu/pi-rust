@@ -334,5 +334,22 @@ fn truncate_string_to_bytes_from_end(text: &str, max_bytes: u64) -> String {
     text[start..].to_string()
 }
 
+/// Upstream truncate.ts formatSize: display bytes with one fractional digit.
+pub fn format_size(bytes: u64) -> String {
+    if bytes < 1024 {
+        format!("{bytes}B")
+    } else if bytes < 1024 * 1024 {
+        {
+            let tenths = (bytes as f64 / 1024.0 * 10.0).round() as u64;
+            format!("{}.{:01}KB", tenths / 10, tenths % 10)
+        }
+    } else {
+        {
+            let tenths = (bytes as f64 / (1024.0 * 1024.0) * 10.0).round() as u64;
+            format!("{}.{:01}MB", tenths / 10, tenths % 10)
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests;

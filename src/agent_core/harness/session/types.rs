@@ -45,6 +45,8 @@ use std::sync::Arc;
 use futures::future::BoxFuture;
 use serde::{Deserialize, Serialize};
 
+use crate::serde_support::present_json;
+
 use super::values::{ListElement, ListReadOptions, StoredValue, ValueAddress};
 use crate::agent_core::chord_support::Context;
 use crate::agent_core::types::AgentMessage;
@@ -112,7 +114,11 @@ pub enum Entry {
         summary: String,
         retained_tail: Vec<AgentMessage>,
         tokens_before: i64,
-        #[serde(default, skip_serializing_if = "Option::is_none")]
+        #[serde(
+            default,
+            skip_serializing_if = "Option::is_none",
+            deserialize_with = "present_json"
+        )]
         details: Option<serde_json::Value>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         usage: Option<Usage>,
@@ -127,7 +133,11 @@ pub enum Entry {
         /// Upstream `fromId: string | null` — always present on the wire.
         from_id: Option<String>,
         summary: String,
-        #[serde(default, skip_serializing_if = "Option::is_none")]
+        #[serde(
+            default,
+            skip_serializing_if = "Option::is_none",
+            deserialize_with = "present_json"
+        )]
         details: Option<serde_json::Value>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         usage: Option<Usage>,
@@ -140,7 +150,11 @@ pub enum Entry {
         seq: i64,
         timestamp: i64,
         custom_type: String,
-        #[serde(default, skip_serializing_if = "Option::is_none")]
+        #[serde(
+            default,
+            skip_serializing_if = "Option::is_none",
+            deserialize_with = "present_json"
+        )]
         data: Option<serde_json::Value>,
     },
 }
@@ -239,7 +253,11 @@ pub enum NewEntry {
         summary: String,
         retained_tail: Vec<AgentMessage>,
         tokens_before: i64,
-        #[serde(default, skip_serializing_if = "Option::is_none")]
+        #[serde(
+            default,
+            skip_serializing_if = "Option::is_none",
+            deserialize_with = "present_json"
+        )]
         details: Option<serde_json::Value>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         usage: Option<Usage>,
@@ -251,7 +269,11 @@ pub enum NewEntry {
         parent_id: Option<String>,
         from_id: Option<String>,
         summary: String,
-        #[serde(default, skip_serializing_if = "Option::is_none")]
+        #[serde(
+            default,
+            skip_serializing_if = "Option::is_none",
+            deserialize_with = "present_json"
+        )]
         details: Option<serde_json::Value>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         usage: Option<Usage>,
@@ -262,7 +284,11 @@ pub enum NewEntry {
         id: String,
         parent_id: Option<String>,
         custom_type: String,
-        #[serde(default, skip_serializing_if = "Option::is_none")]
+        #[serde(
+            default,
+            skip_serializing_if = "Option::is_none",
+            deserialize_with = "present_json"
+        )]
         data: Option<serde_json::Value>,
     },
 }
@@ -506,7 +532,11 @@ pub struct UsageRow {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub entry_id: Option<String>,
     pub adjustment: bool,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "present_json"
+    )]
     pub details: Option<serde_json::Value>,
 }
 
@@ -519,7 +549,11 @@ pub struct NewUsageRow {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub entry_id: Option<String>,
     pub adjustment: bool,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "present_json"
+    )]
     pub details: Option<serde_json::Value>,
 }
 
@@ -672,7 +706,11 @@ pub enum TerminalStatus {
 pub struct OperationError {
     pub code: String,
     pub message: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "present_json"
+    )]
     pub details: Option<serde_json::Value>,
 }
 
@@ -708,7 +746,11 @@ pub enum PendingEntry {
     },
     Custom {
         custom_type: String,
-        #[serde(default, skip_serializing_if = "Option::is_none")]
+        #[serde(
+            default,
+            skip_serializing_if = "Option::is_none",
+            deserialize_with = "present_json"
+        )]
         payload: Option<serde_json::Value>,
     },
 }

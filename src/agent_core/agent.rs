@@ -26,12 +26,11 @@
 //!   `getFollowUpMessages` hooks with the configurable [`QueueMode`]s.
 //!
 //! Port deviations from the TypeScript source:
-//! - Upstream `streamFn` (plus `getApiKey`, `onPayload`, `onResponse`,
-//!   `transport`) is the port's `Arc<Models>`: provider selection,
-//!   credentials, and retries resolve through the collection, so there is no
-//!   default-streamFn compatibility layer (upstream agent.ts:232-237 and the
-//!   oracle "uses the configured default when a legacy caller omits
-//!   streamFn" do not apply).
+//! - `stream_fn` is an optional typed native async factory; omission retains
+//!   the supplied `Arc<Models>` fallback instead of a process-global default.
+//!   Dynamic `get_api_key`, request callbacks and transport are forwarded.
+//!   Futures are poll-driven rather than eager JS promises; cancellation is
+//!   cooperative through the active run token, including pending factories.
 //! - `continue()` is [`Agent::continue_run`] (`continue` is a Rust keyword).
 //! - `prompt(input, images?)` is [`Agent::prompt`] over [`PromptInput`]
 //!   (with [`PromptInput::with_images`] for the image overload); the
@@ -67,7 +66,8 @@ use crate::ai::types::content::{ImageContent, TextContent};
 use crate::ai::types::message::{
     AssistantBlock, AssistantMessage, Message, StringOrBlocks, TextOrImageBlock, UserMessage,
 };
-use crate::ai::types::primitives::{StopReason, Usage};
+use crate::ai::types::primitives::{StopReason, Transport, Usage};
+use crate::ai::types::request_callbacks::RequestCallbacks;
 use crate::ai::types::tool::Tool;
 
 use super::agent_loop::{
@@ -77,7 +77,7 @@ use super::agent_loop::{
 };
 use super::types::{
     unknown_model, AgentEvent, AgentInitialState, AgentMessage, AgentOptions, AgentState,
-    ThinkingLevel, ToolExecutionMode,
+    GetApiKeyFn, StreamFn, ThinkingLevel, ToolExecutionMode,
 };
 
 /// Re-exported from the loop module per upstream ownership: the queue type
@@ -131,6 +131,14 @@ pub fn default_convert_to_llm(messages: Vec<AgentMessage>) -> BoxFuture<'static,
 /// runs through [`Agent::runtime`].
 #[derive(Clone)]
 pub struct AgentRuntimeOptions {
+    /// Native stream factory; `None` uses this Agent's Models collection.
+    pub stream_fn: Option<Arc<StreamFn>>,
+    /// Dynamic key resolution before each request.
+    pub get_api_key: Option<Arc<GetApiKeyFn>>,
+    /// Process-local payload/response hooks, preserving callback identity.
+    pub callbacks: RequestCallbacks,
+    /// Preferred transport forwarded to every stream call (default `auto`).
+    pub transport: Transport,
     /// Transcript-to-LLM conversion before each provider call (upstream
     /// public `convertToLlm` field).
     pub convert_to_llm: Arc<ConvertToLlmFn>,
@@ -159,6 +167,10 @@ pub struct AgentRuntimeOptions {
 impl std::fmt::Debug for AgentRuntimeOptions {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("AgentRuntimeOptions")
+            .field("stream_fn", &self.stream_fn.is_some())
+            .field("get_api_key", &self.get_api_key.is_some())
+            .field("callbacks", &self.callbacks)
+            .field("transport", &self.transport)
             .field("convert_to_llm", &"Arc<ConvertToLlmFn>")
             .field("transform_context", &self.transform_context.is_some())
             .field("before_tool_call", &self.before_tool_call.is_some())
@@ -296,7 +308,7 @@ fn create_mutable_agent_state(initial: &AgentInitialState) -> AgentState {
 /// synchronously before the event's listeners are awaited.
 fn reduce_state(state: &Mutex<AgentState>, event: &AgentEvent) {
     let mut state = state.lock().unwrap();
-    match event {
+    match event.kind() {
         AgentEvent::MessageStart { message } | AgentEvent::MessageUpdate { message, .. } => {
             state.streaming_message = Some(message.clone());
         }
@@ -322,6 +334,7 @@ fn reduce_state(state: &Mutex<AgentState>, event: &AgentEvent) {
         }
         AgentEvent::AgentStart | AgentEvent::TurnStart | AgentEvent::ToolExecutionUpdate { .. } => {
         }
+        AgentEvent::Preserved(_) => unreachable!("kind() unwraps ingress"),
     }
 }
 
@@ -362,10 +375,15 @@ impl std::fmt::Debug for Agent {
 
 impl Agent {
     /// Upstream `constructor(options)` (agent.ts:231-253). The port's
-    /// request executor is the [`Models`] collection (upstream `streamFn`).
+    /// default executor is the supplied [`Models`] collection; `stream_fn`
+    /// overrides it without requiring a provider in that collection.
     pub fn new(options: AgentOptions, models: Arc<Models>) -> Self {
         let AgentOptions {
             initial_state,
+            stream_fn,
+            get_api_key,
+            callbacks,
+            transport,
             convert_to_llm,
             transform_context,
             before_tool_call,
@@ -392,6 +410,10 @@ impl Agent {
             ))),
             active_run: Mutex::new(None),
             runtime: Mutex::new(AgentRuntimeOptions {
+                stream_fn,
+                get_api_key,
+                callbacks,
+                transport: transport.unwrap_or(Transport::Auto),
                 convert_to_llm: convert_to_llm.unwrap_or_else(|| Arc::new(default_convert_to_llm)),
                 transform_context,
                 before_tool_call,
@@ -809,6 +831,10 @@ impl Agent {
         };
         let runtime = self.runtime.lock().unwrap().clone();
         let mut config = AgentLoopConfig::new(model, Arc::clone(&runtime.convert_to_llm));
+        config.stream_fn = runtime.stream_fn.clone();
+        config.get_api_key = runtime.get_api_key.clone();
+        config.stream_options.stream.callbacks = runtime.callbacks.clone();
+        config.stream_options.stream.transport = Some(runtime.transport);
         config.thinking_level = (thinking_level != ThinkingLevel::Off).then_some(thinking_level);
         config.transform_context = runtime.transform_context.clone();
         config.tool_execution = Some(runtime.tool_execution);
@@ -845,6 +871,10 @@ impl Agent {
 }
 
 #[cfg(test)]
+#[path = "stream_adapter_tests.rs"]
+mod stream_adapter_tests;
+
+#[cfg(test)]
 mod tests {
     use super::*;
     use crate::agent_core::agent_loop::{
@@ -877,12 +907,11 @@ mod tests {
         (Arc::new(models), faux, model)
     }
 
-    /// Upstream tests inject a custom `streamFn`, which the Agent calls
-    /// directly regardless of the state model. The port's stream function is
-    /// the [`Models`] collection and routes by model provider, so tests that
-    /// expect the faux provider to serve the responses must seed the initial
-    /// state with the faux model (the upstream DEFAULT_MODEL default still
-    /// applies for agents that never stream).
+    /// These legacy tests exercise the default [`Models`] stream path, which
+    /// routes by model provider. Seed the faux model so that its provider
+    /// serves the response (the upstream DEFAULT_MODEL still applies for
+    /// agents that never stream). Custom `stream_fn` injection is covered
+    /// separately by the stream adapter tests.
     fn faux_options(model: &crate::ai::types::Model) -> AgentOptions {
         AgentOptions {
             initial_state: AgentInitialState {
@@ -973,6 +1002,7 @@ mod tests {
 
     fn event_name(event: &AgentEvent) -> &'static str {
         match event {
+            AgentEvent::Preserved(_) => event_name(event.kind()),
             AgentEvent::AgentStart => "agent_start",
             AgentEvent::AgentEnd { .. } => "agent_end",
             AgentEvent::TurnStart => "turn_start",
@@ -2549,3 +2579,7 @@ mod tests {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "agent/event_wire_tests.rs"]
+mod event_wire_tests;

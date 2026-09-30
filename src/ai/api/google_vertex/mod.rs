@@ -73,11 +73,15 @@
 //!   the express-key/ADC errors — the inverse of the generative-ai adapter,
 //!   whose key check lives inside streamSimple (lines 309-312) ahead of the
 //!   map resolution. The port mirrors each adapter's own order.
-//! - `options.signal` aborts, `onPayload`/`onResponse`, `fetch` injection
-//!   (upstream throws "Custom fetch is not supported by the Google Vertex
-//!   adapter" — no port surface), and direct-`stream` extension fields have
-//!   no port surface (M2a options omission); the two abort checks and the
-//!   catch block's `"aborted"` branch are unreachable.
+//! - `options.signal` aborts and `fetch` injection (upstream throws "Custom
+//!   fetch is not supported by the Google Vertex adapter" — no port surface),
+//!   and direct-`stream` extension fields have no port surface (M2a options
+//!   omission); the two abort checks and the catch block's `"aborted"` branch
+//!   are unreachable. `onPayload` (google-vertex.ts:105) rides the port's
+//!   process-local `RequestCallbacks`: awaited before the send, `undefined`
+//!   keeps the built params, any other value (including `null`) replaces
+//!   them, and a hook rejection takes the catch path. Upstream has no
+//!   onResponse call site — the response hook is accepted but never invoked.
 //! - The stream chunk `finishReason` handling (raw string preserved, unknown
 //!   values abort with `Unhandled stop reason: {raw}`), the SDK error-chunk
 //!   and HTTP error rendering, surrogate sanitization (no-op in Rust),
@@ -89,6 +93,9 @@
 //! - Upstream `getGoogleBudget` knows only the 2.5-pro and 2.5-flash families
 //!   on Vertex (no flash-lite table — unlike the generative-ai adapter);
 //!   every other id gets the `-1` dynamic-thinking budget.
+
+#[cfg(test)]
+mod callback_tests;
 
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::time::Duration;
@@ -190,6 +197,13 @@ pub(crate) struct GoogleOptions {
 pub struct GoogleVertex;
 
 impl ApiImpl for GoogleVertex {
+    // Upstream wires `options?.onPayload?.(params, model)`
+    // (google-vertex.ts:105); it has no onResponse call site, so only the
+    // payload hook is supported here.
+    fn supports_request_callbacks(&self) -> bool {
+        true
+    }
+
     fn stream(
         &self,
         cfg: &ProviderConfig,
@@ -407,6 +421,19 @@ async fn run_stream_task(
         let auth = resolve_auth(&google.stream, &cfg).await?;
         let headers = build_headers(&model, &google);
         let params = build_params(&model, &ctx, &google)?;
+        // Upstream lines 105-108: onPayload is awaited before the SDK request
+        // (and the retry seam — a replacement applies to every attempt); JS
+        // `undefined` preserves the built params while any other value —
+        // including `null` — replaces them. A hook rejection throws into the
+        // catch block before any HTTP traffic. The Google adapters have no
+        // upstream onResponse surface (the callback is never invoked), so
+        // only the payload hook is wired.
+        let params = google
+            .stream
+            .callbacks
+            .payload(params, &model)
+            .await
+            .map_err(|error| error.to_string())?;
         let url = match &auth {
             VertexAuth::Express(_) => resolve_endpoint(&model)?,
             VertexAuth::Adc {
@@ -2144,21 +2171,29 @@ mod tests {
         let model = model("");
         assert_eq!(
             resolve_adc_endpoint(&model, "test-project", "us-central1").unwrap(),
-            format!("https://us-central1-aiplatform.googleapis.com/v1/projects/test-project/locations/us-central1/{path}")
+            format!(
+                "https://us-central1-aiplatform.googleapis.com/v1/projects/test-project/locations/us-central1/{path}"
+            )
         );
         // global → the global endpoint (still project-scoped).
         assert_eq!(
             resolve_adc_endpoint(&model, "test-project", "global").unwrap(),
-            format!("https://aiplatform.googleapis.com/v1/projects/test-project/locations/global/{path}")
+            format!(
+                "https://aiplatform.googleapis.com/v1/projects/test-project/locations/global/{path}"
+            )
         );
         // us/eu → the multi-regional rep hosts.
         assert_eq!(
             resolve_adc_endpoint(&model, "test-project", "us").unwrap(),
-            format!("https://aiplatform.us.rep.googleapis.com/v1/projects/test-project/locations/us/{path}")
+            format!(
+                "https://aiplatform.us.rep.googleapis.com/v1/projects/test-project/locations/us/{path}"
+            )
         );
         assert_eq!(
             resolve_adc_endpoint(&model, "test-project", "eu").unwrap(),
-            format!("https://aiplatform.eu.rep.googleapis.com/v1/projects/test-project/locations/eu/{path}")
+            format!(
+                "https://aiplatform.eu.rep.googleapis.com/v1/projects/test-project/locations/eu/{path}"
+            )
         );
     }
 
@@ -2197,7 +2232,9 @@ mod tests {
                 "europe-west4"
             )
             .unwrap(),
-            format!("https://europe-west4-aiplatform.googleapis.com/v1/projects/test-project/locations/europe-west4/{path}")
+            format!(
+                "https://europe-west4-aiplatform.googleapis.com/v1/projects/test-project/locations/europe-west4/{path}"
+            )
         );
     }
 
@@ -3051,8 +3088,7 @@ mod tests {
         let ctx = ctx_with(vec![user_msg("hello")]);
         let events = collect_simple(&server, &model, &ctx, &SimpleStreamOptions::default()).await;
         let error = error_of(&events);
-        // The @google/genai ApiError message is JSON.stringify(body); serde
-        // renders sorted keys.
+        // The @google/genai ApiError message retains the parsed body key order.
         assert_eq!(
             error.error_message.as_deref(),
             Some(r#"{"error":{"code":400,"message":"bad request","status":"INVALID_ARGUMENT"}}"#)
@@ -3079,7 +3115,7 @@ mod tests {
         let error = error_of(&events);
         assert_eq!(
             error.error_message.as_deref(),
-            Some(r#"{"error":{"code":401,"message":"bad key","status":"Unauthorized"}}"#)
+            Some(r#"{"error":{"message":"bad key","code":401,"status":"Unauthorized"}}"#)
         );
     }
 

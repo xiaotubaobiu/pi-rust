@@ -39,11 +39,17 @@
 //!   `AbortSignal`): it aborts the websocket dial and message reads, the SSE
 //!   header wait and body reads, the retry backoff sleeps, and settles the
 //!   catch block's `"aborted"` branch with `"Request was aborted"`
-//!   (upstream lines 330-340, 385-461, 773-833, 484-494). `onPayload`/
-//!   `onResponse` hooks and `fetch` injection have no port surface: they land
-//!   with the callback plumbing, and `streamSimple`'s synchronous missing-key
+//!   (upstream lines 330-340, 385-461, 773-833, 484-494). `fetch` injection
+//!   has no port surface, and `streamSimple`'s synchronous missing-key
 //!   throw surfaces as the async error event (port contract, same as the
-//!   sibling ports).
+//!   sibling ports). The hooks are wired (M2 correction): `onPayload`
+//!   (openai-codex-responses.ts:278) is awaited before the transport
+//!   selection — the replacement feeds both the websocket frame and the SSE
+//!   body — and `onResponse` (line 414) fires per SSE attempt after the fetch
+//!   resolves and before the ok check (non-success responses included; the
+//!   websocket transport has no upstream call site). A response-hook
+//!   rejection becomes the attempt error and retries like any other
+//!   non-"usage limit" attempt error before surfacing.
 //! - The `OpenAICodexResponsesOptions` extensions have no public option
 //!   surface: `reasoningEffort`/`reasoningSummary`/`serviceTier`/
 //!   `textVerbosity`/direct-stream `toolChoice` are carried on the internal
@@ -83,6 +89,9 @@
 //! - The websocket `readyState` upstream reads for reuse decisions is
 //!   modeled as an explicit health byte on [`websocket::WsConnection`]; the
 //!   socket-idle close reason and the age-limit close reason match upstream.
+
+#[cfg(test)]
+mod callback_tests;
 
 pub mod websocket;
 
@@ -302,6 +311,14 @@ impl From<String> for CodexStreamError {
 pub struct OpenAiCodexResponses;
 
 impl ApiImpl for OpenAiCodexResponses {
+    // Upstream wires both `options?.onPayload?.(body, model)`
+    // (openai-codex-responses.ts:278, before the transport selection so the
+    // replacement feeds both transports) and onResponse (line 414, per SSE
+    // attempt before the ok check; the websocket transport has no call site).
+    fn supports_request_callbacks(&self) -> bool {
+        true
+    }
+
     fn stream(
         &self,
         cfg: &ProviderConfig,
@@ -472,6 +489,17 @@ async fn run_stream_task(
             &grammar_tool_input_properties,
         )
         .map_err(CodexStreamError::plain)?;
+        // Upstream lines 278-281: onPayload is awaited before the transport
+        // selection, so the replacement feeds BOTH the websocket frame and
+        // the SSE body; JS `undefined` preserves the built body while any
+        // other value — including `null` — replaces it. A hook rejection
+        // throws into the catch block before any transport traffic.
+        let body = options
+            .stream
+            .callbacks
+            .payload(body, &model)
+            .await
+            .map_err(|error| CodexStreamError::plain(error.to_string()))?;
         let websocket_request_id = codex_session_id.clone().unwrap_or_else(uuid_v7);
         let mut sse_headers = build_sse_headers(
             &model,
@@ -617,29 +645,45 @@ async fn run_stream_task(
             .await
             {
                 Ok(received) => {
-                    if received.status().is_success() {
+                    // Upstream lines 414-417: onResponse fires per attempt,
+                    // after the fetch resolves and before the ok check (so
+                    // it also observes the non-success responses that drive
+                    // the retry decisions); a hook rejection becomes the
+                    // attempt error and rides the catch block below, exactly
+                    // like any other thrown error.
+                    let hook = options
+                        .stream
+                        .callbacks
+                        .http_response(&received, &model)
+                        .await;
+                    if let Err(error) = hook {
+                        CodexStreamError::plain(error.to_string())
+                    } else if received.status().is_success() {
                         response = Some(received);
                         break;
-                    }
-                    let status = received.status().as_u16();
-                    let response_headers = received.headers().clone();
-                    let error_text = received.text().await.unwrap_or_default();
-                    if attempt < max_retries && is_retryable_error(status, &error_text) {
-                        let delay =
-                            match get_retry_after_delay_ms(&response_headers, now_ms() as u64) {
+                    } else {
+                        let status = received.status().as_u16();
+                        let response_headers = received.headers().clone();
+                        let error_text = received.text().await.unwrap_or_default();
+                        if attempt < max_retries && is_retryable_error(status, &error_text) {
+                            let delay = match get_retry_after_delay_ms(
+                                &response_headers,
+                                now_ms() as u64,
+                            ) {
                                 Some(delay) => validate_retry_delay_ms(
                                     delay,
                                     options.stream.max_retry_delay_ms,
                                 )?,
                                 None => base_delay_ms(attempt),
                             };
-                        sleep_or_abort(delay, &signal).await;
-                        continue;
+                            sleep_or_abort(delay, &signal).await;
+                            continue;
+                        }
+                        // Final attempt or non-retryable: the friendly/message
+                        // error is thrown into the catch block below.
+                        let info = parse_error_response(status, &error_text);
+                        CodexStreamError::plain(info.friendly_message.unwrap_or(info.message))
                     }
-                    // Final attempt or non-retryable: the friendly/message
-                    // error is thrown into the catch block below.
-                    let info = parse_error_response(status, &error_text);
-                    CodexStreamError::plain(info.friendly_message.unwrap_or(info.message))
                 }
                 Err(error) => error,
             };
@@ -1039,7 +1083,7 @@ pub(crate) fn map_codex_event(event: &Value, end_turn: &mut Option<bool>) -> Cod
                 .map(|status| CODEX_RESPONSE_STATUSES.contains(&status))
                 .unwrap_or(false);
             if !known {
-                map.remove("status");
+                map.shift_remove("status");
             }
         }
         let mut mapped = event.clone();

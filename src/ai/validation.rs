@@ -137,7 +137,7 @@ fn normalize_optional_nulls(value: &mut serde_json::Value, schema: &serde_json::
             && object.get(key).is_some_and(serde_json::Value::is_null)
             && !check_standalone(property_schema, &serde_json::Value::Null)
         {
-            object.remove(key);
+            object.shift_remove(key);
         } else if let Some(property_value) = object.get_mut(key) {
             normalize_optional_nulls(property_value, property_schema);
         }
@@ -863,6 +863,27 @@ fn resolve_pointer<'a>(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn optional_null_deletion_preserves_surviving_key_order() {
+        let schema = serde_json::json!({
+            "type": "object",
+            "properties": {
+                "drop": {"type": "string"},
+                "nested": {"type": "object", "properties": {
+                    "drop": {"type": "string"}
+                }}
+            }
+        });
+        let mut value: serde_json::Value =
+            serde_json::from_str(r#"{"drop":null,"z":1,"a":2,"nested":{"drop":null,"y":3,"b":4}}"#)
+                .unwrap();
+        super::normalize_optional_nulls(&mut value, &schema);
+        assert_eq!(
+            serde_json::to_string(&value).unwrap(),
+            r#"{"z":1,"a":2,"nested":{"y":3,"b":4}}"#
+        );
+    }
+
     use super::*;
     use crate::ai::types::content::ToolCall;
     use crate::ai::types::tool::Tool;
@@ -1043,13 +1064,12 @@ mod tests {
             &tool_call(json!({ "v": "z", "n": 3, "s": "ab", "c": "other" })),
         )
         .unwrap_err();
-        // Property errors iterate in serde_json's sorted key order (disclosed
-        // deviation from upstream insertion order).
+        // Property errors follow the schema's declaration order, as in TypeBox.
         let expected = [
-            "  - c: must be equal to constant",
+            "  - v: must be equal to one of the allowed values",
             "  - n: must be >= 5",
             "  - s: must not have fewer than 3 characters",
-            "  - v: must be equal to one of the allowed values",
+            "  - c: must be equal to constant",
         ]
         .join("\n");
         assert!(

@@ -1289,3 +1289,22 @@ fn pathologi_redundant_producer_converges_in_a_few_ops() {
     assert!(ops.len() <= 3, "expected few ops, got {ops:?}");
     assert_eq!(apply_ok(Some(&initial), &ops), *t.state());
 }
+
+#[test]
+fn json_order_delete_survives_legacy_delta_projection() {
+    let input = json!({"drop":0,"z":1,"a":2,"nested":{"drop":0,"y":3,"b":4}});
+    let before = input.to_string();
+    let ops = [
+        Op::Delete {
+            path: vec![k("drop")],
+        },
+        Op::Delete {
+            path: vec![k("nested"), k("drop")],
+        },
+    ];
+    assert_eq!(
+        apply_immutable(Some(&input), &ops).unwrap().to_string(),
+        r#"{"z":1,"a":2,"nested":{"y":3,"b":4}}"#
+    );
+    assert_eq!(input.to_string(), before);
+}

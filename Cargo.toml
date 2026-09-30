@@ -7,6 +7,10 @@ edition = "2021"
 name = "pirs"
 path = "src/main.rs"
 
+[[bin]]
+name = "pi-rust"
+path = "src/bin/pi-rust.rs"
+
 # Port of upstream `scripts/generate-models.ts --data-only` (see the module
 # docs for the disclosed scope cuts vs the upstream script).
 [[bin]]
@@ -23,7 +27,7 @@ reqwest = { version = "0.13.5", features = ["json", "stream"] }
 rustyline = "18.0.1"
 schemars = "1.2.2"
 serde = { version = "1.0.229", features = ["derive"] }
-serde_json = "1.0.151"
+serde_json = { version = "1.0.151", features = ["preserve_order", "float_roundtrip"] }
 tokio = { version = "1.53.1", features = ["full"] }
 # Cancellation tokens for the auth surface (`AuthOperationOptions.signal`,
 # upstream `AbortSignal`); the `sync` module needs no tokio-util feature.
@@ -70,6 +74,41 @@ rsa = "=0.10.0-rc.18"
 yaml-rust2 = { version = "=0.13.0", default-features = false }
 ignore = "=0.4.33"
 regex = "=1.13.1"
+
+# Harness tool path NFD / edit NFKC; already transitive through idna.
+icu_normalizer = { version = "=2.3.0", default-features = false, features = ["compiled_data"] }
+
+# pi-tui port (M4): JS Intl.Segmenter grapheme segmentation (UAX #29); pinned
+# exact to the version already resolved in Cargo.lock so no new cache entries
+# are needed offline.
+unicode-segmentation = "=1.13.3"
+# pi-tui port (M4): the Unicode properties behind the upstream v-flag regexes
+# (\p{Mark}, \p{Control}, \p{Format}, \p{Spacing_Mark},
+# \p{Default_Ignorable_Code_Point}) plus Script_Extensions for the CJK break
+# set; pinned exact with compiled_data, mirroring icu_normalizer above.
+icu_properties = { version = "=2.3.0", default-features = false, features = ["compiled_data"] }
+
+# Native coding-agent image processing; all codecs are available offline.
+image_native = { package = "image", version = "=0.25.10", default-features = false, features = ["png", "jpeg", "gif", "webp", "bmp"] }
+
+# Native output-guard errno codes on Unix; already cached transitively.
+[target.'cfg(unix)'.dependencies]
+rustix = { version = "=1.1.5", features = ["process"] }
+libc = "=0.2.189"
+
+# Native Intl-style filename sorting; pinned CLDR 48/Unicode 17 collation data.
+# No Node subprocess is used for directory listing or locale comparison.
+[dependencies.icu_collator]
+version = "=2.3.1"
+default-features = false
+features = ["compiled_data"]
+
+[dependencies.icu_locale_core]
+version = "=2.3.0"
+
+[target.'cfg(windows)'.dependencies]
+# Safe, read-only access to the user's regional locale (not UI language).
+windows-registry = "=0.6.1"
 
 [dev-dependencies]
 tempfile = "3.27.0"

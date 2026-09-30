@@ -176,3 +176,72 @@ fn entry_helpers_expose_shared_base_fields() {
     assert_eq!(custom.message(), None);
     let _ = CustomAgentMessage::new("unused");
 }
+
+#[test]
+fn optional_entry_json_preserves_absent_null_and_non_null_in_staged_and_committed_forms() {
+    use serde_json::{json, Value};
+    let shapes = [
+        (
+            json!({"type":"custom","id":"c","parentId":null,"customType":"test"}),
+            "data",
+        ),
+        (
+            json!({"type":"compaction","id":"c","parentId":null,"summary":"s","retainedTail":[],"tokensBefore":3,"fromHook":false}),
+            "details",
+        ),
+        (
+            json!({"type":"branch_summary","id":"c","parentId":null,"fromId":null,"summary":"s","fromHook":false}),
+            "details",
+        ),
+    ];
+    for (shape, key) in shapes {
+        for payload in [
+            None,
+            Some(Value::Null),
+            Some(json!({"nested":null})),
+            Some(json!(false)),
+        ] {
+            let mut wire = shape.clone();
+            if let Some(payload) = payload {
+                wire[key] = payload;
+            }
+            let staged: NewEntry = serde_json::from_value(wire.clone()).unwrap();
+            assert_eq!(serde_json::to_value(&staged).unwrap(), wire);
+            wire["seq"] = json!(7);
+            wire["timestamp"] = json!(11);
+            let committed = staged.into_entry(7, 11);
+            assert_eq!(serde_json::to_value(&committed).unwrap(), wire);
+            let restored: Entry = serde_json::from_value(wire.clone()).unwrap();
+            assert_eq!(serde_json::to_value(&restored).unwrap(), wire);
+        }
+    }
+}
+
+#[test]
+fn optional_pending_error_and_usage_json_preserves_explicit_null() {
+    use serde_json::{json, Value};
+    fn round_trip<T: serde::de::DeserializeOwned + serde::Serialize>(wire: Value) {
+        let value: T = serde_json::from_value(wire.clone()).unwrap();
+        assert_eq!(serde_json::to_value(value).unwrap(), wire);
+    }
+    for payload in [
+        None,
+        Some(Value::Null),
+        Some(json!(0)),
+        Some(json!({"v":null})),
+    ] {
+        let mut pending = json!({"type":"custom","customType":"test"});
+        let mut error = json!({"code":"X","message":"failure"});
+        let mut usage = json!({"id":"u","usage":Usage::default(),"adjustment":false});
+        if let Some(value) = &payload {
+            pending["payload"] = value.clone();
+            error["details"] = value.clone();
+            usage["details"] = value.clone();
+        }
+        round_trip::<PendingEntry>(pending);
+        round_trip::<OperationError>(error);
+        round_trip::<NewUsageRow>(usage.clone());
+        usage["seq"] = json!(7);
+        round_trip::<UsageRow>(usage);
+    }
+}
