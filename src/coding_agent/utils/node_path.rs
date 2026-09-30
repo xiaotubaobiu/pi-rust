@@ -1035,24 +1035,35 @@ mod tests {
         let separator = if windows { '\\' } else { '/' };
         if let Some(suffix) = expected.strip_prefix("!DEPTH") {
             let separator_string = separator.to_string();
-            // environment-anchored: one ".." per cwd segment below the device
-            // root (matching path.relative to that root; a root cwd
-            // contributes none), not per raw separator. Windows paths carry a
-            // leading device segment ("D:"), POSIX ones do not.
-            let segments: Vec<&str> = cwd
-                .split(separator)
-                .filter(|part| !part.is_empty())
-                .collect();
-            let depth = if windows {
-                segments.len().saturating_sub(1)
-            } else {
-                segments.len()
+            // environment-anchored: relative(cwd, <device-root><suffix>)
+            // yields one ".." per cwd segment below the device root minus the
+            // segments the suffix shares as a cwd prefix (node's relative
+            // algebra; a shared leading segment is absorbed). The capture
+            // cwd's shape must not be assumed.
+            let segments = |text: &str| -> Vec<String> {
+                text.split(separator)
+                    .filter(|part| !part.is_empty())
+                    .map(str::to_string)
+                    .collect()
             };
-            let chain = vec![".."; depth].join(&separator_string);
-            if chain.is_empty() {
-                return suffix.trim_start_matches(separator).to_string();
+            let suffix_text = suffix.trim_start_matches(separator);
+            let suffix_segments = segments(suffix_text);
+            let cwd_segments = segments(cwd);
+            let shared = suffix_segments
+                .iter()
+                .zip(cwd_segments.iter())
+                .take_while(|(suffix_part, cwd_part)| suffix_part == cwd_part)
+                .count();
+            let links = cwd_segments.len() - shared;
+            let mut expanded = vec![".."; links].join(&separator_string);
+            let tail = suffix_segments[shared.min(suffix_segments.len())..].join(&separator_string);
+            if !tail.is_empty() {
+                if !expanded.is_empty() {
+                    expanded.push_str(&separator_string);
+                }
+                expanded.push_str(&tail);
             }
-            return format!("{chain}{suffix}");
+            return expanded;
         }
         if let Some(relative) = expected.strip_prefix("!REL") {
             if windows {
