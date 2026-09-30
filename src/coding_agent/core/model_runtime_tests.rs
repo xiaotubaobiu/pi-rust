@@ -322,7 +322,7 @@ async fn register_provider_lifecycle() {
 #[tokio::test]
 async fn register_native_provider_rejects_blank_ids() {
     let runtime = runtime_with_models_json(serde_json::json!({"providers": {}})).await;
-    let provider = create_provider(CreateProviderOptions {
+    let provider = create_provider(CreateProviderOptions {filter_all_models: None, images: crate::ai::models::provider::ImagesImpls::new(), classifiers: crate::ai::models::provider::ClassifiersImpls::new(), 
         id: "   ".to_string(),
         name: None,
         base_url: None,
@@ -634,7 +634,7 @@ fn dynamic_provider(id: &str) -> Arc<dyn Provider> {
         }
     }
 
-    let model = crate::ai::types::Model {
+    let model = crate::ai::types::Model {r#type: None, prompt_cache: None, input_limits: None, 
         id: "dynamic".to_string(),
         name: "Dynamic".to_string(),
         api: "openai-completions".to_string(),
@@ -650,7 +650,7 @@ fn dynamic_provider(id: &str) -> Arc<dyn Provider> {
         headers: None,
         compat: None,
     };
-    create_provider(CreateProviderOptions {
+    create_provider(CreateProviderOptions {filter_all_models: None, images: crate::ai::models::provider::ImagesImpls::new(), classifiers: crate::ai::models::provider::ClassifiersImpls::new(), 
         id: id.to_string(),
         name: None,
         base_url: None,
@@ -659,7 +659,7 @@ fn dynamic_provider(id: &str) -> Arc<dyn Provider> {
             api_key: Some(Arc::new(LoginKeyAuth { id: id.to_string() })),
             oauth: None,
         },
-        models: vec![model],
+        models: vec![crate::ai::types::AnyModel::Chat(model)],
         fetch_models: None,
         filter_models: None,
         api: ApiImpls::Single(Arc::new(StubApi)),

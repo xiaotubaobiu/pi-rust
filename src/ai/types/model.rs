@@ -31,6 +31,80 @@ use super::compat::{
 use super::options::ProviderHeaders;
 use super::primitives::{KnownApi, ModelCost, ThinkingLevelMap};
 
+/// Upstream `ModelType` (types.ts, `keyof ModelTypeMap`): what a catalog entry
+/// is for. Wire values are the upstream literal strings; chat is the default —
+/// models without `type` are chat models (upstream `Model.type?: "chat"`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ModelType {
+    Chat,
+    Image,
+    Classifier,
+}
+
+impl ModelType {
+    /// Every model type, in upstream `ModelTypeMap` key order.
+    pub const ALL: [ModelType; 3] = [ModelType::Chat, ModelType::Image, ModelType::Classifier];
+}
+
+/// Upstream `ModelPromptCache` (types.ts): best-effort prompt cache lifetime in
+/// seconds per retention tier. A missing tier means the lifetime is unknown; pi
+/// does not warm such caches. Upstream keys are `Exclude<CacheRetention,
+/// "none">` — `"short"` and `"long"`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ModelPromptCache(pub BTreeMap<PromptCacheTier, f64>);
+
+/// Upstream `ModelPromptCache` key: the non-`"none"` [`CacheRetention`] tiers.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum PromptCacheTier {
+    Short,
+    Long,
+}
+
+/// Upstream `ModelImageResizeOptions` (types.ts): one cache-safe resize profile.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ModelImageResizeOptions {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max_width: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max_height: Option<f64>,
+    /// Maximum base64-encoded payload size in bytes.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max_bytes: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub jpeg_quality: Option<f64>,
+}
+
+/// Upstream `ModelImageInputLimits` (types.ts): per-request image input limits.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ModelImageInputLimits {
+    /// Cache-safe resize profile applied before a new image enters
+    /// conversation history.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub resize: Option<ModelImageResizeOptions>,
+    /// Maximum images accepted in one provider message.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max_per_message: Option<f64>,
+    /// Maximum images accepted across one provider request.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max_per_request: Option<f64>,
+}
+
+/// Upstream `ModelInputLimits` (types.ts): provider input limits and
+/// cache-safe preprocessing metadata.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ModelInputLimits {
+    /// Maximum serialized provider request size in bytes.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max_request_bytes: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub images: Option<ModelImageInputLimits>,
+}
+
 /// Upstream `Model["input"]` element (types.ts:963): input modalities the
 /// model accepts. Wire values are the upstream literal union strings.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -62,6 +136,13 @@ pub struct Model {
     pub provider: String,
     /// Base URL of the provider endpoint (types.ts:956).
     pub base_url: String,
+    /// Optional chat discriminator (types.ts, `Model.type?: "chat"`). Chat is
+    /// the default, so catalog entries without `type` deserialize to `None`
+    /// and omit the key on reserialization; an explicit `"chat"` round-trips.
+    /// Non-chat catalog entries deserialize into [`ImageModel`]/
+    /// [`ClassifierModel`] via [`AnyModel`], not into this struct.
+    #[serde(default, rename = "type", skip_serializing_if = "Option::is_none")]
+    pub r#type: Option<ModelType>,
     /// Whether the model supports reasoning/thinking (types.ts:957).
     pub reasoning: bool,
     /// Maps pi thinking levels to provider/model-specific values
@@ -69,8 +150,17 @@ pub struct Model {
     /// level as unsupported.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub thinking_level_map: Option<ThinkingLevelMap>,
+    /// Prompt cache lifetimes per retention tier (types.ts
+    /// `Model.promptCache`). Unset when the provider's cache behavior is
+    /// unknown.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub prompt_cache: Option<ModelPromptCache>,
     /// Input modalities the model accepts (types.ts:963).
     pub input: Vec<ModelInput>,
+    /// Provider input limits and cache-safe preprocessing metadata
+    /// (types.ts `BaseModel.inputLimits`).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub input_limits: Option<ModelInputLimits>,
     /// Pricing in dollars per million tokens, with optional request-wide
     /// tiers (types.ts:964; `ModelCost` in `primitives.rs`).
     pub cost: ModelCost,
@@ -150,6 +240,291 @@ impl Model {
     }
 }
 
+/// Upstream `BaseModel<TApi>` (types.ts): the fields shared by every catalog
+/// entry, regardless of what you can do with it. Rust cannot express the
+/// shared-interface inheritance, so [`ImageModel`]/[`ClassifierModel`]
+/// repeat these fields in the same declaration order.
+#[derive(Debug, Clone, PartialEq)]
+pub struct BaseModelFields {
+    pub id: String,
+    pub name: String,
+    pub api: String,
+    pub provider: String,
+    pub base_url: String,
+    pub input: Vec<ModelInput>,
+    /// Provider input limits and cache-safe preprocessing metadata.
+    pub input_limits: Option<ModelInputLimits>,
+    pub cost: ModelCost,
+    pub headers: Option<ProviderHeaders>,
+}
+
+/// Upstream `ImageModel<TApi>` (types.ts): image-generation model, usable with
+/// `generateImages()` only. `type: "image"` is required on the wire; `output`
+/// always includes `"image"`, `"text"` means the model can also return text
+/// blocks.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ImageModel {
+    pub id: String,
+    pub name: String,
+    /// Image-generation API id (upstream `ImageApi`, open-ended string).
+    pub api: String,
+    pub provider: String,
+    pub base_url: String,
+    pub input: Vec<ModelInput>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub input_limits: Option<ModelInputLimits>,
+    pub cost: ModelCost,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub headers: Option<ProviderHeaders>,
+    /// Required `"image"` discriminator (upstream `type: "image"`).
+    pub r#type: ModelType,
+    /// Output modalities; always includes `"image"`.
+    pub output: Vec<ModelInput>,
+}
+
+/// Upstream `ClassifierModel<TApi>` (types.ts): structured classifier model,
+/// usable with `classify()` only. `type: "classifier"` and `contextWindow`
+/// are required on the wire.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ClassifierModel {
+    pub id: String,
+    pub name: String,
+    /// Classifier API id (upstream `ClassifierApi`, open-ended string).
+    pub api: String,
+    pub provider: String,
+    pub base_url: String,
+    pub input: Vec<ModelInput>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub input_limits: Option<ModelInputLimits>,
+    pub cost: ModelCost,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub headers: Option<ProviderHeaders>,
+    /// Required `"classifier"` discriminator (upstream `type: "classifier"`).
+    pub r#type: ModelType,
+    pub context_window: u64,
+}
+
+impl From<&ImageModel> for BaseModelFields {
+    fn from(model: &ImageModel) -> Self {
+        Self {
+            id: model.id.clone(),
+            name: model.name.clone(),
+            api: model.api.clone(),
+            provider: model.provider.clone(),
+            base_url: model.base_url.clone(),
+            input: model.input.clone(),
+            input_limits: model.input_limits.clone(),
+            cost: model.cost.clone(),
+            headers: model.headers.clone(),
+        }
+    }
+}
+
+impl From<&ClassifierModel> for BaseModelFields {
+    fn from(model: &ClassifierModel) -> Self {
+        Self {
+            id: model.id.clone(),
+            name: model.name.clone(),
+            api: model.api.clone(),
+            provider: model.provider.clone(),
+            base_url: model.base_url.clone(),
+            input: model.input.clone(),
+            input_limits: model.input_limits.clone(),
+            cost: model.cost.clone(),
+            headers: model.headers.clone(),
+        }
+    }
+}
+
+impl From<&Model> for BaseModelFields {
+    fn from(model: &Model) -> Self {
+        Self {
+            id: model.id.clone(),
+            name: model.name.clone(),
+            api: model.api.clone(),
+            provider: model.provider.clone(),
+            base_url: model.base_url.clone(),
+            input: model.input.clone(),
+            input_limits: model.input_limits.clone(),
+            cost: model.cost.clone(),
+            headers: model.headers.clone(),
+        }
+    }
+}
+
+/// Upstream `AnyModel` (types.ts, `ModelTypeMap[ModelType]`): anything a
+/// provider can list — a chat [`Model`], an [`ImageModel`], or a
+/// [`ClassifierModel`]. Serialized as exactly the inner variant (the
+/// upstream objects differ only by their `type` field and shape); the
+/// deserializer dispatches on the `type` field, treating an absent or
+/// `"chat"` value as a chat model like upstream `getModelType`.
+#[derive(Debug, Clone, PartialEq)]
+pub enum AnyModel {
+    Chat(Model),
+    Image(ImageModel),
+    Classifier(ClassifierModel),
+}
+
+impl AnyModel {
+    /// Upstream `getModelType` (`utils/model-operations.ts`): the type of a
+    /// model. Models without `type` are chat models.
+    pub fn model_type(&self) -> ModelType {
+        match self {
+            AnyModel::Chat(model) => model.r#type.unwrap_or(ModelType::Chat),
+            AnyModel::Image(_) => ModelType::Image,
+            AnyModel::Classifier(_) => ModelType::Classifier,
+        }
+    }
+
+    /// Shared catalog identity fields (`BaseModel`).
+    pub fn base(&self) -> BaseModelFields {
+        match self {
+            AnyModel::Chat(model) => model.into(),
+            AnyModel::Image(model) => model.into(),
+            AnyModel::Classifier(model) => model.into(),
+        }
+    }
+
+    pub fn id(&self) -> &str {
+        match self {
+            AnyModel::Chat(model) => &model.id,
+            AnyModel::Image(model) => &model.id,
+            AnyModel::Classifier(model) => &model.id,
+        }
+    }
+
+    pub fn name(&self) -> &str {
+        match self {
+            AnyModel::Chat(model) => &model.name,
+            AnyModel::Image(model) => &model.name,
+            AnyModel::Classifier(model) => &model.name,
+        }
+    }
+
+    pub fn api(&self) -> &str {
+        match self {
+            AnyModel::Chat(model) => &model.api,
+            AnyModel::Image(model) => &model.api,
+            AnyModel::Classifier(model) => &model.api,
+        }
+    }
+
+    pub fn provider(&self) -> &str {
+        match self {
+            AnyModel::Chat(model) => &model.provider,
+            AnyModel::Image(model) => &model.provider,
+            AnyModel::Classifier(model) => &model.provider,
+        }
+    }
+
+    pub fn base_url(&self) -> &str {
+        match self {
+            AnyModel::Chat(model) => &model.base_url,
+            AnyModel::Image(model) => &model.base_url,
+            AnyModel::Classifier(model) => &model.base_url,
+        }
+    }
+
+    pub fn cost(&self) -> &ModelCost {
+        match self {
+            AnyModel::Chat(model) => &model.cost,
+            AnyModel::Image(model) => &model.cost,
+            AnyModel::Classifier(model) => &model.cost,
+        }
+    }
+
+    pub fn headers(&self) -> Option<&ProviderHeaders> {
+        match self {
+            AnyModel::Chat(model) => model.headers.as_ref(),
+            AnyModel::Image(model) => model.headers.as_ref(),
+            AnyModel::Classifier(model) => model.headers.as_ref(),
+        }
+    }
+
+    /// The chat model, when this is one (upstream `isModelType(model,
+    /// "chat")` narrowing).
+    pub fn as_chat(&self) -> Option<&Model> {
+        match self {
+            AnyModel::Chat(model) => Some(model),
+            _ => None,
+        }
+    }
+
+    pub fn as_image(&self) -> Option<&ImageModel> {
+        match self {
+            AnyModel::Image(model) => Some(model),
+            _ => None,
+        }
+    }
+
+    pub fn as_classifier(&self) -> Option<&ClassifierModel> {
+        match self {
+            AnyModel::Classifier(model) => Some(model),
+            _ => None,
+        }
+    }
+}
+
+impl From<Model> for AnyModel {
+    fn from(model: Model) -> Self {
+        AnyModel::Chat(model)
+    }
+}
+
+impl From<ImageModel> for AnyModel {
+    fn from(model: ImageModel) -> Self {
+        AnyModel::Image(model)
+    }
+}
+
+impl From<ClassifierModel> for AnyModel {
+    fn from(model: ClassifierModel) -> Self {
+        AnyModel::Classifier(model)
+    }
+}
+
+impl Serialize for AnyModel {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        match self {
+            AnyModel::Chat(model) => model.serialize(serializer),
+            AnyModel::Image(model) => model.serialize(serializer),
+            AnyModel::Classifier(model) => model.serialize(serializer),
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for AnyModel {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let value = serde_json::Value::deserialize(deserializer)?;
+        let kind = value
+            .as_object()
+            .and_then(|object| object.get("type"))
+            .and_then(|kind| kind.as_str());
+        match kind {
+            Some("image") => Ok(AnyModel::Image(
+                ImageModel::deserialize(value).map_err(serde::de::Error::custom)?,
+            )),
+            Some("classifier") => Ok(AnyModel::Classifier(
+                ClassifierModel::deserialize(value).map_err(serde::de::Error::custom)?,
+            )),
+            // Chat is the default: absent, null, and explicit "chat" (plus any
+            // other value, which the chat struct stores verbatim in
+            // `Model.r#type` — upstream has no runtime validation either).
+            _ => Ok(AnyModel::Chat(
+                Model::deserialize(value).map_err(serde::de::Error::custom)?,
+            )),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::super::compat::{MaxTokensField, ThinkingFormat};
@@ -176,9 +551,12 @@ mod tests {
             api: "anthropic-messages".to_string(),
             provider: "anthropic".to_string(),
             base_url: "https://api.anthropic.com".to_string(),
+            r#type: None,
             reasoning: false,
             thinking_level_map: None,
+            prompt_cache: None,
             input: vec![ModelInput::Text],
+            input_limits: None,
             cost: ModelCost::default(),
             context_window: 100000,
             max_tokens: 4096,

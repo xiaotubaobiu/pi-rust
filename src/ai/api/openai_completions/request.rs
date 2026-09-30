@@ -780,6 +780,11 @@ pub(crate) fn get_grammar_tool_input(
     }
 }
 
+/// Upstream `UnsupportedStrictSchemaKeywordCheck` (constrained-sampling.ts):
+/// returns true when a provider's strict mode rejects this schema keyword
+/// with this value, so "prefer" tools fall back to non-strict.
+pub(crate) type UnsupportedStrictSchemaKeywordCheck = fn(&str, &Value) -> bool;
+
 const UNSUPPORTED_STRICT_SCHEMA_KEYS: [&str; 16] = [
     "$ref",
     "$defs",
@@ -799,14 +804,19 @@ const UNSUPPORTED_STRICT_SCHEMA_KEYS: [&str; 16] = [
     "else",
 ];
 
-/// Upstream `makeStrictJsonSchema` (`api/constrained-sampling.ts:117-127`):
-/// convert a tool schema to the strict subset providers accept.
-pub(crate) fn make_strict_json_schema(schema: &Value) -> Result<Value, String> {
+/// Upstream `makeStrictJsonSchema` (`api/constrained-sampling.ts:117-130`):
+/// convert a tool schema to the strict subset providers accept. The optional
+/// keyword check lets a provider reject extra keywords its strict mode does
+/// not accept (the Anthropic delta).
+pub(crate) fn make_strict_json_schema(
+    schema: &Value,
+    is_unsupported_keyword: Option<UnsupportedStrictSchemaKeywordCheck>,
+) -> Result<Value, String> {
     let mut cloned = schema.clone();
     if !cloned.is_object() {
         return Err("root schema must have type object".into());
     }
-    make_schema_node_strict(&mut cloned)?;
+    make_schema_node_strict(&mut cloned, is_unsupported_keyword)?;
     if cloned.get("type").and_then(Value::as_str) != Some("object") {
         return Err("root schema must have type object".into());
     }
@@ -854,13 +864,29 @@ fn schema_allows_null(schema: &Value) -> bool {
 }
 
 /// Upstream `makeJsonSchemaNodeStrict` (`api/constrained-sampling.ts:53-114`).
-fn make_schema_node_strict(schema: &mut Value) -> Result<(), String> {
+fn make_schema_node_strict(
+    schema: &mut Value,
+    is_unsupported_keyword: Option<UnsupportedStrictSchemaKeywordCheck>,
+) -> Result<(), String> {
     if !schema.is_object() {
         return Err("boolean schemas are unsupported".into());
     }
     for key in UNSUPPORTED_STRICT_SCHEMA_KEYS {
         if schema.as_object().unwrap_or(&Map::new()).contains_key(key) {
             return Err(format!("{key} schemas are unsupported"));
+        }
+    }
+    // Upstream (the Anthropic delta): the provider-specific keyword probes
+    // run over the raw schema entries, after the shared unsupported-keys
+    // check and before anyOf/items/properties recursion.
+    if let Some(is_unsupported_keyword) = is_unsupported_keyword {
+        for (key, value) in schema.as_object().unwrap_or(&Map::new()) {
+            if is_unsupported_keyword(key, value) {
+                return Err(format!(
+                    "{key}: {} is unsupported",
+                    serde_json::to_string(value).unwrap_or_default()
+                ));
+            }
         }
     }
     let object = schema.as_object_mut().unwrap();
@@ -877,14 +903,14 @@ fn make_schema_node_strict(schema: &mut Value) -> Result<(), String> {
             }
         }
         for variant in variants.iter_mut() {
-            make_schema_node_strict(variant)?;
+            make_schema_node_strict(variant, is_unsupported_keyword)?;
         }
     }
     if let Some(items) = object.get_mut("items") {
         if items.is_array() {
             return Err("tuple schemas are unsupported".into());
         }
-        make_schema_node_strict(items)?;
+        make_schema_node_strict(items, is_unsupported_keyword)?;
     }
 
     let is_object_schema = object.get("type").and_then(Value::as_str) == Some("object");
@@ -938,7 +964,7 @@ fn make_schema_node_strict(schema: &mut Value) -> Result<(), String> {
     if let Some(properties) = object.get_mut("properties") {
         let properties = properties.as_object_mut().unwrap();
         for property in properties.values_mut() {
-            make_schema_node_strict(property)?;
+            make_schema_node_strict(property, is_unsupported_keyword)?;
         }
         for (key, property) in properties.iter_mut() {
             if !required_list.contains(key) && !schema_allows_null(property) {
@@ -961,12 +987,13 @@ fn make_schema_node_strict(schema: &mut Value) -> Result<(), String> {
 pub(crate) fn resolve_json_schema_strict_sampling(
     tool: &Tool,
     supports_strict_mode: bool,
+    is_unsupported_keyword: Option<UnsupportedStrictSchemaKeywordCheck>,
 ) -> Result<Option<bool>, String> {
     let Some(ConstrainedSampling::JsonSchema(config)) = &tool.constrained_sampling else {
         return Ok(None);
     };
     if supports_strict_mode {
-        return match make_strict_json_schema(&tool.parameters) {
+        return match make_strict_json_schema(&tool.parameters, is_unsupported_keyword) {
             Ok(_) => Ok(Some(true)),
             Err(message) => {
                 if config.strict != Strict::Require {
@@ -1009,14 +1036,14 @@ fn convert_tools(tools: &[Tool], compat: &OpenAiCompletionsCompat) -> Result<Vec
                 }));
             }
 
-            let strict = resolve_json_schema_strict_sampling(tool, supports_strict)?;
+            let strict = resolve_json_schema_strict_sampling(tool, supports_strict, None)?;
             let mut function = Map::new();
             function.insert("name".into(), Value::from(tool.name.as_str()));
             function.insert("description".into(), Value::from(tool.description.as_str()));
             function.insert(
                 "parameters".into(),
                 if strict == Some(true) {
-                    make_strict_json_schema(&tool.parameters)?
+                    make_strict_json_schema(&tool.parameters, None)?
                 } else {
                     tool.parameters.clone()
                 },
@@ -1870,6 +1897,11 @@ fn convert_messages(
                     StringOrBlocks::Blocks(blocks) => {
                         let content: Vec<Value> = blocks
                             .iter()
+                            // Upstream (1b6ddca87): empty text parts are
+                            // omitted from multimodal user messages.
+                            .filter(|block| {
+                                !matches!(block, TextOrImageBlock::Text(text) if text.text.is_empty())
+                            })
                             .map(|block| match block {
                                 TextOrImageBlock::Text(text) => {
                                     json!({"type": "text", "text": text.text})
@@ -2160,7 +2192,7 @@ mod tests {
         reasoning: bool,
         compat: Value,
     ) -> Model {
-        Model {
+        Model {r#type: None, prompt_cache: None, input_limits: None, 
             id: id.to_string(),
             name: "Test Model".to_string(),
             api: "openai-completions".to_string(),
@@ -3302,7 +3334,11 @@ mod tests {
             "https://api.openai.com/v1",
             "gpt-4o-mini",
             false,
-            json!({}),
+            // Upstream 890f92088: strict is only carried when the model
+            // explicitly opts in (compat supportsStrictMode); the detected
+            // default is now false, and a non-capable model omits the field
+            // entirely (see strict_mode_disabled_omits_the_strict_field).
+            json!({"supportsStrictMode": true}),
         );
         let body = build(
             &model,
@@ -3350,7 +3386,7 @@ mod tests {
             "https://api.openai.com/v1",
             "gpt-4o-mini",
             false,
-            json!({}),
+            json!({"supportsStrictMode": true}),
         );
         let tool = Tool {
             name: "ping".to_string(),
@@ -3387,7 +3423,7 @@ mod tests {
             "https://api.openai.com/v1",
             "gpt-4o-mini",
             false,
-            json!({}),
+            json!({"supportsStrictMode": true}),
         );
         let tool = Tool {
             name: "ref_tool".to_string(),
@@ -3676,7 +3712,7 @@ mod tests {
     // ---- 10. thinking token budget ----
 
     fn vllm_model(compat: Value) -> Model {
-        Model {
+        Model {r#type: None, prompt_cache: None, input_limits: None, 
             id: "zai-org/glm-5.2".to_string(),
             name: "GLM 5.2 (local vLLM)".to_string(),
             api: "openai-completions".to_string(),

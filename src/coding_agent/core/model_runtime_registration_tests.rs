@@ -415,7 +415,7 @@ impl Provider for GatedCatalogProvider {
             context
                 .publish(ModelsPublication {
                     persist: Some(Some(ModelsStoreEntry {
-                        models: next_catalog.clone(),
+                        models: next_catalog.clone().into_iter().map(crate::ai::types::AnyModel::Chat).collect(),
                         ..ModelsStoreEntry::default()
                     })),
                     update: Some(Box::new(move || {
@@ -502,7 +502,7 @@ async fn assert_stale_publication_rejected(
         ASYNC_DEADLINE,
         context.publish(ModelsPublication {
             persist: Some(Some(ModelsStoreEntry {
-                models: stale_catalog.clone(),
+                models: stale_catalog.clone().into_iter().map(crate::ai::types::AnyModel::Chat).collect(),
                 ..ModelsStoreEntry::default()
             })),
             update: Some(Box::new(move || {
@@ -590,7 +590,7 @@ fn pending_dynamic_refresh_does_not_block_sync_mutations_or_restore_old_registry
                 .unwrap()
                 .unwrap()
                 .models[0]
-                .id,
+                .id(),
             "after-refresh",
         );
     });

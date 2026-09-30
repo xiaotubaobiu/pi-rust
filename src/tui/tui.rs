@@ -31,9 +31,9 @@
 //!   the `Tui` itself, so they enqueue into a shared event queue drained by
 //!   [`Tui::poll_terminal_events`] — the Node stream-callback boundary made
 //!   explicit. Event order is preserved.
-//! - `queryTerminalBackgroundColor`/`queryTerminalColorScheme` return Promises
-//!   upstream; the port takes `on_settle` callbacks (resolved exactly once,
-//!   with the same timeout/cancel semantics).
+//! - `queryTerminalColors` returns a Promise upstream; the port takes a
+//!   one-shot `on_resolve` callback (resolved exactly once, with the same
+//!   timeout semantics) plus an optional `on_late_reply` receiver.
 //! - `setCellDimensions` is a terminal-image.ts global; the store belongs to
 //!   that slice, so [`Tui`] exposes a sink closure receiving the parsed
 //!   `CSI 6 ; height ; width t` values.
@@ -50,7 +50,7 @@
 //!   `terminal.rs` seam (M5); this module drives the `Terminal` trait only.
 
 use std::cell::RefCell;
-use std::collections::VecDeque;
+use std::collections::{BTreeSet, VecDeque};
 use std::rc::Rc;
 use std::sync::{Arc, Mutex, OnceLock};
 
@@ -64,8 +64,8 @@ use crate::tui::overlay::{composite_tui_line, OverlayAnchor, OverlayBounds};
 use crate::tui::screen::InputListenerResult;
 use crate::tui::terminal::Terminal;
 use crate::tui::terminal_colors::{
-    is_osc11_background_color_response, parse_osc11_background_color,
-    parse_terminal_color_scheme_report, RgbColor, TerminalColorScheme,
+    parse_osc_color_response, parse_terminal_color_scheme_report, OscColorTarget, RgbColor,
+    TerminalColorScheme, TerminalColors,
 };
 use crate::tui::terminal_image::{get_capabilities, is_image_line};
 use crate::tui::utils::{normalize_terminal_output, slice_by_column, visible_width};
@@ -264,17 +264,38 @@ pub fn dispatch_mouse_event(
 ) -> Option<TuiMouseDispatchResult> {
     let action = handle.with_mut(|c| c.mouse_action(event))?;
     match action {
-        MouseAction::Dispatched(result) => Some(TuiMouseDispatchResult {
-            result: result.result,
-            focus_target: result.focus_target,
-            target: TuiMouseDispatchTarget {
-                component: result.target.component.clone(),
-                origin_x: result.target.origin_x,
-                origin_y: result.target.origin_y,
-                width: result.target.width,
-                height: result.target.height,
-            },
-        }),
+        MouseAction::Dispatched(result) => {
+            // The component forwarded the event to a child it hosts. Like a
+            // delegating container, it routes keys to that child itself, so it
+            // keeps keyboard focus. Focusing the child directly would leave
+            // focus on a detached component once the host removes it, e.g. a
+            // closed settings submenu.
+            if result.result.focus && handle.with_mut(|c| c.delegates_mouse_focus()) {
+                Some(TuiMouseDispatchResult {
+                    result: result.result,
+                    focus_target: Some(handle.clone()),
+                    target: TuiMouseDispatchTarget {
+                        component: result.target.component.clone(),
+                        origin_x: result.target.origin_x,
+                        origin_y: result.target.origin_y,
+                        width: result.target.width,
+                        height: result.target.height,
+                    },
+                })
+            } else {
+                Some(TuiMouseDispatchResult {
+                    result: result.result,
+                    focus_target: result.focus_target,
+                    target: TuiMouseDispatchTarget {
+                        component: result.target.component.clone(),
+                        origin_x: result.target.origin_x,
+                        origin_y: result.target.origin_y,
+                        width: result.target.width,
+                        height: result.target.height,
+                    },
+                })
+            }
+        }
         MouseAction::Direct(result) => {
             if !result.handled && !result.capture && !result.focus {
                 return None;
@@ -404,8 +425,7 @@ enum NextTickWork {
 
 enum TimerWork {
     RenderFrame,
-    Osc11Timeout(u64),
-    SchemeTimeout(u64),
+    TerminalColorTimeout(u64),
 }
 
 struct TimerEntry {
@@ -414,23 +434,58 @@ struct TimerEntry {
     work: TimerWork,
 }
 
-struct Osc11Query {
+/// Upstream `PendingTerminalColorQuery`.
+struct TerminalColorQuery {
     seq: u64,
-    settled: bool,
-    callback: Option<Box<dyn FnOnce(Option<RgbColor>)>>,
+    foreground: Option<RgbColor>,
+    background: Option<RgbColor>,
+    palette: Vec<Option<RgbColor>>,
+    /// Targets that already replied, so duplicates do not count twice.
+    replied: BTreeSet<String>,
+    /// Receives the result: the resolve callback until the timeout, then
+    /// `on_late_reply`. Unset once the query completed (on the DA1 reply or
+    /// once every color replied); later replies are ignored.
+    deliver: Option<Box<dyn FnOnce(TerminalColors)>>,
+    /// Receives the replies if the query completes after the timeout.
+    on_late_reply: Option<Box<dyn FnOnce(TerminalColors)>>,
     timer_id: Option<u64>,
 }
 
-struct SchemeQuery {
-    seq: u64,
-    settled: bool,
-    result: Option<TerminalColorScheme>,
-    callback: Option<Box<dyn FnOnce(Option<TerminalColorScheme>)>>,
-    timer_id: Option<u64>,
-    listener_id: u64,
+impl TerminalColorQuery {
+    /// Vacant placeholder for taking the front query out of the deque.
+    fn vacant() -> Self {
+        Self {
+            seq: 0,
+            foreground: None,
+            background: None,
+            palette: Vec::new(),
+            replied: BTreeSet::new(),
+            deliver: None,
+            on_late_reply: None,
+            timer_id: None,
+        }
+    }
 }
 
-type SchemeQueryState = Rc<RefCell<SchemeQuery>>;
+/// Upstream `TERMINAL_PALETTE_SIZE`.
+const TERMINAL_PALETTE_SIZE: usize = 16;
+/// OSC 10 and 11 plus OSC 4 for every palette color.
+const TERMINAL_COLOR_REPLY_COUNT: usize = 2 + TERMINAL_PALETTE_SIZE;
+/// Default colors, palette colors 0-15, and a trailing primary device
+/// attributes (DA1) request. Every terminal answers DA1 and terminals answer
+/// in order, so the DA1 reply marks the end of the color replies, including
+/// for terminals that ignore the color queries.
+const TERMINAL_COLOR_QUERY: &str = "\x1b]10;?\x07\x1b]11;?\x07\x1b]4;0;?\x07\x1b]4;1;?\x07\x1b]4;2;?\x07\x1b]4;3;?\x07\x1b]4;4;?\x07\x1b]4;5;?\x07\x1b]4;6;?\x07\x1b]4;7;?\x07\x1b]4;8;?\x07\x1b]4;9;?\x07\x1b]4;10;?\x07\x1b]4;11;?\x07\x1b]4;12;?\x07\x1b]4;13;?\x07\x1b]4;14;?\x07\x1b]4;15;?\x07\x1b[c";
+/// Upstream `DEVICE_ATTRIBUTES_RESPONSE_PATTERN`.
+fn is_device_attributes_response(data: &str) -> bool {
+    static RE: OnceLock<Regex> = OnceLock::new();
+    RE.get_or_init(|| Regex::new(r"^\x1b\[\?[\d;]*c$").unwrap())
+        .is_match(data)
+}
+
+/// Test hook: the exact `TERMINAL_COLOR_QUERY` bytes written per query.
+#[cfg(test)]
+pub(crate) const TERMINAL_COLOR_QUERY_FOR_TEST: &str = TERMINAL_COLOR_QUERY;
 
 type SchemeListener = Box<dyn FnMut(&TerminalColorScheme)>;
 
@@ -459,12 +514,13 @@ pub struct Tui {
     full_redraw_count: usize,
     stopped: bool,
     // Terminal queries.
-    pending_osc11_replies: i64,
-    pending_osc11_queries: VecDeque<Osc11Query>,
+    /// Color queries waiting for their DA1 reply, oldest first. Terminals
+    /// answer in order, so color replies belong to the oldest one. Queries
+    /// stay here after a timeout to collect late replies.
+    pending_terminal_color_queries: VecDeque<TerminalColorQuery>,
     next_query_seq: u64,
     terminal_color_scheme_listeners: Vec<(u64, SchemeListener)>,
     next_scheme_listener_id: u64,
-    scheme_queries: Vec<SchemeQueryState>,
     scheme_notifications_enabled: bool,
     cell_dimensions_sink: Box<dyn FnMut(u32, u32) + 'static>,
     /// Upstream `logDirectory`: debug/crash log directory.
@@ -514,12 +570,10 @@ impl Tui {
             clear_on_shrink: false,
             full_redraw_count: 0,
             stopped: false,
-            pending_osc11_replies: 0,
-            pending_osc11_queries: VecDeque::new(),
+            pending_terminal_color_queries: VecDeque::new(),
             next_query_seq: 0,
             terminal_color_scheme_listeners: Vec::new(),
             next_scheme_listener_id: 0,
-            scheme_queries: Vec::new(),
             scheme_notifications_enabled: false,
             cell_dimensions_sink: Box::new(|_, _| {}),
             log_directory,
@@ -583,7 +637,7 @@ impl Tui {
         }
         self.show_hardware_cursor = enabled;
         if !enabled {
-            self.terminal.borrow_mut().hide_cursor();
+            self.hide_terminal_cursor();
         }
         self.request_render(false);
     }
@@ -918,7 +972,7 @@ impl Tui {
         {
             self.set_focus(Some(component.clone()));
         }
-        self.terminal.borrow_mut().hide_cursor();
+        self.hide_terminal_cursor();
         self.request_render(false);
 
         OverlayHandle { entry_id }
@@ -945,7 +999,7 @@ impl Tui {
             self.set_focus(target);
         }
         if self.overlay_stack.is_empty() {
-            self.terminal.borrow_mut().hide_cursor();
+            self.hide_terminal_cursor();
         }
         self.request_render(false);
     }
@@ -1125,9 +1179,17 @@ impl Tui {
             self.set_focus(target);
         }
         if self.overlay_stack.is_empty() {
-            self.terminal.borrow_mut().hide_cursor();
+            self.hide_terminal_cursor();
         }
         self.request_render(false);
+    }
+
+    /// Upstream `hideTerminalCursor`: hide the cursor while running. After
+    /// stop(), the shell owns the cursor and it must stay visible.
+    fn hide_terminal_cursor(&mut self) {
+        if !self.stopped {
+            self.terminal.borrow_mut().hide_cursor();
+        }
     }
 
     /// Upstream `hasOverlay`.
@@ -1530,44 +1592,20 @@ impl Tui {
                     self.schedule_render();
                 }
             }
-            TimerWork::Osc11Timeout(seq) => {
+            TimerWork::TerminalColorTimeout(seq) => {
                 if let Some(query) = self
-                    .pending_osc11_queries
+                    .pending_terminal_color_queries
                     .iter_mut()
                     .find(|query| query.seq == seq)
                 {
-                    if !query.settled {
-                        query.settled = true;
-                        query.timer_id = None;
-                        if let Some(callback) = query.callback.take() {
-                            callback(None);
-                        }
+                    // Resolve with the replies so far, and keep collecting
+                    // late replies for `onLateReply`.
+                    query.timer_id = None;
+                    if let Some(deliver) = query.deliver.take() {
+                        deliver(Self::terminal_color_query_result(query));
                     }
+                    query.deliver = query.on_late_reply.take();
                 }
-            }
-            TimerWork::SchemeTimeout(seq) => {
-                let state = self
-                    .scheme_queries
-                    .iter()
-                    .find(|query| query.borrow().seq == seq)
-                    .cloned();
-                if let Some(state) = state {
-                    let listener_id = {
-                        let mut query = state.borrow_mut();
-                        if !query.settled {
-                            query.settled = true;
-                            query.result = None;
-                            query.timer_id = None;
-                            if let Some(callback) = query.callback.take() {
-                                callback(None);
-                            }
-                        }
-                        query.listener_id
-                    };
-                    self.terminal_color_scheme_listeners
-                        .retain(|(id, _)| *id != listener_id);
-                }
-                self.prune_settled_scheme_queries();
             }
         }
         true
@@ -1589,15 +1627,11 @@ impl Tui {
         self.timers.retain(|timer| timer.id != timer_id);
     }
 
-    fn prune_settled_scheme_queries(&mut self) {
-        self.scheme_queries.retain(|query| !query.borrow().settled);
-    }
-
     // -------------------------------------------------------- terminal input
 
     /// Upstream `handleTerminalInput`.
     pub fn handle_terminal_input(&mut self, data: &str) {
-        if self.consume_osc11_background_response(data) {
+        if self.consume_terminal_color_response(data) {
             return;
         }
         if self.consume_terminal_color_scheme_report(data) {
@@ -1711,27 +1745,87 @@ impl Tui {
         }
     }
 
-    fn consume_osc11_background_response(&mut self, data: &str) -> bool {
-        if self.pending_osc11_replies <= 0 {
+    fn consume_terminal_color_response(&mut self, data: &str) -> bool {
+        if self.pending_terminal_color_queries.is_empty() {
             return false;
         }
-        if !is_osc11_background_color_response(data) {
-            return false;
+        if is_device_attributes_response(data) {
+            // Pop before completing: `deliver` may re-enter the TUI.
+            let completed = self
+                .pending_terminal_color_queries
+                .pop_front()
+                .expect("checked non-empty");
+            self.complete_terminal_color_query(completed);
+            return true;
         }
-        let rgb = parse_osc11_background_color(data);
-        self.pending_osc11_replies -= 1;
-        if let Some(mut query) = self.pending_osc11_queries.pop_front() {
-            if !query.settled {
-                query.settled = true;
-                if let Some(timer_id) = query.timer_id.take() {
-                    self.cancel_timer(timer_id);
+
+        let Some((target, rgb)) = parse_osc_color_response(data) else {
+            return false;
+        };
+        let completed = {
+            let query = self
+                .pending_terminal_color_queries
+                .front_mut()
+                .expect("checked non-empty");
+            let key = target.reply_key();
+            if query.deliver.is_none() || query.replied.contains(&key) {
+                None
+            } else {
+                query.replied.insert(key);
+                match target {
+                    OscColorTarget::Foreground => query.foreground = rgb,
+                    OscColorTarget::Background => query.background = rgb,
+                    OscColorTarget::Index(index) => {
+                        if (index as usize) < TERMINAL_PALETTE_SIZE {
+                            query.palette[index as usize] = rgb;
+                        }
+                    }
                 }
-                if let Some(callback) = query.callback.take() {
-                    callback(rgb);
+                if query.replied.len() == TERMINAL_COLOR_REPLY_COUNT {
+                    Some(std::mem::replace(query, TerminalColorQuery::vacant()))
+                } else {
+                    None
                 }
             }
+        };
+        // Upstream completes the query WITHOUT shifting it: the completed
+        // entry stays at the front and consumes the trailing DA1 reply (which
+        // then shifts it), so that DA1 is not forwarded as input.
+        if let Some(completed) = completed {
+            self.complete_terminal_color_query(completed);
         }
         true
+    }
+
+    /// Upstream `terminalColorQueryResult`: the palette is only set when all
+    /// 16 colors arrived.
+    fn terminal_color_query_result(query: &TerminalColorQuery) -> TerminalColors {
+        let palette = if query.palette.iter().all(|color| color.is_some()) {
+            Some(
+                query
+                    .palette
+                    .iter()
+                    .map(|color| color.expect("checked all"))
+                    .collect(),
+            )
+        } else {
+            None
+        };
+        TerminalColors {
+            foreground: query.foreground,
+            background: query.background,
+            palette,
+        }
+    }
+
+    fn complete_terminal_color_query(&mut self, mut query: TerminalColorQuery) {
+        let deliver = query.deliver.take();
+        if let Some(timer_id) = query.timer_id.take() {
+            self.cancel_timer(timer_id);
+        }
+        if let Some(deliver) = deliver {
+            deliver(Self::terminal_color_query_result(&query));
+        }
     }
 
     fn consume_terminal_color_scheme_report(&mut self, data: &str) -> bool {
@@ -1749,21 +1843,10 @@ impl Tui {
                 .iter_mut()
                 .find(|(listener_id, _)| *listener_id == id)
             else {
-                continue; // removed by a settle during this dispatch
+                continue; // removed during this dispatch
             };
             listener(&scheme);
         }
-        // Upstream `settle` unsubscribes immediately; the settled-guard makes
-        // later dispatches no-ops, so dropping them here is equivalent.
-        let settled_listeners: Vec<u64> = self
-            .scheme_queries
-            .iter()
-            .filter(|query| query.borrow().settled)
-            .map(|query| query.borrow().listener_id)
-            .collect();
-        self.terminal_color_scheme_listeners
-            .retain(|(id, _)| !settled_listeners.contains(id));
-        self.prune_settled_scheme_queries();
         true
     }
 
@@ -1787,56 +1870,35 @@ impl Tui {
 
     // ------------------------------------------------------ terminal queries
 
-    /// Upstream `queryTerminalBackgroundColor` (Promise → `on_settle`).
-    pub fn query_terminal_background_color(
+    /// Upstream `queryTerminalColors`: query the terminal's theme colors —
+    /// the default foreground (OSC 10), the default background (OSC 11), and
+    /// ANSI colors 0-15 (OSC 4), followed by a DA1 request that marks the end
+    /// of the replies. Resolves when the DA1 reply or all color replies
+    /// arrive, or when the timeout expires. Colors the terminal did not report
+    /// are `None`; the palette is only set when all 16 arrived. (Upstream
+    /// Promises become a one-shot `on_resolve` callback; a query that timed
+    /// out keeps collecting late replies for `on_late_reply`.)
+    pub fn query_terminal_colors(
         &mut self,
         timeout_ms: f64,
-        on_settle: impl FnOnce(Option<RgbColor>) + 'static,
+        on_resolve: impl FnOnce(TerminalColors) + 'static,
+        on_late_reply: Option<Box<dyn FnOnce(TerminalColors)>>,
     ) {
         self.next_query_seq += 1;
         let seq = self.next_query_seq;
-        let timer_id = self.set_timer(timeout_ms, TimerWork::Osc11Timeout(seq));
-        self.pending_osc11_queries.push_back(Osc11Query {
-            seq,
-            settled: false,
-            callback: Some(Box::new(on_settle)),
-            timer_id: Some(timer_id),
-        });
-        self.pending_osc11_replies += 1;
-        self.terminal.borrow_mut().write("\x1b]11;?\x07");
-    }
-
-    /// Upstream `queryTerminalColorScheme` (Promise → `on_settle`).
-    pub fn query_terminal_color_scheme(
-        &mut self,
-        timeout_ms: f64,
-        on_settle: impl FnOnce(Option<TerminalColorScheme>) + 'static,
-    ) {
-        self.next_query_seq += 1;
-        let seq = self.next_query_seq;
-        let timer_id = self.set_timer(timeout_ms, TimerWork::SchemeTimeout(seq));
-        let state: SchemeQueryState = Rc::new(RefCell::new(SchemeQuery {
-            seq,
-            settled: false,
-            result: None,
-            callback: Some(Box::new(on_settle)),
-            timer_id: Some(timer_id),
-            listener_id: 0,
-        }));
-        let listener_state = state.clone();
-        let listener_id = self.on_terminal_color_scheme_change(move |scheme| {
-            let mut query = listener_state.borrow_mut();
-            if !query.settled {
-                query.settled = true;
-                query.result = Some(*scheme);
-                if let Some(callback) = query.callback.take() {
-                    callback(query.result);
-                }
-            }
-        });
-        state.borrow_mut().listener_id = listener_id;
-        self.scheme_queries.push(state);
-        self.terminal.borrow_mut().write("\x1b[?996n");
+        let timer_id = self.set_timer(timeout_ms, TimerWork::TerminalColorTimeout(seq));
+        self.pending_terminal_color_queries
+            .push_back(TerminalColorQuery {
+                seq,
+                foreground: None,
+                background: None,
+                palette: vec![None; TERMINAL_PALETTE_SIZE],
+                replied: BTreeSet::new(),
+                deliver: Some(Box::new(on_resolve)),
+                on_late_reply,
+                timer_id: Some(timer_id),
+            });
+        self.terminal.borrow_mut().write(TERMINAL_COLOR_QUERY);
     }
 
     // ------------------------------------------------------- overlay layout

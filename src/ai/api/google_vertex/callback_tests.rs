@@ -12,7 +12,7 @@ use serde_json::json;
 use std::sync::{Arc, Mutex};
 
 fn model(base_url: &str) -> Model {
-    Model {
+    Model {r#type: None, prompt_cache: None, input_limits: None, 
         id: "gemini-2.5-flash".to_string(),
         name: "Gemini 2.5 Flash".to_string(),
         api: API.to_string(),

@@ -28,7 +28,7 @@ fn oracle() -> serde_json::Value {
 
 /// The oracle script's `model()` fixture factory (upstream test battery).
 fn model(provider: &str, id: &str) -> Model {
-    Model {
+    Model {r#type: None, prompt_cache: None, input_limits: None, 
         id: id.to_string(),
         name: id.to_string(),
         api: "anthropic-messages".to_string(),

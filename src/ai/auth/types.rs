@@ -312,6 +312,10 @@ pub trait AuthInteraction: Send + Sync {
 pub struct ProviderAuthInteraction {
     pub signal: CancellationToken,
     interaction: std::sync::Arc<dyn AuthInteraction>,
+    /// Upstream `Models.login` passes `LoginOptions` as the login call's
+    /// second argument; the port carries them on the interaction (flows read
+    /// them when they need the installation ID).
+    login_options: Option<std::sync::Arc<LoginOptions>>,
 }
 
 impl ProviderAuthInteraction {
@@ -322,7 +326,46 @@ impl ProviderAuthInteraction {
         Self {
             signal,
             interaction,
+            login_options: None,
         }
+    }
+
+    /// Upstream `method.login({ ...interaction, signal }, options)`: the
+    /// app-supplied login context.
+    pub fn with_login_options(
+        mut self,
+        login_options: Option<std::sync::Arc<LoginOptions>>,
+    ) -> Self {
+        self.login_options = login_options;
+        self
+    }
+
+    /// Upstream `options?.getDeviceId`: invoke the app's installation-ID
+    /// callback, `None` when no options were supplied.
+    pub fn device_id(&self) -> Option<String> {
+        self.login_options
+            .as_ref()
+            .and_then(|options| options.get_device_id.as_ref())
+            .map(|get_device_id| get_device_id())
+    }
+}
+
+/// Upstream `LoginOptions` (auth/types.ts): app-supplied context for
+/// `Models.login`.
+#[derive(Default)]
+pub struct LoginOptions {
+    /// Returns the stable ID of this app installation, e.g. sent to OpenAI
+    /// as its agent host ID. Called only by login flows that need it, so
+    /// apps can create the ID on first use and must return the same ID on
+    /// every later call.
+    pub get_device_id: Option<Box<dyn Fn() -> String + Send + Sync>>,
+}
+
+impl std::fmt::Debug for LoginOptions {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("LoginOptions")
+            .field("get_device_id", &self.get_device_id.is_some())
+            .finish()
     }
 }
 

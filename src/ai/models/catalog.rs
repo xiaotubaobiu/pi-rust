@@ -37,7 +37,7 @@ use std::sync::OnceLock;
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
 
-use crate::ai::types::Model;
+use crate::ai::types::{AnyModel, ClassifierModel, ImageModel, Model, ModelType};
 
 /// The build-time generated include-list (see `build.rs`).
 mod embedded {
@@ -123,6 +123,22 @@ pub fn catalog_provider_ids() -> impl Iterator<Item = &'static str> {
     embedded::MODEL_DATA_FILES.iter().map(|(id, _)| *id)
 }
 
+/// The `type` discriminator of one raw catalog entry, defaulting to chat
+/// (upstream `getModelType`: models without `type` are chat models). The
+/// per-type flattening below consults this; the strict upstream
+/// `flattenModelCatalog` compares `type === type` and therefore only admits
+/// explicit `"chat"` entries — the port admits the untyped legacy entries of
+/// the embedded snapshot as chat so the committed 2026-09-21 data (which
+/// predates the discriminator) keeps resolving. With regenerated data
+/// (explicit `"type": "chat"` on every chat entry) both readings coincide.
+fn entry_model_type(value: &serde_json::Value) -> ModelType {
+    match value.get("type").and_then(|kind| kind.as_str()) {
+        Some("image") => ModelType::Image,
+        Some("classifier") => ModelType::Classifier,
+        _ => ModelType::Chat,
+    }
+}
+
 /// The embedded `{api: {modelId: Model}}` document for one provider, parsed
 /// once and cached. `None` when the provider has no generated shard.
 pub fn embedded_provider_groups(provider: &str) -> Option<&'static serde_json::Value> {
@@ -143,10 +159,40 @@ pub fn embedded_provider_groups(provider: &str) -> Option<&'static serde_json::V
 }
 
 /// Upstream `getBuiltinModels` (`providers/all.ts`): the provider's flattened
-/// catalog, or an empty list when the provider has no generated shard.
+/// chat catalog, or an empty list when the provider has no generated shard.
 pub fn embedded_provider_catalog(provider: &str) -> Vec<Model> {
     match embedded_provider_groups(provider) {
         Some(groups) => flatten_model_catalog(provider, groups),
+        None => Vec::new(),
+    }
+}
+
+/// Upstream `getBuiltinImageModels` (`providers/all.ts`): the provider's
+/// flattened image catalog (`flattenImageModelCatalog`).
+pub fn embedded_provider_image_catalog(provider: &str) -> Vec<ImageModel> {
+    match embedded_provider_groups(provider) {
+        Some(groups) => flatten_typed_model_catalog(provider, groups, ModelType::Image)
+            .into_iter()
+            .filter_map(|model| match model {
+                AnyModel::Image(model) => Some(model),
+                _ => None,
+            })
+            .collect(),
+        None => Vec::new(),
+    }
+}
+
+/// Upstream `getBuiltinClassifierModels` (`providers/all.ts`): the provider's
+/// flattened classifier catalog (`flattenClassifierModelCatalog`).
+pub fn embedded_provider_classifier_catalog(provider: &str) -> Vec<ClassifierModel> {
+    match embedded_provider_groups(provider) {
+        Some(groups) => flatten_typed_model_catalog(provider, groups, ModelType::Classifier)
+            .into_iter()
+            .filter_map(|model| match model {
+                AnyModel::Classifier(model) => Some(model),
+                _ => None,
+            })
+            .collect(),
         None => Vec::new(),
     }
 }
@@ -183,6 +229,47 @@ pub fn flatten_model_catalog(_provider: &str, groups: &serde_json::Value) -> Vec
         .map(|(model_id, value)| {
             Model::deserialize(value).unwrap_or_else(|error| {
                 panic!("{_provider}/{model_id} is not a valid generated model: {error}")
+            })
+        })
+        .collect()
+}
+
+/// Upstream `flattenModelCatalog(groups, type)` (`model-catalog.ts`): the
+/// per-type flatten behind `flattenChatModelCatalog`/
+/// `flattenImageModelCatalog`/`flattenClassifierModelCatalog` — keep the
+/// entries whose `type` matches, keyed by their `id`. The chat side admits
+/// the untyped legacy snapshot entries (see [`entry_model_type`]); image and
+/// classifier match strictly. Same ordering/dedup substitution as
+/// [`flatten_model_catalog`] (sorted map instead of JS insertion record).
+pub fn flatten_typed_model_catalog(
+    _provider: &str,
+    groups: &serde_json::Value,
+    model_type: ModelType,
+) -> Vec<AnyModel> {
+    let mut merged: BTreeMap<&str, &serde_json::Value> = BTreeMap::new();
+    if let Some(groups) = groups.as_object() {
+        for (_api, group) in groups {
+            if let Some(group) = group.as_object() {
+                for (model_id, value) in group {
+                    if entry_model_type(value) == model_type {
+                        merged.insert(model_id.as_str(), value);
+                    }
+                }
+            }
+        }
+    }
+    merged
+        .into_iter()
+        .map(|(model_id, value)| {
+            AnyModel::deserialize(value).unwrap_or_else(|error| {
+                panic!(
+                    "{_provider}/{model_id} is not a valid generated {} model: {error}",
+                    match model_type {
+                        ModelType::Chat => "chat",
+                        ModelType::Image => "image",
+                        ModelType::Classifier => "classifier",
+                    }
+                )
             })
         })
         .collect()

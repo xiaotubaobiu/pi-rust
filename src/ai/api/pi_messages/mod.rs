@@ -1121,7 +1121,7 @@ mod tests {
     // ---- fixtures (pi-messages.test.ts:69-95) ----
 
     fn make_model(base_url: &str) -> Model {
-        Model {
+        Model {r#type: None, prompt_cache: None, input_limits: None, 
             id: "auto".to_string(),
             name: "Radius Auto".to_string(),
             api: "pi-messages".to_string(),

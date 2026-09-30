@@ -101,8 +101,8 @@ use serde_json::{json, Map, Value};
 
 use crate::ai::api::openai_completions::request::{
     clamp_max_tokens_to_context, clamp_thinking_level, level_key, make_strict_json_schema,
-    map_level, render_system_message_update, resolve_json_schema_strict_sampling, set_header,
-    short_hash, transform_messages, MappedLevel,
+    render_system_message_update, resolve_json_schema_strict_sampling, set_header, short_hash,
+    transform_messages,
 };
 use crate::ai::api::openai_completions::stream::{parse_streaming_json, truncate_error_text};
 use crate::ai::api::{http_client, pi_user_agent, request_signal, ApiImpl, REQUEST_WAS_ABORTED};
@@ -117,7 +117,7 @@ use crate::ai::types::message::{
     AssistantBlock, AssistantMessage, Message, StringOrBlocks, TextOrImageBlock,
 };
 use crate::ai::types::options::{SimpleStreamOptions, StreamOptions};
-use crate::ai::types::primitives::{CacheRetention, StopReason, ThinkingLevel, ToolChoice, Usage};
+use crate::ai::types::primitives::{CacheRetention, StopReason, ToolChoice, Usage};
 use crate::ai::types::tool::Tool;
 use crate::ai::types::{Model, ModelInput};
 use crate::ai::{now_ms, ProviderConfig};
@@ -250,45 +250,35 @@ fn mistral_options_from_simple(
     let reasoning = options
         .reasoning
         .and_then(|level| clamp_thinking_level(model, Some(level)));
-    let should_use_reasoning = model.reasoning && reasoning.is_some();
-    let prompt_mode = if should_use_reasoning && uses_prompt_mode_reasoning(model) {
-        Some("reasoning".to_string())
+    // Upstream (dc84c1ac0): models with a thinking level map use
+    // `reasoning_effort` — the mapped level, or the map's `off` entry when
+    // no level was requested; other reasoning models use `prompt_mode`.
+    let effort_map = if model.reasoning {
+        model.thinking_level_map.as_ref()
     } else {
         None
     };
-    let reasoning_effort = if should_use_reasoning && uses_reasoning_effort(model) {
-        Some(map_reasoning_effort(
-            model,
-            reasoning.unwrap_or(ThinkingLevel::High),
-        ))
+    let reasoning_effort = effort_map.map(|map| match reasoning {
+        Some(level) => mapped_reasoning_effort(map, level_key(Some(level))),
+        None => map
+            .get("off")
+            .and_then(|entry| entry.clone())
+            .unwrap_or_default(),
+    });
+    let prompt_mode = if model.reasoning && effort_map.is_none() && reasoning.is_some() {
+        Some("reasoning".to_string())
     } else {
         None
     };
     (tool_choice, prompt_mode, reasoning_effort)
 }
 
-/// Upstream `usesReasoningEffort` (lines 898-905): the `reasoning_effort`
-/// family — Mistral Small 4, the Medium line, and Mistral-hosted GLM-5.2
-/// (pi issue #9375: GLM-5.2 ignores prompt_mode).
-fn uses_reasoning_effort(model: &Model) -> bool {
-    model.id == "mistral-small-2603"
-        || model.id == "mistral-small-latest"
-        || model.id.starts_with("mistral-medium-")
-        || model.id == "zai-glm-5-2"
-}
-
-/// Upstream `usesPromptModeReasoning` (lines 907-909): Magistral-style
-/// reasoning — any reasoning model outside the effort family.
-fn uses_prompt_mode_reasoning(model: &Model) -> bool {
-    model.reasoning && !uses_reasoning_effort(model)
-}
-
-/// Upstream `mapReasoningEffort` (lines 911-916): the raw
-/// `model.thinkingLevelMap[level]` value, `"high"` when absent or null.
-fn map_reasoning_effort(model: &Model, level: ThinkingLevel) -> String {
-    match map_level(model, level_key(Some(level))) {
-        MappedLevel::Value(value) => value,
-        MappedLevel::Absent | MappedLevel::Null => "high".to_string(),
+/// Upstream `effortMap[reasoning] ?? "high"`: the raw map value, `"high"`
+/// when the level is absent or mapped to null.
+fn mapped_reasoning_effort(map: &crate::ai::types::primitives::ThinkingLevelMap, key: &str) -> String {
+    match map.get(key) {
+        Some(Some(value)) => value.clone(),
+        Some(None) | None => "high".to_string(),
     }
 }
 
@@ -644,6 +634,10 @@ async fn process_content_items(
     for item in items {
         match item {
             Value::String(text) => {
+                // Upstream (8930b9ec0): empty deltas never open a block.
+                if text.is_empty() {
+                    continue;
+                }
                 append_text_delta(state, text, tx).await;
             }
             Value::Object(object) => match object.get("type").and_then(Value::as_str) {
@@ -672,6 +666,10 @@ async fn process_content_items(
                         .get("text")
                         .and_then(Value::as_str)
                         .unwrap_or_default();
+                    // Upstream (8930b9ec0): empty deltas never open a block.
+                    if text.is_empty() {
+                        continue;
+                    }
                     append_text_delta(state, text, tx).await;
                 }
                 // Neither string nor thinking/text: skipped (upstream falls
@@ -1037,9 +1035,9 @@ fn to_function_tools(tools: &[Tool]) -> Result<Vec<Value>, String> {
     tools
         .iter()
         .map(|tool| {
-            let strict = resolve_json_schema_strict_sampling(tool, true)?;
+            let strict = resolve_json_schema_strict_sampling(tool, true, None)?;
             let parameters = if strict == Some(true) {
-                make_strict_json_schema(&tool.parameters)?
+                make_strict_json_schema(&tool.parameters, None)?
             } else {
                 tool.parameters.clone()
             };
@@ -1524,27 +1522,23 @@ struct MistralStreamFunction {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ai::api::pi_user_agent;
     use crate::ai::api::{abort_test_support::stalled_sse_server, REQUEST_ABORTED};
     use crate::ai::transcript::{normalize_context, Context};
     use crate::ai::types::content::{ImageContent, TextContent};
     use crate::ai::types::events::PartialAssistant;
-    use crate::ai::types::message::{
-        AssistantBlock, Message, StringOrBlocks, ToolResultMessage, UserMessage,
+    use crate::ai::types::message::{Message, StringOrBlocks, ToolResultMessage, UserMessage,
     };
-    use crate::ai::types::options::ProviderHeaders;
     use crate::ai::types::primitives::{CacheRetention, ModelCost, ThinkingLevelMap};
     use crate::ai::types::tool::{ConstrainedSampling, JsonSchemaSampling, Strict, Tool};
     use crate::ai::types::{ModelInput, ThinkingLevel};
     use serde_json::{json, Value};
-    use std::time::Duration;
 
     const TS: i64 = 1758240000000;
 
     // ---- fixtures ----
 
     fn model(base_url: &str) -> Model {
-        Model {
+        Model {r#type: None, prompt_cache: None, input_limits: None, 
             id: "mistral-large-latest".to_string(),
             name: "Mistral Large".to_string(),
             api: API.to_string(),
@@ -1569,7 +1563,7 @@ mod tests {
     }
 
     fn model_with_id(base_url: &str, id: &str, reasoning: bool) -> Model {
-        Model {
+        Model {r#type: None, prompt_cache: None, input_limits: None, 
             id: id.to_string(),
             reasoning,
             ..model(base_url)
@@ -1696,7 +1690,40 @@ mod tests {
     }
 
     /// Runs one simple stream and returns (request URL, headers, JSON body,
-    /// events) for the single captured request.
+    fn apply_all(events: &[AssistantMessageEvent]) -> PartialAssistant {
+        let mut partial = PartialAssistant::new();
+        for event in events {
+            partial
+                .apply(event)
+                .unwrap_or_else(|error| panic!("reducer rejected {}: {error}", event.event_type()));
+        }
+        partial
+    }
+
+    fn event_types(events: &[AssistantMessageEvent]) -> Vec<&'static str> {
+        events
+            .iter()
+            .map(AssistantMessageEvent::event_type)
+            .collect()
+    }
+    fn error_of(events: &[AssistantMessageEvent]) -> AssistantMessage {
+        match events.last() {
+            Some(AssistantMessageEvent::Error { error, .. }) => error.clone(),
+            other => panic!("expected terminal error, got {other:?}"),
+        }
+    }
+
+    #[allow(dead_code)]
+    fn done_message(events: &[AssistantMessageEvent]) -> AssistantMessage {
+        match events.last() {
+            Some(AssistantMessageEvent::Done { message, .. }) => message.clone(),
+            other => panic!("expected done, got {other:?}"),
+        }
+    }
+
+    fn body_of<'a>(header_map: &'a reqwest::header::HeaderMap, name: &str) -> Option<&'a str> {
+        header_map.get(name).and_then(|value| value.to_str().ok())
+    }
     async fn capture_simple(
         server: &wiremock::MockServer,
         model: &Model,
@@ -1744,552 +1771,14 @@ mod tests {
             events,
         )
     }
-
-    fn apply_all(events: &[AssistantMessageEvent]) -> PartialAssistant {
-        let mut partial = PartialAssistant::new();
-        for event in events {
-            partial
-                .apply(event)
-                .unwrap_or_else(|error| panic!("reducer rejected {}: {error}", event.event_type()));
-        }
-        partial
-    }
-
-    fn event_types(events: &[AssistantMessageEvent]) -> Vec<&'static str> {
-        events
-            .iter()
-            .map(AssistantMessageEvent::event_type)
-            .collect()
-    }
-
-    fn error_of(events: &[AssistantMessageEvent]) -> AssistantMessage {
-        match events.last() {
-            Some(AssistantMessageEvent::Error { error, .. }) => error.clone(),
-            other => panic!("expected terminal error, got {other:?}"),
-        }
-    }
-
-    fn done_message(events: &[AssistantMessageEvent]) -> AssistantMessage {
-        match events.last() {
-            Some(AssistantMessageEvent::Done { message, .. }) => message.clone(),
-            other => panic!("expected done, got {other:?}"),
-        }
-    }
-
-    fn body_of<'a>(header_map: &'a reqwest::header::HeaderMap, name: &str) -> Option<&'a str> {
-        header_map.get(name).and_then(|value| value.to_str().ok())
-    }
-
-    // ---- 1. wire shape: URL, auth, headers, body (mistral-http-transport
-    //         oracle, "serializes SDK-style payloads to the Mistral wire
-    //         format" minus the onPayload-only fields) ----
-
+    /// Upstream `mistral-reasoning-mode.test.ts` (the dc84c1ac0 delta):
+    /// models WITH a thinking level map use `reasoning_effort` — the mapped
+    /// level (clamped unsupported levels fall through to `"high"`), the
+    /// map's `"off"` entry when no level is requested — while reasoning
+    /// models WITHOUT a map (Magistral) use `prompt_mode`; non-reasoning
+    /// models omit both.
     #[tokio::test]
-    async fn wire_request_hits_chat_completions_with_headers_and_payload() {
-        let server = wiremock::MockServer::start().await;
-        mount(&server, &[terminal_event("stop")]).await;
-        let model = Model {
-            input: vec![ModelInput::Text, ModelInput::Image],
-            ..model(&server.uri())
-        };
-        let ctx = normalize_context(&Context {
-            system_prompt: Some("Be precise".to_string()),
-            messages: vec![Message::User(UserMessage {
-                content: StringOrBlocks::Blocks(vec![
-                    crate::ai::types::TextOrImageBlock::Text(TextContent {
-                        text: "describe".to_string(),
-                        text_signature: None,
-                    }),
-                    crate::ai::types::TextOrImageBlock::Image(image("aGVsbG8=")),
-                ]),
-                timestamp: TS,
-            })],
-            tools: Some(vec![tool("lookup")]),
-        });
-        let mut headers = ProviderHeaders::new();
-        headers.insert("x-custom".to_string(), Some("value".to_string()));
-        let options = StreamOptions {
-            headers: Some(headers),
-            max_tokens: Some(123),
-            session_id: Some("session-1".to_string()),
-            ..StreamOptions::default()
-        };
-        let (url, request_headers, body, events) =
-            capture_stream(&server, &model, &ctx, &options).await;
-
-        assert!(url.ends_with("/v1/chat/completions"), "url: {url}");
-        assert_eq!(
-            body_of(&request_headers, "authorization"),
-            Some("Bearer test-api-key")
-        );
-        assert_eq!(
-            body_of(&request_headers, "accept"),
-            Some("text/event-stream")
-        );
-        assert_eq!(
-            body_of(&request_headers, "content-type"),
-            Some("application/json")
-        );
-        assert_eq!(body_of(&request_headers, "x-affinity"), Some("session-1"));
-        assert_eq!(body_of(&request_headers, "x-custom"), Some("value"));
-        assert_eq!(
-            body_of(&request_headers, "user-agent"),
-            Some(pi_user_agent().as_str())
-        );
-
-        assert_eq!(body["max_tokens"], json!(123));
-        assert_eq!(
-            body["messages"],
-            json!([
-                {"role": "system", "content": "Be precise"},
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": "describe"},
-                        {"type": "image_url", "image_url": "data:image/png;base64,aGVsbG8="},
-                    ],
-                },
-            ]),
-            "{body}"
-        );
-        assert_eq!(
-            body["tools"],
-            json!([{
-                "type": "function",
-                "function": {
-                    "name": "lookup",
-                    "description": "Look something up",
-                    "parameters": {"type": "object", "properties": {"query": {"type": "string"}}},
-                    "strict": false,
-                },
-            }]),
-            "{body}"
-        );
-        assert_eq!(
-            done_message(&events).stop_reason,
-            crate::ai::types::StopReason::Stop
-        );
-    }
-
-    // ---- 2. assistant + tool-result replay (mistral-http-transport oracle,
-    //         "serializes assistant thinking, tool calls, and tool results for
-    //         replay") ----
-
-    #[tokio::test]
-    async fn assistant_replay_serializes_thinking_tool_calls_and_tool_results() {
-        let server = wiremock::MockServer::start().await;
-        mount(&server, &[terminal_event("stop")]).await;
-        let model = Model {
-            input: vec![ModelInput::Text, ModelInput::Image],
-            ..model(&server.uri())
-        };
-        let ctx = ctx_with(vec![
-            Message::Assistant(AssistantMessage {
-                content: vec![
-                    AssistantBlock::Thinking(crate::ai::types::ThinkingContent {
-                        thinking: "reason".to_string(),
-                        thinking_signature: None,
-                        redacted: None,
-                    }),
-                    AssistantBlock::Text(TextContent {
-                        text: "answer".to_string(),
-                        text_signature: None,
-                    }),
-                    AssistantBlock::ToolCall(crate::ai::types::ToolCall {
-                        id: "abc123456".to_string(),
-                        name: "lookup".to_string(),
-                        arguments: json!({"query": "pi"}),
-                        thought_signature: None,
-                        namespace: None,
-                    }),
-                ],
-                api: API.to_string(),
-                provider: "mistral".to_string(),
-                model: "mistral-large-latest".to_string(),
-                response_model: None,
-                response_id: None,
-                provider_thinking_level: None,
-                diagnostics: None,
-                usage: crate::ai::types::Usage::default(),
-                stop_reason: crate::ai::types::StopReason::ToolUse,
-                deferred: None,
-                error_message: None,
-                raw_stop_reason: None,
-                end_turn: None,
-                timestamp: TS,
-            }),
-            Message::ToolResult(ToolResultMessage {
-                tool_call_id: "abc123456".to_string(),
-                tool_name: "lookup".to_string(),
-                content: vec![
-                    crate::ai::types::TextOrImageBlock::Text(TextContent {
-                        text: "found".to_string(),
-                        text_signature: None,
-                    }),
-                    crate::ai::types::TextOrImageBlock::Image(image("aGVsbG8=")),
-                ],
-                details: None,
-                usage: None,
-                is_error: false,
-                timestamp: TS,
-            }),
-        ]);
-
-        let (_, _, body, events) =
-            capture_stream(&server, &model, &ctx, &StreamOptions::default()).await;
-        assert_eq!(
-            done_message(&events).stop_reason,
-            crate::ai::types::StopReason::Stop
-        );
-        assert_eq!(
-            body["messages"],
-            json!([
-                {
-                    "role": "assistant",
-                    "prefix": false,
-                    "content": [
-                        {"type": "thinking", "thinking": [{"type": "text", "text": "reason"}]},
-                        {"type": "text", "text": "answer"},
-                    ],
-                    "tool_calls": [{
-                        "id": "abc123456",
-                        "type": "function",
-                        "function": {"name": "lookup", "arguments": "{\"query\":\"pi\"}"},
-                        "index": 0,
-                    }],
-                },
-                {
-                    "role": "tool",
-                    "tool_call_id": "abc123456",
-                    "name": "lookup",
-                    "content": [
-                        {"type": "text", "text": "found"},
-                        {"type": "image_url", "image_url": "data:image/png;base64,aGVsbG8="},
-                    ],
-                },
-            ]),
-            "{body}"
-        );
-    }
-
-    // ---- 3. streaming parse: thinking, text, fragmented tool calls, cached
-    //         usage (mistral-http-transport oracle) ----
-
-    #[tokio::test]
-    async fn parses_thinking_text_fragmented_tool_calls_and_cached_usage() {
-        let server = wiremock::MockServer::start().await;
-        mount(
-            &server,
-            &[
-                json!({
-                    "id": "response-1",
-                    "model": "mistral-large-latest",
-                    "choices": [{"index": 0, "finish_reason": null, "delta": {
-                        "content": [{"type": "thinking", "thinking": [{"type": "text", "text": "reason"}]}],
-                    }}],
-                }),
-                json!({
-                    "id": "response-1",
-                    "model": "mistral-large-latest",
-                    "choices": [{"index": 0, "finish_reason": null, "delta": {
-                        "content": [{"type": "text", "text": "answer"}],
-                    }}],
-                }),
-                json!({
-                    "id": "response-1",
-                    "model": "mistral-large-latest",
-                    "choices": [{"index": 0, "finish_reason": null, "delta": {
-                        "tool_calls": [{
-                            "id": "abc123456",
-                            "index": 0,
-                            "function": {"name": "lookup", "arguments": "{\"query\":"},
-                        }],
-                    }}],
-                }),
-                json!({
-                    "id": "response-1",
-                    "model": "mistral-large-latest",
-                    "choices": [{"index": 0, "finish_reason": "tool_calls", "delta": {
-                        "tool_calls": [{
-                            "index": 0,
-                            "function": {"name": "", "arguments": "\"pi\"}"},
-                        }],
-                    }}],
-                    "usage": {
-                        "prompt_tokens": 10,
-                        "completion_tokens": 4,
-                        "total_tokens": 14,
-                        "prompt_tokens_details": {"cached_tokens": 3},
-                    },
-                }),
-            ],
-        )
-        .await;
-        let model = model(&server.uri());
-        let ctx = ctx_with(vec![user_msg("hello")]);
-        let (_, _, _, events) =
-            capture_simple(&server, &model, &ctx, &SimpleStreamOptions::default()).await;
-
-        assert_eq!(
-            event_types(&events),
-            [
-                "start",
-                "thinking_start",
-                "thinking_delta",
-                "thinking_end",
-                "text_start",
-                "text_delta",
-                "text_end",
-                "toolcall_start",
-                "toolcall_delta",
-                "toolcall_delta",
-                "toolcall_end",
-                "done",
-            ],
-            "{events:?}"
-        );
-        let message = done_message(&events);
-        assert_eq!(message.stop_reason, crate::ai::types::StopReason::ToolUse);
-        assert_eq!(message.raw_stop_reason.as_deref(), Some("tool_calls"));
-        assert_eq!(message.response_id.as_deref(), Some("response-1"));
-        assert_eq!(
-            message.content,
-            vec![
-                AssistantBlock::Thinking(crate::ai::types::ThinkingContent {
-                    thinking: "reason".to_string(),
-                    thinking_signature: None,
-                    redacted: None,
-                }),
-                AssistantBlock::Text(TextContent {
-                    text: "answer".to_string(),
-                    text_signature: None,
-                }),
-                AssistantBlock::ToolCall(crate::ai::types::ToolCall {
-                    id: "abc123456".to_string(),
-                    name: "lookup".to_string(),
-                    arguments: json!({"query": "pi"}),
-                    thought_signature: None,
-                    namespace: None,
-                }),
-            ],
-            "{:?}",
-            message.content
-        );
-        assert_eq!(message.usage.input, 7);
-        assert_eq!(message.usage.output, 4);
-        assert_eq!(message.usage.cache_read, 3);
-        assert_eq!(message.usage.cache_write, 0);
-        assert_eq!(message.usage.total_tokens, 14);
-
-        // The event sequence replays into the same message through the
-        // partial reducer.
-        assert!(apply_all(&events).is_terminal());
-    }
-
-    // ---- 4. SSE + UTF-8 sequences split across transport chunks
-    //         (mistral-http-transport oracle, bytewise test) ----
-
-    #[tokio::test]
-    async fn parses_sse_and_utf8_split_across_transport_chunks() {
-        // A raw TCP listener stands in for the server so the response body is
-        // written one byte at a time, splitting SSE events and multi-byte
-        // UTF-8 sequences across transport chunks exactly like the oracle.
-        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
-        let addr = listener.local_addr().unwrap();
-        let event = json!({
-            "id": "response-bytewise",
-            "model": "mistral-large-latest",
-            "choices": [{"index": 0, "finish_reason": "stop", "delta": {"content": "héllo 🌍"}}],
-            "usage": {"prompt_tokens": 1, "completion_tokens": 2, "total_tokens": 3},
-        });
-        let body = format!("data: {event}\r\n\r\ndata: [DONE]\r\n\r\n");
-        tokio::spawn(async move {
-            use tokio::io::{AsyncReadExt, AsyncWriteExt};
-            let (mut socket, _) = listener.accept().await.unwrap();
-            let mut buf = vec![0u8; 8192];
-            let _ = socket.read(&mut buf).await;
-            let head = format!(
-                "HTTP/1.1 200 OK\r\ncontent-type: text/event-stream\r\ncontent-length: {}\r\nconnection: close\r\n\r\n",
-                body.len()
-            );
-            socket.write_all(head.as_bytes()).await.unwrap();
-            for byte in body.as_bytes() {
-                socket.write_all(std::slice::from_ref(byte)).await.unwrap();
-                socket.flush().await.unwrap();
-            }
-            socket.shutdown().await.unwrap();
-        });
-
-        let model = model(&format!("http://{addr}"));
-        let ctx = ctx_with(vec![user_msg("hello")]);
-        let api = MistralConversations;
-        let mut rx = api.stream(&cfg(), &model, &ctx, &StreamOptions::default());
-        let mut events = Vec::new();
-        while let Some(event) = rx.recv().await {
-            events.push(event);
-        }
-        let message = done_message(&events);
-        assert_eq!(message.stop_reason, crate::ai::types::StopReason::Stop);
-        assert_eq!(
-            message.content,
-            vec![AssistantBlock::Text(TextContent {
-                text: "héllo 🌍".to_string(),
-                text_signature: None,
-            })]
-        );
-    }
-
-    // ---- 5. case-insensitive header overrides + explicit affinity
-    //         suppression (mistral-http-transport oracle) ----
-
-    #[tokio::test]
-    async fn honors_case_insensitive_header_overrides_and_explicit_affinity_suppression() {
-        let server = wiremock::MockServer::start().await;
-        mount(&server, &[terminal_event("stop")]).await;
-        let mut model = model(&server.uri());
-        let mut model_headers = std::collections::BTreeMap::new();
-        model_headers.insert(
-            "Authorization".to_string(),
-            Some("Bearer model-key".to_string()),
-        );
-        model_headers.insert("X-Affinity".to_string(), Some("model-affinity".to_string()));
-        model.headers = Some(model_headers);
-        let ctx = ctx_with(vec![user_msg("hello")]);
-        let mut option_headers = ProviderHeaders::new();
-        option_headers.insert("authorization".to_string(), None);
-        option_headers.insert("x-affinity".to_string(), None);
-        option_headers.insert("User-Agent".to_string(), Some("custom-agent".to_string()));
-        let options = StreamOptions {
-            headers: Some(option_headers),
-            session_id: Some("automatic-affinity".to_string()),
-            ..StreamOptions::default()
-        };
-        let (_, request_headers, _, events) = capture_stream(&server, &model, &ctx, &options).await;
-
-        assert_eq!(request_headers.get("authorization"), None);
-        assert_eq!(request_headers.get("x-affinity"), None);
-        assert_eq!(
-            body_of(&request_headers, "user-agent"),
-            Some("custom-agent")
-        );
-        assert!(matches!(
-            events.last(),
-            Some(AssistantMessageEvent::Done { .. })
-        ));
-    }
-
-    // ---- 6. request timeout (mistral-http-transport oracle: error message
-    //         matches /timeout/i) ----
-
-    #[tokio::test]
-    async fn request_timeout_surfaces_the_upstream_timeout_abort_message() {
-        let server = wiremock::MockServer::start().await;
-        wiremock::Mock::given(wiremock::matchers::method("POST"))
-            .and(wiremock::matchers::path("/v1/chat/completions"))
-            .respond_with(sse(&[terminal_event("stop")]).set_delay(Duration::from_secs(30)))
-            .mount(&server)
-            .await;
-        let model = model(&server.uri());
-        let ctx = ctx_with(vec![user_msg("hello")]);
-        let options = StreamOptions {
-            timeout_ms: Some(50),
-            ..StreamOptions::default()
-        };
-        let events = collect_stream(&server, &model, &ctx, &options).await;
-        let error = error_of(&events);
-        assert_eq!(error.stop_reason, crate::ai::types::StopReason::Error);
-        let message = error
-            .error_message
-            .as_deref()
-            .unwrap_or_default()
-            .to_lowercase();
-        assert!(message.contains("timeout"), "{message}");
-    }
-
-    // ---- 7. HTTP errors preserve status and body (mistral-http-transport
-    //         oracle) ----
-
-    #[tokio::test]
-    async fn preserves_http_status_and_response_bodies_in_errors() {
-        let server = wiremock::MockServer::start().await;
-        wiremock::Mock::given(wiremock::matchers::method("POST"))
-            .and(wiremock::matchers::path("/v1/chat/completions"))
-            .respond_with(
-                wiremock::ResponseTemplate::new(403)
-                    .insert_header("content-type", "application/json")
-                    .set_body_string(r#"{"message":"blocked by gateway"}"#),
-            )
-            .mount(&server)
-            .await;
-        let model = model(&server.uri());
-        let ctx = ctx_with(vec![user_msg("hello")]);
-        let events = collect_stream(&server, &model, &ctx, &StreamOptions::default()).await;
-        assert_eq!(events.len(), 1, "lone error event before start: {events:?}");
-        let error = error_of(&events);
-        assert_eq!(error.stop_reason, crate::ai::types::StopReason::Error);
-        assert_eq!(
-            error.error_message.as_deref(),
-            Some(r#"Mistral API error (403): {"message":"blocked by gateway"}"#)
-        );
-        assert_eq!(error.api, API);
-        assert_eq!(error.provider, "mistral");
-        assert!(apply_all(&events).is_terminal());
-    }
-
-    // ---- 8. raw stop reasons (mistral-raw-stop-reason oracle) ----
-
-    #[tokio::test]
-    async fn raw_stop_reasons_round_trip() {
-        // stop -> done(stop), no error message.
-        let server = wiremock::MockServer::start().await;
-        mount(&server, &[terminal_event("stop")]).await;
-        let model = model_with_id(&server.uri(), "devstral-medium-latest", false);
-        let ctx = ctx_with(vec![user_msg("hello")]);
-        let (_, _, _, events) =
-            capture_stream(&server, &model, &ctx, &StreamOptions::default()).await;
-        let message = done_message(&events);
-        assert_eq!(message.stop_reason, crate::ai::types::StopReason::Stop);
-        assert_eq!(message.raw_stop_reason.as_deref(), Some("stop"));
-        assert_eq!(message.error_message, None);
-
-        // length -> done(length).
-        let server = wiremock::MockServer::start().await;
-        mount(&server, &[terminal_event("length")]).await;
-        let model = model_with_id(&server.uri(), "devstral-medium-latest", false);
-        let (_, _, _, events) =
-            capture_stream(&server, &model, &ctx, &StreamOptions::default()).await;
-        let message = done_message(&events);
-        assert_eq!(message.stop_reason, crate::ai::types::StopReason::Length);
-        assert_eq!(message.raw_stop_reason.as_deref(), Some("length"));
-    }
-
-    #[tokio::test]
-    async fn provider_error_finish_reasons_terminate_with_the_upstream_message() {
-        let ctx = ctx_with(vec![user_msg("hello")]);
-        for reason in ["error", "unmapped_error"] {
-            let server = wiremock::MockServer::start().await;
-            mount(&server, &[terminal_event(reason)]).await;
-            let model = model_with_id(&server.uri(), "devstral-medium-latest", false);
-            let events =
-                collect_simple(&server, &model, &ctx, &SimpleStreamOptions::default()).await;
-            let error = error_of(&events);
-            assert_eq!(error.stop_reason, crate::ai::types::StopReason::Error);
-            assert_eq!(error.raw_stop_reason.as_deref(), Some(reason));
-            assert_eq!(
-                error.error_message.as_deref(),
-                Some(&format!("Provider stopped with: {reason}")[..])
-            );
-            assert_eq!(events.len(), 2, "start then error: {events:?}");
-            assert!(apply_all(&events).is_terminal());
-        }
-    }
-
-    // ---- 9. reasoning mode selection (mistral-reasoning-mode oracle), read
-    //         off the wire payload (prompt_mode / reasoning_effort /
-    //         prompt_cache_key) ----
-
-    #[tokio::test]
-    async fn reasoning_mode_selection_matches_the_model_family() {
+    async fn reasoning_mode_selection_follows_the_thinking_level_map_presence() {
         let server = wiremock::MockServer::start().await;
         let ctx = ctx_with(vec![Message::User(UserMessage {
             content: StringOrBlocks::Text("Hello".to_string()),
@@ -2301,86 +1790,82 @@ mod tests {
             ctx: &TranscriptContext,
             id: &str,
             reasoning: bool,
+            map: Option<ThinkingLevelMap>,
             options: &SimpleStreamOptions,
-        ) -> (Option<Value>, Option<Value>, Option<Value>) {
+        ) -> (Option<Value>, Option<Value>) {
             mount(server, &[terminal_event("stop")]).await;
-            let model = model_with_id(&server.uri(), id, reasoning);
+            let mut model = model_with_id(&server.uri(), id, reasoning);
+            model.thinking_level_map = map;
             let (_, _, body, events) = capture_simple(server, &model, ctx, options).await;
             assert!(
                 matches!(events.last(), Some(AssistantMessageEvent::Done { .. })),
                 "{id}: {events:?}"
             );
-            (
-                body.get("prompt_mode").cloned(),
-                body.get("reasoning_effort").cloned(),
-                body.get("prompt_cache_key").cloned(),
-            )
+            (body.get("prompt_mode").cloned(), body.get("reasoning_effort").cloned())
         }
 
-        let reasoning_medium = SimpleStreamOptions {
-            reasoning: Some(ThinkingLevel::Medium),
+        let reasoning_high = SimpleStreamOptions {
+            reasoning: Some(ThinkingLevel::High),
             ..SimpleStreamOptions::default()
         };
-        let defaults = SimpleStreamOptions::default();
+        let reasoning_off = SimpleStreamOptions::default();
+        let none_high = level_map(&[("high", Some("high")), ("off", Some("none"))]);
 
-        // Mistral Small 4 uses reasoning_effort.
-        let (prompt_mode, effort, _) =
-            controls_of(&server, &ctx, "mistral-small-2603", true, &reasoning_medium).await;
-        assert_eq!(prompt_mode, None);
-        assert_eq!(effort, Some(json!("high")));
-
-        // ...and omits both when thinking is off.
-        let (prompt_mode, effort, _) =
-            controls_of(&server, &ctx, "mistral-small-2603", true, &defaults).await;
-        assert_eq!(prompt_mode, None);
-        assert_eq!(effort, None);
-
-        // Magistral uses prompt_mode.
-        let (prompt_mode, effort, _) = controls_of(
+        // Reasoning models without a map (Magistral) use prompt_mode.
+        let (prompt_mode, effort) = controls_of(
             &server,
             &ctx,
             "magistral-medium-latest",
             true,
-            &reasoning_medium,
+            None,
+            &reasoning_high,
         )
         .await;
         assert_eq!(prompt_mode, Some(json!("reasoning")));
         assert_eq!(effort, None);
 
-        // zai-glm-5-2 ignores prompt_mode (pi issue #9375).
-        let (prompt_mode, effort, _) =
-            controls_of(&server, &ctx, "zai-glm-5-2", true, &reasoning_medium).await;
-        assert_eq!(prompt_mode, None);
-        assert_eq!(effort, Some(json!("high")));
-        let (prompt_mode, effort, _) =
-            controls_of(&server, &ctx, "zai-glm-5-2", true, &defaults).await;
+        // ...and omit both when thinking is off.
+        let (prompt_mode, effort) = controls_of(
+            &server,
+            &ctx,
+            "magistral-medium-latest",
+            true,
+            None,
+            &reasoning_off,
+        )
+        .await;
         assert_eq!(prompt_mode, None);
         assert_eq!(effort, None);
 
-        // Medium aliases use reasoning_effort, not Magistral's prompt_mode
-        // (pi issue #8700).
-        for id in ["mistral-medium-2604", "mistral-medium-latest"] {
-            let (prompt_mode, effort, _) =
-                controls_of(&server, &ctx, id, true, &reasoning_medium).await;
+        // Mapped models (#8700/#9375): reasoning_effort from the map, no
+        // prompt_mode; thinking off sends the map's "off" entry ("none").
+        for id in ["mistral-small-2603", "mistral-medium-latest", "zai-glm-5-2"] {
+            let (prompt_mode, effort) =
+                controls_of(&server, &ctx, id, true, Some(none_high.clone()), &reasoning_high)
+                    .await;
             assert_eq!(prompt_mode, None, "{id}");
             assert_eq!(effort, Some(json!("high")), "{id}");
-            let (prompt_mode, effort, _) = controls_of(&server, &ctx, id, true, &defaults).await;
+            let (prompt_mode, effort) =
+                controls_of(&server, &ctx, id, true, Some(none_high.clone()), &reasoning_off)
+                    .await;
             assert_eq!(prompt_mode, None, "{id}");
-            assert_eq!(effort, None, "{id}");
+            assert_eq!(effort, Some(json!("none")), "{id}");
         }
 
-        // The Medium prefix still respects the model's reasoning capability.
-        let (prompt_mode, effort, _) = controls_of(
+        // Non-reasoning models omit both even with a map and a level.
+        let (prompt_mode, effort) = controls_of(
             &server,
             &ctx,
             "mistral-medium-2505",
             false,
-            &reasoning_medium,
+            Some(none_high),
+            &reasoning_high,
         )
         .await;
         assert_eq!(prompt_mode, None);
         assert_eq!(effort, None);
     }
+
 
     #[tokio::test]
     async fn reasoning_effort_follows_the_thinking_level_map() {

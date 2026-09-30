@@ -225,7 +225,8 @@ pub fn client_frame_hex(message: &ClientMessage) -> String {
 /// verbatim upstream sources).
 pub fn oracle_lines() -> Vec<String> {
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("scratch")
+        .join("tests")
+        .join("fixtures")
         .join("server_oracle")
         .join("oracle.out.txt");
     std::fs::read_to_string(&path)

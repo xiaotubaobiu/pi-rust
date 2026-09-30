@@ -268,7 +268,8 @@ pub(crate) fn hex(bytes: &[u8]) -> String {
 /// verbatim upstream sources).
 pub(crate) fn oracle_lines() -> Vec<String> {
     let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("scratch")
+        .join("tests")
+        .join("fixtures")
         .join("client_oracle")
         .join("oracle.out.txt");
     std::fs::read_to_string(&path)

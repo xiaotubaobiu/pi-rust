@@ -410,6 +410,13 @@ async fn drive_stream(
             Some("message_stop") => saw_message_stop = true,
             _ => {}
         }
+        // Upstream: the per-event observer runs before Pi normalization.
+        options
+            .stream
+            .callbacks
+            .provider_stream_event(data.clone(), model)
+            .await
+            .map_err(|error| error.to_string())?;
         process_event(
             state,
             &data,
@@ -951,6 +958,14 @@ fn process_message_delta(
         {
             state.output.usage.cache_write = cache_write;
         }
+        // Vercel AI Gateway includes the TTL breakdown in deltas, though the
+        // SDK only types it on message_start (the cacheWrite1h delta).
+        if let Some(cache_creation_1h) = usage
+            .pointer("/cache_creation/ephemeral_1h_input_tokens")
+            .and_then(Value::as_u64)
+        {
+            state.output.usage.cache_write_1h = Some(cache_creation_1h);
+        }
         // Anthropic reports reasoning tokens as a subset of output tokens.
         if let Some(thinking_tokens) = usage
             .pointer("/output_tokens_details/thinking_tokens")
@@ -1066,7 +1081,7 @@ mod tests {
     // ---- fixtures ----
 
     fn make_model(compat: Value) -> Model {
-        Model {
+        Model {r#type: None, prompt_cache: None, input_limits: None, 
             id: "claude-test".to_string(),
             name: "Claude Test".to_string(),
             api: "anthropic-messages".to_string(),

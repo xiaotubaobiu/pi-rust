@@ -537,6 +537,9 @@ pub struct Markdown {
     cached_text: Option<String>,
     cached_width: Option<usize>,
     cached_lines: Option<Vec<Utf16Text>>,
+    /// Parsed tokens depend only on the source, so they survive theme and
+    /// width invalidation.
+    cached_tokens: Option<(String, Vec<Token>)>,
 }
 
 impl Markdown {
@@ -563,6 +566,7 @@ impl Markdown {
             cached_text: None,
             cached_width: None,
             cached_lines: None,
+            cached_tokens: None,
         }
     }
 
@@ -637,9 +641,23 @@ impl Markdown {
         }
 
         let normalized_text = text.replace('\t', "   ");
-        let mut lexer = Lexer::new();
-        let mut tokens = lexer.lex(&normalized_text, &MarkdownExtensions);
-        trim_partial_closing_fences(&mut tokens);
+        // Parsed tokens depend only on the source, so they survive theme and
+        // width invalidation.
+        let cached_tokens = self
+            .cached_tokens
+            .as_ref()
+            .filter(|(source, _)| source == &normalized_text)
+            .map(|(_, tokens)| tokens.clone());
+        let mut tokens = match cached_tokens {
+            Some(tokens) => tokens,
+            None => {
+                let mut lexer = Lexer::new();
+                let mut tokens = lexer.lex(&normalized_text, &MarkdownExtensions);
+                trim_partial_closing_fences(&mut tokens);
+                self.cached_tokens = Some((normalized_text.clone(), tokens.clone()));
+                tokens
+            }
+        };
 
         let mut rendered_lines: Vec<Utf16Text> = Vec::new();
         for i in 0..tokens.len() {

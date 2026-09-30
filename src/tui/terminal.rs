@@ -263,7 +263,12 @@ pub struct CoreOutcome {
 }
 
 enum NegotiationRead {
-    Match(NegotiationSequence),
+    Match {
+        parsed: NegotiationSequence,
+        /// The full (possibly reassembled) sequence, forwarded as input when
+        /// the parsed reply goes unconsumed.
+        sequence: String,
+    },
     Pending,
     /// Not a negotiation sequence; a previously buffered prefix (if any) is
     /// replayed as input before the current sequence.
@@ -281,6 +286,9 @@ pub struct TerminalCore {
     kitty_protocol_active: bool,
     modify_other_keys_active: bool,
     keyboard_protocol_pushed: bool,
+    /// DA1 replies owed to keyboard protocol queries. Later DA1 replies answer
+    /// other queries and are forwarded.
+    pending_keyboard_protocol_device_attributes: i64,
     negotiation_buffer: String,
     input_handler: Option<Box<dyn FnMut(String) + Send>>,
     native_shift_pressed: bool,
@@ -302,6 +310,7 @@ impl TerminalCore {
             kitty_protocol_active: false,
             modify_other_keys_active: false,
             keyboard_protocol_pushed: false,
+            pending_keyboard_protocol_device_attributes: 0,
             negotiation_buffer: String::new(),
             input_handler: None,
             native_shift_pressed: false,
@@ -312,6 +321,7 @@ impl TerminalCore {
     /// query them; the trailing DA query is the no-Kitty sentinel.
     pub fn query_and_enable_kitty_protocol(&mut self, writes: &mut Vec<String>) {
         self.keyboard_protocol_pushed = true;
+        self.pending_keyboard_protocol_device_attributes += 1;
         self.negotiation_buffer.clear();
         writes.push(KITTY_KEYBOARD_PROTOCOL_QUERY.to_string());
     }
@@ -419,9 +429,14 @@ impl TerminalCore {
 
     fn dispatch_sequence(&mut self, sequence: &str, outcome: &mut CoreOutcome) {
         match self.read_negotiation_sequence(sequence) {
-            NegotiationRead::Match(negotiation) => {
+            NegotiationRead::Match { parsed, sequence } => {
                 outcome.writes.clear();
-                self.handle_negotiation_sequence(negotiation, &mut outcome.writes);
+                if self.handle_negotiation_sequence(parsed, &mut outcome.writes) {
+                    return;
+                }
+                // An unconsumed DA1 answer belongs to another query; the full
+                // (possibly reassembled) sequence is forwarded as input.
+                self.forward_input_sequence(&sequence, &mut outcome.forwarded_input);
             }
             NegotiationRead::Pending => {
                 outcome.negotiation_flush_after_ms =
@@ -456,6 +471,10 @@ impl TerminalCore {
                 true
             }
             NegotiationSequence::DeviceAttributes => {
+                if self.pending_keyboard_protocol_device_attributes == 0 {
+                    return false;
+                }
+                self.pending_keyboard_protocol_device_attributes -= 1;
                 if !self.kitty_protocol_active {
                     self.enable_modify_other_keys(writes);
                 }
@@ -471,7 +490,10 @@ impl TerminalCore {
                 parse_keyboard_protocol_negotiation_sequence(&buffered_sequence)
             {
                 self.negotiation_buffer.clear();
-                return NegotiationRead::Match(negotiation);
+                return NegotiationRead::Match {
+                    parsed: negotiation,
+                    sequence: buffered_sequence,
+                };
             }
             if is_keyboard_protocol_negotiation_sequence_prefix(&buffered_sequence) {
                 self.negotiation_buffer = buffered_sequence;
@@ -489,7 +511,10 @@ impl TerminalCore {
         }
 
         if let Some(negotiation) = parse_keyboard_protocol_negotiation_sequence(sequence) {
-            return NegotiationRead::Match(negotiation);
+            return NegotiationRead::Match {
+                parsed: negotiation,
+                sequence: sequence.to_string(),
+            };
         }
         if is_keyboard_protocol_negotiation_sequence_prefix(sequence) {
             self.negotiation_buffer = sequence.to_string();

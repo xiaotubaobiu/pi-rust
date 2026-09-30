@@ -29,27 +29,22 @@ use serde_json::{json, Value};
 use tokio_util::sync::CancellationToken;
 
 use crate::ai::api::openai_completions::stream::format_http_error;
-use crate::ai::auth::helpers::{env_api_key_auth, LazyOAuth, OAuthLoader};
-use crate::ai::auth::oauth::load::load_openrouter_oauth;
-use crate::ai::auth::types::{OAuthAuth, ProviderAuth};
 use crate::ai::retry::{retry_provider_request, ProviderError};
 use crate::ai::types::content::{ImageContent, TextContent};
-use crate::ai::types::images::{
-    AssistantImages, ImagesContext, ImagesModel, ImagesOptions, ImagesStopReason,
-};
+use crate::ai::types::images::{AssistantImages, ImagesContext, ImagesOptions, ImagesStopReason};
 use crate::ai::types::message::TextOrImageBlock;
+use crate::ai::types::model::ImageModel;
 use crate::ai::types::primitives::{Usage, UsageCost};
 
-use super::models::{create_images_provider, CreateImagesProviderOptions, ImagesProvider};
 use super::registry::ImagesApiFn;
 
-/// Upstream `ImagesModel.api` for this implementation
-/// (`KnownImagesApi`, types.ts:31).
+/// Upstream `ImageModel.api` for this implementation
+/// (`KnownImageApi`, types.ts).
 pub const OPENROUTER_IMAGES_API: &str = "openrouter-images";
 
 /// Upstream `generateImages` (api/openrouter-images.ts:40-115).
 pub async fn generate_images(
-    model: &ImagesModel,
+    model: &ImageModel,
     context: &ImagesContext,
     options: Option<&ImagesOptions>,
 ) -> AssistantImages {
@@ -230,17 +225,14 @@ async fn send_request(
 /// the model's static headers under the explicit request headers. `None`
 /// header values (upstream `null`) suppress the model default.
 fn default_headers(
-    model: &ImagesModel,
+    model: &ImageModel,
     options: Option<&ImagesOptions>,
 ) -> Option<crate::ai::types::options::ProviderHeaders> {
     let model_headers = model
         .headers
         .as_ref()
         .filter(|headers| !headers.is_empty())?;
-    let mut merged: crate::ai::types::options::ProviderHeaders = model_headers
-        .iter()
-        .map(|(name, value)| (name.clone(), Some(value.clone())))
-        .collect();
+    let mut merged: crate::ai::types::options::ProviderHeaders = model_headers.clone();
     if let Some(options_headers) = options.and_then(|options| options.headers.as_ref()) {
         for (name, value) in options_headers {
             // Case-insensitive replacement of the model default, then insert
@@ -262,7 +254,7 @@ fn default_headers(
 
 /// Upstream `OpenRouterImagesCreateParams` + `buildParams`
 /// (api/openrouter-images.ts:132-163).
-fn build_params(model: &ImagesModel, context: &ImagesContext) -> Value {
+fn build_params(model: &ImageModel, context: &ImagesContext) -> Value {
     let content: Vec<Value> = context
         .input
         .iter()
@@ -302,7 +294,7 @@ fn parse_data_url(url: &str) -> Option<(String, String)> {
 
 /// Upstream `parseUsage` (api/openrouter-images.ts:165-196): split the
 /// prompt tokens across cache read/write and price the request.
-fn parse_usage(raw_usage: &Value, model: &ImagesModel) -> Usage {
+fn parse_usage(raw_usage: &Value, model: &ImageModel) -> Usage {
     let prompt_tokens = raw_usage
         .get("prompt_tokens")
         .and_then(Value::as_u64)
@@ -353,41 +345,38 @@ fn parse_usage(raw_usage: &Value, model: &ImagesModel) -> Usage {
 /// (there is no lazy module load to port — the implementation is linked).
 pub fn images_api_fn() -> ImagesApiFn {
     Arc::new(
-        |model: ImagesModel, context: ImagesContext, options: Option<ImagesOptions>| {
+        |model: ImageModel, context: ImagesContext, options: Option<ImagesOptions>| {
             Box::pin(async move { Ok(generate_images(&model, &context, options.as_ref()).await) })
         },
     )
 }
 
-/// Upstream `openrouterImagesProvider` (providers/openrouter-images.ts):
-/// the built-in openrouter image-generation provider over the generated
-/// catalog and the API implementation above. (The `register-builtins`
-/// import side effect lives in [`super::registry::generate_images`], the
-/// only consumer of the api registry.)
-pub fn openrouter_images_provider() -> Arc<dyn ImagesProvider> {
-    let load: Arc<OAuthLoader> = Arc::new(|| {
-        let flow: Arc<dyn OAuthAuth> = load_openrouter_oauth();
-        Box::pin(async move { Ok(flow) })
-    });
-    create_images_provider(CreateImagesProviderOptions {
-        id: "openrouter".to_string(),
-        name: Some("OpenRouter".to_string()),
-        auth: ProviderAuth {
-            api_key: Some(env_api_key_auth(
-                "OpenRouter API key",
-                &["OPENROUTER_API_KEY"],
-            )),
-            oauth: Some(Arc::new(LazyOAuth::new(
-                "OpenRouter OAuth",
-                false,
-                Some("Sign in with OpenRouter".to_string()),
-                load,
-            ))),
-        },
-        models: super::registry::get_image_models("openrouter"),
-        refresh_models: None,
-        api: images_api_fn(),
-    })
+/// Upstream `images: { "openrouter-images": openrouterImagesApi() }` on the
+/// OpenRouter chat provider (providers/openrouter-images.ts was deleted by
+/// #9948; its capability moved onto the chat provider's `images` map): the
+/// [`ImagesApiImpl`](crate::ai::models::provider::ImagesApiImpl) adapter the
+/// `Models.generateImages` routing dispatches to. Resolved auth rides in the
+/// routed [`ProviderConfig`](crate::ai::ProviderConfig) (base-URL override) and
+/// the options (api key), exactly what upstream passes as `requestModel` +
+/// `requestOptions`.
+pub struct OpenRouterImagesApi;
+
+impl crate::ai::models::provider::ImagesApiImpl for OpenRouterImagesApi {
+    fn generate_images(
+        &self,
+        _config: &crate::ai::ProviderConfig,
+        model: &ImageModel,
+        context: &ImagesContext,
+        options: &ImagesOptions,
+    ) -> futures::future::BoxFuture<
+        'static,
+        Result<AssistantImages, crate::ai::auth::resolve::ModelsError>,
+    > {
+        let model = model.clone();
+        let context = context.clone();
+        let options = options.clone();
+        Box::pin(async move { Ok(generate_images(&model, &context, Some(&options)).await) })
+    }
 }
 
 #[cfg(test)]
@@ -397,15 +386,15 @@ mod tests {
     use crate::ai::types::model::ModelInput;
     use std::collections::BTreeMap;
 
-    fn model(output: &[ModelInput], headers: Option<&[(&str, &str)]>) -> ImagesModel {
-        ImagesModel {
+    fn model(output: &[ModelInput], headers: Option<&[(&str, &str)]>) -> ImageModel {
+        ImageModel {
             id: "google/gemini-3.1-flash-image-preview".to_string(),
             name: "Gemini 3.1 Flash Image Preview".to_string(),
             api: OPENROUTER_IMAGES_API.to_string(),
             provider: "openrouter".to_string(),
             base_url: "https://example.test/api/v1".to_string(),
             input: vec![ModelInput::Text, ModelInput::Image],
-            output: output.to_vec(),
+            input_limits: None,
             cost: crate::ai::types::primitives::ModelCost {
                 input: 0.015,
                 output: 0.03,
@@ -413,14 +402,14 @@ mod tests {
                 cache_write: 0.0,
                 tiers: None,
             },
-            thinking_level_map: None,
-            sampling_params: None,
             headers: headers.map(|headers| {
                 headers
                     .iter()
-                    .map(|(k, v)| (k.to_string(), v.to_string()))
+                    .map(|(k, v)| (k.to_string(), Some(v.to_string())))
                     .collect::<BTreeMap<_, _>>()
             }),
+            r#type: crate::ai::types::model::ModelType::Image,
+            output: output.to_vec(),
         }
     }
 
@@ -686,22 +675,20 @@ mod tests {
         assert_eq!(parse_data_url("data:image/png;base64,"), None);
     }
 
-    /// The built-in provider wires the catalog and auth (upstream
-    /// openrouterImagesProvider); the registry handler self-registers from
-    /// the free entry point.
+    /// The images capability rides the OpenRouter chat provider's `images`
+    /// map (upstream: the deleted providers/openrouter-images.ts factory
+    /// became `images: { "openrouter-images": openrouterImagesApi() }` on
+    /// the chat provider); the registry handler self-registers from the
+    /// free entry point.
     #[test]
-    fn openrouter_images_provider_wires_catalog_and_auth() {
-        let provider = super::openrouter_images_provider();
-        assert_eq!(provider.id(), "openrouter");
-        assert_eq!(provider.name(), "OpenRouter");
-        let models = provider.get_models().unwrap();
-        assert_eq!(models.len(), 54);
-        assert!(models.iter().all(|m| m.api == OPENROUTER_IMAGES_API));
-        assert!(provider.auth().api_key.is_some());
-        assert!(provider.auth().oauth.is_some());
-        assert!(provider.refresh_models().is_none());
-        // The import-side-effect registration (upstream register-builtins).
+    fn openrouter_images_capability_is_an_api_impl_and_registered_handler() {
+        // The adapter exists and the registry handler is registered through
+        // the import-side-effect port.
         super::super::registry::ensure_builtin_images_apis_registered();
         assert!(super::super::registry::get_images_api_provider(OPENROUTER_IMAGES_API).is_some());
+
+        // The chat provider exposes the capability on its images map.
+        let provider = crate::ai::models::providers::openrouter_provider();
+        assert!(provider.images_for(OPENROUTER_IMAGES_API).is_some());
     }
 }

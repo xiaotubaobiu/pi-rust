@@ -42,7 +42,7 @@ fn cleared_aws_env() -> TestEnv {
 }
 
 fn model() -> Model {
-    Model {
+    Model {r#type: None, prompt_cache: None, input_limits: None, 
         id: "us.anthropic.claude-sonnet-4-5-20250929-v1:0".to_string(),
         name: "Claude Sonnet 4.5 (US)".to_string(),
         api: API.to_string(),

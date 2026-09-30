@@ -114,10 +114,19 @@ fn object_prototype_member(name: &str) -> Option<&'static str> {
     }
 }
 
-fn format_script(value: &Text, sub: bool) -> Text {
-    let value = js_trim(value);
+/// Upstream `FONT_SWITCH_COMMANDS` (latex.ts, v0.99.1 delta): consumed with
+/// any following whitespace, producing no output. Kept beside the parser (the
+/// generated `tables.rs` must stay byte-identical to its checked-in
+/// manifest).
+fn font_switch_commands(value: &str) -> bool {
+    matches!(value, "bf" | "cal" | "it" | "rm" | "sf" | "sl" | "tt")
+}
+
+fn normalize_script_value(value: &Text) -> Text {
+    // value.trim().replace(/\s*([=+-])\s*/g, "$1")
+    let trimmed = js_trim(value);
     let mut compact = Text::new();
-    let mut points = value.points().peekable();
+    let mut points = trimmed.points().peekable();
     while let Some(point) = points.next() {
         if matches!(point, 0x3d | 0x2b | 0x2d) {
             compact = trim_end(&compact);
@@ -129,13 +138,18 @@ fn format_script(value: &Text, sub: bool) -> Text {
             compact.push_point(point);
         }
     }
+    compact
+}
+
+fn format_unicode_script(value: &Text, sub: bool) -> Option<Text> {
+    let normalized = normalize_script_value(value);
     let replacements = if sub {
         tables::subscripts
     } else {
         tables::superscripts
     };
     let mut unicode = Text::new();
-    let mapped = compact.points().all(|point| {
+    let mapped = normalized.points().all(|point| {
         char::from_u32(point)
             .and_then(|c| replacements(c.encode_utf8(&mut [0; 4])))
             .is_some_and(|s| {
@@ -143,7 +157,12 @@ fn format_script(value: &Text, sub: bool) -> Text {
                 true
             })
     });
-    if mapped {
+    mapped.then_some(unicode)
+}
+
+fn format_script(value: &Text, sub: bool) -> Text {
+    let value = normalize_script_value(value);
+    if let Some(unicode) = format_unicode_script(&value, sub) {
         return unicode;
     }
     let prefix = if sub { '_' } else { '^' };
@@ -255,6 +274,10 @@ enum LayoutNode {
     },
     Operator {
         operator: Text,
+        lower: Option<Text>,
+        upper: Option<Text>,
+    },
+    Script {
         lower: Option<Text>,
         upper: Option<Text>,
     },
@@ -444,6 +467,37 @@ fn render_layout(source: &Text, nodes: &[LayoutNode]) -> Layout {
                         baseline: usize::from(upper.is_some()),
                     }
                 }
+                LayoutNode::Script { lower, upper } => {
+                    let upper = upper.as_ref().map(|source| render_layout(source, nodes));
+                    let lower = lower.as_ref().map(|source| render_layout(source, nodes));
+                    let width = upper
+                        .as_ref()
+                        .map_or(0, |layout| layout.width)
+                        .max(lower.as_ref().map_or(0, |layout| layout.width));
+                    let mut lines = Vec::new();
+                    if let Some(upper) = &upper {
+                        lines.extend(
+                            upper
+                                .lines
+                                .iter()
+                                .map(|line| pad_layout_line(line, width, false)),
+                        );
+                    }
+                    lines.push(text!(" ".repeat(width)));
+                    if let Some(lower) = &lower {
+                        lines.extend(
+                            lower
+                                .lines
+                                .iter()
+                                .map(|line| pad_layout_line(line, width, false)),
+                        );
+                    }
+                    Layout {
+                        lines,
+                        width,
+                        baseline: upper.as_ref().map_or(0, |layout| layout.lines.len()),
+                    }
+                }
                 LayoutNode::Matrix { lines, baseline } => {
                     let width = lines.iter().map(visible_width).max().unwrap_or(0);
                     Layout {
@@ -497,6 +551,7 @@ struct LatexParser<'source, 'nodes> {
     position: usize,
     supported: bool,
     stack_fractions: bool,
+    script_depth: usize,
 }
 
 impl<'source, 'nodes> LatexParser<'source, 'nodes> {
@@ -508,6 +563,7 @@ impl<'source, 'nodes> LatexParser<'source, 'nodes> {
             position: 0,
             supported: true,
             stack_fractions: true,
+            script_depth: 0,
         }
     }
     fn peek(&self) -> Option<char> {
@@ -557,8 +613,7 @@ impl<'source, 'nodes> LatexParser<'source, 'nodes> {
                 '^' | '_' => {
                     self.take();
                     result = trim_end(&result);
-                    let script =
-                        format_script(&self.parse_required_argument(false), character == '_');
+                    let script = self.parse_scripts(character);
                     if result.ends_with(NAMED_OPERATOR_END) {
                         result.truncate(result.len() - NAMED_OPERATOR_END.len_utf16());
                         result.push(script);
@@ -641,6 +696,12 @@ impl<'source, 'nodes> LatexParser<'source, 'nodes> {
         }
         if tables::negative_spacing_commands(command) {
             return Text::from(NEGATIVE_SPACE);
+        }
+        if font_switch_commands(command) {
+            while self.peek().is_some_and(is_whitespace_char) {
+                self.take();
+            }
+            return Text::new();
         }
         if tables::ignored_commands(command) {
             return Text::new();
@@ -875,6 +936,105 @@ impl<'source, 'nodes> LatexParser<'source, 'nodes> {
         }
     }
 
+    /// Upstream `parseScripts`: parse `x^2_3`-style script groups, choosing
+    /// between Unicode scripts and a stacked layout node.
+    fn parse_scripts(&mut self, initial_marker: char) -> Text {
+        fn parse_marker(
+            this: &mut LatexParser<'_, '_>,
+            marker: char,
+            sub: &mut Option<Text>,
+            sup: &mut Option<Text>,
+            order: &mut Vec<bool>,
+        ) {
+            let is_sub = marker == '_';
+            this.script_depth += 1;
+            let value = this.parse_required_argument(false);
+            this.script_depth -= 1;
+            if is_sub {
+                *sub = Some(value);
+            } else {
+                *sup = Some(value);
+            }
+            order.push(is_sub);
+        }
+
+        let mut sub: Option<Text> = None;
+        let mut sup: Option<Text> = None;
+        let mut order: Vec<bool> = Vec::new(); // true = sub, false = sup
+        parse_marker(self, initial_marker, &mut sub, &mut sup, &mut order);
+
+        let mut next_position = self.position;
+        while next_position < self.source.len()
+            && self
+                .source
+                .syntax_at(next_position)
+                .is_some_and(is_whitespace_char)
+        {
+            next_position += 1;
+        }
+        let next_marker = self.source.syntax_at(next_position);
+        if matches!(next_marker, Some('^') | Some('_')) && next_marker != Some(initial_marker) {
+            self.position = next_position + 1;
+            parse_marker(
+                self,
+                next_marker.expect("checked above"),
+                &mut sub,
+                &mut sup,
+                &mut order,
+            );
+        }
+
+        let sub_unicode = sub
+            .as_ref()
+            .and_then(|value| format_unicode_script(value, true));
+        let sup_unicode = sup
+            .as_ref()
+            .and_then(|value| format_unicode_script(value, false));
+        let layout_marker_start = LAYOUT_MARKER_START.encode_utf8(&mut [0; 4]).to_string();
+        let can_use_layout = [sub.as_ref(), sup.as_ref()]
+            .into_iter()
+            .flatten()
+            .all(|value| {
+                let has_slash = value.find("/").is_some();
+                let marker_start = value.find(&layout_marker_start).is_some();
+                let long_lowercase = value.points().count() > 1
+                    && !value.points().any(|p| matches!(p, 65..=90 | 0x2a | 0x2217));
+                !(has_slash || (!marker_start && long_lowercase))
+            });
+        let needs_layout = self.display
+            && can_use_layout
+            && (self.script_depth > 0
+                || sub.is_some() && sub_unicode.is_none()
+                || sup.is_some() && sup_unicode.is_none());
+        if !needs_layout {
+            let empty = Text::new();
+            let mut result = Text::new();
+            for is_sub in order {
+                if is_sub {
+                    result.push(
+                        sub_unicode
+                            .clone()
+                            .unwrap_or_else(|| format_script(sub.as_ref().unwrap_or(&empty), true)),
+                    );
+                } else {
+                    result.push(
+                        sup_unicode.clone().unwrap_or_else(|| {
+                            format_script(sup.as_ref().unwrap_or(&empty), false)
+                        }),
+                    );
+                }
+            }
+            return result;
+        }
+
+        let index = self.nodes.len();
+        self.nodes.push(LayoutNode::Script {
+            lower: sub.map(|value| normalize_output(&value)),
+            upper: sup.map(|value| normalize_output(&value)),
+        });
+        layout_marker(index)
+    }
+
     fn parse_required_argument(&mut self, stack_fractions: bool) -> Text {
         let previous = self.stack_fractions;
         self.stack_fractions = previous && stack_fractions;
@@ -1001,32 +1161,7 @@ impl<'source, 'nodes> LatexParser<'source, 'nodes> {
             return Text::join(rendered, "\n");
         }
         if matches!(environment, "cases" | "cases*") {
-            let rows = self.render_cells(&body);
-            let mut rendered = Vec::new();
-            for (index, row) in rows.iter().enumerate() {
-                let value = row.first().cloned().unwrap_or_default();
-                let value = value.strip_suffix(',').unwrap_or(value);
-                let condition = row.get(1).cloned().unwrap_or_default();
-                let delimiter = if index == 0 {
-                    '⎧'
-                } else if index == rows.len() - 1 {
-                    '⎩'
-                } else {
-                    '⎨'
-                };
-                let prefix = if natural_condition(&condition) {
-                    " "
-                } else {
-                    " if "
-                };
-                let condition = if condition.is_empty() {
-                    Text::new()
-                } else {
-                    text!(prefix, condition)
-                };
-                rendered.push(text!(delimiter, ' ', value, condition));
-            }
-            return Text::join(rendered, "\n");
+            return self.render_cases(&body);
         }
         if matches!(
             environment,
@@ -1062,6 +1197,86 @@ impl<'source, 'nodes> LatexParser<'source, 'nodes> {
             })
             .filter(|row| row.iter().any(|s| !s.is_empty()))
             .collect()
+    }
+    /// Upstream `renderCases` (v0.99.1 delta): pad the value column, drop the
+    /// delimiter on condition-less rows, and stack multi-row cases as a matrix
+    /// layout node with a bare delimiter gap between even rows.
+    fn render_cases(&mut self, body: &Text) -> Text {
+        let rows = self.render_cells(body);
+        let strip_trailing_comma = |value: &Text| -> Text {
+            // value.replace(/,\s*$/, ""): a trailing comma plus whitespace to
+            // the end (all JS whitespace is single UTF-16 units).
+            if let Some(comma_at) = value.0.iter().rposition(|&unit| unit == u16::from(b',')) {
+                if value.0[comma_at + 1..]
+                    .iter()
+                    .all(|&unit| whitespace(u32::from(unit)))
+                {
+                    return value.slice(..comma_at);
+                }
+            }
+            value.clone()
+        };
+        let empty = Text::new();
+        let value_width = rows
+            .iter()
+            .map(|row| visible_width(&strip_trailing_comma(row.first().unwrap_or(&empty))))
+            .max()
+            .unwrap_or(0);
+        let contents: Vec<Text> = rows
+            .iter()
+            .map(|row| {
+                let value = strip_trailing_comma(row.first().unwrap_or(&empty));
+                let condition = row.get(1).unwrap_or(&empty);
+                if condition.is_empty() {
+                    return value;
+                }
+                let prefix = if natural_condition(condition) {
+                    " "
+                } else {
+                    " if "
+                };
+                let padding = PROTECTED_SPACE
+                    .to_string()
+                    .repeat(value_width.saturating_sub(visible_width(&value)));
+                text!(value, padding, prefix, condition)
+            })
+            .collect();
+        if contents.len() <= 1 {
+            return match contents.into_iter().next() {
+                None => Text::new(),
+                Some(content) => text!('⎧', ' ', content),
+            };
+        }
+
+        let length = contents.len();
+        let middle = length / 2;
+        let mut visual_rows: Vec<Option<Text>> = contents.into_iter().map(Some).collect();
+        if length.is_multiple_of(2) {
+            visual_rows.insert(middle, None);
+        }
+        let lines: Vec<Text> = visual_rows
+            .iter()
+            .enumerate()
+            .map(|(index, content)| {
+                let delimiter = if index == 0 {
+                    '⎧'
+                } else if index == visual_rows.len() - 1 {
+                    '⎩'
+                } else {
+                    '⎨'
+                };
+                match content {
+                    None => Text::from(delimiter),
+                    Some(content) => text!(delimiter, ' ', content),
+                }
+            })
+            .collect();
+        let index = self.nodes.len();
+        self.nodes.push(LayoutNode::Matrix {
+            lines,
+            baseline: middle,
+        });
+        layout_marker(index)
     }
     fn render_matrix(&mut self, environment: &str, body: &Text) -> Text {
         let matrix = self.render_cells(body);

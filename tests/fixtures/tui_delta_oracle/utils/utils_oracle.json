@@ -1,0 +1,384 @@
+{
+ "visibleWidth": [
+  {
+   "input": "\u001b[38;5;4mhello\u001b[39m world",
+   "width": 11
+  },
+  {
+   "input": "\u001b]8;;https://example.com\u0007link\u001b]8;;\u0007",
+   "width": 4
+  },
+  {
+   "input": "\u001b]133;A\u001b\\prompt",
+   "width": 6
+  },
+  {
+   "input": "\u001b_pi:c\u0007cursor",
+   "width": 6
+  },
+  {
+   "input": "\u001b[1ma\tb\u001b[22m",
+   "width": 5
+  },
+  {
+   "input": "\u001b[31m日本\u001b[39m ok",
+   "width": 7
+  },
+  {
+   "input": "\u001b[31m─→\u001b[39m",
+   "width": 2
+  },
+  {
+   "input": "\u001b[31",
+   "width": 3
+  },
+  {
+   "input": "a\u001b",
+   "width": 1
+  },
+  {
+   "input": "plain ascii",
+   "width": 11
+  },
+  {
+   "input": "\ta\t",
+   "width": 7
+  },
+  {
+   "input": "",
+   "width": 0
+  },
+  {
+   "input": "\u001b[38;5;4mあ\tい\u001b[39m",
+   "width": 7
+  },
+  {
+   "input": "\u001b]8;;x\u0007a\tb\u001b]8;;\u0007",
+   "width": 5
+  },
+  {
+   "input": "mixed é\t\u001b[1mx\u001b[22m",
+   "width": 11
+  },
+  {
+   "input": "\u001b[1;31m%%\u001b[0m\t\u001b]8;;u\u0007url\u001b]8;;\u0007",
+   "width": 8
+  }
+ ],
+ "extractAnsiCode": [
+  {
+   "input": "\u001b[38;5;4mhello",
+   "pos": 0,
+   "code": {
+    "code": "\u001b[38;5;4m",
+    "length": 9
+   }
+  },
+  {
+   "input": "\u001b[38;5;4mhello",
+   "pos": 14,
+   "code": null
+  },
+  {
+   "input": "\u001b]8;;u\u0007text",
+   "pos": 0,
+   "code": {
+    "code": "\u001b]8;;u\u0007",
+    "length": 7
+   }
+  },
+  {
+   "input": "\u001b]8;;u\u0007text",
+   "pos": 7,
+   "code": null
+  },
+  {
+   "input": "\u001b_pi:c\u0007",
+   "pos": 0,
+   "code": {
+    "code": "\u001b_pi:c\u0007",
+    "length": 7
+   }
+  },
+  {
+   "input": "\u001b_pi:c",
+   "pos": 0,
+   "code": null
+  },
+  {
+   "input": "abc\u001b[1m",
+   "pos": 3,
+   "code": {
+    "code": "\u001b[1m",
+    "length": 4
+   }
+  },
+  {
+   "input": "abc\u001b[1m",
+   "pos": 4,
+   "code": null
+  },
+  {
+   "input": "abc",
+   "pos": 0,
+   "code": null
+  },
+  {
+   "input": "\u001b",
+   "pos": 0,
+   "code": null
+  },
+  {
+   "input": "\u001b[1",
+   "pos": 0,
+   "code": null
+  },
+  {
+   "input": "\u001b]8;;a\u001b\\b",
+   "pos": 0,
+   "code": {
+    "code": "\u001b]8;;a\u001b\\",
+    "length": 8
+   }
+  }
+ ],
+ "wrap": [
+  {
+   "input": "\u001b[1mhello world\u001b[22m and more words here",
+   "width": 10,
+   "lines": [
+    "\u001b[1mhello",
+    "\u001b[1mworld\u001b[22m and",
+    "more words",
+    "here"
+   ]
+  },
+  {
+   "input": "日本語のテキスト と ascii words",
+   "width": 8,
+   "lines": [
+    "日本語の",
+    "テキスト",
+    "と ascii",
+    "words"
+   ]
+  },
+  {
+   "input": "a\tb c\td",
+   "width": 4,
+   "lines": [
+    "a",
+    "b",
+    "c",
+    "d"
+   ]
+  },
+  {
+   "input": "\u001b[31mone two three four\u001b[39m",
+   "width": 8,
+   "lines": [
+    "\u001b[31mone two",
+    "\u001b[31mthree",
+    "\u001b[31mfour\u001b[39m"
+   ]
+  }
+ ],
+ "activeBackground": [
+  "",
+  "\u001b[41m",
+  ""
+ ],
+ "separators": {
+  "separatorTests": [
+   {
+    "value": " ",
+    "matches": true
+   },
+   {
+    "value": "\t",
+    "matches": true
+   },
+   {
+    "value": "　",
+    "matches": true
+   },
+   {
+    "value": "，",
+    "matches": true
+   },
+   {
+    "value": "．",
+    "matches": true
+   },
+   {
+    "value": "：",
+    "matches": true
+   },
+   {
+    "value": "；",
+    "matches": true
+   },
+   {
+    "value": "！",
+    "matches": true
+   },
+   {
+    "value": "？",
+    "matches": true
+   },
+   {
+    "value": "（",
+    "matches": true
+   },
+   {
+    "value": "）",
+    "matches": true
+   },
+   {
+    "value": "［",
+    "matches": true
+   },
+   {
+    "value": "］",
+    "matches": true
+   },
+   {
+    "value": "｛",
+    "matches": true
+   },
+   {
+    "value": "｝",
+    "matches": true
+   },
+   {
+    "value": "“",
+    "matches": true
+   },
+   {
+    "value": "”",
+    "matches": true
+   },
+   {
+    "value": "‘",
+    "matches": true
+   },
+   {
+    "value": "’",
+    "matches": true
+   },
+   {
+    "value": "…",
+    "matches": true
+   },
+   {
+    "value": "—",
+    "matches": true
+   },
+   {
+    "value": "a",
+    "matches": false
+   },
+   {
+    "value": "日",
+    "matches": false
+   },
+   {
+    "value": "漢",
+    "matches": false
+   },
+   {
+    "value": ",",
+    "matches": false
+   },
+   {
+    "value": "。",
+    "matches": true
+   },
+   {
+    "value": "　",
+    "matches": true
+   },
+   {
+    "value": "​",
+    "matches": false
+   },
+   {
+    "value": "­",
+    "matches": false
+   },
+   {
+    "value": "(~/Dev",
+    "matches": false
+   },
+   {
+    "value": "app/[slug]/pa",
+    "matches": false
+   },
+   {
+    "value": "`src/ma",
+    "matches": false
+   },
+   {
+    "value": "@file with space.txt",
+    "matches": true
+   },
+   {
+    "value": "path/to,thing",
+    "matches": false
+   }
+  ],
+  "boundaryTests": [
+   {
+    "value": "",
+    "suffixMatches": true
+   },
+   {
+    "value": " ",
+    "suffixMatches": true
+   },
+   {
+    "value": "a",
+    "suffixMatches": false
+   },
+   {
+    "value": "a ",
+    "suffixMatches": true
+   },
+   {
+    "value": "x，",
+    "suffixMatches": true
+   },
+   {
+    "value": "x.",
+    "suffixMatches": false
+   },
+   {
+    "value": "(",
+    "suffixMatches": false
+   },
+   {
+    "value": "x(",
+    "suffixMatches": false
+   }
+  ],
+  "cjkBreak": [
+   {
+    "value": "日",
+    "matches": true
+   },
+   {
+    "value": "a",
+    "matches": false
+   },
+   {
+    "value": "、",
+    "matches": true
+   }
+  ]
+ },
+ "provenance": {
+  "utilsSha256": "5ecbc6c9b4850e78bf19de1fe8859b99b9c4c5f8a6384728d255a8e7e8a610ee",
+  "node": "v25.8.2",
+  "platform": "win32"
+ }
+}

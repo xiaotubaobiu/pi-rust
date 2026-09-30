@@ -56,6 +56,7 @@ mod oracle_consts;
 #[cfg(test)]
 mod tests;
 
+pub use crate::tui::colors::TerminalColorMode;
 pub use kitty::{
     crop_kitty_image_line, delete_all_kitty_images, delete_all_kitty_placements,
     delete_kitty_image, encode_kitty, get_kitty_image_metadata, get_kitty_image_placement,
@@ -268,7 +269,7 @@ fn parse_boolean_capability_override(value: Option<String>) -> Option<bool> {
 }
 
 /// Upstream `detectCapabilities` with injectable environment/probe/platform.
-fn detect_with(
+pub(crate) fn detect_with(
     lookup: &dyn Fn(&str) -> Option<String>,
     tmux_forwards_hyperlink: &dyn Fn() -> bool,
     is_windows_console: bool,
@@ -310,7 +311,8 @@ fn detect_from_environment(
     let color_term = lookup("COLORTERM")
         .map(|v| v.to_lowercase())
         .unwrap_or_default();
-    let has_true_color_hint = color_term == "truecolor" || color_term == "24bit";
+    let has_true_color_hint =
+        color_term == "truecolor" || color_term == "24bit" || term.ends_with("-direct");
 
     // Emit OSC 8 hyperlinks only when tmux confirms it forwards. Image
     // protocols are unreliable under tmux, so leave `images: None`.
@@ -525,11 +527,14 @@ fn js_min(a: f64, b: f64) -> f64 {
 
 /// Upstream `calculateImageCellSize` — fit the image into the cell budget,
 /// preserving aspect ratio unless a height cap forces a narrower scale.
+/// `optimize_aspect_ratio` reduces the cell-aligned distortion by choosing the
+/// lower cell count when it distorts less (upstream passes Kitty only).
 pub fn calculate_image_cell_size(
     image_dimensions: ImageDimensions,
     max_width_cells: f64,
     max_height_cells: Option<f64>,
     cell_dimensions: CellDimensions,
+    optimize_aspect_ratio: bool,
 ) -> ImageCellSize {
     let max_width = js_max(1.0, max_width_cells.floor());
     let max_height = max_height_cells.map(|h| js_max(1.0, h.floor()));
@@ -543,19 +548,58 @@ pub fn calculate_image_cell_size(
     };
     let scale = js_min(width_scale, height_scale);
 
-    let columns = (image_width * scale / cell_dimensions.width_px as f64).ceil();
-    let rows = (image_height * scale / cell_dimensions.height_px as f64).ceil();
-    let columns = js_max(1.0, js_min(max_width, columns));
-    let rows = js_max(
+    let scaled_width_px = image_width * scale;
+    let scaled_height_px = image_height * scale;
+    let mut columns = js_max(
         1.0,
-        match max_height {
-            Some(max_height) => js_min(max_height, rows),
-            None => rows,
-        },
+        js_min(
+            max_width,
+            (scaled_width_px / cell_dimensions.width_px as f64).ceil(),
+        ),
     );
+    let height_rows = scaled_height_px / cell_dimensions.height_px as f64;
+    let mut rows = js_max(1.0, height_rows.ceil());
+    if let Some(max_height) = max_height {
+        rows = js_min(max_height, rows);
+    }
+
+    if !optimize_aspect_ratio {
+        return ImageCellSize {
+            columns: columns as usize,
+            rows: rows as usize,
+        };
+    }
+
+    if width_scale <= height_scale {
+        let ideal_rows = (columns * cell_dimensions.width_px as f64 * image_height)
+            / (image_width * cell_dimensions.height_px as f64);
+        rows = choose_less_distorted_cell_count(rows, ideal_rows);
+    } else {
+        let ideal_columns = (rows * cell_dimensions.height_px as f64 * image_width)
+            / (image_height * cell_dimensions.width_px as f64);
+        columns = choose_less_distorted_cell_count(columns, ideal_columns);
+    }
+
     ImageCellSize {
         columns: columns as usize,
         rows: rows as usize,
+    }
+}
+
+/// Upstream `chooseLessDistortedCellCount`: prefer `upperCount - 1` when it is
+/// the strictly less distorted cell count.
+fn choose_less_distorted_cell_count(upper_count: f64, ideal_count: f64) -> f64 {
+    if upper_count <= 1.0 {
+        return upper_count;
+    }
+
+    let lower_count = upper_count - 1.0;
+    let upper_distortion = js_max(upper_count / ideal_count, ideal_count / upper_count);
+    let lower_distortion = js_max(lower_count / ideal_count, ideal_count / lower_count);
+    if lower_distortion < upper_distortion {
+        lower_count
+    } else {
+        upper_count
     }
 }
 
@@ -570,8 +614,19 @@ pub fn calculate_image_rows(image_dimensions: ImageDimensions, target_width_cell
             width_px: 9,
             height_px: 18,
         },
+        false,
     )
     .rows
+}
+
+/// Upstream `getTerminalColorMode`.
+pub fn get_terminal_color_mode(capabilities: Option<TerminalCapabilities>) -> TerminalColorMode {
+    let capabilities = capabilities.unwrap_or_else(get_capabilities);
+    if capabilities.true_color {
+        TerminalColorMode::Truecolor
+    } else {
+        TerminalColorMode::Color256
+    }
 }
 
 /// Upstream `getPngDimensions`: IHDR width/height from the first 24 decoded
@@ -713,11 +768,14 @@ pub fn render_image(
     let images = caps.images?;
 
     let max_width = options.max_width_cells.unwrap_or(80.0);
+    // Reduce Kitty's cell-aligned distortion without shrinking iTerm2
+    // reservations.
     let size = calculate_image_cell_size(
         image_dimensions,
         max_width,
         options.max_height_cells,
         get_cell_dimensions(),
+        images == "kitty",
     );
 
     if images == "kitty" {

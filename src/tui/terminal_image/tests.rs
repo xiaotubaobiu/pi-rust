@@ -48,9 +48,16 @@ fn rows<'a>(oracle: &'a Value, section: &str) -> &'a Vec<Value> {
 }
 
 fn oracle_sha_matches_upstream(oracle: &Value) {
-    assert_eq!(
-        oracle["meta"]["upstreamSha256"].as_str().unwrap(),
-        "f29572354977fd4ef4cc76878d31cce3cb5c45cebdfc9b5c49b50ad9cfb3171f",
+    // The first SHA is the pre-delta capture (upstream 590144609); the second
+    // is the v0.99.1 terminal-image.ts. The delta only added the optional
+    // aspect-ratio pass to calculateImageCellSize (called with
+    // optimizeAspectRatio=false here; true is pinned by the tui_delta_oracle
+    // fixtures), a `-direct` TERM suffix hint, and getTerminalColorMode, so
+    // the earlier capture remains valid for these sections.
+    let sha = oracle["meta"]["upstreamSha256"].as_str().unwrap();
+    assert!(
+        sha == "f29572354977fd4ef4cc76878d31cce3cb5c45cebdfc9b5c49b50ad9cfb3171f"
+            || sha == "b901b8df0ad84e04ac0ee612c419b45d960430f63d2bdaa974c8dd9d89f3e6e5",
         "oracle was captured against a different upstream terminal-image.ts",
     );
     assert_eq!(oracle["meta"]["platform"].as_str().unwrap(), "win32");
@@ -473,6 +480,7 @@ fn oracle_calculate_image_cell_size_and_rows() {
                     height_px: cell["heightPx"].as_u64().unwrap() as usize,
                 }
             },
+            false,
         );
         assert_eq!(
             size.columns as u64,

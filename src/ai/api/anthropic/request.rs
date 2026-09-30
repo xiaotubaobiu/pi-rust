@@ -216,7 +216,7 @@ const THINKING_BINDING_CONTROLS_BETA: &str = "thinking-binding-controls-2026-08-
 const MID_CONVERSATION_TOOL_CHANGES_BETA: &str = "mid-conversation-tool-changes-2026-07-01";
 
 /// Claude Code identity for OAuth requests (anthropic-messages.ts:87, 1082).
-const CLAUDE_CODE_VERSION: &str = "2.1.251";
+const CLAUDE_CODE_VERSION: &str = "2.1.280";
 const CLAUDE_CODE_IDENTITY_PROMPT: &str =
     "You are Claude Code, Anthropic's official CLI for Claude.";
 /// SDK-injected `anthropic-version` header value.
@@ -1243,6 +1243,54 @@ fn add_cache_control_to_last_message(params: &mut [Value], cache_control: &Value
     }
 }
 
+// Keywords Anthropic strict tool use rejects with a 400 for the whole
+// request (upstream anthropic-messages.ts, the non-strict-fallback delta):
+// https://platform.claude.com/docs/en/build-with-claude/structured-outputs#json-schema-limitations
+const ANTHROPIC_STRICT_UNSUPPORTED_KEYWORDS: [&str; 11] = [
+    "minimum",
+    "maximum",
+    "exclusiveMinimum",
+    "exclusiveMaximum",
+    "multipleOf",
+    "maxItems",
+    "uniqueItems",
+    "minContains",
+    "maxContains",
+    "minProperties",
+    "maxProperties",
+];
+const ANTHROPIC_STRICT_STRING_FORMATS: [&str; 10] = [
+    "date-time",
+    "time",
+    "date",
+    "duration",
+    "email",
+    "hostname",
+    "uri",
+    "ipv4",
+    "ipv6",
+    "uuid",
+];
+
+/// Upstream `isAnthropicStrictUnsupportedKeyword`: the provider-specific
+/// strict-mode keyword rejection passed to
+/// `resolveJsonSchemaStrictSampling`.
+fn is_anthropic_strict_unsupported_keyword(key: &str, value: &Value) -> bool {
+    if ANTHROPIC_STRICT_UNSUPPORTED_KEYWORDS.contains(&key) {
+        return true;
+    }
+    if key == "minItems" {
+        return !matches!(value.as_u64(), Some(0) | Some(1));
+    }
+    if key == "format" {
+        return match value.as_str() {
+            Some(format) => !ANTHROPIC_STRICT_STRING_FORMATS.contains(&format),
+            None => true,
+        };
+    }
+    false
+}
+
 // ---- tools (upstream convertTools, lines 1457-1492) ----
 
 fn convert_tools(
@@ -1253,9 +1301,13 @@ fn convert_tools(
 ) -> Result<Vec<Value>, String> {
     let mut converted: Vec<Value> = Vec::with_capacity(tools.len());
     for (index, tool) in tools.iter().enumerate() {
-        let strict = resolve_json_schema_strict_sampling(tool, compat.supports_strict_tools)?;
+        let strict = resolve_json_schema_strict_sampling(
+            tool,
+            compat.supports_strict_tools,
+            Some(is_anthropic_strict_unsupported_keyword),
+        )?;
         let parameters = if strict == Some(true) {
-            make_strict_json_schema(&tool.parameters)?
+            make_strict_json_schema(&tool.parameters, Some(is_anthropic_strict_unsupported_keyword))?
         } else {
             tool.parameters.clone()
         };
@@ -1625,7 +1677,7 @@ mod tests {
     // ---- fixtures ----
 
     fn make_model(compat: Value) -> Model {
-        Model {
+        Model {r#type: None, prompt_cache: None, input_limits: None, 
             id: "claude-test".to_string(),
             name: "Claude Test".to_string(),
             api: "anthropic-messages".to_string(),
@@ -2975,7 +3027,7 @@ mod tests {
             Some("Bearer sk-ant-oat01-xyz")
         );
         assert!(header(&assembly, "x-api-key").is_none());
-        assert_eq!(header(&assembly, "user-agent"), Some("claude-cli/2.1.251"));
+        assert_eq!(header(&assembly, "user-agent"), Some("claude-cli/2.1.280"));
         assert_eq!(header(&assembly, "x-app"), Some("cli"));
         let betas = betas(&assembly);
         assert!(betas.contains(&"claude-code-20250219".to_string()));

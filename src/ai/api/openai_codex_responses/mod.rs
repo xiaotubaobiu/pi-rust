@@ -441,6 +441,7 @@ async fn run_stream_task(
     let mut processor = ResponsesStreamProcessor::new(
         &model,
         ResponsesStreamOptions {
+            callbacks: options.stream.callbacks.clone(),
             service_tier: codex.service_tier.clone(),
             grammar_tool_input_properties: grammar_result.clone().unwrap_or_default(),
             resolve_service_tier: Some(Box::new(resolve_codex_service_tier)),
@@ -999,10 +1000,12 @@ async fn process_sse_frame(
         CodexMapped::Skip => Ok(false),
         CodexMapped::Error(error) => Err(error),
         CodexMapped::Event(event) => {
+            processor.observe_raw_event(parsed).await?;
             processor.process_event(&event, tx).await?;
             Ok(false)
         }
         CodexMapped::Terminal(event) => {
+            processor.observe_raw_event(parsed).await?;
             processor.process_event(&event, tx).await?;
             Ok(true)
         }
@@ -1741,7 +1744,7 @@ mod tests {
     }
 
     fn model() -> Model {
-        Model {
+        Model {r#type: None, prompt_cache: None, input_limits: None, 
             id: "gpt-5.1-codex".to_string(),
             name: "GPT-5.1 Codex".to_string(),
             api: API.to_string(),
@@ -4122,7 +4125,7 @@ mod tests {
         assert!(body.get("reasoning").is_none());
 
         // effort "none" without a map sends "none".
-        let model = Model {
+        let model = Model {r#type: None, prompt_cache: None, input_limits: None, 
             thinking_level_map: None,
             ..model
         };

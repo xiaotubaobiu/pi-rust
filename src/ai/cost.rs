@@ -9,13 +9,25 @@
 //! request. The 1h cache-write portion (`cacheWrite1h`, Anthropic only) is
 //! priced at 2x the input rate; the rest at the `cacheWrite` rate.
 
-use crate::ai::types::{Model, ModelCostTier, Usage};
+use crate::ai::types::{AnyModel, Model, ModelCostTier, Usage};
 
 /// Upstream `calculateCost` (models.ts:900-919): fill `usage.cost` in place
 /// from `model.cost`. Operation order matches upstream exactly so dollar
 /// amounts are bit-identical: rate/1M x tokens per bucket, then the four
-/// buckets are summed for `total`.
+/// buckets are summed for `total`. Upstream types the model as `AnyModel`
+/// since the unified catalog; the chat-typed entry point is kept for the
+/// existing call sites and both delegate to [`calculate_cost_with_rates`].
 pub fn calculate_cost(model: &Model, usage: &mut Usage) {
+    calculate_cost_with_rates(&model.cost, usage);
+}
+
+/// [`calculate_cost`] over any catalog entry (upstream
+/// `calculateCost(model: AnyModel, usage)`).
+pub fn calculate_cost_any(model: &AnyModel, usage: &mut Usage) {
+    calculate_cost_with_rates(model.cost(), usage);
+}
+
+fn calculate_cost_with_rates(cost: &crate::ai::types::ModelCost, usage: &mut Usage) {
     // Upstream: inputTokens = usage.input + usage.cacheRead + usage.cacheWrite.
     // Saturating: hostile usage payloads must not panic the debug overflow check.
     let input_tokens = usage
@@ -23,7 +35,7 @@ pub fn calculate_cost(model: &Model, usage: &mut Usage) {
         .saturating_add(usage.cache_read)
         .saturating_add(usage.cache_write);
     let mut matched: Option<&ModelCostTier> = None;
-    for tier in model.cost.tiers.iter().flatten() {
+    for tier in cost.tiers.iter().flatten() {
         if input_tokens > tier.input_tokens_above
             && matched.is_none_or(|m| tier.input_tokens_above > m.input_tokens_above)
         {
@@ -33,10 +45,10 @@ pub fn calculate_cost(model: &Model, usage: &mut Usage) {
     let (input_rate, output_rate, cache_read_rate, cache_write_rate) = match matched {
         Some(tier) => (tier.input, tier.output, tier.cache_read, tier.cache_write),
         None => (
-            model.cost.input,
-            model.cost.output,
-            model.cost.cache_read,
-            model.cost.cache_write,
+            cost.input,
+            cost.output,
+            cost.cache_read,
+            cost.cache_write,
         ),
     };
 
@@ -61,7 +73,7 @@ mod tests {
     use crate::ai::types::{Model, ModelCost, ModelCostTier, ModelInput, Usage, UsageCost};
 
     fn model_with_cost(cost: ModelCost) -> Model {
-        Model {
+        Model {r#type: None, prompt_cache: None, input_limits: None, 
             id: "test-model".to_string(),
             name: "Test Model".to_string(),
             api: "openai-completions".to_string(),

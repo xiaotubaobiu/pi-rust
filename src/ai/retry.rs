@@ -151,12 +151,11 @@ fn validate_server_retry_delay_ms(
     Ok(delay_ms)
 }
 
-/// Upstream `getRetryDelayMs` (provider-retry.ts:51-67): `retry-after-ms`,
+/// Upstream `getRetryDelayMs` (provider-retry.ts:51-72): `retry-after-ms`,
 /// then `retry-after` (numeric seconds, then HTTP-date via `Date.parse`),
 /// then the SDK's exponential fallback with jitter. Header values that parse
-/// to nothing in the applicable form are skipped like upstream's
-/// `Number.isNaN` guards — except `retry-after`, where an unparseable value
-/// makes upstream's `NaN` delay reach `setTimeout` (fires immediately).
+/// to nothing — or to a non-finite delay (the 2bbfcca43 tightening) — skip
+/// the branch and fall through to the exponential backoff.
 fn get_retry_delay_ms(
     error: &ProviderError,
     retry_index: u32,
@@ -167,33 +166,42 @@ fn get_retry_delay_ms(
     let retry_after_ms = headers
         .and_then(|headers| header_str(headers, "retry-after-ms"))
         .filter(|value| !value.is_empty());
-    if let Some(value) = retry_after_ms.and_then(parse_ms_header) {
-        return validate_server_retry_delay_ms(value, max_retry_delay_ms, &error.message);
+    if let Some(value) = retry_after_ms.and_then(parse_float_header) {
+        // Upstream `Number.isFinite(value)` (was `!Number.isNaN`): an
+        // overflowed parse (`1e999`) skips to the exponential fallback
+        // instead of validating an infinite delay.
+        if value.is_finite() {
+            return validate_server_retry_delay_ms(
+                value.max(0.0) as u64,
+                max_retry_delay_ms,
+                &error.message,
+            );
+        }
     }
     let retry_after = headers
         .and_then(|headers| header_str(headers, "retry-after"))
         .filter(|value| !value.is_empty());
     if let Some(text) = retry_after {
-        if let Some(seconds) = parse_ms_header(text) {
-            // Upstream multiplies seconds by 1000; `parse_ms_header` is
-            // unitless, so scale here before validating.
+        let seconds = parse_float_header(text);
+        let delay_ms = match seconds {
+            // Upstream `seconds * 1000` (overflowing to Infinity for huge
+            // finite parses).
+            Some(seconds) => Some(seconds * 1000.0),
+            // Upstream `Date.parse` branch: an HTTP-date names an absolute
+            // time, so the delay is the time remaining until it (negative
+            // for a past date; sleep inputs clamp to zero).
+            None => http_date_to_ms(text).map(|date_ms| date_ms as f64 - now_ms().max(0) as f64),
+        };
+        // Upstream `Number.isFinite(delayMs)`: a non-finite delay (Infinity
+        // from the seconds branch, NaN from an unparseable HTTP-date) skips
+        // to the exponential fallback instead of sleeping ~0.
+        if let Some(delay_ms) = delay_ms.filter(|value| value.is_finite()) {
             return validate_server_retry_delay_ms(
-                seconds.saturating_mul(1000),
+                delay_ms.max(0.0) as u64,
                 max_retry_delay_ms,
                 &error.message,
             );
         }
-        // Upstream `Date.parse` branch: an HTTP-date names an absolute time,
-        // so the delay is the time remaining until it. A date in the past
-        // (or an unparseable value, upstream `NaN`) sleeps ~0 — `setTimeout`
-        // fires immediately for negative/NaN delays.
-        let delay_ms = match http_date_to_ms(text) {
-            // `now_ms` is `i64` but always positive in practice; clamp a
-            // negative clock to zero rather than wrap.
-            Some(date_ms) => date_ms.saturating_sub(now_ms().max(0) as u64),
-            None => 0,
-        };
-        return validate_server_retry_delay_ms(delay_ms, max_retry_delay_ms, &error.message);
     }
     let delay = exponential_delay_ms(retry_index, pseudo_random_fraction());
     Ok(delay)
@@ -204,8 +212,9 @@ fn get_retry_delay_ms(
 /// `12abc` parses as 12, `1e3x` as 1000, `abc`/empty is `None` (upstream
 /// `NaN`). Rust's `str::parse` demands the whole string, so scan prefixes
 /// longest-first. Letters never start a parseFloat number, so `inf`/`nan`
-/// spellings are rejected up front.
-fn parse_ms_header(text: &str) -> Option<u64> {
+/// spellings are rejected up front (`1e999` still overflows to infinity,
+/// which the callers' `Number.isFinite` checks skip).
+fn parse_float_header(text: &str) -> Option<f64> {
     let trimmed = text.trim_start();
     match trimmed.chars().next() {
         Some(first) if first.is_ascii_alphabetic() => return None,
@@ -216,10 +225,7 @@ fn parse_ms_header(text: &str) -> Option<u64> {
     loop {
         if trimmed.is_char_boundary(end) {
             if let Ok(value) = trimmed[..end].parse::<f64>() {
-                // Float-to-int casts saturate: negatives clamp to 0 like
-                // upstream's `Math.max(0, ms)` sleep input; huge values hit
-                // the cap check afterwards.
-                return Some(value.max(0.0) as u64);
+                return Some(value);
             }
         }
         if end == 0 {
@@ -378,7 +384,7 @@ pub const DEFAULT_MAX_AGENT_RETRY_DELAY_MS: u64 = 60_000;
 
 /// Upstream `NON_RETRYABLE_PROVIDER_LIMIT_ERROR_PATTERN` alternatives
 /// (retry.ts:7-24): subscription/account limits are not transient throttles.
-const NON_RETRYABLE_PROVIDER_LIMIT_PATTERNS: [&str; 8] = [
+const NON_RETRYABLE_PROVIDER_LIMIT_PATTERNS: [&str; 9] = [
     "GoUsageLimitError",
     "FreeUsageLimitError",
     "Monthly usage limit reached",
@@ -387,13 +393,16 @@ const NON_RETRYABLE_PROVIDER_LIMIT_PATTERNS: [&str; 8] = [
     "out of budget",
     "quota exceeded",
     "billing",
+    // Sign in with ChatGPT: the subscription's shared usage limit, which
+    // resets after hours rather than seconds.
+    "subscription_sharing_usage_limit_exceeded",
 ];
 
 /// Upstream `RETRYABLE_PROVIDER_ERROR_PATTERN` alternatives (retry.ts:26-92):
 /// generic provider load, HTTP-status, transport, and stream-truncation
 /// failures, plus explicit retry guidance. Each entry uses only literals,
 /// `.` (any character), and `?` (optional previous character).
-const RETRYABLE_PROVIDER_ERROR_PATTERNS: [&str; 43] = [
+const RETRYABLE_PROVIDER_ERROR_PATTERNS: [&str; 45] = [
     "overloaded",
     "currently experiencing high demand",
     "rate.?limit",
@@ -437,6 +446,10 @@ const RETRYABLE_PROVIDER_ERROR_PATTERNS: [&str; 43] = [
     "try your request again",
     "please retry your request",
     "ResourceExhausted",
+    // Sign in with ChatGPT: usage or user data temporarily unavailable. Usage
+    // failures can arrive mid-stream without an HTTP 503 in the message.
+    "subscription_sharing_usage_unavailable",
+    "subscription_sharing_user_unavailable",
 ];
 
 /// Upstream `RetryPolicy` (retry.ts:101-109): bounded attempts with
@@ -948,14 +961,16 @@ mod tests {
     /// whole value like Rust's `str::parse`.
     #[test]
     fn delay_headers_parse_the_numeric_prefix_like_parse_float() {
-        assert_eq!(parse_ms_header("20"), Some(20));
-        assert_eq!(parse_ms_header("12abc"), Some(12));
-        assert_eq!(parse_ms_header("1e3x"), Some(1000));
-        assert_eq!(parse_ms_header(".5s"), Some(0));
-        assert_eq!(parse_ms_header("0x10"), Some(0));
-        assert_eq!(parse_ms_header("-3"), Some(0));
-        assert_eq!(parse_ms_header("abc"), None);
-        assert_eq!(parse_ms_header(""), None);
+        assert_eq!(parse_float_header("20"), Some(20.0));
+        assert_eq!(parse_float_header("12abc"), Some(12.0));
+        assert_eq!(parse_float_header("1e3x"), Some(1000.0));
+        assert_eq!(parse_float_header(".5s"), Some(0.5));
+        // JS parseFloat("0x10") stops at the 0 prefix.
+        assert_eq!(parse_float_header("0x10"), Some(0.0));
+        assert_eq!(parse_float_header("-3"), Some(-3.0));
+        assert_eq!(parse_float_header("1e999"), Some(f64::INFINITY));
+        assert_eq!(parse_float_header("abc"), None);
+        assert_eq!(parse_float_header(""), None);
     }
 
     /// The RFC 7231 IMF-fixdate example: Date.parse gives 784111777000.
@@ -1002,21 +1017,43 @@ mod tests {
     /// reaches `setTimeout`, which fires immediately) retries without the
     /// exponential fallback's >=375ms wait.
     #[tokio::test]
-    async fn retry_after_past_date_or_garbage_retries_immediately() {
-        for header in ["Sat, 01 Jan 2000 00:00:00 GMT", "garbage"] {
-            let (result, attempts, elapsed) = drive(
-                1,
-                None,
-                vec![
-                    Err(provider_error(429, &[("retry-after", header)])),
-                    Ok("ok"),
-                ],
-            )
-            .await;
-            assert_eq!(result, Ok("ok"), "header {header}");
-            assert_eq!(attempts, 2, "header {header}");
-            assert!(elapsed < 300, "header {header} slept {elapsed}ms");
-        }
+    async fn retry_after_past_date_sleeps_immediately_and_garbage_uses_exponential_backoff() {
+        // Past date: the delay is negative but FINITE, so upstream still
+        // returns it and the sleep clamps to zero — immediate retry.
+        let (result, attempts, elapsed) = drive(
+            1,
+            None,
+            vec![
+                Err(provider_error(
+                    429,
+                    &[("retry-after", "Sat, 01 Jan 2000 00:00:00 GMT")],
+                )),
+                Ok("ok"),
+            ],
+        )
+        .await;
+        assert_eq!(result, Ok("ok"));
+        assert_eq!(attempts, 2);
+        assert!(elapsed < 300, "slept {elapsed}ms");
+
+        // Garbage: NaN fails the upstream Number.isFinite gate (2bbfcca43)
+        // and falls through to the exponential backoff (index 0: 0.5s *
+        // (1 - random()*0.25) → 375–500ms with the jitter bounds).
+        let (result, attempts, elapsed) = drive(
+            1,
+            None,
+            vec![
+                Err(provider_error(429, &[("retry-after", "garbage")])),
+                Ok("ok"),
+            ],
+        )
+        .await;
+        assert_eq!(result, Ok("ok"));
+        assert_eq!(attempts, 2);
+        assert!(
+            (350..550).contains(&elapsed),
+            "slept {elapsed}ms (expected the 375-500ms exponential band)"
+        );
     }
 
     // ---- provider-retry.test.ts ports: abort half ----

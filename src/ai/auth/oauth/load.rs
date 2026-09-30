@@ -31,6 +31,26 @@ pub fn load_openai_codex_oauth() -> Arc<dyn OAuthAuth> {
     Arc::new(OpenAICodexOAuth::new())
 }
 
+/// Upstream `loadOpenAIChatGPTOAuth` (load.ts, the Sign-in-with-ChatGPT
+/// delta): the flow module `auth/oauth/openai-chatgpt.ts` is a separate
+/// porting slice (auth/oauth/**); until it lands this loader reports the
+/// login unavailable, so provider wiring and the loader seam exist now.
+pub fn load_openai_chatgpt_oauth() -> Result<Arc<dyn OAuthAuth>, String> {
+    Err(
+        "OpenAI (ChatGPT subscription) login is not available in this build: the openai-chatgpt OAuth flow is ported separately"
+            .to_string(),
+    )
+}
+
+/// Upstream `loadMetaOAuth` (load.ts, the Meta Muse delta): the flow module
+/// `auth/oauth/meta.ts` is ported in that same separate slice.
+pub fn load_meta_oauth() -> Result<Arc<dyn OAuthAuth>, String> {
+    Err(
+        "Meta (Muse subscription) login is not available in this build: the meta OAuth flow is ported separately"
+            .to_string(),
+    )
+}
+
 /// Upstream `loadGitHubCopilotOAuth` (load.ts:41-44).
 pub fn load_github_copilot_oauth() -> Arc<dyn OAuthAuth> {
     Arc::new(GitHubCopilotOAuth::new())
@@ -62,9 +82,11 @@ pub fn load_radius_oauth(options: RadiusOAuthOptions) -> Arc<dyn OAuthAuth> {
 /// derives its login surface from the same filter.
 pub const OAUTH_LOGIN_PROVIDERS: &[&str] = &[
     "anthropic",
+    "openai",
     "openai-codex",
     "github-copilot",
     "openrouter",
+    "meta",
     "xai",
     "kimi-coding",
     "radius",
@@ -79,6 +101,16 @@ pub const OAUTH_LOGIN_PROVIDERS: &[&str] = &[
 pub fn oauth_flow_for(provider_id: &str) -> Option<Arc<dyn OAuthAuth>> {
     match provider_id {
         "anthropic" => Some(load_anthropic_oauth()),
+        // openai/meta land with the auth/oauth slice; their loaders currently
+        // report the login unavailable (see above).
+        "openai" | "meta" => {
+            let unavailable = if provider_id == "openai" {
+                load_openai_chatgpt_oauth()
+            } else {
+                load_meta_oauth()
+            };
+            unavailable.ok()
+        }
         "openai-codex" => Some(load_openai_codex_oauth()),
         "github-copilot" => Some(load_github_copilot_oauth()),
         "openrouter" => Some(load_openrouter_oauth()),
@@ -122,9 +154,15 @@ mod tests {
 
     /// The login registry covers exactly the advertised ids and rejects
     /// everything else (upstream cli.ts `PROVIDERS.some(...) == providerId`).
+    /// openai/meta are advertised (upstream providers carry their flows) but
+    /// their flow modules are a separate slice — the dispatch matches while
+    /// the loader reports unavailable, so the check here skips them.
     #[test]
     fn oauth_flow_registry_matches_the_advertised_providers() {
         for provider in OAUTH_LOGIN_PROVIDERS {
+            if *provider == "openai" || *provider == "meta" {
+                continue;
+            }
             assert!(
                 oauth_flow_for(provider).is_some(),
                 "{provider} should dispatch"

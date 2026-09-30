@@ -53,12 +53,13 @@
       ],
       "display": true,
       "expectedUtf16": [
-        120,
-        94,
+        32,
         55357,
+        10,
+        120,
         56832
       ],
-      "expectedTerminalUtf8": "x^😀"
+      "expectedTerminalUtf8": " �\nx�"
     },
     {
       "id": "unicode 0/2",
@@ -88,11 +89,12 @@
       "display": true,
       "expectedUtf16": [
         120,
-        95,
-        55357,
-        56832
+        56832,
+        10,
+        32,
+        55357
       ],
-      "expectedTerminalUtf8": "x_😀"
+      "expectedTerminalUtf8": "x�\n �"
     },
     {
       "id": "unicode 0/3",
@@ -125,12 +127,13 @@
       ],
       "display": true,
       "expectedUtf16": [
-        120,
-        94,
+        32,
         55357,
-        56832
+        56832,
+        10,
+        120
       ],
-      "expectedTerminalUtf8": "x^😀"
+      "expectedTerminalUtf8": " 😀\nx"
     },
     {
       "id": "unicode 0/4",
@@ -164,11 +167,12 @@
       "display": true,
       "expectedUtf16": [
         120,
-        95,
+        10,
+        32,
         55357,
         56832
       ],
-      "expectedTerminalUtf8": "x_😀"
+      "expectedTerminalUtf8": "x\n 😀"
     },
     {
       "id": "unicode 0/5",
@@ -1257,17 +1261,19 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        55357,
+        10,
         8721,
         32,
         56832,
-        94,
-        55357,
         56832,
         120,
         10,
         55357
       ],
-      "expectedTerminalUtf8": "∑ �^😀x\n�"
+      "expectedTerminalUtf8": "  �\n∑ ��x\n�"
     },
     {
       "id": "unicode 0/27",
@@ -1472,9 +1478,12 @@
         32,
         48,
         10,
+        9128,
+        10,
         9129,
         32,
         48,
+        32,
         32,
         105,
         102,
@@ -1482,7 +1491,7 @@
         55357,
         56832
       ],
-      "expectedTerminalUtf8": "⎧ 😀 if x > 0\n⎩ 0 if 😀"
+      "expectedTerminalUtf8": "⎧ 😀 if x > 0\n⎨\n⎩ 0  if 😀"
     },
     {
       "id": "unicode 0/28",
@@ -1543,9 +1552,12 @@
         32,
         48,
         10,
+        9128,
+        10,
         9129,
         32,
         48,
+        32,
         32,
         105,
         102,
@@ -1553,7 +1565,7 @@
         55357,
         56832
       ],
-      "expectedTerminalUtf8": "⎧ 😀 if x > 0\n⎩ 0 if 😀"
+      "expectedTerminalUtf8": "⎧ 😀 if x > 0\n⎨\n⎩ 0  if 😀"
     },
     {
       "id": "unicode 0/29",
@@ -2388,12 +2400,13 @@
       ],
       "display": true,
       "expectedUtf16": [
-        120,
-        94,
+        32,
         55349,
+        10,
+        120,
         56421
       ],
-      "expectedTerminalUtf8": "x^𝑥"
+      "expectedTerminalUtf8": " �\nx�"
     },
     {
       "id": "unicode 1/2",
@@ -2423,11 +2436,12 @@
       "display": true,
       "expectedUtf16": [
         120,
-        95,
-        55349,
-        56421
+        56421,
+        10,
+        32,
+        55349
       ],
-      "expectedTerminalUtf8": "x_𝑥"
+      "expectedTerminalUtf8": "x�\n �"
     },
     {
       "id": "unicode 1/3",
@@ -2460,12 +2474,13 @@
       ],
       "display": true,
       "expectedUtf16": [
-        120,
-        94,
+        32,
         55349,
-        56421
+        56421,
+        10,
+        120
       ],
-      "expectedTerminalUtf8": "x^𝑥"
+      "expectedTerminalUtf8": " 𝑥\nx"
     },
     {
       "id": "unicode 1/4",
@@ -2499,11 +2514,12 @@
       "display": true,
       "expectedUtf16": [
         120,
-        95,
+        10,
+        32,
         55349,
         56421
       ],
-      "expectedTerminalUtf8": "x_𝑥"
+      "expectedTerminalUtf8": "x\n 𝑥"
     },
     {
       "id": "unicode 1/5",
@@ -3585,17 +3601,19 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        55349,
+        10,
         8721,
         32,
         56421,
-        94,
-        55349,
         56421,
         120,
         10,
         55349
       ],
-      "expectedTerminalUtf8": "∑ �^𝑥x\n�"
+      "expectedTerminalUtf8": "  �\n∑ ��x\n�"
     },
     {
       "id": "unicode 1/27",
@@ -3796,6 +3814,8 @@
         32,
         48,
         10,
+        9128,
+        10,
         9129,
         32,
         48,
@@ -3806,7 +3826,7 @@
         55349,
         56421
       ],
-      "expectedTerminalUtf8": "⎧ 𝑥 if x > 0\n⎩ 0 if 𝑥"
+      "expectedTerminalUtf8": "⎧ 𝑥 if x > 0\n⎨\n⎩ 0 if 𝑥"
     },
     {
       "id": "unicode 1/28",
@@ -3867,6 +3887,8 @@
         32,
         48,
         10,
+        9128,
+        10,
         9129,
         32,
         48,
@@ -3877,7 +3899,7 @@
         55349,
         56421
       ],
-      "expectedTerminalUtf8": "⎧ 𝑥 if x > 0\n⎩ 0 if 𝑥"
+      "expectedTerminalUtf8": "⎧ 𝑥 if x > 0\n⎨\n⎩ 0 if 𝑥"
     },
     {
       "id": "unicode 1/29",
@@ -4707,12 +4729,13 @@
       ],
       "display": true,
       "expectedUtf16": [
-        120,
-        94,
+        32,
         55362,
+        10,
+        120,
         57271
       ],
-      "expectedTerminalUtf8": "x^𠮷"
+      "expectedTerminalUtf8": " �\nx�"
     },
     {
       "id": "unicode 2/2",
@@ -4742,11 +4765,12 @@
       "display": true,
       "expectedUtf16": [
         120,
-        95,
-        55362,
-        57271
+        57271,
+        10,
+        32,
+        55362
       ],
-      "expectedTerminalUtf8": "x_𠮷"
+      "expectedTerminalUtf8": "x�\n �"
     },
     {
       "id": "unicode 2/3",
@@ -4779,12 +4803,13 @@
       ],
       "display": true,
       "expectedUtf16": [
-        120,
-        94,
+        32,
         55362,
-        57271
+        57271,
+        10,
+        120
       ],
-      "expectedTerminalUtf8": "x^𠮷"
+      "expectedTerminalUtf8": " 𠮷\nx"
     },
     {
       "id": "unicode 2/4",
@@ -4818,11 +4843,12 @@
       "display": true,
       "expectedUtf16": [
         120,
-        95,
+        10,
+        32,
         55362,
         57271
       ],
-      "expectedTerminalUtf8": "x_𠮷"
+      "expectedTerminalUtf8": "x\n 𠮷"
     },
     {
       "id": "unicode 2/5",
@@ -5905,17 +5931,19 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        55362,
+        10,
         8721,
         32,
         57271,
-        94,
-        55362,
         57271,
         120,
         10,
         55362
       ],
-      "expectedTerminalUtf8": "∑ �^𠮷x\n�"
+      "expectedTerminalUtf8": "  �\n∑ ��x\n�"
     },
     {
       "id": "unicode 2/27",
@@ -6120,9 +6148,12 @@
         32,
         48,
         10,
+        9128,
+        10,
         9129,
         32,
         48,
+        32,
         32,
         105,
         102,
@@ -6130,7 +6161,7 @@
         55362,
         57271
       ],
-      "expectedTerminalUtf8": "⎧ 𠮷 if x > 0\n⎩ 0 if 𠮷"
+      "expectedTerminalUtf8": "⎧ 𠮷 if x > 0\n⎨\n⎩ 0  if 𠮷"
     },
     {
       "id": "unicode 2/28",
@@ -6191,9 +6222,12 @@
         32,
         48,
         10,
+        9128,
+        10,
         9129,
         32,
         48,
+        32,
         32,
         105,
         102,
@@ -6201,7 +6235,7 @@
         55362,
         57271
       ],
-      "expectedTerminalUtf8": "⎧ 𠮷 if x > 0\n⎩ 0 if 𠮷"
+      "expectedTerminalUtf8": "⎧ 𠮷 if x > 0\n⎨\n⎩ 0  if 𠮷"
     },
     {
       "id": "unicode 2/29",
@@ -7036,12 +7070,13 @@
       ],
       "display": true,
       "expectedUtf16": [
-        120,
-        94,
+        32,
         55349,
+        10,
+        120,
         57312
       ],
-      "expectedTerminalUtf8": "x^𝟠"
+      "expectedTerminalUtf8": " �\nx�"
     },
     {
       "id": "unicode 3/2",
@@ -7071,11 +7106,12 @@
       "display": true,
       "expectedUtf16": [
         120,
-        95,
-        55349,
-        57312
+        57312,
+        10,
+        32,
+        55349
       ],
-      "expectedTerminalUtf8": "x_𝟠"
+      "expectedTerminalUtf8": "x�\n �"
     },
     {
       "id": "unicode 3/3",
@@ -7108,12 +7144,13 @@
       ],
       "display": true,
       "expectedUtf16": [
-        120,
-        94,
+        32,
         55349,
-        57312
+        57312,
+        10,
+        120
       ],
-      "expectedTerminalUtf8": "x^𝟠"
+      "expectedTerminalUtf8": " 𝟠\nx"
     },
     {
       "id": "unicode 3/4",
@@ -7147,11 +7184,12 @@
       "display": true,
       "expectedUtf16": [
         120,
-        95,
+        10,
+        32,
         55349,
         57312
       ],
-      "expectedTerminalUtf8": "x_𝟠"
+      "expectedTerminalUtf8": "x\n 𝟠"
     },
     {
       "id": "unicode 3/5",
@@ -8233,17 +8271,19 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        55349,
+        10,
         8721,
         32,
         57312,
-        94,
-        55349,
         57312,
         120,
         10,
         55349
       ],
-      "expectedTerminalUtf8": "∑ �^𝟠x\n�"
+      "expectedTerminalUtf8": "  �\n∑ ��x\n�"
     },
     {
       "id": "unicode 3/27",
@@ -8444,6 +8484,8 @@
         32,
         48,
         10,
+        9128,
+        10,
         9129,
         32,
         48,
@@ -8454,7 +8496,7 @@
         55349,
         57312
       ],
-      "expectedTerminalUtf8": "⎧ 𝟠 if x > 0\n⎩ 0 if 𝟠"
+      "expectedTerminalUtf8": "⎧ 𝟠 if x > 0\n⎨\n⎩ 0 if 𝟠"
     },
     {
       "id": "unicode 3/28",
@@ -8515,6 +8557,8 @@
         32,
         48,
         10,
+        9128,
+        10,
         9129,
         32,
         48,
@@ -8525,7 +8569,7 @@
         55349,
         57312
       ],
-      "expectedTerminalUtf8": "⎧ 𝟠 if x > 0\n⎩ 0 if 𝟠"
+      "expectedTerminalUtf8": "⎧ 𝟠 if x > 0\n⎨\n⎩ 0 if 𝟠"
     },
     {
       "id": "unicode 3/29",
@@ -9369,14 +9413,15 @@
       ],
       "display": true,
       "expectedUtf16": [
-        120,
-        94,
+        32,
         55356,
+        10,
+        120,
         56826,
         55356,
         56824
       ],
-      "expectedTerminalUtf8": "x^🇺🇸"
+      "expectedTerminalUtf8": " �\nx�🇸"
     },
     {
       "id": "unicode 4/2",
@@ -9412,13 +9457,14 @@
       "display": true,
       "expectedUtf16": [
         120,
-        95,
-        55356,
         56826,
         55356,
-        56824
+        56824,
+        10,
+        32,
+        55356
       ],
-      "expectedTerminalUtf8": "x_🇺🇸"
+      "expectedTerminalUtf8": "x�🇸\n �"
     },
     {
       "id": "unicode 4/3",
@@ -10812,13 +10858,17 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        55356,
+        10,
         8721,
         32,
         56826,
         55356,
         56824,
-        94,
-        55356,
         56826,
         55356,
         56824,
@@ -10826,7 +10876,7 @@
         10,
         55356
       ],
-      "expectedTerminalUtf8": "∑ �🇸^🇺🇸x\n�"
+      "expectedTerminalUtf8": "    �\n∑ �🇸�🇸x\n�"
     },
     {
       "id": "unicode 4/27",
@@ -11053,9 +11103,12 @@
         32,
         48,
         10,
+        9128,
+        10,
         9129,
         32,
         48,
+        32,
         32,
         105,
         102,
@@ -11065,7 +11118,7 @@
         55356,
         56824
       ],
-      "expectedTerminalUtf8": "⎧ 🇺🇸 if x > 0\n⎩ 0 if 🇺🇸"
+      "expectedTerminalUtf8": "⎧ 🇺🇸 if x > 0\n⎨\n⎩ 0  if 🇺🇸"
     },
     {
       "id": "unicode 4/28",
@@ -11132,9 +11185,12 @@
         32,
         48,
         10,
+        9128,
+        10,
         9129,
         32,
         48,
+        32,
         32,
         105,
         102,
@@ -11144,7 +11200,7 @@
         55356,
         56824
       ],
-      "expectedTerminalUtf8": "⎧ 🇺🇸 if x > 0\n⎩ 0 if 🇺🇸"
+      "expectedTerminalUtf8": "⎧ 🇺🇸 if x > 0\n⎨\n⎩ 0  if 🇺🇸"
     },
     {
       "id": "unicode 4/29",
@@ -12112,9 +12168,10 @@
       ],
       "display": true,
       "expectedUtf16": [
-        120,
-        94,
+        32,
         55357,
+        10,
+        120,
         56425,
         55356,
         57342,
@@ -12122,7 +12179,7 @@
         55357,
         56507
       ],
-      "expectedTerminalUtf8": "x^👩🏾‍💻"
+      "expectedTerminalUtf8": " �\nx�🏾‍💻"
     },
     {
       "id": "unicode 5/2",
@@ -12167,16 +12224,17 @@
       "display": true,
       "expectedUtf16": [
         120,
-        95,
-        55357,
         56425,
         55356,
         57342,
         8205,
         55357,
-        56507
+        56507,
+        10,
+        32,
+        55357
       ],
-      "expectedTerminalUtf8": "x_👩🏾‍💻"
+      "expectedTerminalUtf8": "x�🏾‍💻\n �"
     },
     {
       "id": "unicode 5/3",
@@ -13879,6 +13937,14 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        32,
+        32,
+        55357,
+        10,
         8721,
         32,
         56425,
@@ -13887,8 +13953,6 @@
         8205,
         55357,
         56507,
-        94,
-        55357,
         56425,
         55356,
         57342,
@@ -13899,7 +13963,7 @@
         10,
         55357
       ],
-      "expectedTerminalUtf8": "∑ �🏾‍💻^👩🏾‍💻x\n�"
+      "expectedTerminalUtf8": "      �\n∑ �🏾‍💻�🏾‍💻x\n�"
     },
     {
       "id": "unicode 5/27",
@@ -14159,9 +14223,12 @@
         32,
         48,
         10,
+        9128,
+        10,
         9129,
         32,
         48,
+        32,
         32,
         105,
         102,
@@ -14174,7 +14241,7 @@
         55357,
         56507
       ],
-      "expectedTerminalUtf8": "⎧ 👩🏾‍💻 if x > 0\n⎩ 0 if 👩🏾‍💻"
+      "expectedTerminalUtf8": "⎧ 👩🏾‍💻 if x > 0\n⎨\n⎩ 0  if 👩🏾‍💻"
     },
     {
       "id": "unicode 5/28",
@@ -14250,9 +14317,12 @@
         32,
         48,
         10,
+        9128,
+        10,
         9129,
         32,
         48,
+        32,
         32,
         105,
         102,
@@ -14265,7 +14335,7 @@
         55357,
         56507
       ],
-      "expectedTerminalUtf8": "⎧ 👩🏾‍💻 if x > 0\n⎩ 0 if 👩🏾‍💻"
+      "expectedTerminalUtf8": "⎧ 👩🏾‍💻 if x > 0\n⎨\n⎩ 0  if 👩🏾‍💻"
     },
     {
       "id": "unicode 5/29",
@@ -15335,11 +15405,12 @@
       ],
       "display": true,
       "expectedUtf16": [
-        120,
-        94,
-        55296
+        32,
+        55296,
+        10,
+        120
       ],
-      "expectedTerminalUtf8": "x^�"
+      "expectedTerminalUtf8": " �\nx"
     },
     {
       "id": "unicode 6/2",
@@ -15366,10 +15437,11 @@
       "display": true,
       "expectedUtf16": [
         120,
-        95,
+        10,
+        32,
         55296
       ],
-      "expectedTerminalUtf8": "x_�"
+      "expectedTerminalUtf8": "x\n �"
     },
     {
       "id": "unicode 6/3",
@@ -15399,11 +15471,12 @@
       ],
       "display": true,
       "expectedUtf16": [
-        120,
-        94,
-        55296
+        32,
+        55296,
+        10,
+        120
       ],
-      "expectedTerminalUtf8": "x^�"
+      "expectedTerminalUtf8": " �\nx"
     },
     {
       "id": "unicode 6/4",
@@ -15434,10 +15507,11 @@
       "display": true,
       "expectedUtf16": [
         120,
-        95,
+        10,
+        32,
         55296
       ],
-      "expectedTerminalUtf8": "x_�"
+      "expectedTerminalUtf8": "x\n �"
     },
     {
       "id": "unicode 6/5",
@@ -16618,6 +16692,7 @@
         32,
         55296,
         32,
+        32,
         105,
         102,
         32,
@@ -16626,6 +16701,8 @@
         62,
         32,
         48,
+        10,
+        9128,
         10,
         9129,
         32,
@@ -16636,7 +16713,7 @@
         32,
         55296
       ],
-      "expectedTerminalUtf8": "⎧ � if x > 0\n⎩ 0 if �"
+      "expectedTerminalUtf8": "⎧ �  if x > 0\n⎨\n⎩ 0 if �"
     },
     {
       "id": "unicode 6/28",
@@ -16685,6 +16762,7 @@
         32,
         55296,
         32,
+        32,
         105,
         102,
         32,
@@ -16693,6 +16771,8 @@
         62,
         32,
         48,
+        10,
+        9128,
         10,
         9129,
         32,
@@ -16703,7 +16783,7 @@
         32,
         55296
       ],
-      "expectedTerminalUtf8": "⎧ � if x > 0\n⎩ 0 if �"
+      "expectedTerminalUtf8": "⎧ �  if x > 0\n⎨\n⎩ 0 if �"
     },
     {
       "id": "unicode 6/29",
@@ -17482,11 +17562,12 @@
       ],
       "display": true,
       "expectedUtf16": [
-        120,
-        94,
-        56319
+        32,
+        56319,
+        10,
+        120
       ],
-      "expectedTerminalUtf8": "x^�"
+      "expectedTerminalUtf8": " �\nx"
     },
     {
       "id": "unicode 7/2",
@@ -17513,10 +17594,11 @@
       "display": true,
       "expectedUtf16": [
         120,
-        95,
+        10,
+        32,
         56319
       ],
-      "expectedTerminalUtf8": "x_�"
+      "expectedTerminalUtf8": "x\n �"
     },
     {
       "id": "unicode 7/3",
@@ -17546,11 +17628,12 @@
       ],
       "display": true,
       "expectedUtf16": [
-        120,
-        94,
-        56319
+        32,
+        56319,
+        10,
+        120
       ],
-      "expectedTerminalUtf8": "x^�"
+      "expectedTerminalUtf8": " �\nx"
     },
     {
       "id": "unicode 7/4",
@@ -17581,10 +17664,11 @@
       "display": true,
       "expectedUtf16": [
         120,
-        95,
+        10,
+        32,
         56319
       ],
-      "expectedTerminalUtf8": "x_�"
+      "expectedTerminalUtf8": "x\n �"
     },
     {
       "id": "unicode 7/5",
@@ -18765,6 +18849,7 @@
         32,
         56319,
         32,
+        32,
         105,
         102,
         32,
@@ -18773,6 +18858,8 @@
         62,
         32,
         48,
+        10,
+        9128,
         10,
         9129,
         32,
@@ -18783,7 +18870,7 @@
         32,
         56319
       ],
-      "expectedTerminalUtf8": "⎧ � if x > 0\n⎩ 0 if �"
+      "expectedTerminalUtf8": "⎧ �  if x > 0\n⎨\n⎩ 0 if �"
     },
     {
       "id": "unicode 7/28",
@@ -18832,6 +18919,7 @@
         32,
         56319,
         32,
+        32,
         105,
         102,
         32,
@@ -18840,6 +18928,8 @@
         62,
         32,
         48,
+        10,
+        9128,
         10,
         9129,
         32,
@@ -18850,7 +18940,7 @@
         32,
         56319
       ],
-      "expectedTerminalUtf8": "⎧ � if x > 0\n⎩ 0 if �"
+      "expectedTerminalUtf8": "⎧ �  if x > 0\n⎨\n⎩ 0 if �"
     },
     {
       "id": "unicode 7/29",
@@ -19629,11 +19719,12 @@
       ],
       "display": true,
       "expectedUtf16": [
-        120,
-        94,
-        56320
+        32,
+        56320,
+        10,
+        120
       ],
-      "expectedTerminalUtf8": "x^�"
+      "expectedTerminalUtf8": " �\nx"
     },
     {
       "id": "unicode 8/2",
@@ -19660,10 +19751,11 @@
       "display": true,
       "expectedUtf16": [
         120,
-        95,
+        10,
+        32,
         56320
       ],
-      "expectedTerminalUtf8": "x_�"
+      "expectedTerminalUtf8": "x\n �"
     },
     {
       "id": "unicode 8/3",
@@ -19693,11 +19785,12 @@
       ],
       "display": true,
       "expectedUtf16": [
-        120,
-        94,
-        56320
+        32,
+        56320,
+        10,
+        120
       ],
-      "expectedTerminalUtf8": "x^�"
+      "expectedTerminalUtf8": " �\nx"
     },
     {
       "id": "unicode 8/4",
@@ -19728,10 +19821,11 @@
       "display": true,
       "expectedUtf16": [
         120,
-        95,
+        10,
+        32,
         56320
       ],
-      "expectedTerminalUtf8": "x_�"
+      "expectedTerminalUtf8": "x\n �"
     },
     {
       "id": "unicode 8/5",
@@ -20912,6 +21006,7 @@
         32,
         56320,
         32,
+        32,
         105,
         102,
         32,
@@ -20920,6 +21015,8 @@
         62,
         32,
         48,
+        10,
+        9128,
         10,
         9129,
         32,
@@ -20930,7 +21027,7 @@
         32,
         56320
       ],
-      "expectedTerminalUtf8": "⎧ � if x > 0\n⎩ 0 if �"
+      "expectedTerminalUtf8": "⎧ �  if x > 0\n⎨\n⎩ 0 if �"
     },
     {
       "id": "unicode 8/28",
@@ -20979,6 +21076,7 @@
         32,
         56320,
         32,
+        32,
         105,
         102,
         32,
@@ -20987,6 +21085,8 @@
         62,
         32,
         48,
+        10,
+        9128,
         10,
         9129,
         32,
@@ -20997,7 +21097,7 @@
         32,
         56320
       ],
-      "expectedTerminalUtf8": "⎧ � if x > 0\n⎩ 0 if �"
+      "expectedTerminalUtf8": "⎧ �  if x > 0\n⎨\n⎩ 0 if �"
     },
     {
       "id": "unicode 8/29",
@@ -21776,11 +21876,12 @@
       ],
       "display": true,
       "expectedUtf16": [
-        120,
-        94,
-        57343
+        32,
+        57343,
+        10,
+        120
       ],
-      "expectedTerminalUtf8": "x^�"
+      "expectedTerminalUtf8": " �\nx"
     },
     {
       "id": "unicode 9/2",
@@ -21807,10 +21908,11 @@
       "display": true,
       "expectedUtf16": [
         120,
-        95,
+        10,
+        32,
         57343
       ],
-      "expectedTerminalUtf8": "x_�"
+      "expectedTerminalUtf8": "x\n �"
     },
     {
       "id": "unicode 9/3",
@@ -21840,11 +21942,12 @@
       ],
       "display": true,
       "expectedUtf16": [
-        120,
-        94,
-        57343
+        32,
+        57343,
+        10,
+        120
       ],
-      "expectedTerminalUtf8": "x^�"
+      "expectedTerminalUtf8": " �\nx"
     },
     {
       "id": "unicode 9/4",
@@ -21875,10 +21978,11 @@
       "display": true,
       "expectedUtf16": [
         120,
-        95,
+        10,
+        32,
         57343
       ],
-      "expectedTerminalUtf8": "x_�"
+      "expectedTerminalUtf8": "x\n �"
     },
     {
       "id": "unicode 9/5",
@@ -23059,6 +23163,7 @@
         32,
         57343,
         32,
+        32,
         105,
         102,
         32,
@@ -23067,6 +23172,8 @@
         62,
         32,
         48,
+        10,
+        9128,
         10,
         9129,
         32,
@@ -23077,7 +23184,7 @@
         32,
         57343
       ],
-      "expectedTerminalUtf8": "⎧ � if x > 0\n⎩ 0 if �"
+      "expectedTerminalUtf8": "⎧ �  if x > 0\n⎨\n⎩ 0 if �"
     },
     {
       "id": "unicode 9/28",
@@ -23126,6 +23233,7 @@
         32,
         57343,
         32,
+        32,
         105,
         102,
         32,
@@ -23134,6 +23242,8 @@
         62,
         32,
         48,
+        10,
+        9128,
         10,
         9129,
         32,
@@ -23144,7 +23254,7 @@
         32,
         57343
       ],
-      "expectedTerminalUtf8": "⎧ � if x > 0\n⎩ 0 if �"
+      "expectedTerminalUtf8": "⎧ �  if x > 0\n⎨\n⎩ 0 if �"
     },
     {
       "id": "unicode 9/29",
@@ -23937,13 +24047,14 @@
       ],
       "display": true,
       "expectedUtf16": [
-        120,
-        94,
+        32,
         55357,
+        10,
+        120,
         120,
         56832
       ],
-      "expectedTerminalUtf8": "x^�x�"
+      "expectedTerminalUtf8": " �\nxx�"
     },
     {
       "id": "unicode 10/2",
@@ -23976,12 +24087,13 @@
       "display": true,
       "expectedUtf16": [
         120,
-        95,
-        55357,
         120,
-        56832
+        56832,
+        10,
+        32,
+        55357
       ],
-      "expectedTerminalUtf8": "x_�x�"
+      "expectedTerminalUtf8": "xx�\n �"
     },
     {
       "id": "unicode 10/3",
@@ -25270,19 +25382,22 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        55357,
+        10,
         8721,
         32,
         120,
         56832,
-        94,
-        55357,
         120,
         56832,
         120,
         10,
         55357
       ],
-      "expectedTerminalUtf8": "∑ x�^�x�x\n�"
+      "expectedTerminalUtf8": "   �\n∑ x�x�x\n�"
     },
     {
       "id": "unicode 10/27",
@@ -25494,6 +25609,8 @@
         32,
         48,
         10,
+        9128,
+        10,
         9129,
         32,
         48,
@@ -25505,7 +25622,7 @@
         120,
         56832
       ],
-      "expectedTerminalUtf8": "⎧ �x� if x > 0\n⎩ 0 if �x�"
+      "expectedTerminalUtf8": "⎧ �x� if x > 0\n⎨\n⎩ 0 if �x�"
     },
     {
       "id": "unicode 10/28",
@@ -25569,6 +25686,8 @@
         32,
         48,
         10,
+        9128,
+        10,
         9129,
         32,
         48,
@@ -25580,7 +25699,7 @@
         120,
         56832
       ],
-      "expectedTerminalUtf8": "⎧ �x� if x > 0\n⎩ 0 if �x�"
+      "expectedTerminalUtf8": "⎧ �x� if x > 0\n⎨\n⎩ 0 if �x�"
     },
     {
       "id": "unicode 10/29",
@@ -26460,12 +26579,13 @@
       ],
       "display": true,
       "expectedUtf16": [
-        120,
-        94,
+        32,
         56832,
+        10,
+        120,
         55357
       ],
-      "expectedTerminalUtf8": "x^��"
+      "expectedTerminalUtf8": " �\nx�"
     },
     {
       "id": "unicode 11/2",
@@ -26495,11 +26615,12 @@
       "display": true,
       "expectedUtf16": [
         120,
-        95,
-        56832,
-        55357
+        55357,
+        10,
+        32,
+        56832
       ],
-      "expectedTerminalUtf8": "x_��"
+      "expectedTerminalUtf8": "x�\n �"
     },
     {
       "id": "unicode 11/3",
@@ -27685,17 +27806,19 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        56832,
+        10,
         8721,
         32,
         55357,
-        94,
-        56832,
         55357,
         120,
         10,
         56832
       ],
-      "expectedTerminalUtf8": "∑ �^��x\n�"
+      "expectedTerminalUtf8": "  �\n∑ ��x\n�"
     },
     {
       "id": "unicode 11/27",
@@ -27891,6 +28014,7 @@
         56832,
         55357,
         32,
+        32,
         105,
         102,
         32,
@@ -27899,6 +28023,8 @@
         62,
         32,
         48,
+        10,
+        9128,
         10,
         9129,
         32,
@@ -27910,7 +28036,7 @@
         56832,
         55357
       ],
-      "expectedTerminalUtf8": "⎧ �� if x > 0\n⎩ 0 if ��"
+      "expectedTerminalUtf8": "⎧ ��  if x > 0\n⎨\n⎩ 0 if ��"
     },
     {
       "id": "unicode 11/28",
@@ -27962,6 +28088,7 @@
         56832,
         55357,
         32,
+        32,
         105,
         102,
         32,
@@ -27970,6 +28097,8 @@
         62,
         32,
         48,
+        10,
+        9128,
         10,
         9129,
         32,
@@ -27981,7 +28110,7 @@
         56832,
         55357
       ],
-      "expectedTerminalUtf8": "⎧ �� if x > 0\n⎩ 0 if ��"
+      "expectedTerminalUtf8": "⎧ ��  if x > 0\n⎨\n⎩ 0 if ��"
     },
     {
       "id": "unicode 11/29",
@@ -28817,12 +28946,13 @@
       ],
       "display": true,
       "expectedUtf16": [
-        120,
-        94,
+        32,
         55296,
+        10,
+        120,
         55296
       ],
-      "expectedTerminalUtf8": "x^��"
+      "expectedTerminalUtf8": " �\nx�"
     },
     {
       "id": "unicode 12/2",
@@ -28852,11 +28982,12 @@
       "display": true,
       "expectedUtf16": [
         120,
-        95,
         55296,
+        10,
+        32,
         55296
       ],
-      "expectedTerminalUtf8": "x_��"
+      "expectedTerminalUtf8": "x�\n �"
     },
     {
       "id": "unicode 12/3",
@@ -30042,17 +30173,19 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        55296,
+        10,
         8721,
         32,
         55296,
-        94,
-        55296,
         55296,
         120,
         10,
         55296
       ],
-      "expectedTerminalUtf8": "∑ �^��x\n�"
+      "expectedTerminalUtf8": "  �\n∑ ��x\n�"
     },
     {
       "id": "unicode 12/27",
@@ -30248,6 +30381,7 @@
         55296,
         55296,
         32,
+        32,
         105,
         102,
         32,
@@ -30256,6 +30390,8 @@
         62,
         32,
         48,
+        10,
+        9128,
         10,
         9129,
         32,
@@ -30267,7 +30403,7 @@
         55296,
         55296
       ],
-      "expectedTerminalUtf8": "⎧ �� if x > 0\n⎩ 0 if ��"
+      "expectedTerminalUtf8": "⎧ ��  if x > 0\n⎨\n⎩ 0 if ��"
     },
     {
       "id": "unicode 12/28",
@@ -30319,6 +30455,7 @@
         55296,
         55296,
         32,
+        32,
         105,
         102,
         32,
@@ -30327,6 +30464,8 @@
         62,
         32,
         48,
+        10,
+        9128,
         10,
         9129,
         32,
@@ -30338,7 +30477,7 @@
         55296,
         55296
       ],
-      "expectedTerminalUtf8": "⎧ �� if x > 0\n⎩ 0 if ��"
+      "expectedTerminalUtf8": "⎧ ��  if x > 0\n⎨\n⎩ 0 if ��"
     },
     {
       "id": "unicode 12/29",
@@ -31174,12 +31313,13 @@
       ],
       "display": true,
       "expectedUtf16": [
-        120,
-        94,
+        32,
         56320,
+        10,
+        120,
         56320
       ],
-      "expectedTerminalUtf8": "x^��"
+      "expectedTerminalUtf8": " �\nx�"
     },
     {
       "id": "unicode 13/2",
@@ -31209,11 +31349,12 @@
       "display": true,
       "expectedUtf16": [
         120,
-        95,
         56320,
+        10,
+        32,
         56320
       ],
-      "expectedTerminalUtf8": "x_��"
+      "expectedTerminalUtf8": "x�\n �"
     },
     {
       "id": "unicode 13/3",
@@ -32399,17 +32540,19 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        56320,
+        10,
         8721,
         32,
         56320,
-        94,
-        56320,
         56320,
         120,
         10,
         56320
       ],
-      "expectedTerminalUtf8": "∑ �^��x\n�"
+      "expectedTerminalUtf8": "  �\n∑ ��x\n�"
     },
     {
       "id": "unicode 13/27",
@@ -32605,6 +32748,7 @@
         56320,
         56320,
         32,
+        32,
         105,
         102,
         32,
@@ -32613,6 +32757,8 @@
         62,
         32,
         48,
+        10,
+        9128,
         10,
         9129,
         32,
@@ -32624,7 +32770,7 @@
         56320,
         56320
       ],
-      "expectedTerminalUtf8": "⎧ �� if x > 0\n⎩ 0 if ��"
+      "expectedTerminalUtf8": "⎧ ��  if x > 0\n⎨\n⎩ 0 if ��"
     },
     {
       "id": "unicode 13/28",
@@ -32676,6 +32822,7 @@
         56320,
         56320,
         32,
+        32,
         105,
         102,
         32,
@@ -32684,6 +32831,8 @@
         62,
         32,
         48,
+        10,
+        9128,
         10,
         9129,
         32,
@@ -32695,7 +32844,7 @@
         56320,
         56320
       ],
-      "expectedTerminalUtf8": "⎧ �� if x > 0\n⎩ 0 if ��"
+      "expectedTerminalUtf8": "⎧ ��  if x > 0\n⎨\n⎩ 0 if ��"
     },
     {
       "id": "unicode 13/29",
@@ -33531,12 +33680,13 @@
       ],
       "display": true,
       "expectedUtf16": [
-        120,
-        94,
+        32,
         55296,
+        10,
+        120,
         769
       ],
-      "expectedTerminalUtf8": "x^�́"
+      "expectedTerminalUtf8": " �\nx́"
     },
     {
       "id": "unicode 14/2",
@@ -33566,11 +33716,12 @@
       "display": true,
       "expectedUtf16": [
         120,
-        95,
-        55296,
-        769
+        769,
+        10,
+        32,
+        55296
       ],
-      "expectedTerminalUtf8": "x_�́"
+      "expectedTerminalUtf8": "x́\n �"
     },
     {
       "id": "unicode 14/3",
@@ -34756,17 +34907,19 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        55296,
+        10,
         8721,
         32,
         769,
-        94,
-        55296,
         769,
         120,
         10,
         55296
       ],
-      "expectedTerminalUtf8": "∑ ́^�́x\n�"
+      "expectedTerminalUtf8": "  �\n∑ ́́x\n�"
     },
     {
       "id": "unicode 14/27",
@@ -34962,6 +35115,7 @@
         55296,
         769,
         32,
+        32,
         105,
         102,
         32,
@@ -34970,6 +35124,8 @@
         62,
         32,
         48,
+        10,
+        9128,
         10,
         9129,
         32,
@@ -34981,7 +35137,7 @@
         55296,
         769
       ],
-      "expectedTerminalUtf8": "⎧ �́ if x > 0\n⎩ 0 if �́"
+      "expectedTerminalUtf8": "⎧ �́  if x > 0\n⎨\n⎩ 0 if �́"
     },
     {
       "id": "unicode 14/28",
@@ -35033,6 +35189,7 @@
         55296,
         769,
         32,
+        32,
         105,
         102,
         32,
@@ -35041,6 +35198,8 @@
         62,
         32,
         48,
+        10,
+        9128,
         10,
         9129,
         32,
@@ -35052,7 +35211,7 @@
         55296,
         769
       ],
-      "expectedTerminalUtf8": "⎧ �́ if x > 0\n⎩ 0 if �́"
+      "expectedTerminalUtf8": "⎧ �́  if x > 0\n⎨\n⎩ 0 if �́"
     },
     {
       "id": "unicode 14/29",
@@ -35888,12 +36047,13 @@
       ],
       "display": true,
       "expectedUtf16": [
-        120,
-        94,
+        32,
         55296,
+        10,
+        120,
         2366
       ],
-      "expectedTerminalUtf8": "x^�ा"
+      "expectedTerminalUtf8": " �\nxा"
     },
     {
       "id": "unicode 15/2",
@@ -35923,11 +36083,12 @@
       "display": true,
       "expectedUtf16": [
         120,
-        95,
-        55296,
-        2366
+        2366,
+        10,
+        32,
+        55296
       ],
-      "expectedTerminalUtf8": "x_�ा"
+      "expectedTerminalUtf8": "xा\n �"
     },
     {
       "id": "unicode 15/3",
@@ -37114,17 +37275,20 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        55296,
+        10,
         8721,
         32,
         2366,
-        94,
-        55296,
         2366,
         120,
         10,
         55296
       ],
-      "expectedTerminalUtf8": "∑ ा^�ाx\n�"
+      "expectedTerminalUtf8": "   �\n∑ ााx\n�"
     },
     {
       "id": "unicode 15/27",
@@ -37320,6 +37484,7 @@
         55296,
         2366,
         32,
+        32,
         105,
         102,
         32,
@@ -37328,6 +37493,8 @@
         62,
         32,
         48,
+        10,
+        9128,
         10,
         9129,
         32,
@@ -37339,7 +37506,7 @@
         55296,
         2366
       ],
-      "expectedTerminalUtf8": "⎧ �ा if x > 0\n⎩ 0 if �ा"
+      "expectedTerminalUtf8": "⎧ �ा  if x > 0\n⎨\n⎩ 0 if �ा"
     },
     {
       "id": "unicode 15/28",
@@ -37391,6 +37558,7 @@
         55296,
         2366,
         32,
+        32,
         105,
         102,
         32,
@@ -37399,6 +37567,8 @@
         62,
         32,
         48,
+        10,
+        9128,
         10,
         9129,
         32,
@@ -37410,7 +37580,7 @@
         55296,
         2366
       ],
-      "expectedTerminalUtf8": "⎧ �ा if x > 0\n⎩ 0 if �ा"
+      "expectedTerminalUtf8": "⎧ �ा  if x > 0\n⎨\n⎩ 0 if �ा"
     },
     {
       "id": "unicode 15/29",
@@ -38253,13 +38423,15 @@
       ],
       "display": true,
       "expectedUtf16": [
-        120,
-        94,
+        32,
         3406,
+        10,
+        120,
+        32,
         55296,
         2366
       ],
-      "expectedTerminalUtf8": "x^ൎ�ा"
+      "expectedTerminalUtf8": " ൎ\nx �ा"
     },
     {
       "id": "unicode 16/2",
@@ -38292,12 +38464,14 @@
       "display": true,
       "expectedUtf16": [
         120,
-        95,
-        3406,
+        32,
         55296,
-        2366
+        2366,
+        10,
+        32,
+        3406
       ],
-      "expectedTerminalUtf8": "x_ൎ�ा"
+      "expectedTerminalUtf8": "x �ा\n ൎ"
     },
     {
       "id": "unicode 16/3",
@@ -39576,19 +39750,22 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        3406,
+        10,
         8721,
         32,
         55296,
         2366,
-        94,
-        3406,
+        32,
         55296,
         2366,
         120,
         10,
         3406
       ],
-      "expectedTerminalUtf8": "∑ �ा^ൎ�ाx\nൎ"
+      "expectedTerminalUtf8": "  ൎ\n∑ �ा �ाx\nൎ"
     },
     {
       "id": "unicode 16/27",
@@ -39804,9 +39981,12 @@
         32,
         48,
         10,
+        9128,
+        10,
         9129,
         32,
         48,
+        32,
         32,
         105,
         102,
@@ -39815,7 +39995,7 @@
         55296,
         2366
       ],
-      "expectedTerminalUtf8": "⎧ ൎ�ा if x > 0\n⎩ 0 if ൎ�ा"
+      "expectedTerminalUtf8": "⎧ ൎ�ा if x > 0\n⎨\n⎩ 0  if ൎ�ा"
     },
     {
       "id": "unicode 16/28",
@@ -39879,9 +40059,12 @@
         32,
         48,
         10,
+        9128,
+        10,
         9129,
         32,
         48,
+        32,
         32,
         105,
         102,
@@ -39890,7 +40073,7 @@
         55296,
         2366
       ],
-      "expectedTerminalUtf8": "⎧ ൎ�ा if x > 0\n⎩ 0 if ൎ�ा"
+      "expectedTerminalUtf8": "⎧ ൎ�ा if x > 0\n⎨\n⎩ 0  if ൎ�ा"
     },
     {
       "id": "unicode 16/29",
@@ -40775,12 +40958,13 @@
       ],
       "display": true,
       "expectedUtf16": [
-        120,
-        94,
+        32,
         1536,
+        10,
+        120,
         55296
       ],
-      "expectedTerminalUtf8": "x^؀�"
+      "expectedTerminalUtf8": " ؀\nx�"
     },
     {
       "id": "unicode 17/2",
@@ -40810,11 +40994,12 @@
       "display": true,
       "expectedUtf16": [
         120,
-        95,
-        1536,
-        55296
+        55296,
+        10,
+        32,
+        1536
       ],
-      "expectedTerminalUtf8": "x_؀�"
+      "expectedTerminalUtf8": "x�\n ؀"
     },
     {
       "id": "unicode 17/3",
@@ -42000,17 +42185,19 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        1536,
+        10,
         8721,
         32,
         55296,
-        94,
-        1536,
         55296,
         120,
         10,
         1536
       ],
-      "expectedTerminalUtf8": "∑ �^؀�x\n؀"
+      "expectedTerminalUtf8": "  ؀\n∑ ��x\n؀"
     },
     {
       "id": "unicode 17/27",
@@ -42206,6 +42393,7 @@
         1536,
         55296,
         32,
+        32,
         105,
         102,
         32,
@@ -42214,6 +42402,8 @@
         62,
         32,
         48,
+        10,
+        9128,
         10,
         9129,
         32,
@@ -42225,7 +42415,7 @@
         1536,
         55296
       ],
-      "expectedTerminalUtf8": "⎧ ؀� if x > 0\n⎩ 0 if ؀�"
+      "expectedTerminalUtf8": "⎧ ؀�  if x > 0\n⎨\n⎩ 0 if ؀�"
     },
     {
       "id": "unicode 17/28",
@@ -42277,6 +42467,7 @@
         1536,
         55296,
         32,
+        32,
         105,
         102,
         32,
@@ -42285,6 +42476,8 @@
         62,
         32,
         48,
+        10,
+        9128,
         10,
         9129,
         32,
@@ -42296,7 +42489,7 @@
         1536,
         55296
       ],
-      "expectedTerminalUtf8": "⎧ ؀� if x > 0\n⎩ 0 if ؀�"
+      "expectedTerminalUtf8": "⎧ ؀�  if x > 0\n⎨\n⎩ 0 if ؀�"
     },
     {
       "id": "unicode 17/29",
@@ -43146,14 +43339,15 @@
       ],
       "display": true,
       "expectedUtf16": [
-        120,
-        94,
+        32,
         55296,
+        10,
+        120,
         8205,
         55357,
         56425
       ],
-      "expectedTerminalUtf8": "x^�‍👩"
+      "expectedTerminalUtf8": " �\nx‍👩"
     },
     {
       "id": "unicode 18/2",
@@ -43189,13 +43383,14 @@
       "display": true,
       "expectedUtf16": [
         120,
-        95,
-        55296,
         8205,
         55357,
-        56425
+        56425,
+        10,
+        32,
+        55296
       ],
-      "expectedTerminalUtf8": "x_�‍👩"
+      "expectedTerminalUtf8": "x‍👩\n �"
     },
     {
       "id": "unicode 18/3",
@@ -44589,13 +44784,17 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        55296,
+        10,
         8721,
         32,
         8205,
         55357,
         56425,
-        94,
-        55296,
         8205,
         55357,
         56425,
@@ -44603,7 +44802,7 @@
         10,
         55296
       ],
-      "expectedTerminalUtf8": "∑ ‍👩^�‍👩x\n�"
+      "expectedTerminalUtf8": "    �\n∑ ‍👩‍👩x\n�"
     },
     {
       "id": "unicode 18/27",
@@ -44830,9 +45029,12 @@
         32,
         48,
         10,
+        9128,
+        10,
         9129,
         32,
         48,
+        32,
         32,
         105,
         102,
@@ -44842,7 +45044,7 @@
         55357,
         56425
       ],
-      "expectedTerminalUtf8": "⎧ �‍👩 if x > 0\n⎩ 0 if �‍👩"
+      "expectedTerminalUtf8": "⎧ �‍👩 if x > 0\n⎨\n⎩ 0  if �‍👩"
     },
     {
       "id": "unicode 18/28",
@@ -44909,9 +45111,12 @@
         32,
         48,
         10,
+        9128,
+        10,
         9129,
         32,
         48,
+        32,
         32,
         105,
         102,
@@ -44921,7 +45126,7 @@
         55357,
         56425
       ],
-      "expectedTerminalUtf8": "⎧ �‍👩 if x > 0\n⎩ 0 if �‍👩"
+      "expectedTerminalUtf8": "⎧ �‍👩 if x > 0\n⎨\n⎩ 0  if �‍👩"
     },
     {
       "id": "unicode 18/29",
@@ -45847,11 +46052,12 @@
       ],
       "display": true,
       "expectedUtf16": [
-        120,
-        94,
-        65533
+        32,
+        65533,
+        10,
+        120
       ],
-      "expectedTerminalUtf8": "x^�"
+      "expectedTerminalUtf8": " �\nx"
     },
     {
       "id": "unicode 19/2",
@@ -45878,10 +46084,11 @@
       "display": true,
       "expectedUtf16": [
         120,
-        95,
+        10,
+        32,
         65533
       ],
-      "expectedTerminalUtf8": "x_�"
+      "expectedTerminalUtf8": "x\n �"
     },
     {
       "id": "unicode 19/3",
@@ -45911,11 +46118,12 @@
       ],
       "display": true,
       "expectedUtf16": [
-        120,
-        94,
-        65533
+        32,
+        65533,
+        10,
+        120
       ],
-      "expectedTerminalUtf8": "x^�"
+      "expectedTerminalUtf8": " �\nx"
     },
     {
       "id": "unicode 19/4",
@@ -45946,10 +46154,11 @@
       "display": true,
       "expectedUtf16": [
         120,
-        95,
+        10,
+        32,
         65533
       ],
-      "expectedTerminalUtf8": "x_�"
+      "expectedTerminalUtf8": "x\n �"
     },
     {
       "id": "unicode 19/5",
@@ -47136,6 +47345,8 @@
         32,
         48,
         10,
+        9128,
+        10,
         9129,
         32,
         48,
@@ -47145,7 +47356,7 @@
         32,
         65533
       ],
-      "expectedTerminalUtf8": "⎧ � if x > 0\n⎩ 0 if �"
+      "expectedTerminalUtf8": "⎧ � if x > 0\n⎨\n⎩ 0 if �"
     },
     {
       "id": "unicode 19/28",
@@ -47203,6 +47414,8 @@
         32,
         48,
         10,
+        9128,
+        10,
         9129,
         32,
         48,
@@ -47212,7 +47425,7 @@
         32,
         65533
       ],
-      "expectedTerminalUtf8": "⎧ � if x > 0\n⎩ 0 if �"
+      "expectedTerminalUtf8": "⎧ � if x > 0\n⎨\n⎩ 0 if �"
     },
     {
       "id": "unicode 19/29",
@@ -47987,11 +48200,12 @@
       ],
       "display": true,
       "expectedUtf16": [
-        120,
-        94,
-        57344
+        32,
+        57344,
+        10,
+        120
       ],
-      "expectedTerminalUtf8": "x^"
+      "expectedTerminalUtf8": " \nx"
     },
     {
       "id": "unicode 20/2",
@@ -48018,10 +48232,11 @@
       "display": true,
       "expectedUtf16": [
         120,
-        95,
+        10,
+        32,
         57344
       ],
-      "expectedTerminalUtf8": "x_"
+      "expectedTerminalUtf8": "x\n "
     },
     {
       "id": "unicode 20/3",
@@ -48051,11 +48266,12 @@
       ],
       "display": true,
       "expectedUtf16": [
-        120,
-        94,
-        57344
+        32,
+        57344,
+        10,
+        120
       ],
-      "expectedTerminalUtf8": "x^"
+      "expectedTerminalUtf8": " \nx"
     },
     {
       "id": "unicode 20/4",
@@ -48086,10 +48302,11 @@
       "display": true,
       "expectedUtf16": [
         120,
-        95,
+        10,
+        32,
         57344
       ],
-      "expectedTerminalUtf8": "x_"
+      "expectedTerminalUtf8": "x\n "
     },
     {
       "id": "unicode 20/5",
@@ -49276,6 +49493,8 @@
         32,
         48,
         10,
+        9128,
+        10,
         9129,
         32,
         48,
@@ -49285,7 +49504,7 @@
         32,
         57344
       ],
-      "expectedTerminalUtf8": "⎧  if x > 0\n⎩ 0 if "
+      "expectedTerminalUtf8": "⎧  if x > 0\n⎨\n⎩ 0 if "
     },
     {
       "id": "unicode 20/28",
@@ -49343,6 +49562,8 @@
         32,
         48,
         10,
+        9128,
+        10,
         9129,
         32,
         48,
@@ -49352,7 +49573,7 @@
         32,
         57344
       ],
-      "expectedTerminalUtf8": "⎧  if x > 0\n⎩ 0 if "
+      "expectedTerminalUtf8": "⎧  if x > 0\n⎨\n⎩ 0 if "
     },
     {
       "id": "unicode 20/29",
@@ -50127,11 +50348,12 @@
       ],
       "display": true,
       "expectedUtf16": [
-        120,
-        94,
-        63743
+        32,
+        63743,
+        10,
+        120
       ],
-      "expectedTerminalUtf8": "x^"
+      "expectedTerminalUtf8": " \nx"
     },
     {
       "id": "unicode 21/2",
@@ -50158,10 +50380,11 @@
       "display": true,
       "expectedUtf16": [
         120,
-        95,
+        10,
+        32,
         63743
       ],
-      "expectedTerminalUtf8": "x_"
+      "expectedTerminalUtf8": "x\n "
     },
     {
       "id": "unicode 21/3",
@@ -50191,11 +50414,12 @@
       ],
       "display": true,
       "expectedUtf16": [
-        120,
-        94,
-        63743
+        32,
+        63743,
+        10,
+        120
       ],
-      "expectedTerminalUtf8": "x^"
+      "expectedTerminalUtf8": " \nx"
     },
     {
       "id": "unicode 21/4",
@@ -50226,10 +50450,11 @@
       "display": true,
       "expectedUtf16": [
         120,
-        95,
+        10,
+        32,
         63743
       ],
-      "expectedTerminalUtf8": "x_"
+      "expectedTerminalUtf8": "x\n "
     },
     {
       "id": "unicode 21/5",
@@ -51416,6 +51641,8 @@
         32,
         48,
         10,
+        9128,
+        10,
         9129,
         32,
         48,
@@ -51425,7 +51652,7 @@
         32,
         63743
       ],
-      "expectedTerminalUtf8": "⎧  if x > 0\n⎩ 0 if "
+      "expectedTerminalUtf8": "⎧  if x > 0\n⎨\n⎩ 0 if "
     },
     {
       "id": "unicode 21/28",
@@ -51483,6 +51710,8 @@
         32,
         48,
         10,
+        9128,
+        10,
         9129,
         32,
         48,
@@ -51492,7 +51721,7 @@
         32,
         63743
       ],
-      "expectedTerminalUtf8": "⎧  if x > 0\n⎩ 0 if "
+      "expectedTerminalUtf8": "⎧  if x > 0\n⎨\n⎩ 0 if "
     },
     {
       "id": "unicode 21/29",
@@ -52274,12 +52503,13 @@
       ],
       "display": true,
       "expectedUtf16": [
-        120,
-        94,
+        32,
         56192,
+        10,
+        120,
         56323
       ],
-      "expectedTerminalUtf8": "x^󰀃"
+      "expectedTerminalUtf8": " �\nx�"
     },
     {
       "id": "unicode 22/2",
@@ -52309,11 +52539,12 @@
       "display": true,
       "expectedUtf16": [
         120,
-        95,
-        56192,
-        56323
+        56323,
+        10,
+        32,
+        56192
       ],
-      "expectedTerminalUtf8": "x_󰀃"
+      "expectedTerminalUtf8": "x�\n �"
     },
     {
       "id": "unicode 22/3",
@@ -52346,12 +52577,13 @@
       ],
       "display": true,
       "expectedUtf16": [
-        120,
-        94,
+        32,
         56192,
-        56323
+        56323,
+        10,
+        120
       ],
-      "expectedTerminalUtf8": "x^󰀃"
+      "expectedTerminalUtf8": " 󰀃\nx"
     },
     {
       "id": "unicode 22/4",
@@ -52385,11 +52617,12 @@
       "display": true,
       "expectedUtf16": [
         120,
-        95,
+        10,
+        32,
         56192,
         56323
       ],
-      "expectedTerminalUtf8": "x_󰀃"
+      "expectedTerminalUtf8": "x\n 󰀃"
     },
     {
       "id": "unicode 22/5",
@@ -53477,17 +53710,19 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        56192,
+        10,
         8721,
         32,
         56323,
-        94,
-        56192,
         56323,
         120,
         10,
         56192
       ],
-      "expectedTerminalUtf8": "∑ �^󰀃x\n�"
+      "expectedTerminalUtf8": "  �\n∑ ��x\n�"
     },
     {
       "id": "unicode 22/27",
@@ -53688,6 +53923,8 @@
         32,
         48,
         10,
+        9128,
+        10,
         9129,
         32,
         48,
@@ -53698,7 +53935,7 @@
         56192,
         56323
       ],
-      "expectedTerminalUtf8": "⎧ 󰀃 if x > 0\n⎩ 0 if 󰀃"
+      "expectedTerminalUtf8": "⎧ 󰀃 if x > 0\n⎨\n⎩ 0 if 󰀃"
     },
     {
       "id": "unicode 22/28",
@@ -53759,6 +53996,8 @@
         32,
         48,
         10,
+        9128,
+        10,
         9129,
         32,
         48,
@@ -53769,7 +54008,7 @@
         56192,
         56323
       ],
-      "expectedTerminalUtf8": "⎧ 󰀃 if x > 0\n⎩ 0 if 󰀃"
+      "expectedTerminalUtf8": "⎧ 󰀃 if x > 0\n⎨\n⎩ 0 if 󰀃"
     },
     {
       "id": "unicode 22/29",
@@ -54591,10 +54830,13 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        56192,
+        10,
         120,
-        94
+        56324
       ],
-      "expectedTerminalUtf8": "x^"
+      "expectedTerminalUtf8": " �\nx�"
     },
     {
       "id": "unicode 23/2",
@@ -54622,9 +54864,12 @@
       "display": true,
       "expectedUtf16": [
         120,
-        95
+        56324,
+        10,
+        32,
+        56192
       ],
-      "expectedTerminalUtf8": "x_"
+      "expectedTerminalUtf8": "x�\n �"
     },
     {
       "id": "unicode 23/3",
@@ -54655,10 +54900,10 @@
       ],
       "display": true,
       "expectedUtf16": [
-        120,
-        94
+        10,
+        120
       ],
-      "expectedTerminalUtf8": "x^"
+      "expectedTerminalUtf8": "\nx"
     },
     {
       "id": "unicode 23/4",
@@ -54689,10 +54934,9 @@
       ],
       "display": true,
       "expectedUtf16": [
-        120,
-        95
+        120
       ],
-      "expectedTerminalUtf8": "x_"
+      "expectedTerminalUtf8": "x"
     },
     {
       "id": "unicode 23/5",
@@ -55725,15 +55969,19 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        56192,
+        10,
         8721,
         32,
         56324,
-        94,
+        56324,
         120,
         10,
         56192
       ],
-      "expectedTerminalUtf8": "∑ �^x\n�"
+      "expectedTerminalUtf8": "  �\n∑ ��x\n�"
     },
     {
       "id": "unicode 23/27",
@@ -55918,6 +56166,8 @@
       "expectedUtf16": [
         9127,
         32,
+        32,
+        32,
         105,
         102,
         32,
@@ -55927,11 +56177,13 @@
         32,
         48,
         10,
+        9128,
+        10,
         9129,
         32,
         48
       ],
-      "expectedTerminalUtf8": "⎧ if x > 0\n⎩ 0"
+      "expectedTerminalUtf8": "⎧   if x > 0\n⎨\n⎩ 0"
     },
     {
       "id": "unicode 23/28",
@@ -55980,6 +56232,8 @@
       "expectedUtf16": [
         9127,
         32,
+        32,
+        32,
         105,
         102,
         32,
@@ -55989,11 +56243,13 @@
         32,
         48,
         10,
+        9128,
+        10,
         9129,
         32,
         48
       ],
-      "expectedTerminalUtf8": "⎧ if x > 0\n⎩ 0"
+      "expectedTerminalUtf8": "⎧   if x > 0\n⎨\n⎩ 0"
     },
     {
       "id": "unicode 23/29",
@@ -56741,10 +56997,13 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        56192,
+        10,
         120,
-        94
+        56325
       ],
-      "expectedTerminalUtf8": "x^"
+      "expectedTerminalUtf8": " �\nx�"
     },
     {
       "id": "unicode 24/2",
@@ -56772,9 +57031,12 @@
       "display": true,
       "expectedUtf16": [
         120,
-        95
+        56325,
+        10,
+        32,
+        56192
       ],
-      "expectedTerminalUtf8": "x_"
+      "expectedTerminalUtf8": "x�\n �"
     },
     {
       "id": "unicode 24/3",
@@ -56805,10 +57067,10 @@
       ],
       "display": true,
       "expectedUtf16": [
-        120,
-        94
+        10,
+        120
       ],
-      "expectedTerminalUtf8": "x^"
+      "expectedTerminalUtf8": "\nx"
     },
     {
       "id": "unicode 24/4",
@@ -56839,10 +57101,9 @@
       ],
       "display": true,
       "expectedUtf16": [
-        120,
-        95
+        120
       ],
-      "expectedTerminalUtf8": "x_"
+      "expectedTerminalUtf8": "x"
     },
     {
       "id": "unicode 24/5",
@@ -57877,16 +58138,19 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        56192,
+        10,
         8721,
         32,
         56325,
-        94,
-        32,
+        56325,
         120,
         10,
         56192
       ],
-      "expectedTerminalUtf8": "∑ �^ x\n�"
+      "expectedTerminalUtf8": "  �\n∑ ��x\n�"
     },
     {
       "id": "unicode 24/27",
@@ -58071,6 +58335,8 @@
       "expectedUtf16": [
         9127,
         32,
+        32,
+        32,
         105,
         102,
         32,
@@ -58080,11 +58346,13 @@
         32,
         48,
         10,
+        9128,
+        10,
         9129,
         32,
         48
       ],
-      "expectedTerminalUtf8": "⎧ if x > 0\n⎩ 0"
+      "expectedTerminalUtf8": "⎧   if x > 0\n⎨\n⎩ 0"
     },
     {
       "id": "unicode 24/28",
@@ -58133,6 +58401,8 @@
       "expectedUtf16": [
         9127,
         32,
+        32,
+        32,
         105,
         102,
         32,
@@ -58142,11 +58412,13 @@
         32,
         48,
         10,
+        9128,
+        10,
         9129,
         32,
         48
       ],
-      "expectedTerminalUtf8": "⎧ if x > 0\n⎩ 0"
+      "expectedTerminalUtf8": "⎧   if x > 0\n⎨\n⎩ 0"
     },
     {
       "id": "unicode 24/29",
@@ -58902,12 +59174,13 @@
       ],
       "display": true,
       "expectedUtf16": [
-        120,
-        94,
+        32,
         56192,
+        10,
+        120,
         56320
       ],
-      "expectedTerminalUtf8": "x^󰀀"
+      "expectedTerminalUtf8": " �\nx�"
     },
     {
       "id": "unicode 25/2",
@@ -58937,11 +59210,12 @@
       "display": true,
       "expectedUtf16": [
         120,
-        95,
-        56192,
-        56320
+        56320,
+        10,
+        32,
+        56192
       ],
-      "expectedTerminalUtf8": "x_󰀀"
+      "expectedTerminalUtf8": "x�\n �"
     },
     {
       "id": "unicode 25/3",
@@ -58974,12 +59248,13 @@
       ],
       "display": true,
       "expectedUtf16": [
-        120,
-        94,
+        32,
         56192,
-        56320
+        56320,
+        10,
+        120
       ],
-      "expectedTerminalUtf8": "x^󰀀"
+      "expectedTerminalUtf8": " 󰀀\nx"
     },
     {
       "id": "unicode 25/4",
@@ -59013,11 +59288,12 @@
       "display": true,
       "expectedUtf16": [
         120,
-        95,
+        10,
+        32,
         56192,
         56320
       ],
-      "expectedTerminalUtf8": "x_󰀀"
+      "expectedTerminalUtf8": "x\n 󰀀"
     },
     {
       "id": "unicode 25/5",
@@ -60105,17 +60381,19 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        56192,
+        10,
         8721,
         32,
         56320,
-        94,
-        56192,
         56320,
         120,
         10,
         56192
       ],
-      "expectedTerminalUtf8": "∑ �^󰀀x\n�"
+      "expectedTerminalUtf8": "  �\n∑ ��x\n�"
     },
     {
       "id": "unicode 25/27",
@@ -60316,6 +60594,8 @@
         32,
         48,
         10,
+        9128,
+        10,
         9129,
         32,
         48,
@@ -60326,7 +60606,7 @@
         56192,
         56320
       ],
-      "expectedTerminalUtf8": "⎧ 󰀀 if x > 0\n⎩ 0 if 󰀀"
+      "expectedTerminalUtf8": "⎧ 󰀀 if x > 0\n⎨\n⎩ 0 if 󰀀"
     },
     {
       "id": "unicode 25/28",
@@ -60387,6 +60667,8 @@
         32,
         48,
         10,
+        9128,
+        10,
         9129,
         32,
         48,
@@ -60397,7 +60679,7 @@
         56192,
         56320
       ],
-      "expectedTerminalUtf8": "⎧ 󰀀 if x > 0\n⎩ 0 if 󰀀"
+      "expectedTerminalUtf8": "⎧ 󰀀 if x > 0\n⎨\n⎩ 0 if 󰀀"
     },
     {
       "id": "unicode 25/29",
@@ -61227,12 +61509,13 @@
       ],
       "display": true,
       "expectedUtf16": [
-        120,
-        94,
+        32,
         56192,
+        10,
+        120,
         56321
       ],
-      "expectedTerminalUtf8": "x^󰀁"
+      "expectedTerminalUtf8": " �\nx�"
     },
     {
       "id": "unicode 26/2",
@@ -61262,11 +61545,12 @@
       "display": true,
       "expectedUtf16": [
         120,
-        95,
-        56192,
-        56321
+        56321,
+        10,
+        32,
+        56192
       ],
-      "expectedTerminalUtf8": "x_󰀁"
+      "expectedTerminalUtf8": "x�\n �"
     },
     {
       "id": "unicode 26/3",
@@ -61299,12 +61583,13 @@
       ],
       "display": true,
       "expectedUtf16": [
-        120,
-        94,
+        32,
         56192,
-        56321
+        56321,
+        10,
+        120
       ],
-      "expectedTerminalUtf8": "x^󰀁"
+      "expectedTerminalUtf8": " 󰀁\nx"
     },
     {
       "id": "unicode 26/4",
@@ -61338,11 +61623,12 @@
       "display": true,
       "expectedUtf16": [
         120,
-        95,
+        10,
+        32,
         56192,
         56321
       ],
-      "expectedTerminalUtf8": "x_󰀁"
+      "expectedTerminalUtf8": "x\n 󰀁"
     },
     {
       "id": "unicode 26/5",
@@ -62430,17 +62716,19 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        56192,
+        10,
         8721,
         32,
         56321,
-        94,
-        56192,
         56321,
         120,
         10,
         56192
       ],
-      "expectedTerminalUtf8": "∑ �^󰀁x\n�"
+      "expectedTerminalUtf8": "  �\n∑ ��x\n�"
     },
     {
       "id": "unicode 26/27",
@@ -62641,6 +62929,8 @@
         32,
         48,
         10,
+        9128,
+        10,
         9129,
         32,
         48,
@@ -62651,7 +62941,7 @@
         56192,
         56321
       ],
-      "expectedTerminalUtf8": "⎧ 󰀁 if x > 0\n⎩ 0 if 󰀁"
+      "expectedTerminalUtf8": "⎧ 󰀁 if x > 0\n⎨\n⎩ 0 if 󰀁"
     },
     {
       "id": "unicode 26/28",
@@ -62712,6 +63002,8 @@
         32,
         48,
         10,
+        9128,
+        10,
         9129,
         32,
         48,
@@ -62722,7 +63014,7 @@
         56192,
         56321
       ],
-      "expectedTerminalUtf8": "⎧ 󰀁 if x > 0\n⎩ 0 if 󰀁"
+      "expectedTerminalUtf8": "⎧ 󰀁 if x > 0\n⎨\n⎩ 0 if 󰀁"
     },
     {
       "id": "unicode 26/29",
@@ -64914,14 +65206,15 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        55296,
+        10,
         55296,
         32,
         56320,
-        824,
-        94,
-        55296
+        824
       ],
-      "expectedTerminalUtf8": "� �̸^�"
+      "expectedTerminalUtf8": " �\n� �̸"
     },
     {
       "id": "seeded composition 4",
@@ -65102,18 +65395,22 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        56192,
+        56321,
+        10,
         56192,
         56321,
         91,
         56832,
         93,
         32,
-        55357,
-        94,
-        56192,
-        56321
+        55357
       ],
-      "expectedTerminalUtf8": "󰀁[�] �^󰀁"
+      "expectedTerminalUtf8": "    󰀁\n󰀁[�] �"
     },
     {
       "id": "seeded composition 6",
@@ -65245,16 +65542,18 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        56319,
+        10,
         56319,
         32,
         56192,
         824,
         32,
-        56320,
-        94,
-        56319
+        56320
       ],
-      "expectedTerminalUtf8": "� �̸ �^�"
+      "expectedTerminalUtf8": "  �\n� �̸ �"
     },
     {
       "id": "seeded composition 8",
@@ -65556,6 +65855,12 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        55296,
+        10,
         55296,
         8205,
         55357,
@@ -65565,13 +65870,11 @@
         824,
         32,
         56421,
-        94,
-        55296,
         8205,
         55357,
         56425
       ],
-      "expectedTerminalUtf8": "�‍👩 �̸ �^�‍👩"
+      "expectedTerminalUtf8": "    �\n�‍👩 �̸ �‍👩"
     },
     {
       "id": "seeded composition 12",
@@ -65722,6 +66025,12 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        55296,
+        10,
         55296,
         8205,
         55357,
@@ -65731,13 +66040,11 @@
         824,
         32,
         56324,
-        94,
-        55296,
         8205,
         55357,
         56425
       ],
-      "expectedTerminalUtf8": "�‍👩 �̸ �^�‍👩"
+      "expectedTerminalUtf8": "    �\n�‍👩 �̸ �‍👩"
     },
     {
       "id": "seeded composition 14",
@@ -65798,6 +66105,13 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        32,
+        55357,
+        10,
         55357,
         120,
         56832,
@@ -65808,12 +66122,10 @@
         56826,
         55356,
         56824,
-        94,
-        55357,
         120,
         56832
       ],
-      "expectedTerminalUtf8": "�x� �̸ �🇸^�x�"
+      "expectedTerminalUtf8": "     �\n�x� �̸ �🇸x�"
     },
     {
       "id": "seeded composition 15",
@@ -66153,6 +66465,12 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        55357,
+        10,
         55357,
         56425,
         55356,
@@ -66163,8 +66481,6 @@
         32,
         57344,
         824,
-        94,
-        55357,
         56425,
         55356,
         57342,
@@ -66172,7 +66488,7 @@
         55357,
         56507
       ],
-      "expectedTerminalUtf8": "👩🏾‍💻 ̸^👩🏾‍💻"
+      "expectedTerminalUtf8": "    �\n👩🏾‍💻 ̸�🏾‍💻"
     },
     {
       "id": "seeded composition 19",
@@ -66952,6 +67268,15 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        32,
+        32,
+        32,
+        56319,
+        10,
         56319,
         91,
         55357,
@@ -66962,11 +67287,9 @@
         57342,
         8205,
         55357,
-        56507,
-        94,
-        56319
+        56507
       ],
-      "expectedTerminalUtf8": "�[�] �🏾‍💻^�"
+      "expectedTerminalUtf8": "       �\n�[�] �🏾‍💻"
     },
     {
       "id": "seeded composition 25",
@@ -67263,14 +67586,15 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        56320,
+        10,
         56320,
         32,
         55296,
-        824,
-        94,
-        56320
+        824
       ],
-      "expectedTerminalUtf8": "� �̸^�"
+      "expectedTerminalUtf8": " �\n� �̸"
     },
     {
       "id": "seeded composition 29",
@@ -67666,6 +67990,11 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        1536,
+        10,
         1536,
         55296,
         32,
@@ -67674,11 +68003,9 @@
         32,
         55296,
         2366,
-        94,
-        1536,
         55296
       ],
-      "expectedTerminalUtf8": "؀� ൎ̸ �ा^؀�"
+      "expectedTerminalUtf8": "   ؀\n؀� ൎ̸ �ा�"
     },
     {
       "id": "seeded composition 33",
@@ -68052,6 +68379,14 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        32,
+        32,
+        55362,
+        10,
         55362,
         57271,
         32,
@@ -68061,11 +68396,9 @@
         56826,
         55356,
         56824,
-        94,
-        55362,
         57271
       ],
-      "expectedTerminalUtf8": "𠮷 �̸ �🇸^𠮷"
+      "expectedTerminalUtf8": "      �\n𠮷 �̸ �🇸�"
     },
     {
       "id": "seeded composition 37",
@@ -68553,16 +68886,18 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        55349,
+        10,
         55349,
         57312,
         32,
         56320,
         824,
-        94,
-        55349,
         57312
       ],
-      "expectedTerminalUtf8": "𝟠 �̸^𝟠"
+      "expectedTerminalUtf8": "  �\n𝟠 �̸�"
     },
     {
       "id": "seeded composition 41",
@@ -68639,18 +68974,22 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        56192,
+        56320,
+        10,
         56192,
         56320,
         91,
         55296,
         93,
         32,
-        769,
-        94,
-        56192,
-        56320
+        769
       ],
-      "expectedTerminalUtf8": "󰀀[�] ́^󰀀"
+      "expectedTerminalUtf8": "    󰀀\n󰀀[�] ́"
     },
     {
       "id": "seeded composition 42",
@@ -68869,204 +69208,209 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        56320,
+        10,
         56320,
         32,
         55296,
         824,
         32,
-        769,
+        769
+      ],
+      "expectedTerminalUtf8": "  �\n� �̸ ́"
+    },
+    {
+      "id": "seeded composition 45",
+      "sourceUtf16": [
+        92,
+        111,
+        112,
+        101,
+        114,
+        97,
+        116,
+        111,
+        114,
+        110,
+        97,
+        109,
+        101,
+        123,
+        55296,
+        8205,
+        55357,
+        56425,
+        125,
+        95,
+        56320,
+        56320,
         94,
+        123,
+        55296,
+        8205,
+        55357,
+        56425,
+        125
+      ],
+      "display": false,
+      "expectedUtf16": [
+        55296,
+        8205,
+        55357,
+        56425,
+        91,
+        56320,
+        93,
+        32,
+        56320,
+        94,
+        40,
+        55296,
+        8205,
+        55357,
+        56425,
+        41
+      ],
+      "expectedTerminalUtf8": "�‍👩[�] �^(�‍👩)"
+    },
+    {
+      "id": "seeded composition 45",
+      "sourceUtf16": [
+        92,
+        111,
+        112,
+        101,
+        114,
+        97,
+        116,
+        111,
+        114,
+        110,
+        97,
+        109,
+        101,
+        123,
+        55296,
+        8205,
+        55357,
+        56425,
+        125,
+        95,
+        56320,
+        56320,
+        94,
+        123,
+        55296,
+        8205,
+        55357,
+        56425,
+        125
+      ],
+      "display": true,
+      "expectedUtf16": [
+        55296,
+        8205,
+        55357,
+        56425,
+        91,
+        56320,
+        93,
+        32,
+        56320,
+        94,
+        40,
+        55296,
+        8205,
+        55357,
+        56425,
+        41
+      ],
+      "expectedTerminalUtf8": "�‍👩[�] �^(�‍👩)"
+    },
+    {
+      "id": "seeded composition 46",
+      "sourceUtf16": [
+        92,
+        111,
+        112,
+        101,
+        114,
+        97,
+        116,
+        111,
+        114,
+        110,
+        97,
+        109,
+        101,
+        123,
+        56319,
+        125,
+        95,
+        56192,
+        56320,
+        94,
+        123,
+        56319,
+        125
+      ],
+      "display": false,
+      "expectedUtf16": [
+        56319,
+        91,
+        56192,
+        93,
+        32,
+        56320,
+        94,
+        56319
+      ],
+      "expectedTerminalUtf8": "�[�] �^�"
+    },
+    {
+      "id": "seeded composition 46",
+      "sourceUtf16": [
+        92,
+        111,
+        112,
+        101,
+        114,
+        97,
+        116,
+        111,
+        114,
+        110,
+        97,
+        109,
+        101,
+        123,
+        56319,
+        125,
+        95,
+        56192,
+        56320,
+        94,
+        123,
+        56319,
+        125
+      ],
+      "display": true,
+      "expectedUtf16": [
+        32,
+        32,
+        32,
+        56319,
+        10,
+        56319,
+        91,
+        56192,
+        93,
+        32,
         56320
       ],
-      "expectedTerminalUtf8": "� �̸ ́^�"
-    },
-    {
-      "id": "seeded composition 45",
-      "sourceUtf16": [
-        92,
-        111,
-        112,
-        101,
-        114,
-        97,
-        116,
-        111,
-        114,
-        110,
-        97,
-        109,
-        101,
-        123,
-        55296,
-        8205,
-        55357,
-        56425,
-        125,
-        95,
-        56320,
-        56320,
-        94,
-        123,
-        55296,
-        8205,
-        55357,
-        56425,
-        125
-      ],
-      "display": false,
-      "expectedUtf16": [
-        55296,
-        8205,
-        55357,
-        56425,
-        91,
-        56320,
-        93,
-        32,
-        56320,
-        94,
-        40,
-        55296,
-        8205,
-        55357,
-        56425,
-        41
-      ],
-      "expectedTerminalUtf8": "�‍👩[�] �^(�‍👩)"
-    },
-    {
-      "id": "seeded composition 45",
-      "sourceUtf16": [
-        92,
-        111,
-        112,
-        101,
-        114,
-        97,
-        116,
-        111,
-        114,
-        110,
-        97,
-        109,
-        101,
-        123,
-        55296,
-        8205,
-        55357,
-        56425,
-        125,
-        95,
-        56320,
-        56320,
-        94,
-        123,
-        55296,
-        8205,
-        55357,
-        56425,
-        125
-      ],
-      "display": true,
-      "expectedUtf16": [
-        55296,
-        8205,
-        55357,
-        56425,
-        91,
-        56320,
-        93,
-        32,
-        56320,
-        94,
-        40,
-        55296,
-        8205,
-        55357,
-        56425,
-        41
-      ],
-      "expectedTerminalUtf8": "�‍👩[�] �^(�‍👩)"
-    },
-    {
-      "id": "seeded composition 46",
-      "sourceUtf16": [
-        92,
-        111,
-        112,
-        101,
-        114,
-        97,
-        116,
-        111,
-        114,
-        110,
-        97,
-        109,
-        101,
-        123,
-        56319,
-        125,
-        95,
-        56192,
-        56320,
-        94,
-        123,
-        56319,
-        125
-      ],
-      "display": false,
-      "expectedUtf16": [
-        56319,
-        91,
-        56192,
-        93,
-        32,
-        56320,
-        94,
-        56319
-      ],
-      "expectedTerminalUtf8": "�[�] �^�"
-    },
-    {
-      "id": "seeded composition 46",
-      "sourceUtf16": [
-        92,
-        111,
-        112,
-        101,
-        114,
-        97,
-        116,
-        111,
-        114,
-        110,
-        97,
-        109,
-        101,
-        123,
-        56319,
-        125,
-        95,
-        56192,
-        56320,
-        94,
-        123,
-        56319,
-        125
-      ],
-      "display": true,
-      "expectedUtf16": [
-        56319,
-        91,
-        56192,
-        93,
-        32,
-        56320,
-        94,
-        56319
-      ],
-      "expectedTerminalUtf8": "�[�] �^�"
+      "expectedTerminalUtf8": "   �\n�[�] �"
     },
     {
       "id": "seeded composition 47",
@@ -69597,16 +69941,19 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        56319,
+        10,
         56319,
         32,
         55296,
         824,
         32,
-        2366,
-        94,
-        56319
+        2366
       ],
-      "expectedTerminalUtf8": "� �̸ ा^�"
+      "expectedTerminalUtf8": "   �\n� �̸ ा"
     },
     {
       "id": "seeded composition 52",
@@ -70240,16 +70587,19 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        57343,
+        10,
         57343,
         91,
         56192,
         93,
         32,
-        56325,
-        94,
-        57343
+        56325
       ],
-      "expectedTerminalUtf8": "�[�] �^�"
+      "expectedTerminalUtf8": "   �\n�[�] �"
     },
     {
       "id": "seeded composition 57",
@@ -71613,6 +71963,10 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        56832,
+        10,
         56832,
         55357,
         32,
@@ -71620,11 +71974,9 @@
         824,
         32,
         56832,
-        94,
-        56832,
         55357
       ],
-      "expectedTerminalUtf8": "�� �̸ �^��"
+      "expectedTerminalUtf8": "  �\n�� �̸ ��"
     },
     {
       "id": "seeded composition 69",
@@ -72032,6 +72384,14 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        32,
+        32,
+        55296,
+        10,
         55296,
         2366,
         32,
@@ -72044,11 +72404,9 @@
         8205,
         55357,
         56507,
-        94,
-        55296,
         2366
       ],
-      "expectedTerminalUtf8": "�ा �̸ �🏾‍💻^�ा"
+      "expectedTerminalUtf8": "      �\n�ा �̸ �🏾‍💻ा"
     },
     {
       "id": "seeded composition 73",
@@ -72970,6 +73328,10 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        1536,
+        10,
         1536,
         55296,
         32,
@@ -72977,11 +73339,9 @@
         824,
         32,
         769,
-        94,
-        1536,
         55296
       ],
-      "expectedTerminalUtf8": "؀� �̸ ́^؀�"
+      "expectedTerminalUtf8": "  ؀\n؀� �̸ ́�"
     },
     {
       "id": "seeded composition 83",
@@ -73229,6 +73589,11 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        55357,
+        10,
         55357,
         120,
         56832,
@@ -73237,12 +73602,10 @@
         824,
         32,
         56324,
-        94,
-        55357,
         120,
         56832
       ],
-      "expectedTerminalUtf8": "�x� �̸ �^�x�"
+      "expectedTerminalUtf8": "   �\n�x� �̸ �x�"
     },
     {
       "id": "seeded composition 86",
@@ -73400,18 +73763,22 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        55349,
+        56421,
+        10,
         55349,
         56421,
         91,
         56192,
         93,
         32,
-        56324,
-        94,
-        55349,
-        56421
+        56324
       ],
-      "expectedTerminalUtf8": "𝑥[�] �^𝑥"
+      "expectedTerminalUtf8": "    𝑥\n𝑥[�] �"
     },
     {
       "id": "seeded composition 88",
@@ -75000,6 +75367,10 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        55296,
+        10,
         55296,
         769,
         32,
@@ -75007,11 +75378,9 @@
         824,
         32,
         56325,
-        94,
-        55296,
         769
       ],
-      "expectedTerminalUtf8": "�́ �̸ �^�́"
+      "expectedTerminalUtf8": "  �\n�́ �̸ �́"
     },
     {
       "id": "seeded composition 100",
@@ -75250,6 +75619,12 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        55296,
+        10,
         55296,
         8205,
         55357,
@@ -75259,13 +75634,11 @@
         824,
         32,
         55357,
-        94,
-        55296,
         8205,
         55357,
         56425
       ],
-      "expectedTerminalUtf8": "�‍👩 �̸ �^�‍👩"
+      "expectedTerminalUtf8": "    �\n�‍👩 �̸ �‍👩"
     },
     {
       "id": "seeded composition 102",
@@ -75864,6 +76237,14 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        32,
+        55349,
+        56421,
+        10,
         55349,
         56421,
         91,
@@ -75871,12 +76252,9 @@
         93,
         32,
         120,
-        56832,
-        94,
-        55349,
-        56421
+        56832
       ],
-      "expectedTerminalUtf8": "𝑥[�] x�^𝑥"
+      "expectedTerminalUtf8": "     𝑥\n𝑥[�] x�"
     },
     {
       "id": "seeded composition 106",
@@ -76470,16 +76848,19 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        63743,
+        10,
         63743,
         32,
         56192,
         824,
         32,
-        56323,
-        94,
-        63743
+        56323
       ],
-      "expectedTerminalUtf8": " �̸ �^"
+      "expectedTerminalUtf8": "   \n �̸ �"
     },
     {
       "id": "seeded composition 113",
@@ -76556,6 +76937,14 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        32,
+        32,
+        57344,
+        10,
         57344,
         91,
         55356,
@@ -76563,11 +76952,9 @@
         32,
         56826,
         55356,
-        56824,
-        94,
-        57344
+        56824
       ],
-      "expectedTerminalUtf8": "[�] �🇸^"
+      "expectedTerminalUtf8": "      \n[�] �🇸"
     },
     {
       "id": "seeded composition 114",
@@ -76616,6 +77003,11 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        56192,
+        10,
         56192,
         56321,
         32,
@@ -76623,11 +77015,9 @@
         824,
         32,
         769,
-        94,
-        56192,
         56321
       ],
-      "expectedTerminalUtf8": "󰀁 �̸ ́^󰀁"
+      "expectedTerminalUtf8": "   �\n󰀁 �̸ ́�"
     },
     {
       "id": "seeded composition 115",
@@ -76977,18 +77367,22 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        55349,
+        56421,
+        10,
         55349,
         56421,
         91,
         55362,
         93,
         32,
-        57271,
-        94,
-        55349,
-        56421
+        57271
       ],
-      "expectedTerminalUtf8": "𝑥[�] �^𝑥"
+      "expectedTerminalUtf8": "    𝑥\n𝑥[�] �"
     },
     {
       "id": "seeded composition 118",
@@ -77139,14 +77533,15 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        56319,
+        10,
         56319,
         32,
         56320,
-        824,
-        94,
-        56319
+        824
       ],
-      "expectedTerminalUtf8": "� �̸^�"
+      "expectedTerminalUtf8": " �\n� �̸"
     },
     {
       "id": "seeded composition 120",
@@ -77397,14 +77792,14 @@
       ],
       "display": true,
       "expectedUtf16": [
+        10,
         91,
         56192,
         93,
         32,
-        56323,
-        94
+        56323
       ],
-      "expectedTerminalUtf8": "[�] �^"
+      "expectedTerminalUtf8": "\n[�] �"
     },
     {
       "id": "seeded composition 122",
@@ -77471,6 +77866,14 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        32,
+        32,
+        55296,
+        10,
         55296,
         8205,
         55357,
@@ -77482,13 +77885,11 @@
         8205,
         55357,
         56425,
-        94,
-        55296,
         8205,
         55357,
         56425
       ],
-      "expectedTerminalUtf8": "�‍👩 �̸ ‍👩^�‍👩"
+      "expectedTerminalUtf8": "      �\n�‍👩 �̸ ‍👩‍👩"
     },
     {
       "id": "seeded composition 123",
@@ -78359,16 +78760,18 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        56832,
+        10,
         56832,
         55357,
         32,
         57344,
         824,
-        94,
-        56832,
         55357
       ],
-      "expectedTerminalUtf8": "�� ̸^��"
+      "expectedTerminalUtf8": "  �\n�� ̸�"
     },
     {
       "id": "seeded composition 132",
@@ -78613,6 +79016,11 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        55349,
+        10,
         55349,
         56421,
         32,
@@ -78620,11 +79028,9 @@
         824,
         32,
         55296,
-        94,
-        55349,
         56421
       ],
-      "expectedTerminalUtf8": "𝑥 ؀̸ �^𝑥"
+      "expectedTerminalUtf8": "   �\n𝑥 ؀̸ 𐁥"
     },
     {
       "id": "seeded composition 135",
@@ -78663,14 +79069,15 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        56319,
+        10,
         56319,
         32,
         55296,
-        824,
-        94,
-        56319
+        824
       ],
-      "expectedTerminalUtf8": "� �̸^�"
+      "expectedTerminalUtf8": " �\n� �̸"
     },
     {
       "id": "seeded composition 136",
@@ -79261,14 +79668,14 @@
       ],
       "display": true,
       "expectedUtf16": [
+        10,
         91,
         1536,
         93,
         32,
-        55296,
-        94
+        55296
       ],
-      "expectedTerminalUtf8": "[؀] �^"
+      "expectedTerminalUtf8": "\n[؀] �"
     },
     {
       "id": "seeded composition 143",
@@ -79339,16 +79746,19 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        57343,
+        10,
         57343,
         91,
         56192,
         93,
         32,
-        56321,
-        94,
-        57343
+        56321
       ],
-      "expectedTerminalUtf8": "�[�] �^�"
+      "expectedTerminalUtf8": "   �\n�[�] �"
     },
     {
       "id": "seeded composition 144",
@@ -79734,16 +80144,19 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        63743,
+        10,
         63743,
         32,
         1536,
         824,
         32,
-        55296,
-        94,
-        63743
+        55296
       ],
-      "expectedTerminalUtf8": " ؀̸ �^"
+      "expectedTerminalUtf8": "   \n ؀̸ �"
     },
     {
       "id": "seeded composition 148",
@@ -80091,18 +80504,22 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        55349,
+        57312,
+        10,
         55349,
         57312,
         91,
         56320,
         93,
         32,
-        56320,
-        94,
-        55349,
-        57312
+        56320
       ],
-      "expectedTerminalUtf8": "𝟠[�] �^𝟠"
+      "expectedTerminalUtf8": "    𝟠\n𝟠[�] �"
     },
     {
       "id": "seeded composition 152",
@@ -80739,15 +81156,15 @@
       ],
       "display": true,
       "expectedUtf16": [
+        10,
         91,
         3406,
         93,
         32,
         55296,
-        2366,
-        94
+        2366
       ],
-      "expectedTerminalUtf8": "[ൎ] �ा^"
+      "expectedTerminalUtf8": "\n[ൎ] �ा"
     },
     {
       "id": "seeded composition 158",
@@ -80827,6 +81244,13 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        56192,
+        56323,
+        10,
         56192,
         56323,
         91,
@@ -80834,12 +81258,9 @@
         93,
         32,
         55296,
-        2366,
-        94,
-        56192,
-        56323
+        2366
       ],
-      "expectedTerminalUtf8": "󰀃[ൎ] �ा^󰀃"
+      "expectedTerminalUtf8": "    󰀃\n󰀃[ൎ] �ा"
     },
     {
       "id": "seeded composition 159",
@@ -80912,14 +81333,14 @@
       ],
       "display": true,
       "expectedUtf16": [
+        10,
         91,
         55296,
         93,
         32,
-        769,
-        94
+        769
       ],
-      "expectedTerminalUtf8": "[�] ́^"
+      "expectedTerminalUtf8": "\n[�] ́"
     },
     {
       "id": "seeded composition 160",
@@ -80999,6 +81420,13 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        56192,
+        56321,
+        10,
         56192,
         56321,
         91,
@@ -81006,12 +81434,9 @@
         93,
         32,
         55296,
-        2366,
-        94,
-        56192,
-        56321
+        2366
       ],
-      "expectedTerminalUtf8": "󰀁[ൎ] �ा^󰀁"
+      "expectedTerminalUtf8": "    󰀁\n󰀁[ൎ] �ा"
     },
     {
       "id": "seeded composition 161",
@@ -81864,18 +82289,23 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        32,
+        55349,
+        57312,
+        10,
         55349,
         57312,
         91,
         55296,
         93,
         32,
-        2366,
-        94,
-        55349,
-        57312
+        2366
       ],
-      "expectedTerminalUtf8": "𝟠[�] ा^𝟠"
+      "expectedTerminalUtf8": "     𝟠\n𝟠[�] ा"
     },
     {
       "id": "seeded composition 170",
@@ -81948,14 +82378,14 @@
       ],
       "display": true,
       "expectedUtf16": [
+        10,
         91,
         56192,
         93,
         32,
-        56320,
-        94
+        56320
       ],
-      "expectedTerminalUtf8": "[�] �^"
+      "expectedTerminalUtf8": "\n[�] �"
     },
     {
       "id": "seeded composition 171",
@@ -82242,16 +82672,20 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        65533,
+        10,
         65533,
         91,
         56192,
         93,
         32,
-        56323,
-        94,
-        65533
+        56323
       ],
-      "expectedTerminalUtf8": "�[�] �^�"
+      "expectedTerminalUtf8": "    �\n�[�] �"
     },
     {
       "id": "seeded composition 173",
@@ -82710,14 +83144,16 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        65533,
+        10,
         65533,
         32,
         56319,
-        824,
-        94,
-        65533
+        824
       ],
-      "expectedTerminalUtf8": "� �̸^�"
+      "expectedTerminalUtf8": "  �\n� �̸"
     },
     {
       "id": "seeded composition 178",
@@ -83017,16 +83453,17 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        56832,
+        10,
         56832,
         55357,
         32,
         55296,
         824,
-        94,
-        56832,
         55357
       ],
-      "expectedTerminalUtf8": "�� �̸^��"
+      "expectedTerminalUtf8": " �\n�� �̸�"
     },
     {
       "id": "seeded composition 181",
@@ -83249,6 +83686,11 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        56192,
+        10,
         56192,
         56323,
         32,
@@ -83256,11 +83698,9 @@
         824,
         32,
         56832,
-        94,
-        56192,
         56323
       ],
-      "expectedTerminalUtf8": "󰀃 �̸ �^󰀃"
+      "expectedTerminalUtf8": "   �\n󰀃 �̸ ��"
     },
     {
       "id": "seeded composition 184",
@@ -83945,6 +84385,15 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        32,
+        32,
+        32,
+        55349,
+        10,
         55349,
         57312,
         32,
@@ -83957,11 +84406,9 @@
         8205,
         55357,
         56507,
-        94,
-        55349,
         57312
       ],
-      "expectedTerminalUtf8": "𝟠 �̸ �🏾‍💻^𝟠"
+      "expectedTerminalUtf8": "       �\n𝟠 �̸ �🏾‍💻�"
     },
     {
       "id": "seeded composition 191",
@@ -84274,16 +84721,18 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        55296,
+        10,
         55296,
         32,
         55362,
         824,
         32,
-        57271,
-        94,
-        55296
+        57271
       ],
-      "expectedTerminalUtf8": "� �̸ �^�"
+      "expectedTerminalUtf8": "  �\n� �̸ �"
     },
     {
       "id": "seeded composition 194",
@@ -84332,6 +84781,11 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        55349,
+        10,
         55349,
         56421,
         32,
@@ -84339,11 +84793,9 @@
         824,
         32,
         55357,
-        94,
-        55349,
         56421
       ],
-      "expectedTerminalUtf8": "𝑥 �̸ �^𝑥"
+      "expectedTerminalUtf8": "   �\n𝑥 �̸ 👥"
     },
     {
       "id": "seeded composition 195",
@@ -85087,6 +85539,11 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        55296,
+        10,
         55296,
         2366,
         32,
@@ -85094,11 +85551,9 @@
         824,
         32,
         2366,
-        94,
-        55296,
         2366
       ],
-      "expectedTerminalUtf8": "�ा �̸ ा^�ा"
+      "expectedTerminalUtf8": "   �\n�ा �̸ ाा"
     },
     {
       "id": "seeded composition 202",
@@ -85419,6 +85874,12 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        55296,
+        10,
         55296,
         8205,
         55357,
@@ -85428,13 +85889,11 @@
         824,
         32,
         55296,
-        94,
-        55296,
         8205,
         55357,
         56425
       ],
-      "expectedTerminalUtf8": "�‍👩 ؀̸ �^�‍👩"
+      "expectedTerminalUtf8": "    �\n�‍👩 ؀̸ �‍👩"
     },
     {
       "id": "seeded composition 208",
@@ -85580,6 +86039,12 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        55296,
+        10,
         55296,
         8205,
         55357,
@@ -85589,13 +86054,11 @@
         824,
         32,
         769,
-        94,
-        55296,
         8205,
         55357,
         56425
       ],
-      "expectedTerminalUtf8": "�‍👩 �̸ ́^�‍👩"
+      "expectedTerminalUtf8": "    �\n�‍👩 �̸ ́‍👩"
     },
     {
       "id": "seeded composition 210",
@@ -85713,13 +86176,16 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        56192,
+        10,
         55296,
         824,
         32,
         769,
-        94
+        56324
       ],
-      "expectedTerminalUtf8": "�̸ ́^"
+      "expectedTerminalUtf8": " �\n�̸ ́�"
     },
     {
       "id": "seeded composition 212",
@@ -86246,6 +86712,12 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        3406,
+        10,
         3406,
         55296,
         2366,
@@ -86254,12 +86726,11 @@
         824,
         32,
         55296,
-        94,
-        3406,
+        32,
         55296,
         2366
       ],
-      "expectedTerminalUtf8": "ൎ�ा �̸ �^ൎ�ा"
+      "expectedTerminalUtf8": "    ൎ\nൎ�ा �̸ � �ा"
     },
     {
       "id": "seeded composition 216",
@@ -87089,18 +87560,22 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        56192,
+        56320,
+        10,
         56192,
         56320,
         91,
         55296,
         93,
         32,
-        55296,
-        94,
-        56192,
-        56320
+        55296
       ],
-      "expectedTerminalUtf8": "󰀀[�] �^󰀀"
+      "expectedTerminalUtf8": "    󰀀\n󰀀[�] �"
     },
     {
       "id": "seeded composition 226",
@@ -87335,6 +87810,12 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        55357,
+        10,
         55357,
         56832,
         32,
@@ -87342,11 +87823,9 @@
         824,
         32,
         56324,
-        94,
-        55357,
         56832
       ],
-      "expectedTerminalUtf8": "😀 �̸ �^😀"
+      "expectedTerminalUtf8": "    �\n😀 �̸ ��"
     },
     {
       "id": "seeded composition 228",
@@ -87390,13 +87869,16 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        56192,
+        10,
         55349,
         824,
         32,
         56421,
-        94
+        56325
       ],
-      "expectedTerminalUtf8": "�̸ �^"
+      "expectedTerminalUtf8": " �\n�̸ ��"
     },
     {
       "id": "seeded composition 229",
@@ -87473,18 +87955,22 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        56192,
+        56321,
+        10,
         56192,
         56321,
         91,
         55296,
         93,
         32,
-        55296,
-        94,
-        56192,
-        56321
+        55296
       ],
-      "expectedTerminalUtf8": "󰀁[�] �^󰀁"
+      "expectedTerminalUtf8": "    󰀁\n󰀁[�] �"
     },
     {
       "id": "seeded composition 230",
@@ -88030,16 +88516,20 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        57344,
+        10,
         57344,
         32,
         55296,
         824,
         32,
-        2366,
-        94,
-        57344
+        2366
       ],
-      "expectedTerminalUtf8": " �̸ ा^"
+      "expectedTerminalUtf8": "    \n �̸ ा"
     },
     {
       "id": "seeded composition 235",
@@ -88094,6 +88584,11 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        55357,
+        10,
         55357,
         120,
         56832,
@@ -88102,12 +88597,10 @@
         824,
         32,
         55296,
-        94,
-        55357,
         120,
         56832
       ],
-      "expectedTerminalUtf8": "�x� ؀̸ �^�x�"
+      "expectedTerminalUtf8": "   �\n�x� ؀̸ �x�"
     },
     {
       "id": "seeded composition 236",
@@ -88594,11 +89087,14 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        56192,
+        10,
         63743,
         824,
-        94
+        56325
       ],
-      "expectedTerminalUtf8": "̸^"
+      "expectedTerminalUtf8": " �\n̸�"
     },
     {
       "id": "seeded composition 242",
@@ -89087,6 +89583,12 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        55349,
+        10,
         55349,
         57312,
         32,
@@ -89095,11 +89597,9 @@
         32,
         120,
         56832,
-        94,
-        55349,
         57312
       ],
-      "expectedTerminalUtf8": "𝟠 �̸ x�^𝟠"
+      "expectedTerminalUtf8": "    �\n𝟠 �̸ x��"
     },
     {
       "id": "seeded composition 246",
@@ -89632,6 +90132,12 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        55362,
+        10,
         55362,
         57271,
         32,
@@ -89639,11 +90145,9 @@
         824,
         32,
         56321,
-        94,
-        55362,
         57271
       ],
-      "expectedTerminalUtf8": "𠮷 �̸ �^𠮷"
+      "expectedTerminalUtf8": "    �\n𠮷 �̸ ��"
     },
     {
       "id": "seeded composition 251",
@@ -89884,16 +90388,20 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        65533,
+        10,
         65533,
         91,
         55357,
         93,
         32,
-        56832,
-        94,
-        65533
+        56832
       ],
-      "expectedTerminalUtf8": "�[�] �^�"
+      "expectedTerminalUtf8": "    �\n�[�] �"
     },
     {
       "id": "seeded composition 255",
@@ -89960,6 +90468,14 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        32,
+        32,
+        55356,
+        10,
         55356,
         56826,
         55356,
@@ -89971,13 +90487,11 @@
         8205,
         55357,
         56425,
-        94,
-        55356,
         56826,
         55356,
         56824
       ],
-      "expectedTerminalUtf8": "🇺🇸 �̸ ‍👩^🇺🇸"
+      "expectedTerminalUtf8": "      �\n🇺🇸 �̸ ‍👩�🇸"
     },
     {
       "id": "seeded composition 256",
@@ -90054,18 +90568,23 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        32,
+        56192,
+        56323,
+        10,
         56192,
         56323,
         91,
         55296,
         93,
         32,
-        2366,
-        94,
-        56192,
-        56323
+        2366
       ],
-      "expectedTerminalUtf8": "󰀃[�] ा^󰀃"
+      "expectedTerminalUtf8": "     󰀃\n󰀃[�] ा"
     },
     {
       "id": "seeded composition 257",
@@ -90527,18 +91046,22 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        56192,
+        56323,
+        10,
         56192,
         56323,
         91,
         55296,
         93,
         32,
-        55296,
-        94,
-        56192,
-        56323
+        55296
       ],
-      "expectedTerminalUtf8": "󰀃[�] �^󰀃"
+      "expectedTerminalUtf8": "    󰀃\n󰀃[�] �"
     },
     {
       "id": "seeded composition 262",
@@ -90587,6 +91110,10 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        55296,
+        10,
         55296,
         769,
         32,
@@ -90594,11 +91121,9 @@
         824,
         32,
         55296,
-        94,
-        55296,
         769
       ],
-      "expectedTerminalUtf8": "�́ �̸ �^�́"
+      "expectedTerminalUtf8": "  �\n�́ �̸ �́"
     },
     {
       "id": "seeded composition 263",
@@ -90644,17 +91169,21 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        63743,
+        10,
         63743,
         32,
         55357,
         824,
         32,
         120,
-        56832,
-        94,
-        63743
+        56832
       ],
-      "expectedTerminalUtf8": " �̸ x�^"
+      "expectedTerminalUtf8": "    \n �̸ x�"
     },
     {
       "id": "seeded composition 264",
@@ -90814,16 +91343,20 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        57344,
+        10,
         57344,
         91,
         56192,
         93,
         32,
-        56321,
-        94,
-        57344
+        56321
       ],
-      "expectedTerminalUtf8": "[�] �^"
+      "expectedTerminalUtf8": "    \n[�] �"
     },
     {
       "id": "seeded composition 266",
@@ -90980,6 +91513,14 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        32,
+        55357,
+        56832,
+        10,
         55357,
         56832,
         91,
@@ -90987,12 +91528,9 @@
         93,
         32,
         55296,
-        2366,
-        94,
-        55357,
-        56832
+        2366
       ],
-      "expectedTerminalUtf8": "😀[ൎ] �ा^😀"
+      "expectedTerminalUtf8": "     😀\n😀[ൎ] �ा"
     },
     {
       "id": "seeded composition 268",
@@ -91392,17 +91930,21 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        63743,
+        10,
         63743,
         32,
         3406,
         824,
         32,
         55296,
-        2366,
-        94,
-        63743
+        2366
       ],
-      "expectedTerminalUtf8": " ൎ̸ �ा^"
+      "expectedTerminalUtf8": "    \n ൎ̸ �ा"
     },
     {
       "id": "seeded composition 272",
@@ -91475,14 +92017,14 @@
       ],
       "display": true,
       "expectedUtf16": [
+        10,
         91,
         55349,
         93,
         32,
-        57312,
-        94
+        57312
       ],
-      "expectedTerminalUtf8": "[�] �^"
+      "expectedTerminalUtf8": "\n[�] �"
     },
     {
       "id": "seeded composition 273",
@@ -91673,13 +92215,16 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        56192,
+        10,
         56192,
         824,
         32,
         56323,
-        94
+        56324
       ],
-      "expectedTerminalUtf8": "�̸ �^"
+      "expectedTerminalUtf8": " �\n�̸ ��"
     },
     {
       "id": "seeded composition 276",
@@ -92560,6 +93105,12 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        3406,
+        10,
         3406,
         55296,
         2366,
@@ -92568,12 +93119,11 @@
         824,
         32,
         769,
-        94,
-        3406,
+        32,
         55296,
         2366
       ],
-      "expectedTerminalUtf8": "ൎ�ा �̸ ́^ൎ�ा"
+      "expectedTerminalUtf8": "    ൎ\nൎ�ा �̸ ́ �ा"
     },
     {
       "id": "seeded composition 286",
@@ -93736,18 +94286,22 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        56192,
+        56321,
+        10,
         56192,
         56321,
         91,
         56192,
         93,
         32,
-        56325,
-        94,
-        56192,
-        56321
+        56325
       ],
-      "expectedTerminalUtf8": "󰀁[�] �^󰀁"
+      "expectedTerminalUtf8": "    󰀁\n󰀁[�] �"
     },
     {
       "id": "seeded composition 298",
@@ -94098,6 +94652,12 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        55357,
+        10,
         55357,
         56425,
         55356,
@@ -94110,8 +94670,6 @@
         824,
         32,
         56325,
-        94,
-        55357,
         56425,
         55356,
         57342,
@@ -94119,7 +94677,7 @@
         55357,
         56507
       ],
-      "expectedTerminalUtf8": "👩🏾‍💻 �̸ �^👩🏾‍💻"
+      "expectedTerminalUtf8": "    �\n👩🏾‍💻 �̸ ��🏾‍💻"
     },
     {
       "id": "seeded composition 302",
@@ -94417,11 +94975,13 @@
       ],
       "display": true,
       "expectedUtf16": [
+        56192,
+        10,
         56320,
         824,
-        94
+        56324
       ],
-      "expectedTerminalUtf8": "�̸^"
+      "expectedTerminalUtf8": "�\n�̸�"
     },
     {
       "id": "seeded composition 305",
@@ -94813,6 +95373,12 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        3406,
+        10,
         3406,
         55296,
         2366,
@@ -94821,12 +95387,11 @@
         824,
         32,
         55357,
-        94,
-        3406,
+        32,
         55296,
         2366
       ],
-      "expectedTerminalUtf8": "ൎ�ा �̸ �^ൎ�ा"
+      "expectedTerminalUtf8": "    ൎ\nൎ�ा �̸ � �ा"
     },
     {
       "id": "seeded composition 311",
@@ -94903,18 +95468,22 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        56192,
+        56321,
+        10,
         56192,
         56321,
         91,
         56192,
         93,
         32,
-        56321,
-        94,
-        56192,
         56321
       ],
-      "expectedTerminalUtf8": "󰀁[�] �^󰀁"
+      "expectedTerminalUtf8": "    󰀁\n󰀁[�] �"
     },
     {
       "id": "seeded composition 312",
@@ -95153,6 +95722,12 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        3406,
+        10,
         3406,
         55296,
         2366,
@@ -95161,12 +95736,11 @@
         824,
         32,
         55296,
-        94,
-        3406,
+        32,
         55296,
         2366
       ],
-      "expectedTerminalUtf8": "ൎ�ा ؀̸ �^ൎ�ा"
+      "expectedTerminalUtf8": "    ൎ\nൎ�ा ؀̸ � �ा"
     },
     {
       "id": "seeded composition 314",
@@ -95299,16 +95873,18 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        57343,
+        10,
         57343,
         32,
         55296,
         824,
         32,
-        55296,
-        94,
-        57343
+        55296
       ],
-      "expectedTerminalUtf8": "� �̸ �^�"
+      "expectedTerminalUtf8": "  �\n� �̸ �"
     },
     {
       "id": "seeded composition 316",
@@ -95593,14 +96169,14 @@
       ],
       "display": true,
       "expectedUtf16": [
+        10,
         91,
         56192,
         93,
         32,
-        56325,
-        94
+        56325
       ],
-      "expectedTerminalUtf8": "[�] �^"
+      "expectedTerminalUtf8": "\n[�] �"
     },
     {
       "id": "seeded composition 318",
@@ -95671,16 +96247,19 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        56320,
+        10,
         56320,
         91,
         1536,
         93,
         32,
-        55296,
-        94,
-        56320
+        55296
       ],
-      "expectedTerminalUtf8": "�[؀] �^�"
+      "expectedTerminalUtf8": "   �\n�[؀] �"
     },
     {
       "id": "seeded composition 320",
@@ -96014,18 +96593,22 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        55349,
+        56421,
+        10,
         55349,
         56421,
         91,
         55296,
         93,
         32,
-        769,
-        94,
-        55349,
-        56421
+        769
       ],
-      "expectedTerminalUtf8": "𝑥[�] ́^𝑥"
+      "expectedTerminalUtf8": "    𝑥\n𝑥[�] ́"
     },
     {
       "id": "seeded composition 323",
@@ -96177,16 +96760,19 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        57343,
+        10,
         57343,
         91,
         55357,
         93,
         32,
-        56832,
-        94,
-        57343
+        56832
       ],
-      "expectedTerminalUtf8": "�[�] �^�"
+      "expectedTerminalUtf8": "   �\n�[�] �"
     },
     {
       "id": "seeded composition 325",
@@ -96465,16 +97051,20 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        57344,
+        10,
         57344,
         91,
         55349,
         93,
         32,
-        56421,
-        94,
-        57344
+        56421
       ],
-      "expectedTerminalUtf8": "[�] �^"
+      "expectedTerminalUtf8": "    \n[�] �"
     },
     {
       "id": "seeded composition 327",
@@ -96620,18 +97210,22 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        56192,
+        56321,
+        10,
         56192,
         56321,
         91,
         55349,
         93,
         32,
-        57312,
-        94,
-        56192,
-        56321
+        57312
       ],
-      "expectedTerminalUtf8": "󰀁[�] �^󰀁"
+      "expectedTerminalUtf8": "    󰀁\n󰀁[�] �"
     },
     {
       "id": "seeded composition 329",
@@ -96708,18 +97302,22 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        55349,
+        56421,
+        10,
         55349,
         56421,
         91,
         56192,
         93,
         32,
-        56323,
-        94,
-        55349,
-        56421
+        56323
       ],
-      "expectedTerminalUtf8": "𝑥[�] �^𝑥"
+      "expectedTerminalUtf8": "    𝑥\n𝑥[�] �"
     },
     {
       "id": "seeded composition 331",
@@ -96764,16 +97362,17 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        56320,
+        10,
         56320,
         56320,
         32,
         56319,
         824,
-        94,
-        56320,
         56320
       ],
-      "expectedTerminalUtf8": "�� �̸^��"
+      "expectedTerminalUtf8": " �\n�� �̸�"
     },
     {
       "id": "seeded composition 332",
@@ -97951,6 +98550,12 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        55362,
+        10,
         55362,
         57271,
         32,
@@ -97958,11 +98563,9 @@
         824,
         32,
         56325,
-        94,
-        55362,
         57271
       ],
-      "expectedTerminalUtf8": "𠮷 �̸ �^𠮷"
+      "expectedTerminalUtf8": "    �\n𠮷 �̸ ��"
     },
     {
       "id": "seeded composition 343",
@@ -98233,18 +98836,22 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        56192,
+        56323,
+        10,
         56192,
         56323,
         91,
         56192,
         93,
         32,
-        56325,
-        94,
-        56192,
-        56323
+        56325
       ],
-      "expectedTerminalUtf8": "󰀃[�] �^󰀃"
+      "expectedTerminalUtf8": "    󰀃\n󰀃[�] �"
     },
     {
       "id": "seeded composition 346",
@@ -98494,6 +99101,14 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        32,
+        32,
+        63743,
+        10,
         63743,
         91,
         55296,
@@ -98501,11 +99116,9 @@
         32,
         8205,
         55357,
-        56425,
-        94,
-        63743
+        56425
       ],
-      "expectedTerminalUtf8": "[�] ‍👩^"
+      "expectedTerminalUtf8": "      \n[�] ‍👩"
     },
     {
       "id": "seeded composition 348",
@@ -98766,16 +99379,19 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        57343,
+        10,
         57343,
         91,
         55349,
         93,
         32,
-        56421,
-        94,
-        57343
+        56421
       ],
-      "expectedTerminalUtf8": "�[�] �^�"
+      "expectedTerminalUtf8": "   �\n�[�] �"
     },
     {
       "id": "seeded composition 352",
@@ -99268,6 +99884,11 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        55349,
+        10,
         55349,
         57312,
         32,
@@ -99275,11 +99896,9 @@
         824,
         32,
         56320,
-        94,
-        55349,
         57312
       ],
-      "expectedTerminalUtf8": "𝟠 �̸ �^𝟠"
+      "expectedTerminalUtf8": "   �\n𝟠 �̸ ��"
     },
     {
       "id": "seeded composition 357",
@@ -99601,16 +100220,18 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        57343,
+        10,
         57343,
         32,
         55357,
         824,
         32,
-        56832,
-        94,
-        57343
+        56832
       ],
-      "expectedTerminalUtf8": "� �̸ �^�"
+      "expectedTerminalUtf8": "  �\n� �̸ �"
     },
     {
       "id": "seeded composition 362",
@@ -99681,16 +100302,20 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        65533,
+        10,
         65533,
         91,
         56192,
         93,
         32,
-        56325,
-        94,
-        65533
+        56325
       ],
-      "expectedTerminalUtf8": "�[�] �^�"
+      "expectedTerminalUtf8": "    �\n�[�] �"
     },
     {
       "id": "seeded composition 363",
@@ -99766,6 +100391,16 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        32,
+        32,
+        32,
+        32,
+        55296,
+        10,
         55296,
         8205,
         55357,
@@ -99780,13 +100415,11 @@
         8205,
         55357,
         56507,
-        94,
-        55296,
         8205,
         55357,
         56425
       ],
-      "expectedTerminalUtf8": "�‍👩 �̸ �🏾‍💻^�‍👩"
+      "expectedTerminalUtf8": "        �\n�‍👩 �̸ �🏾‍💻‍👩"
     },
     {
       "id": "seeded composition 364",
@@ -99898,14 +100531,15 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        57343,
+        10,
         57343,
         32,
         56320,
-        824,
-        94,
-        57343
+        824
       ],
-      "expectedTerminalUtf8": "� �̸^�"
+      "expectedTerminalUtf8": " �\n� �̸"
     },
     {
       "id": "seeded composition 366",
@@ -100217,16 +100851,19 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        56192,
+        10,
         56192,
         56320,
         32,
         63743,
         824,
-        94,
-        56192,
         56320
       ],
-      "expectedTerminalUtf8": "󰀀 ̸^󰀀"
+      "expectedTerminalUtf8": "   �\n󰀀 ̸�"
     },
     {
       "id": "seeded composition 369",
@@ -101437,18 +102074,23 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        32,
+        55362,
+        57271,
+        10,
         55362,
         57271,
         91,
         56192,
         93,
         32,
-        56320,
-        94,
-        55362,
-        57271
+        56320
       ],
-      "expectedTerminalUtf8": "𠮷[�] �^𠮷"
+      "expectedTerminalUtf8": "     𠮷\n𠮷[�] �"
     },
     {
       "id": "seeded composition 380",
@@ -102137,6 +102779,12 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        3406,
+        10,
         3406,
         55296,
         2366,
@@ -102145,12 +102793,11 @@
         824,
         32,
         56324,
-        94,
-        3406,
+        32,
         55296,
         2366
       ],
-      "expectedTerminalUtf8": "ൎ�ा �̸ �^ൎ�ा"
+      "expectedTerminalUtf8": "    ൎ\nൎ�ा �̸ � �ा"
     },
     {
       "id": "seeded composition 386",
@@ -102238,6 +102885,7 @@
       ],
       "display": true,
       "expectedUtf16": [
+        10,
         91,
         55357,
         93,
@@ -102247,10 +102895,9 @@
         57342,
         8205,
         55357,
-        56507,
-        94
+        56507
       ],
-      "expectedTerminalUtf8": "[�] �🏾‍💻^"
+      "expectedTerminalUtf8": "\n[�] �🏾‍💻"
     },
     {
       "id": "seeded composition 387",
@@ -102324,17 +102971,20 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        56319,
+        10,
         56319,
         91,
         3406,
         93,
         32,
         55296,
-        2366,
-        94,
-        56319
+        2366
       ],
-      "expectedTerminalUtf8": "�[ൎ] �ा^�"
+      "expectedTerminalUtf8": "   �\n�[ൎ] �ा"
     },
     {
       "id": "seeded composition 388",
@@ -102684,14 +103334,16 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        56320,
+        10,
         56320,
         32,
         65533,
-        824,
-        94,
-        56320
+        824
       ],
-      "expectedTerminalUtf8": "� �̸^�"
+      "expectedTerminalUtf8": "  �\n� �̸"
     },
     {
       "id": "seeded composition 391",
@@ -102971,6 +103623,16 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        32,
+        32,
+        32,
+        32,
+        55357,
+        10,
         55357,
         56425,
         55356,
@@ -102988,8 +103650,6 @@
         8205,
         55357,
         56507,
-        94,
-        55357,
         56425,
         55356,
         57342,
@@ -102997,7 +103657,7 @@
         55357,
         56507
       ],
-      "expectedTerminalUtf8": "👩🏾‍💻 �̸ �🏾‍💻^👩🏾‍💻"
+      "expectedTerminalUtf8": "        �\n👩🏾‍💻 �̸ �🏾‍💻�🏾‍💻"
     },
     {
       "id": "seeded composition 394",
@@ -103451,17 +104111,20 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        57343,
+        10,
         57343,
         91,
         3406,
         93,
         32,
         55296,
-        2366,
-        94,
-        57343
+        2366
       ],
-      "expectedTerminalUtf8": "�[ൎ] �ा^�"
+      "expectedTerminalUtf8": "   �\n�[ൎ] �ा"
     },
     {
       "id": "seeded composition 398",
@@ -103799,6 +104462,15 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        32,
+        32,
+        32,
+        57343,
+        10,
         57343,
         91,
         55357,
@@ -103809,11 +104481,9 @@
         57342,
         8205,
         55357,
-        56507,
-        94,
-        57343
+        56507
       ],
-      "expectedTerminalUtf8": "�[�] �🏾‍💻^�"
+      "expectedTerminalUtf8": "       �\n�[�] �🏾‍💻"
     },
     {
       "id": "seeded composition 400",
@@ -104176,16 +104846,20 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        65533,
+        10,
         65533,
         91,
         55362,
         93,
         32,
-        57271,
-        94,
-        65533
+        57271
       ],
-      "expectedTerminalUtf8": "�[�] �^�"
+      "expectedTerminalUtf8": "    �\n�[�] �"
     },
     {
       "id": "seeded composition 403",
@@ -104391,16 +105065,17 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        55296,
+        10,
         55296,
         769,
         32,
         57343,
         824,
-        94,
-        55296,
         769
       ],
-      "expectedTerminalUtf8": "�́ �̸^�́"
+      "expectedTerminalUtf8": " �\n�́ �̸́"
     },
     {
       "id": "seeded composition 406",
@@ -105086,14 +105761,15 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        56319,
+        10,
         56319,
         32,
         56319,
-        824,
-        94,
-        56319
+        824
       ],
-      "expectedTerminalUtf8": "� �̸^�"
+      "expectedTerminalUtf8": " �\n� �̸"
     },
     {
       "id": "seeded composition 412",
@@ -106085,16 +106761,18 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        55296,
+        10,
         55296,
         32,
         56192,
         824,
         32,
-        56320,
-        94,
-        55296
+        56320
       ],
-      "expectedTerminalUtf8": "� �̸ �^�"
+      "expectedTerminalUtf8": "  �\n� �̸ �"
     },
     {
       "id": "seeded composition 419",
@@ -106681,18 +107359,22 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        56192,
+        56321,
+        10,
         56192,
         56321,
         91,
         56192,
         93,
         32,
-        56320,
-        94,
-        56192,
-        56321
+        56320
       ],
-      "expectedTerminalUtf8": "󰀁[�] �^󰀁"
+      "expectedTerminalUtf8": "    󰀁\n󰀁[�] �"
     },
     {
       "id": "seeded composition 426",
@@ -106742,15 +107424,20 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        56192,
+        10,
         55356,
         824,
         32,
         56826,
         55356,
         56824,
-        94
+        56325
       ],
-      "expectedTerminalUtf8": "�̸ �🇸^"
+      "expectedTerminalUtf8": "   �\n�̸ �🇸�"
     },
     {
       "id": "seeded composition 427",
@@ -107069,16 +107756,18 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        56192,
+        10,
         56192,
         56320,
         32,
         57343,
         824,
-        94,
-        56192,
         56320
       ],
-      "expectedTerminalUtf8": "󰀀 �̸^󰀀"
+      "expectedTerminalUtf8": "  �\n󰀀 �̸�"
     },
     {
       "id": "seeded composition 430",
@@ -107207,16 +107896,19 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        63743,
+        10,
         63743,
         32,
         55349,
         824,
         32,
-        57312,
-        94,
-        63743
+        57312
       ],
-      "expectedTerminalUtf8": " �̸ �^"
+      "expectedTerminalUtf8": "   \n �̸ �"
     },
     {
       "id": "seeded composition 432",
@@ -108236,16 +108928,18 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        56192,
+        10,
         56192,
         56320,
         32,
         56319,
         824,
-        94,
-        56192,
         56320
       ],
-      "expectedTerminalUtf8": "󰀀 �̸^󰀀"
+      "expectedTerminalUtf8": "  �\n󰀀 �̸�"
     },
     {
       "id": "seeded composition 441",
@@ -108477,16 +109171,18 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        56319,
+        10,
         56319,
         32,
         1536,
         824,
         32,
-        55296,
-        94,
-        56319
+        55296
       ],
-      "expectedTerminalUtf8": "� ؀̸ �^�"
+      "expectedTerminalUtf8": "  �\n� ؀̸ �"
     },
     {
       "id": "seeded composition 444",
@@ -109054,6 +109750,10 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        55296,
+        10,
         55296,
         2366,
         32,
@@ -109061,11 +109761,9 @@
         824,
         32,
         769,
-        94,
-        55296,
         2366
       ],
-      "expectedTerminalUtf8": "�ा �̸ ́^�ा"
+      "expectedTerminalUtf8": "  �\n�ा �̸ ́ा"
     },
     {
       "id": "seeded composition 450",
@@ -110055,18 +110753,22 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        55349,
+        56421,
+        10,
         55349,
         56421,
         91,
         55349,
         93,
         32,
-        56421,
-        94,
-        55349,
         56421
       ],
-      "expectedTerminalUtf8": "𝑥[�] �^𝑥"
+      "expectedTerminalUtf8": "    𝑥\n𝑥[�] �"
     },
     {
       "id": "seeded composition 457",
@@ -110498,14 +111200,16 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        57344,
+        10,
         57344,
         32,
         57343,
-        824,
-        94,
-        57344
+        824
       ],
-      "expectedTerminalUtf8": " �̸^"
+      "expectedTerminalUtf8": "  \n �̸"
     },
     {
       "id": "seeded composition 462",
@@ -110938,18 +111642,22 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        55349,
+        57312,
+        10,
         55349,
         57312,
         91,
         55357,
         93,
         32,
-        56832,
-        94,
-        55349,
-        57312
+        56832
       ],
-      "expectedTerminalUtf8": "𝟠[�] �^𝟠"
+      "expectedTerminalUtf8": "    𝟠\n𝟠[�] �"
     },
     {
       "id": "seeded composition 467",
@@ -111796,11 +112504,13 @@
       ],
       "display": true,
       "expectedUtf16": [
+        56192,
+        10,
         57343,
         824,
-        94
+        56325
       ],
-      "expectedTerminalUtf8": "�̸^"
+      "expectedTerminalUtf8": "�\n�̸�"
     },
     {
       "id": "seeded composition 475",
@@ -111947,6 +112657,11 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        56192,
+        10,
         56192,
         56320,
         32,
@@ -111954,11 +112669,9 @@
         824,
         32,
         55296,
-        94,
-        56192,
         56320
       ],
-      "expectedTerminalUtf8": "󰀀 ؀̸ �^󰀀"
+      "expectedTerminalUtf8": "   �\n󰀀 ؀̸ 𐀀"
     },
     {
       "id": "seeded composition 477",
@@ -112213,16 +112926,18 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        55296,
+        10,
         55296,
         32,
         55296,
         824,
         32,
-        55296,
-        94,
         55296
       ],
-      "expectedTerminalUtf8": "� �̸ �^�"
+      "expectedTerminalUtf8": "  �\n� �̸ �"
     },
     {
       "id": "seeded composition 480",
@@ -113204,14 +113919,14 @@
       ],
       "display": true,
       "expectedUtf16": [
+        10,
         91,
         55349,
         93,
         32,
-        56421,
-        94
+        56421
       ],
-      "expectedTerminalUtf8": "[�] �^"
+      "expectedTerminalUtf8": "\n[�] �"
     },
     {
       "id": "seeded composition 490",
@@ -113282,16 +113997,20 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        57344,
+        10,
         57344,
         91,
         56192,
         93,
         32,
-        56323,
-        94,
-        57344
+        56323
       ],
-      "expectedTerminalUtf8": "[�] �^"
+      "expectedTerminalUtf8": "    \n[�] �"
     },
     {
       "id": "seeded composition 491",
@@ -113340,6 +114059,11 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        56192,
+        10,
         56192,
         56323,
         32,
@@ -113347,11 +114071,9 @@
         824,
         32,
         56324,
-        94,
-        56192,
         56323
       ],
-      "expectedTerminalUtf8": "󰀃 �̸ �^󰀃"
+      "expectedTerminalUtf8": "   �\n󰀃 �̸ ��"
     },
     {
       "id": "seeded composition 492",
@@ -113592,6 +114314,12 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        55296,
+        10,
         55296,
         55296,
         32,
@@ -113601,11 +114329,9 @@
         8205,
         55357,
         56425,
-        94,
-        55296,
         55296
       ],
-      "expectedTerminalUtf8": "�� �̸ ‍👩^��"
+      "expectedTerminalUtf8": "    �\n�� �̸ ‍👩�"
     },
     {
       "id": "seeded composition 494",
@@ -113682,18 +114408,22 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        55349,
+        57312,
+        10,
         55349,
         57312,
         91,
         55362,
         93,
         32,
-        57271,
-        94,
-        55349,
-        57312
+        57271
       ],
-      "expectedTerminalUtf8": "𝟠[�] �^𝟠"
+      "expectedTerminalUtf8": "    𝟠\n𝟠[�] �"
     },
     {
       "id": "seeded composition 496",
@@ -113983,14 +114713,17 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        57344,
+        10,
         57344,
         32,
         63743,
-        824,
-        94,
-        57344
+        824
       ],
-      "expectedTerminalUtf8": " ̸^"
+      "expectedTerminalUtf8": "   \n ̸"
     },
     {
       "id": "seeded composition 501",
@@ -114039,6 +114772,11 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        56192,
+        10,
         56192,
         56323,
         32,
@@ -114046,11 +114784,9 @@
         824,
         32,
         57271,
-        94,
-        56192,
         56323
       ],
-      "expectedTerminalUtf8": "󰀃 �̸ �^󰀃"
+      "expectedTerminalUtf8": "   �\n󰀃 �̸ ��"
     },
     {
       "id": "seeded composition 502",
@@ -114577,16 +115313,17 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        55296,
+        10,
         55296,
         2366,
         32,
         55296,
         824,
-        94,
-        55296,
         2366
       ],
-      "expectedTerminalUtf8": "�ा �̸^�ा"
+      "expectedTerminalUtf8": " �\n�ा �̸ा"
     },
     {
       "id": "seeded composition 508",
@@ -114625,14 +115362,16 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        63743,
+        10,
         63743,
         32,
         56320,
-        824,
-        94,
-        63743
+        824
       ],
-      "expectedTerminalUtf8": " �̸^"
+      "expectedTerminalUtf8": "  \n �̸"
     },
     {
       "id": "seeded composition 509",
@@ -115368,6 +116107,13 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        32,
+        56192,
+        10,
         56192,
         56321,
         32,
@@ -115377,11 +116123,9 @@
         8205,
         55357,
         56425,
-        94,
-        56192,
         56321
       ],
-      "expectedTerminalUtf8": "󰀁 �̸ ‍👩^󰀁"
+      "expectedTerminalUtf8": "     �\n󰀁 �̸ ‍👩�"
     },
     {
       "id": "seeded composition 516",
@@ -116358,6 +117102,11 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        56320,
+        10,
         56320,
         56320,
         32,
@@ -116366,11 +117115,9 @@
         32,
         55296,
         2366,
-        94,
-        56320,
         56320
       ],
-      "expectedTerminalUtf8": "�� ൎ̸ �ा^��"
+      "expectedTerminalUtf8": "   �\n�� ൎ̸ �ा�"
     },
     {
       "id": "seeded composition 523",
@@ -116425,6 +117172,12 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        55296,
+        10,
         55296,
         2366,
         32,
@@ -116434,11 +117187,9 @@
         56826,
         55356,
         56824,
-        94,
-        55296,
         2366
       ],
-      "expectedTerminalUtf8": "�ा �̸ �🇸^�ा"
+      "expectedTerminalUtf8": "    �\n�ा �̸ �🇸ा"
     },
     {
       "id": "seeded composition 524",
@@ -116972,16 +117723,18 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        56192,
+        10,
         56192,
         56323,
         32,
         57343,
         824,
-        94,
-        56192,
         56323
       ],
-      "expectedTerminalUtf8": "󰀃 �̸^󰀃"
+      "expectedTerminalUtf8": "  �\n󰀃 �̸�"
     },
     {
       "id": "seeded composition 532",
@@ -117396,16 +118149,19 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        65533,
+        10,
         65533,
         32,
         56192,
         824,
         32,
-        56323,
-        94,
-        65533
+        56323
       ],
-      "expectedTerminalUtf8": "� �̸ �^�"
+      "expectedTerminalUtf8": "   �\n� �̸ �"
     },
     {
       "id": "seeded composition 536",
@@ -117448,16 +118204,18 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        57343,
+        10,
         57343,
         32,
         56192,
         824,
         32,
-        56320,
-        94,
-        57343
+        56320
       ],
-      "expectedTerminalUtf8": "� �̸ �^�"
+      "expectedTerminalUtf8": "  �\n� �̸ �"
     },
     {
       "id": "seeded composition 537",
@@ -117500,16 +118258,19 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        57344,
+        10,
         57344,
         32,
         56192,
         824,
         32,
-        56325,
-        94,
-        57344
+        56325
       ],
-      "expectedTerminalUtf8": " �̸ �^"
+      "expectedTerminalUtf8": "   \n �̸ �"
     },
     {
       "id": "seeded composition 538",
@@ -117560,18 +118321,21 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        55357,
+        10,
         55357,
         120,
         56832,
         32,
         65533,
         824,
-        94,
-        55357,
         120,
         56832
       ],
-      "expectedTerminalUtf8": "�x� �̸^�x�"
+      "expectedTerminalUtf8": "   �\n�x� �̸x�"
     },
     {
       "id": "seeded composition 539",
@@ -117620,6 +118384,10 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        55296,
+        10,
         55296,
         55296,
         32,
@@ -117627,11 +118395,9 @@
         824,
         32,
         57312,
-        94,
-        55296,
         55296
       ],
-      "expectedTerminalUtf8": "�� �̸ �^��"
+      "expectedTerminalUtf8": "  �\n�� �̸ ��"
     },
     {
       "id": "seeded composition 540",
@@ -117841,6 +118607,12 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        55362,
+        10,
         55362,
         57271,
         32,
@@ -117848,11 +118620,9 @@
         824,
         32,
         769,
-        94,
-        55362,
         57271
       ],
-      "expectedTerminalUtf8": "𠮷 �̸ ́^𠮷"
+      "expectedTerminalUtf8": "    �\n𠮷 �̸ ́�"
     },
     {
       "id": "seeded composition 543",
@@ -118493,17 +119263,21 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        56319,
+        10,
         56319,
         91,
         55357,
         93,
         32,
         120,
-        56832,
-        94,
-        56319
+        56832
       ],
-      "expectedTerminalUtf8": "�[�] x�^�"
+      "expectedTerminalUtf8": "    �\n�[�] x�"
     },
     {
       "id": "seeded composition 551",
@@ -118547,13 +119321,16 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        56192,
+        10,
         55349,
         824,
         32,
         57312,
-        94
+        56325
       ],
-      "expectedTerminalUtf8": "�̸ �^"
+      "expectedTerminalUtf8": " �\n�̸ ��"
     },
     {
       "id": "seeded composition 552",
@@ -119138,16 +119915,20 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        55357,
+        10,
         55357,
         56832,
         32,
         63743,
         824,
-        94,
-        55357,
         56832
       ],
-      "expectedTerminalUtf8": "😀 ̸^😀"
+      "expectedTerminalUtf8": "    �\n😀 ̸�"
     },
     {
       "id": "seeded composition 558",
@@ -120166,6 +120947,10 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        55296,
+        10,
         55296,
         2366,
         32,
@@ -120173,11 +120958,9 @@
         824,
         32,
         55296,
-        94,
-        55296,
         2366
       ],
-      "expectedTerminalUtf8": "�ा �̸ �^�ा"
+      "expectedTerminalUtf8": "  �\n�ा �̸ �ा"
     },
     {
       "id": "seeded composition 571",
@@ -120689,16 +121472,16 @@
       ],
       "display": true,
       "expectedUtf16": [
+        10,
         91,
         55356,
         93,
         32,
         56826,
         55356,
-        56824,
-        94
+        56824
       ],
-      "expectedTerminalUtf8": "[�] �🇸^"
+      "expectedTerminalUtf8": "\n[�] �🇸"
     },
     {
       "id": "seeded composition 576",
@@ -120821,6 +121604,10 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        55296,
+        10,
         55296,
         55296,
         32,
@@ -120828,11 +121615,9 @@
         824,
         32,
         769,
-        94,
-        55296,
         55296
       ],
-      "expectedTerminalUtf8": "�� �̸ ́^��"
+      "expectedTerminalUtf8": "  �\n�� �̸ ́�"
     },
     {
       "id": "seeded composition 578",
@@ -120903,16 +121688,19 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        57343,
+        10,
         57343,
         91,
         1536,
         93,
         32,
-        55296,
-        94,
-        57343
+        55296
       ],
-      "expectedTerminalUtf8": "�[؀] �^�"
+      "expectedTerminalUtf8": "   �\n�[؀] �"
     },
     {
       "id": "seeded composition 579",
@@ -121120,16 +121908,17 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        56832,
+        10,
         56832,
         55357,
         32,
         56319,
         824,
-        94,
-        56832,
         55357
       ],
-      "expectedTerminalUtf8": "�� �̸^��"
+      "expectedTerminalUtf8": " �\n�� �̸�"
     },
     {
       "id": "seeded composition 582",
@@ -121467,6 +122256,14 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        32,
+        32,
+        56832,
+        10,
         56832,
         55357,
         32,
@@ -121479,11 +122276,9 @@
         8205,
         55357,
         56507,
-        94,
-        56832,
         55357
       ],
-      "expectedTerminalUtf8": "�� �̸ �🏾‍💻^��"
+      "expectedTerminalUtf8": "      �\n�� �̸ �🏾‍💻�"
     },
     {
       "id": "seeded composition 587",
@@ -122178,17 +122973,20 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        55296,
+        10,
         55296,
         32,
         3406,
         824,
         32,
         55296,
-        2366,
-        94,
-        55296
+        2366
       ],
-      "expectedTerminalUtf8": "� ൎ̸ �ा^�"
+      "expectedTerminalUtf8": "   �\n� ൎ̸ �ा"
     },
     {
       "id": "seeded composition 595",
@@ -122328,16 +123126,20 @@
       ],
       "display": true,
       "expectedUtf16": [
+        32,
+        32,
+        32,
+        32,
+        65533,
+        10,
         65533,
         91,
         55296,
         93,
         32,
-        55296,
-        94,
-        65533
+        55296
       ],
-      "expectedTerminalUtf8": "�[�] �^�"
+      "expectedTerminalUtf8": "    �\n�[�] �"
     },
     {
       "id": "seeded composition 598",

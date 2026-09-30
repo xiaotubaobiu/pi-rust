@@ -13,7 +13,7 @@ use serde_json::json;
 use std::sync::{Arc, Mutex};
 
 fn model(server: &wiremock::MockServer) -> Model {
-    Model {
+    Model {r#type: None, prompt_cache: None, input_limits: None, 
         id: "mistral-large-latest".to_string(),
         name: "Mistral Large".to_string(),
         api: API.to_string(),

@@ -98,6 +98,18 @@ const OPENAI_TOOL_CALL_PROVIDERS: [&str; 3] = ["openai", "openai-codex", "openco
 
 /// Upstream `OPENAI_RESPONSES_MIN_OUTPUT_TOKENS` (openai-responses.ts:33):
 /// the Responses endpoint rejects `max_output_tokens` below 16.
+/// Upstream `CHATGPT_USAGE_URL` (the openai-responses.ts delta): appended
+/// to usage-limit errors for Sign-in-with-ChatGPT credentials.
+const CHATGPT_USAGE_URL: &str = "https://chatgpt.com/settings/usage";
+
+/// Upstream `isChatGPTSignIn`: an OpenAI credential sent directly to
+/// OpenAI that is not an API key (`sk-`-prefixed) is a Sign in with
+/// ChatGPT access token.
+fn is_chatgpt_sign_in(model: &Model, api_key: Option<&str>) -> bool {
+    model.provider == "openai"
+        && model.base_url == "https://api.openai.com/v1"
+        && api_key.is_some_and(|key| !key.starts_with("sk-"))
+}
 const OPENAI_RESPONSES_MIN_OUTPUT_TOKENS: u64 = 16;
 
 pub struct OpenAiResponses;
@@ -321,6 +333,9 @@ fn build_params(
         },
     )?;
 
+    // Sign in with ChatGPT rejects these request fields (upstream
+    // `omitUnsupportedFields`).
+    let omit_unsupported_fields = is_chatgpt_sign_in(model, options.stream.api_key.as_deref());
     let mut params = Map::new();
     params.insert("model".into(), json!(model.id));
     params.insert("input".into(), Value::Array(input));
@@ -333,14 +348,15 @@ fn build_params(
         }
     }
     // Upstream `getPromptCacheRetention` (lines 83-90).
-    if cache_retention == CacheRetention::Long
+    if !omit_unsupported_fields
+        && cache_retention == CacheRetention::Long
         && compat.supports_long_cache_retention
         && !compat.supports_explicit_prompt_cache_mode
     {
         params.insert("prompt_cache_retention".into(), json!("24h"));
     }
     // Upstream `getPromptCacheOptions` (lines 92-100).
-    if compat.supports_explicit_prompt_cache_mode {
+    if compat.supports_explicit_prompt_cache_mode && !omit_unsupported_fields {
         if cache_retention == CacheRetention::None {
             params.insert("prompt_cache_options".into(), json!({"mode": "explicit"}));
         } else if cache_retention == CacheRetention::Long && compat.supports_long_cache_retention {
@@ -356,7 +372,7 @@ fn build_params(
         .max_tokens
         .filter(|max_tokens| *max_tokens > 0)
     {
-        if compat.supports_max_output_tokens {
+        if compat.supports_max_output_tokens && !omit_unsupported_fields {
             params.insert(
                 "max_output_tokens".into(),
                 json!(max_tokens.max(OPENAI_RESPONSES_MIN_OUTPUT_TOKENS)),
@@ -364,7 +380,7 @@ fn build_params(
         }
     }
 
-    if let Some(temperature) = options.stream.temperature {
+    if let Some(temperature) = options.stream.temperature.filter(|_| !omit_unsupported_fields) {
         params.insert("temperature".into(), json!(temperature));
     }
 
@@ -703,6 +719,9 @@ async fn run_stream_task(
             let payload: Value = serde_json::from_str(&event.data)
                 .map_err(|error| format!("Could not parse Responses SSE event: {error}"))?;
             processor
+                .observe_raw_event(payload.clone())
+                .await?;
+            processor
                 .process_event(&ResponsesStreamEvent::from_value(payload), &tx)
                 .await?;
         }
@@ -751,7 +770,16 @@ async fn run_stream_task(
             } else {
                 StopReason::Error
             };
-            output.error_message = Some(message);
+            // Sign in with ChatGPT shares the subscription's usage limit with
+            // other apps (upstream openai-responses.ts): point at the usage
+            // page.
+            output.error_message = Some(
+                if message.contains("subscription_sharing_usage_limit_exceeded") {
+                    format!("{message}\nCheck your ChatGPT usage: {CHATGPT_USAGE_URL}")
+                } else {
+                    message
+                },
+            );
             let _ = tx
                 .send(AssistantMessageEvent::Error {
                     reason: if signal.is_cancelled() {
@@ -792,7 +820,7 @@ mod tests {
     // ---- fixtures ----
 
     fn model() -> Model {
-        Model {
+        Model {r#type: None, prompt_cache: None, input_limits: None, 
             id: "gpt-5.4".to_string(),
             name: "GPT-5.4".to_string(),
             api: API.to_string(),

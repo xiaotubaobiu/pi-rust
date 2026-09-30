@@ -149,9 +149,12 @@ pub fn anthropic_provider() -> Arc<dyn Provider> {
             api_key: Some(Arc::new(AnthropicApiKeyAuth)),
             oauth: Some(Arc::new(anthropic_oauth())),
         },
-        models: embedded_provider_catalog("anthropic"),
+        models: embedded_provider_catalog("anthropic").into_iter().map(crate::ai::types::AnyModel::Chat).collect(),
         fetch_models: None,
         filter_models: None,
+        filter_all_models: None,
+        images: crate::ai::models::provider::ImagesImpls::new(),
+        classifiers: crate::ai::models::provider::ClassifiersImpls::new(),
         api: ApiImpls::Single(Arc::new(AnthropicMessages)),
     })
 }

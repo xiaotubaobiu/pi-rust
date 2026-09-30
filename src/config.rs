@@ -134,6 +134,9 @@ pub fn resolve_base_url(cfg: &Config) -> anyhow::Result<String> {
 /// table overrides the zero rates when present.
 pub fn build_model(cfg: &Config) -> anyhow::Result<Model> {
     Ok(Model {
+        r#type: None,
+        prompt_cache: None,
+        input_limits: None,
         id: cfg.model.clone(),
         name: cfg.model.clone(),
         api: api_for_provider(&cfg.provider)?.to_string(),

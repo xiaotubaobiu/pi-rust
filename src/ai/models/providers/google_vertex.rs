@@ -285,9 +285,12 @@ pub fn google_vertex_provider() -> Arc<dyn Provider> {
             api_key: Some(Arc::new(VertexAuth)),
             oauth: None,
         },
-        models: embedded_provider_catalog("google-vertex"),
+        models: embedded_provider_catalog("google-vertex").into_iter().map(crate::ai::types::AnyModel::Chat).collect(),
         fetch_models: None,
         filter_models: None,
+        filter_all_models: None,
+        images: crate::ai::models::provider::ImagesImpls::new(),
+        classifiers: crate::ai::models::provider::ClassifiersImpls::new(),
         api: ApiImpls::Single(Arc::new(GoogleVertex)),
     })
 }

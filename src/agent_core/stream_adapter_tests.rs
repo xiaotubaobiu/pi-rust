@@ -22,7 +22,7 @@ fn trace(log: &Trace, row: Value) {
     log.lock().unwrap().push(row);
 }
 fn model() -> Model {
-    Model {
+    Model {r#type: None, prompt_cache: None, input_limits: None, 
         id: "r14-model".into(),
         name: "r14-model".into(),
         api: "r14-api".into(),
@@ -173,6 +173,7 @@ fn install_callbacks(log: &Trace) -> RequestCallbacks {
     let p = log.clone();
     let r = log.clone();
     RequestCallbacks {
+        on_provider_stream_event: None,
         on_payload: Some(Arc::new(move |payload, model| {
             trace(
                 &p,
@@ -905,7 +906,7 @@ async fn local_runtime(
     model.reasoning = false;
     model.headers = Some([("x-model".into(), Some("model-header".into()))].into());
     runtime
-        .register_native_provider(create_provider(CreateProviderOptions {
+        .register_native_provider(create_provider(CreateProviderOptions {filter_all_models: None, images: crate::ai::models::provider::ImagesImpls::new(), classifiers: crate::ai::models::provider::ClassifiersImpls::new(), 
             id: model.provider.clone(),
             name: None,
             base_url: None,
@@ -914,7 +915,7 @@ async fn local_runtime(
                 api_key: Some(Arc::new(OfflineAuth)),
                 oauth: None,
             },
-            models: vec![model.clone()],
+            models: vec![crate::ai::types::AnyModel::Chat(model.clone())],
             fetch_models: None,
             filter_models: None,
             api: ApiImpls::Single(Arc::new(
@@ -993,6 +994,7 @@ async fn model_runtime_adapter_forwards_headers_payload_response_and_awaits_payl
     let mut opts = options(runtime_adapter(runtime, phases.clone()));
     opts.initial_state.model = Some(model);
     opts.callbacks = RequestCallbacks {
+        on_provider_stream_event: None,
         on_payload: Some(Arc::new(move |mut payload, _| {
             let p = p.clone();
             let e = e.clone();
@@ -1051,6 +1053,7 @@ async fn model_runtime_callback_failures_settle_as_terminal_events_not_factory_r
         let mut opts = options(runtime_adapter(runtime, Default::default()));
         opts.initial_state.model = Some(model);
         opts.callbacks = RequestCallbacks {
+            on_provider_stream_event: None,
             on_payload: Some(Arc::new(move |_, _| {
                 Box::pin(async move {
                     if fail_payload {

@@ -34,7 +34,11 @@ use crate::ai::api::ApiImpl;
 use crate::ai::auth::resolve::ModelsError;
 use crate::ai::auth::types::{Credential, ProviderAuth};
 use crate::ai::now_ms;
-use crate::ai::types::{Model, ProviderHeaders};
+use crate::ai::model_operations::get_model_type;
+use crate::ai::types::{
+    AnyModel, AssistantImages, ClassifierContext, ClassifierModel, ClassifierOptions,
+    ClassifierResult, ImageModel, ImagesContext, ImagesOptions, Model, ModelType, ProviderHeaders,
+};
 
 use super::{ModelsPublication, RefreshModelsContext, RefreshModelsError};
 
@@ -67,13 +71,28 @@ pub trait Provider: Send + Sync {
     fn auth(&self) -> &ProviderAuth;
 
     /// Current known models, sync (upstream `getModels`, models.ts:121).
-    /// Static providers return their catalog; dynamic providers the list as
-    /// of the last refresh (empty before the first). Upstream
-    /// requires implementations not to throw and defends anyway ("`Models`
-    /// treats a throwing implementation as having no models"): the port makes
-    /// that failure channel explicit as `Err` — surfaced precisely by the
-    /// provider itself, swallowed to no models by the collection.
+    /// Static providers return their chat catalog; dynamic providers the list
+    /// as of the last refresh (empty before the first). Upstream requires
+    /// implementations not to throw and defends anyway ("`Models` treats a
+    /// throwing implementation as having no models"): the port makes that
+    /// failure channel explicit as `Err` — surfaced precisely by the provider
+    /// itself, swallowed to no models by the collection.
     fn get_models(&self) -> Result<Vec<Model>, ModelsError>;
+
+    /// Upstream `getAllModels?` (models.ts): current known models of every
+    /// type, sync, with the same contract as [`Provider::get_models`].
+    /// Providers with only chat models may omit it; `Models` then uses
+    /// `get_models()`. Model ids are unique within each type; one upstream
+    /// model may have separate entries for different operations. The port
+    /// default serves every model as chat, mirroring the upstream absence
+    /// path.
+    fn get_all_models(&self) -> Result<Vec<AnyModel>, ModelsError> {
+        Ok(self
+            .get_models()?
+            .into_iter()
+            .map(AnyModel::Chat)
+            .collect())
+    }
 
     /// Upstream `refreshModels?` (models.ts:124-129): dynamic providers only.
     /// Invoked once per refresh phase — first offline to restore
@@ -98,15 +117,40 @@ pub trait Provider: Send + Sync {
     }
 
     /// Upstream `filterModels?` (models.ts:132-136): optional provider policy
-    /// for credential-specific model availability. [`Models::get_available`]
-    /// applies it after confirming the provider's auth is configured, over
-    /// the provider's complete sync catalog. `None` = no filter (upstream
+    /// for credential-specific chat-model availability.
+    /// [`Models::get_available`](super::Models::get_available) applies it
+    /// after confirming the provider's auth is configured, over the
+    /// provider's complete sync chat catalog. `None` = no filter (upstream
     /// optional method); a filter returns the kept subset.
     fn filter_models(
         &self,
         models: &[Model],
         credential: Option<&Credential>,
     ) -> Option<Vec<Model>> {
+        let _ = (models, credential);
+        None
+    }
+
+    /// Upstream `provider.filterModels !== undefined`.
+    fn has_filter_models(&self) -> bool {
+        false
+
+    }
+
+    /// Upstream `provider.filterAllModels !== undefined`.
+    fn has_filter_all_models(&self) -> bool {
+        false
+    }
+
+    /// Upstream `filterAllModels?` (models.ts): optional credential-specific
+    /// availability policy across every model type. Without it,
+    /// `Models::get_all_available` applies [`Provider::filter_models`] to
+    /// chat models and keeps every other model.
+    fn filter_all_models(
+        &self,
+        models: &[AnyModel],
+        credential: Option<&Credential>,
+    ) -> Option<Vec<AnyModel>> {
         let _ = (models, credential);
         None
     }
@@ -123,30 +167,102 @@ pub trait Provider: Send + Sync {
         let _ = model;
         None
     }
+
+    /// The image-generation implementation serving one image model (upstream
+    /// `provider.generateImages`, the `images` map dispatch on `model.api`).
+    /// `None` = the provider has no image-generation capability (upstream
+    /// `generateImages` absent; `Models.generateImages` turns that into the
+    /// error result `Provider {id} does not support image generation`).
+    fn images_for(&self, api: &str) -> Option<Arc<dyn ImagesApiImpl>> {
+        let _ = api;
+        None
+    }
+
+    /// The classifier implementation serving one classifier model (upstream
+    /// `provider.classify`, the `classifiers` map dispatch on `model.api`).
+    /// `None` = the provider has no classification capability (upstream
+    /// `classify` absent; `Models.classify` turns that into the error result
+    /// `Provider {id} does not support classification`).
+    fn classifiers_for(&self, api: &str) -> Option<Arc<dyn ClassifierApiImpl>> {
+        let _ = api;
+        None
+    }
+}
+
+/// Upstream `ProviderImages` (types.ts): the uniform contract of an
+/// image-generation API implementation module (`generateImages`). The port
+/// resolves auth in the `Models` collection like the chat streams, so the
+/// implementation receives the resolved [`ProviderConfig`] alongside the
+/// request options (api key override, headers, env).
+pub trait ImagesApiImpl: Send + Sync {
+    fn generate_images(
+        &self,
+        config: &crate::ai::ProviderConfig,
+        model: &ImageModel,
+        context: &ImagesContext,
+        options: &ImagesOptions,
+    ) -> BoxFuture<'static, Result<AssistantImages, ModelsError>>;
+}
+
+/// Upstream `ProviderClassifier` (types.ts): the uniform contract implemented
+/// by classifier API modules (`classify`).
+pub trait ClassifierApiImpl: Send + Sync {
+    fn classify(
+        &self,
+        config: &crate::ai::ProviderConfig,
+        model: &ClassifierModel,
+        context: &ClassifierContext,
+        options: &ClassifierOptions,
+    ) -> BoxFuture<'static, Result<ClassifierResult, ModelsError>>;
 }
 
 /// Upstream `CreateProviderOptions.api`
 /// (`ProviderStreams | Partial<Record<TApi, ProviderStreams>>`, models.ts:775):
-/// a single implementation streams all models, or a map dispatches on
-/// `model.api` for mixed-API providers.
+/// a single implementation streams all chat models, or a map dispatches on
+/// `model.api` for mixed-API providers. Optional upstream when `images` or
+/// `classifiers` is given; the port models that as `None`.
+#[derive(Default)]
 pub enum ApiImpls {
     Single(Arc<dyn ApiImpl>),
     PerApi(BTreeMap<String, Arc<dyn ApiImpl>>),
+    /// Upstream `api` absent (`images`/`classifiers` carry the provider).
+    #[default]
+    None,
 }
 
+/// Upstream `CreateProviderOptions.images`
+/// (`Partial<Record<ImageApi, ProviderImages>>`, models.ts): image-generation
+/// implementations keyed by `model.api`.
+pub type ImagesImpls = BTreeMap<String, Arc<dyn ImagesApiImpl>>;
+
+/// Upstream `CreateProviderOptions.classifiers`
+/// (`Partial<Record<ClassifierApi, ProviderClassifier>>`, models.ts):
+/// classifier implementations keyed by `model.api`.
+pub type ClassifiersImpls = BTreeMap<String, Arc<dyn ClassifierApiImpl>>;
+
 /// Upstream `CreateProviderOptions.fetchModels` (models.ts:772): fetch a
-/// dynamic model overlay; [`create_provider`] restores and publishes it
-/// transactionally. The closure receives the owned phase context (upstream
-/// `context` object; [`RefreshModelsContext`] is a cheap handle).
+/// dynamic model overlay of every type; [`create_provider`] restores and
+/// publishes it transactionally, dropping models of unknown types. The
+/// closure receives the owned phase context (upstream `context` object;
+/// [`RefreshModelsContext`] is a cheap handle).
 pub type FetchModelsFn = Arc<
-    dyn Fn(RefreshModelsContext) -> BoxFuture<'static, Result<Vec<Model>, ModelsError>>
+    dyn Fn(RefreshModelsContext) -> BoxFuture<'static, Result<FetchModelsResult, ModelsError>>
         + Send
         + Sync,
 >;
 
 /// Upstream `CreateProviderOptions.filterModels` (models.ts:773):
-/// credential-specific availability filter over the provider's catalog.
+/// credential-specific availability filter over the provider's chat catalog.
 pub type FilterModelsFn = Arc<dyn Fn(&[Model], Option<&Credential>) -> Vec<Model> + Send + Sync>;
+
+/// Upstream `CreateProviderOptions.filterAllModels` (models.ts):
+/// credential-specific availability across every model type.
+pub type FilterAllModelsFn =
+    Arc<dyn Fn(&[AnyModel], Option<&Credential>) -> Vec<AnyModel> + Send + Sync>;
+
+/// Upstream `CreateProviderOptions.fetchModels` return type: a dynamic model
+/// overlay of every type (`readonly ProviderModel<TApi>[]`).
+pub type FetchModelsResult = Vec<AnyModel>;
 
 /// Upstream `CreateProviderOptions` (models.ts:761-776).
 pub struct CreateProviderOptions {
@@ -158,37 +274,64 @@ pub struct CreateProviderOptions {
     /// Required — every provider has auth semantics, even ambient/keyless
     /// ones (upstream `auth`).
     pub auth: ProviderAuth,
-    /// Static baseline model list (upstream `models`; empty for purely
-    /// dynamic providers).
-    pub models: Vec<Model>,
-    /// Fetch a dynamic model overlay (upstream `fetchModels?`).
+    /// Static baseline models of every type (upstream `models`; empty for
+    /// purely dynamic providers). Models without `type` are chat models.
+    pub models: Vec<AnyModel>,
+    /// Fetch a dynamic model overlay of every type (upstream `fetchModels?`).
     pub fetch_models: Option<FetchModelsFn>,
-    /// Credential-specific availability filter (upstream `filterModels?`).
+    /// Credential-specific chat availability filter (upstream `filterModels?`).
     pub filter_models: Option<FilterModelsFn>,
-    /// Single implementation, or map keyed by `model.api` (upstream `api`).
+    /// Credential-specific availability across every model type (upstream
+    /// `filterAllModels?`).
+    pub filter_all_models: Option<FilterAllModelsFn>,
+    /// Chat implementation: a single one for all chat models, or a map keyed
+    /// by `model.api` (upstream `api`). `None` (upstream absent) is legal
+    /// when `images`/`classifiers` carry the provider.
     pub api: ApiImpls,
+    /// Image-generation implementations keyed by `model.api` (upstream
+    /// `images?`).
+    pub images: ImagesImpls,
+    /// Classifier implementations keyed by `model.api` (upstream
+    /// `classifiers?`).
+    pub classifiers: ClassifiersImpls,
 }
 
 /// The provider [`create_provider`] builds — upstream's object literal
 /// (models.ts:816-854). The dynamic overlay (`dynamicModels`) starts empty
 /// and is published into by refresh ([`StandardProvider::refresh_models`],
 /// models.ts:823-849); until then [`Provider::get_models`] serves exactly the
-/// baseline.
+/// chat slice of the baseline.
 pub struct StandardProvider {
     id: String,
     name: String,
     base_url: Option<String>,
     headers: Option<ProviderHeaders>,
     auth: ProviderAuth,
-    baseline: Vec<Model>,
-    dynamic: Arc<RwLock<Vec<Model>>>,
+    baseline: Vec<AnyModel>,
+    dynamic: Arc<RwLock<Vec<AnyModel>>>,
     fetch: Option<FetchModelsFn>,
     filter: Option<FilterModelsFn>,
+    filter_all: Option<FilterAllModelsFn>,
     api: ApiImpls,
+    images: ImagesImpls,
+    classifiers: ClassifiersImpls,
 }
 
 /// Upstream `createProvider` (models.ts:784-884).
 pub fn create_provider(options: CreateProviderOptions) -> Arc<StandardProvider> {
+    // Upstream models.ts:786-790: at least one concrete implementation across
+    // `api`/`images`/`classifiers` is required; empty maps are rejected.
+    let has_api = match &options.api {
+        ApiImpls::Single(_) => true,
+        ApiImpls::PerApi(map) => !map.is_empty(),
+        ApiImpls::None => false,
+    };
+    if !has_api && options.images.is_empty() && options.classifiers.is_empty() {
+        panic!(
+            "Provider {}: at least one of \"api\", \"images\", or \"classifiers\" is required.",
+            options.id
+        );
+    }
     Arc::new(StandardProvider {
         name: options.name.unwrap_or_else(|| options.id.clone()),
         id: options.id,
@@ -199,17 +342,25 @@ pub fn create_provider(options: CreateProviderOptions) -> Arc<StandardProvider> 
         dynamic: Arc::new(RwLock::new(Vec::new())),
         fetch: options.fetch_models,
         filter: options.filter_models,
+        filter_all: options.filter_all_models,
         api: options.api,
+        images: options.images,
+        classifiers: options.classifiers,
     })
 }
 
-/// Upstream `currentModels` closure (models.ts:788-796): the baseline with
+/// Upstream `currentModels` closure (models.ts:788-800): the baseline with
 /// the dynamic overlay merged in — a dynamic model replaces the baseline
-/// entry with the same id in place, otherwise it appends after the baseline.
-pub(crate) fn merge_catalog(baseline: &[Model], dynamic: &[Model]) -> Vec<Model> {
+/// entry with the same type and id in place, otherwise it appends after the
+/// baseline.
+pub(crate) fn merge_catalog(baseline: &[AnyModel], dynamic: &[AnyModel]) -> Vec<AnyModel> {
     let mut merged = baseline.to_vec();
     for model in dynamic {
-        match merged.iter().position(|entry| entry.id == model.id) {
+        let model_type = get_model_type(model);
+        match merged
+            .iter()
+            .position(|entry| get_model_type(entry) == model_type && entry.id() == model.id())
+        {
             Some(index) => merged[index] = model.clone(),
             None => merged.push(model.clone()),
         }
@@ -238,7 +389,22 @@ impl Provider for StandardProvider {
         &self.auth
     }
 
+    /// Upstream `getModels` (models.ts, createProvider): the merged catalog
+    /// filtered to chat models (`isModelType(model, "chat")`).
     fn get_models(&self) -> Result<Vec<Model>, ModelsError> {
+        let dynamic = self
+            .dynamic
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        Ok(merge_catalog(&self.baseline, &dynamic)
+            .into_iter()
+            .filter_map(|model| model.as_chat().cloned())
+            .collect())
+    }
+
+    /// Upstream `getAllModels` (models.ts, createProvider): the merged
+    /// catalog of every model type.
+    fn get_all_models(&self) -> Result<Vec<AnyModel>, ModelsError> {
         let dynamic = self
             .dynamic
             .read()
@@ -247,14 +413,27 @@ impl Provider for StandardProvider {
     }
 
     /// Upstream `apiFor` (models.ts:801): a single implementation serves every
-    /// model; the map form dispatches on `model.api`. The "no API
+    /// chat model; the map form dispatches on `model.api`. The "no API
     /// implementation" stream error for a `None` result is produced by the
     /// `Models` collection at dispatch time (models.ts:808-811).
     fn api_for(&self, model: &Model) -> Option<Arc<dyn ApiImpl>> {
         match &self.api {
             ApiImpls::Single(implementation) => Some(Arc::clone(implementation)),
             ApiImpls::PerApi(map) => map.get(&model.api).cloned(),
+            ApiImpls::None => None,
         }
+    }
+
+    /// Upstream's `images` map dispatch (models.ts, createProvider):
+    /// `images[model.api]`.
+    fn images_for(&self, api: &str) -> Option<Arc<dyn ImagesApiImpl>> {
+        self.images.get(api).cloned()
+    }
+
+    /// Upstream's `classifiers` map dispatch (models.ts, createProvider):
+    /// `classifiers[model.api]`.
+    fn classifiers_for(&self, api: &str) -> Option<Arc<dyn ClassifierApiImpl>> {
+        self.classifiers.get(api).cloned()
     }
 
     fn is_dynamic(&self) -> bool {
@@ -271,12 +450,31 @@ impl Provider for StandardProvider {
             .map(|filter| filter(models, credential))
     }
 
+    fn has_filter_models(&self) -> bool {
+        self.filter.is_some()
+    }
+
+    fn has_filter_all_models(&self) -> bool {
+        self.filter_all.is_some()
+    }
+
+    fn filter_all_models(
+        &self,
+        models: &[AnyModel],
+        credential: Option<&Credential>,
+    ) -> Option<Vec<AnyModel>> {
+        self.filter_all
+            .as_ref()
+            .map(|filter| filter(models, credential))
+    }
+
     /// Upstream `createProvider`'s built-in `refreshModels` (models.ts:823-849),
     /// present only when `fetchModels` was given. Per phase: restore the
     /// provider's slice of `context.stored` through a generation-checked
     /// publication (bailing when superseded/aborted), then — network phase
     /// only — fetch and publish the refreshed overlay together with its
-    /// persisted `{ models, checkedAt }` entry.
+    /// persisted `{ models, checkedAt }` entry. Fetched models of unknown
+    /// types are dropped (upstream `fetched.filter(hasKnownModelType)`).
     fn refresh_models(
         &self,
         context: RefreshModelsContext,
@@ -289,10 +487,10 @@ impl Provider for StandardProvider {
             // provider's entries, overlaying whatever a previous refresh
             // published.
             if let Some(stored) = context.stored.clone() {
-                let restored: Vec<Model> = stored
+                let restored: Vec<AnyModel> = stored
                     .models
                     .into_iter()
-                    .filter(|model| model.provider == id)
+                    .filter(|model| model.provider() == id)
                     .collect();
                 let dynamic_for_update = Arc::clone(&dynamic);
                 let applied = context
@@ -316,6 +514,9 @@ impl Provider for StandardProvider {
             if context.signal.is_cancelled() {
                 return Ok(());
             }
+            // Upstream: `refreshed = fetched.filter(hasKnownModelType)`.
+            let refreshed: Vec<AnyModel> =
+                refreshed.into_iter().filter(has_known_model_type).collect();
             let dynamic_for_update = Arc::clone(&dynamic);
             let overlay = refreshed.clone();
             context
@@ -336,9 +537,20 @@ impl Provider for StandardProvider {
     }
 }
 
+/// Upstream `hasKnownModelType` (models.ts): models from stores and remote
+/// sources may have types that only newer versions know; this version knows
+/// chat, image, and classifier. The [`AnyModel`] parse layer falls unknown
+/// `type` values back to chat, so every model here is known — the filter is
+/// kept for upstream parity.
+pub(crate) fn has_known_model_type(model: &AnyModel) -> bool {
+    ModelType::ALL.contains(&model.model_type())
+}
+
 /// std RwLock write access, poison-recovering (no await while held — the
 /// publication update runs synchronously by contract).
-fn write_lock(dynamic: &RwLock<Vec<Model>>) -> std::sync::RwLockWriteGuard<'_, Vec<Model>> {
+fn write_lock(
+    dynamic: &RwLock<Vec<AnyModel>>,
+) -> std::sync::RwLockWriteGuard<'_, Vec<AnyModel>> {
     dynamic
         .write()
         .unwrap_or_else(std::sync::PoisonError::into_inner)
@@ -366,9 +578,12 @@ mod tests {
             api: "test-api".to_string(),
             provider: provider.to_string(),
             base_url: "https://example.test/v1".to_string(),
+            r#type: None,
             reasoning: false,
             thinking_level_map: None,
+            prompt_cache: None,
             input: vec![ModelInput::Text],
+            input_limits: None,
             cost: ModelCost::default(),
             context_window: 10_000,
             max_tokens: 1000,
@@ -444,10 +659,13 @@ mod tests {
             base_url: None,
             headers: None,
             auth: ambient_auth(),
-            models,
+            models: models.into_iter().map(AnyModel::Chat).collect(),
             fetch_models: None,
             filter_models: None,
+            filter_all_models: None,
             api,
+            images: BTreeMap::new(),
+            classifiers: BTreeMap::new(),
         }
     }
 
@@ -499,20 +717,30 @@ mod tests {
     /// Upstream `currentModels` merge semantics (models.ts:788-796).
     #[test]
     fn merge_catalog_overlays_dynamic_models_on_the_baseline() {
-        let baseline = vec![test_model("p", "a"), test_model("p", "b")];
+        let baseline = [test_model("p", "a"), test_model("p", "b")];
         let mut refreshed_b = test_model("p", "b");
         refreshed_b.context_window = 999;
-        let dynamic = vec![refreshed_b, test_model("p", "c")];
+        let dynamic = [refreshed_b, test_model("p", "c")];
 
-        let merged = merge_catalog(&baseline, &dynamic);
-        let ids: Vec<&str> = merged.iter().map(|model| model.id.as_str()).collect();
+        let merged = merge_catalog(
+            &baseline.iter().map(|m| crate::ai::types::AnyModel::Chat(m.clone())).collect::<Vec<_>>(),
+            &dynamic.iter().cloned().map(crate::ai::types::AnyModel::Chat).collect::<Vec<_>>(),
+        );
+        let ids: Vec<String> = merged.iter().map(|model| model.id().to_string()).collect();
         // Replaced in place, new entries appended after the baseline.
-        assert_eq!(ids, ["a", "b", "c"]);
-        assert_eq!(merged[1].context_window, 999);
-        assert_eq!(merged[2].context_window, 10_000);
+        let expected: Vec<String> = ["a", "b", "c"].iter().map(|id| id.to_string()).collect();
+        assert_eq!(ids, expected);
+        assert_eq!(merged[1].as_chat().unwrap().context_window, 999);
+        assert_eq!(merged[2].as_chat().unwrap().context_window, 10_000);
 
         // An empty overlay returns the baseline unchanged.
-        assert_eq!(merge_catalog(&baseline, &[]), baseline);
+        assert_eq!(
+            merge_catalog(
+                &baseline.iter().cloned().map(crate::ai::types::AnyModel::Chat).collect::<Vec<_>>(),
+                &[],
+            ),
+            baseline.iter().cloned().map(crate::ai::types::AnyModel::Chat).collect::<Vec<_>>(),
+        );
     }
 
     #[test]

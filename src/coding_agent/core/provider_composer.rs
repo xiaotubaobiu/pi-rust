@@ -612,6 +612,9 @@ fn model_from_json(
         ));
     }
     Ok(Model {
+        r#type: None,
+        prompt_cache: None,
+        input_limits: None,
         id: definition.id.clone(),
         name: definition
             .name
@@ -792,6 +795,9 @@ fn apply_extension(
                 ));
             };
             Ok(Model {
+                r#type: None,
+                prompt_cache: None,
+                input_limits: None,
                 id: definition.id.clone(),
                 name: definition.name.clone(),
                 api,

@@ -7,15 +7,22 @@
 pub mod anthropic;
 pub mod azure_openai_responses;
 pub mod bedrock;
+pub mod cloudflare_workers_ai_system_one;
 pub mod google_generative_ai;
 pub mod google_shared;
 pub mod google_vertex;
+pub mod llama_cpp_classify;
 pub mod mistral;
 pub mod openai_codex_responses;
 pub mod openai_completions;
 pub mod openai_responses;
 pub mod openai_responses_shared;
 pub mod pi_messages;
+pub mod system_one_shared;
+pub mod typesafe_system_one;
+
+#[cfg(test)]
+mod ai_delta_oracle_tests;
 
 use crate::ai::transcript::TranscriptContext;
 use crate::ai::types::events::AssistantMessageEvent;
@@ -393,7 +400,7 @@ mod tests {
     use tokio::sync::mpsc;
 
     fn model() -> Model {
-        Model {
+        Model {r#type: None, prompt_cache: None, input_limits: None, 
             id: "test-model".to_string(),
             name: "Test Model".to_string(),
             api: "openai-completions".to_string(),

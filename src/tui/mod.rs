@@ -27,6 +27,7 @@
 
 pub mod alt_screen;
 pub mod autocomplete;
+pub mod colors; // upstream src/colors.ts
 pub mod component;
 pub mod component_mouse;
 pub mod components;
@@ -38,6 +39,7 @@ pub mod layout;
 pub mod layout_node;
 pub mod markdown_lexer;
 pub mod mouse_dispatch;
+pub mod oklab; // upstream src/oklab.ts
 pub mod overlay;
 pub mod rendered_lines;
 pub mod renderer;
@@ -50,10 +52,14 @@ pub mod undo_stack;
 pub mod utf16;
 pub mod utils;
 pub mod viewport_mouse;
+pub mod wheel_scroll; // upstream src/wheel-scroll.ts
 pub mod word_navigation;
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod delta_oracle_tests;
 
 pub mod component_gesture;
 pub mod component_overlay;

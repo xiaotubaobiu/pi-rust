@@ -16,6 +16,17 @@ pub enum TerminalColorScheme {
     Light,
 }
 
+/// Colors the terminal reports for its current theme.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct TerminalColors {
+    /// Default foreground (OSC 10).
+    pub foreground: Option<RgbColor>,
+    /// Default background (OSC 11).
+    pub background: Option<RgbColor>,
+    /// ANSI colors 0-15 (OSC 4). Only set when the terminal reported all 16.
+    pub palette: Option<Vec<RgbColor>>,
+}
+
 fn hex_to_rgb(hex: &str) -> RgbColor {
     let normalized = hex.strip_prefix('#').unwrap_or(hex);
     // Upstream uses `parseInt(slice, 16)` on fixed 2-char slices. Inputs here
@@ -43,28 +54,69 @@ fn parse_osc_hex_channel(channel: &str) -> Option<u8> {
     Some(((value as f64 / max as f64) * 255.0).round() as u8)
 }
 
-fn osc11_background_color_response(data: &str) -> Option<&str> {
-    // ^\x1b\]11;([^\x07\x1b]*)(?:\x07|\x1b\\)$ (case-insensitive on "11"? the
-    // JS regex /i applies to the whole pattern; only the literal `11` and the
-    // hex classes are affected. `11` is digits; hex classes cover [0-9a-f].)
-    let body = data.strip_prefix("\x1b]11;")?;
-    let value = body
+/// What an OSC color reply reports: the default foreground (OSC 10), the
+/// default background (OSC 11), or a palette index (OSC 4).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum OscColorTarget {
+    Foreground,
+    Background,
+    Index(u16),
+}
+
+impl OscColorTarget {
+    /// Upstream reply-map key (`String(target)`).
+    pub(crate) fn reply_key(&self) -> String {
+        match self {
+            Self::Foreground => "foreground".to_string(),
+            Self::Background => "background".to_string(),
+            Self::Index(index) => index.to_string(),
+        }
+    }
+}
+
+fn osc_color_response_value(data: &str) -> Option<(OscColorTarget, &str)> {
+    // ^\x1b\](?:(1[01])|4;(\d{1,3}));([^\x07\x1b]*)(?:\x07|\x1b\\)$ — the /i
+    // flag only affects letters, and the pattern has none outside classes.
+    let body = data.strip_prefix("\x1b]")?;
+    let (target, value) = if let Some(rest) = body.strip_prefix("10;") {
+        (OscColorTarget::Foreground, rest)
+    } else if let Some(rest) = body.strip_prefix("11;") {
+        (OscColorTarget::Background, rest)
+    } else if let Some(rest) = body.strip_prefix("4;") {
+        let digits_end = rest
+            .bytes()
+            .take_while(|b| b.is_ascii_digit())
+            .count()
+            .max(1);
+        if digits_end > 3 || rest.as_bytes().get(digits_end) != Some(&b';') {
+            return None;
+        }
+        let index: u16 = rest[..digits_end].parse().ok()?;
+        (OscColorTarget::Index(index), &rest[digits_end + 1..])
+    } else {
+        return None;
+    };
+    let value = value
         .strip_suffix('\x07')
-        .or_else(|| body.strip_suffix("\x1b\\"))?;
+        .or_else(|| value.strip_suffix("\x1b\\"))?;
     if value.contains('\x07') || value.contains('\x1b') {
         return None;
     }
-    Some(value)
+    Some((target, value))
 }
 
-/// Upstream `isOsc11BackgroundColorResponse`.
-pub fn is_osc11_background_color_response(data: &str) -> bool {
-    osc11_background_color_response(data).is_some()
+/// Upstream `parseOscColorResponse`: parse an OSC 10, 11, or 4 color reply.
+/// Returns `None` when `data` is not such a reply; the RGB is `None` when it
+/// is a reply with an unparseable color.
+pub fn parse_osc_color_response(data: &str) -> Option<(OscColorTarget, Option<RgbColor>)> {
+    let (target, value) = osc_color_response_value(data)?;
+    Some((target, parse_osc_color_value(value)))
 }
 
-/// Upstream `parseOsc11BackgroundColor`.
-pub fn parse_osc11_background_color(data: &str) -> Option<RgbColor> {
-    let value = crate::tui::utils::js_trim(osc11_background_color_response(data)?);
+/// Upstream `parseOscColorValue` (the shared value parser of the legacy OSC 11
+/// helper, kept until the `coding_agent` theme detector migrates).
+pub fn parse_osc_color_value(raw_value: &str) -> Option<RgbColor> {
+    let value = crate::tui::utils::js_trim(raw_value);
 
     if let Some(hex) = value.strip_prefix('#') {
         if hex.len() == 6 && hex.chars().all(|c| c.is_ascii_hexdigit()) {

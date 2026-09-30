@@ -209,7 +209,12 @@ pub struct RadiusProvider {
     id: String,
     name: String,
     gateway: String,
-    models: Arc<RwLock<Vec<Model>>>,
+    /// Upstream `baselineModels` (radius.ts, the unified-catalog delta):
+    /// the generated default-gateway catalog, chat entries with the
+    /// provider overridden to the instance id; empty for a custom gateway.
+    baseline: Vec<crate::ai::types::AnyModel>,
+    /// The dynamic overlay (upstream's captured `dynamicModels`).
+    models: Arc<RwLock<Vec<crate::ai::types::AnyModel>>>,
     auth: ProviderAuth,
     api: Arc<dyn ApiImpl>,
     load_config: RadiusConfigLoader,
@@ -234,9 +239,23 @@ pub(crate) fn radius_provider_with_loader(
             .gateway
             .unwrap_or_else(|| DEFAULT_RADIUS_GATEWAY.to_string()),
     );
-    // Upstream: `getRadiusModels(id, undefined)` — no credential at build
-    // time, so the baseline is always empty.
-    let models = Arc::new(RwLock::new(Vec::new()));
+    // Upstream radius.ts (the unified-catalog delta): `baselineModels` is
+    // the generated default-gateway catalog when the configured gateway is
+    // the default, else empty; `dynamicModels = getRadiusModels(id,
+    // undefined)` — no credential at build time, so the overlay starts
+    // empty. The embedded catalog carries no radius shard in this snapshot
+    // (data is generated), so the baseline is empty here exactly like the
+    // kimi-coding drift; the merge paths are in place for generated data.
+    let baseline: Vec<crate::ai::types::AnyModel> =
+        crate::ai::models::catalog::embedded_provider_catalog("radius")
+            .into_iter()
+            .map(|mut model| {
+                model.provider = id.clone();
+                crate::ai::types::AnyModel::Chat(model)
+            })
+            .collect();
+    let models: Arc<RwLock<Vec<crate::ai::types::AnyModel>>> =
+        Arc::new(RwLock::new(Vec::new()));
     let oauth_name = name.clone();
     let oauth_gateway = gateway.clone();
     let oauth = lazy_oauth(
@@ -254,6 +273,7 @@ pub(crate) fn radius_provider_with_loader(
         id,
         name,
         gateway,
+        baseline,
         models,
         auth: ProviderAuth {
             api_key: Some(env_api_key_auth("Radius API key", &["RADIUS_API_KEY"])),
@@ -266,11 +286,31 @@ pub(crate) fn radius_provider_with_loader(
 
 /// The mutable catalog behind `getModels` (upstream's captured `models`
 /// variable): replaced wholesale by the refresh update closures.
-fn write_models(models: &Arc<RwLock<Vec<Model>>>, updated: Vec<Model>) {
+fn write_models(
+    models: &Arc<RwLock<Vec<crate::ai::types::AnyModel>>>,
+    updated: Vec<crate::ai::types::AnyModel>,
+) {
     let mut guard = models
         .write()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
     *guard = updated;
+}
+
+/// Upstream radius.ts getModels (the unified-catalog delta): the baseline
+/// with the dynamic overlay merged in — a dynamic model replaces the
+/// baseline entry with the same id in place, otherwise it appends.
+fn merge_radius_catalog(
+    baseline: &[crate::ai::types::AnyModel],
+    dynamic: &[crate::ai::types::AnyModel],
+) -> Vec<crate::ai::types::AnyModel> {
+    let mut merged = baseline.to_vec();
+    for model in dynamic {
+        match merged.iter().position(|entry| entry.id() == model.id()) {
+            Some(index) => merged[index] = model.clone(),
+            None => merged.push(model.clone()),
+        }
+    }
+    merged
 }
 
 impl Provider for RadiusProvider {
@@ -291,7 +331,20 @@ impl Provider for RadiusProvider {
             .models
             .read()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
-        Ok(models.clone())
+        Ok(merge_radius_catalog(&self.baseline, &models)
+            .into_iter()
+            .filter_map(|model| model.as_chat().cloned())
+            .collect())
+    }
+
+    fn get_all_models(
+        &self,
+    ) -> Result<Vec<crate::ai::types::AnyModel>, ModelsError> {
+        let models = self
+            .models
+            .read()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        Ok(merge_radius_catalog(&self.baseline, &models))
     }
 
     fn is_dynamic(&self) -> bool {
@@ -314,10 +367,10 @@ impl Provider for RadiusProvider {
         Some(Box::pin(async move {
             // Restore the stored catalog first (radius.ts:37-48).
             if let Some(stored) = context.stored.clone() {
-                let restored: Vec<Model> = stored
+                let restored: Vec<crate::ai::types::AnyModel> = stored
                     .models
                     .into_iter()
-                    .filter(|model| model.provider == id)
+                    .filter(|model| model.provider() == id)
                     .collect();
                 let update_models = Arc::clone(&models);
                 let applied = context
@@ -338,7 +391,11 @@ impl Provider for RadiusProvider {
             // and the credential is OAuth.
             if context.stored.is_none() {
                 if let Some(Credential::OAuth(credential)) = &context.credential {
-                    let legacy = get_radius_models(&id, Some(credential));
+                    let legacy: Vec<crate::ai::types::AnyModel> =
+                        get_radius_models(&id, Some(credential))
+                            .into_iter()
+                            .map(crate::ai::types::AnyModel::Chat)
+                            .collect();
                     if !legacy.is_empty() {
                         let update_models = Arc::clone(&models);
                         let applied = context
@@ -378,7 +435,11 @@ impl Provider for RadiusProvider {
             if context.signal.is_cancelled() {
                 return Ok(());
             }
-            let refreshed = get_radius_models_from_config(&id, &config);
+            let refreshed: Vec<crate::ai::types::AnyModel> =
+                get_radius_models_from_config(&id, &config)
+                    .into_iter()
+                    .map(crate::ai::types::AnyModel::Chat)
+                    .collect();
             let update_models = Arc::clone(&models);
             context
                 .publish(ModelsPublication {
@@ -659,7 +720,7 @@ mod tests {
             .await
             .unwrap()
             .unwrap();
-        let stored_ids: Vec<&str> = entry.models.iter().map(|model| model.id.as_str()).collect();
+        let stored_ids: Vec<&str> = entry.models.iter().map(|model| model.id()).collect();
         assert_eq!(stored_ids, ["radius-large", "radius-mini"]);
         assert!(entry.checked_at.is_some());
     }

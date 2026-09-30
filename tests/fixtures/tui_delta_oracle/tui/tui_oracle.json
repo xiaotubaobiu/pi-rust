@@ -1,0 +1,169 @@
+{
+ "tui_color_query_write": [
+  "\u001b]10;?\u0007\u001b]11;?\u0007\u001b]4;0;?\u0007\u001b]4;1;?\u0007\u001b]4;2;?\u0007\u001b]4;3;?\u0007\u001b]4;4;?\u0007\u001b]4;5;?\u0007\u001b]4;6;?\u0007\u001b]4;7;?\u0007\u001b]4;8;?\u0007\u001b]4;9;?\u0007\u001b]4;10;?\u0007\u001b]4;11;?\u0007\u001b]4;12;?\u0007\u001b]4;13;?\u0007\u001b]4;14;?\u0007\u001b]4;15;?\u0007\u001b[c"
+ ],
+ "tui_color_query_resolved": {
+  "colors": {
+   "foreground": {
+    "r": 255,
+    "g": 255,
+    "b": 255
+   },
+   "background": {
+    "r": 0,
+    "g": 0,
+    "b": 0
+   },
+   "palette": [
+    {
+     "r": 0,
+     "g": 0,
+     "b": 0
+    },
+    {
+     "r": 0,
+     "g": 0,
+     "b": 0
+    },
+    {
+     "r": 0,
+     "g": 0,
+     "b": 0
+    },
+    {
+     "r": 0,
+     "g": 0,
+     "b": 0
+    },
+    {
+     "r": 0,
+     "g": 0,
+     "b": 0
+    },
+    {
+     "r": 0,
+     "g": 0,
+     "b": 0
+    },
+    {
+     "r": 0,
+     "g": 0,
+     "b": 0
+    },
+    {
+     "r": 0,
+     "g": 0,
+     "b": 0
+    },
+    {
+     "r": 0,
+     "g": 0,
+     "b": 0
+    },
+    {
+     "r": 0,
+     "g": 0,
+     "b": 0
+    },
+    {
+     "r": 0,
+     "g": 0,
+     "b": 0
+    },
+    {
+     "r": 0,
+     "g": 0,
+     "b": 0
+    },
+    {
+     "r": 0,
+     "g": 0,
+     "b": 0
+    },
+    {
+     "r": 0,
+     "g": 0,
+     "b": 0
+    },
+    {
+     "r": 0,
+     "g": 0,
+     "b": 0
+    },
+    {
+     "r": 0,
+     "g": 0,
+     "b": 0
+    }
+   ]
+  },
+  "inputs": [
+   "x"
+  ]
+ },
+ "tui_color_query_fifo": {
+  "results": [
+   [
+    "first",
+    {
+     "foreground": null,
+     "background": {
+      "r": 0,
+      "g": 0,
+      "b": 0
+     },
+     "palette": null
+    }
+   ],
+   [
+    "second",
+    {
+     "foreground": null,
+     "background": null,
+     "palette": null
+    }
+   ]
+  ]
+ },
+ "tui_color_query_late": {
+  "timedOut": {
+   "foreground": null,
+   "background": null,
+   "palette": null
+  },
+  "late": [
+   {
+    "foreground": null,
+    "background": {
+     "r": 255,
+     "g": 255,
+     "b": 255
+    },
+    "palette": null
+   }
+  ],
+  "inputs": []
+ },
+ "tui_color_after_queries": {
+  "inputs": [
+   "\u001b]11;#ffffff\u0007"
+  ]
+ },
+ "tui_hide_cursor_after_stop": {
+  "writes": []
+ },
+ "tui_hide_cursor_running": {
+  "writes": [
+   "\u001b[?25l"
+  ]
+ },
+ "provenance": {
+  "tuiSha256": "92dcb7f5f9a3a9575421d8de366be5cc78890be8df38d86c4ed3c0d77c7f88a4",
+  "utilsSha256": "5ecbc6c9b4850e78bf19de1fe8859b99b9c4c5f8a6384728d255a8e7e8a610ee",
+  "keysSha256": "b972facce4233a4623239fc38029e28cae15d0fb326558c0c09dc02cf4345fa7",
+  "terminalColorsSha256": "72d1ef298837bfe520bd8a060cb93ea27547dcbff04a167ace0f55b5183e550d",
+  "terminalImageSha256": "b901b8df0ad84e04ac0ee612c419b45d960430f63d2bdaa974c8dd9d89f3e6e5",
+  "node": "v25.8.2",
+  "platform": "win32"
+ }
+}

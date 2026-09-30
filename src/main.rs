@@ -155,10 +155,13 @@ fn build_models(provider_id: &str, api_key: &str, model: Model, api: Arc<dyn Api
             })),
             oauth: None,
         },
-        models: vec![model],
+        models: vec![pi_rust::ai::types::AnyModel::Chat(model)],
         fetch_models: None,
         filter_models: None,
+        filter_all_models: None,
         api: ApiImpls::Single(api),
+        images: pi_rust::ai::models::provider::ImagesImpls::new(),
+        classifiers: pi_rust::ai::models::provider::ClassifiersImpls::new(),
     }));
     models
 }

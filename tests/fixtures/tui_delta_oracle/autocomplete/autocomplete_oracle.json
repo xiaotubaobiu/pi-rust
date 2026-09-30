@@ -1,0 +1,426 @@
+{
+ "pathPrefix": [
+  {
+   "text": "",
+   "force": true,
+   "prefix": "",
+   "items": [
+    {
+     "value": "\"Folder Names/\"",
+     "label": "Folder Names/"
+    },
+    {
+     "value": "sub/",
+     "label": "sub/"
+    },
+    {
+     "value": "z-last/",
+     "label": "z-last/"
+    },
+    {
+     "value": "app.js",
+     "label": "app.js"
+    },
+    {
+     "value": "readme.md",
+     "label": "readme.md"
+    }
+   ]
+  },
+  {
+   "text": "",
+   "force": false,
+   "prefix": null,
+   "items": null
+  },
+  {
+   "text": "hello ",
+   "force": false,
+   "prefix": "",
+   "items": [
+    {
+     "value": "\"Folder Names/\"",
+     "label": "Folder Names/"
+    },
+    {
+     "value": "sub/",
+     "label": "sub/"
+    },
+    {
+     "value": "z-last/",
+     "label": "z-last/"
+    },
+    {
+     "value": "app.js",
+     "label": "app.js"
+    },
+    {
+     "value": "readme.md",
+     "label": "readme.md"
+    }
+   ]
+  },
+  {
+   "text": "hello ",
+   "force": true,
+   "prefix": "",
+   "items": [
+    {
+     "value": "\"Folder Names/\"",
+     "label": "Folder Names/"
+    },
+    {
+     "value": "sub/",
+     "label": "sub/"
+    },
+    {
+     "value": "z-last/",
+     "label": "z-last/"
+    },
+    {
+     "value": "app.js",
+     "label": "app.js"
+    },
+    {
+     "value": "readme.md",
+     "label": "readme.md"
+    }
+   ]
+  },
+  {
+   "text": "look at (~/Dev",
+   "force": false,
+   "prefix": null,
+   "items": null
+  },
+  {
+   "text": "look at (~/Dev",
+   "force": true,
+   "prefix": null,
+   "items": null
+  },
+  {
+   "text": "see `src/ma",
+   "force": false,
+   "prefix": null,
+   "items": null
+  },
+  {
+   "text": "see `src/ma",
+   "force": true,
+   "prefix": null,
+   "items": null
+  },
+  {
+   "text": "run app/[slug]/pa",
+   "force": false,
+   "prefix": null,
+   "items": null
+  },
+  {
+   "text": "run app/[slug]/pa",
+   "force": true,
+   "prefix": null,
+   "items": null
+  },
+  {
+   "text": "read (group)/pa",
+   "force": false,
+   "prefix": null,
+   "items": null
+  },
+  {
+   "text": "path with space/tex",
+   "force": false,
+   "prefix": null,
+   "items": null
+  },
+  {
+   "text": "open \"quoted file",
+   "force": false,
+   "prefix": null,
+   "items": null
+  },
+  {
+   "text": "check <output>.txt",
+   "force": false,
+   "prefix": null,
+   "items": null
+  },
+  {
+   "text": "value=con{fig}/x",
+   "force": false,
+   "prefix": null,
+   "items": null
+  },
+  {
+   "text": "日本語のファイル",
+   "force": true,
+   "prefix": null,
+   "items": null
+  },
+  {
+   "text": "日本語,ファイル",
+   "force": true,
+   "prefix": null,
+   "items": null
+  },
+  {
+   "text": "file。テキスト",
+   "force": true,
+   "prefix": null,
+   "items": null
+  },
+  {
+   "text": "plain",
+   "force": false,
+   "prefix": null,
+   "items": null
+  },
+  {
+   "text": "a/b c",
+   "force": false,
+   "prefix": null,
+   "items": null
+  },
+  {
+   "text": "x, y",
+   "force": false,
+   "prefix": null,
+   "items": null
+  }
+ ],
+ "atPrefix": [
+  {
+   "text": "see @sub/fi",
+   "prefix": null,
+   "items": null
+  },
+  {
+   "text": "see (@sub/fi",
+   "prefix": null,
+   "items": null
+  },
+  {
+   "text": "see `@sub/fi",
+   "prefix": null,
+   "items": null
+  },
+  {
+   "text": "@\"sub/fi",
+   "prefix": null,
+   "items": null
+  },
+  {
+   "text": "email a@b",
+   "prefix": null,
+   "items": null
+  },
+  {
+   "text": "see @sub",
+   "prefix": null,
+   "items": null
+  },
+  {
+   "text": "see @Folder Na",
+   "prefix": null,
+   "items": null
+  }
+ ],
+ "commands": [
+  {
+   "text": "/",
+   "prefix": "/",
+   "items": [
+    {
+     "value": "skill:deploy",
+     "label": "skill:deploy",
+     "description": "deploy the service"
+    },
+    {
+     "value": "skill:diagnose",
+     "label": "skill:diagnose",
+     "description": "diagnose failures"
+    },
+    {
+     "value": "build",
+     "label": "build",
+     "description": "[target]"
+    },
+    {
+     "value": "review",
+     "label": "review",
+     "description": null
+    },
+    {
+     "value": "skill:other",
+     "label": "skill:other",
+     "description": "unrelated"
+    }
+   ]
+  },
+  {
+   "text": "/d",
+   "prefix": "/d",
+   "items": [
+    {
+     "value": "skill:deploy",
+     "label": "skill:deploy",
+     "description": "deploy the service"
+    },
+    {
+     "value": "skill:diagnose",
+     "label": "skill:diagnose",
+     "description": "diagnose failures"
+    },
+    {
+     "value": "build",
+     "label": "build",
+     "description": "[target]"
+    }
+   ]
+  },
+  {
+   "text": "/de",
+   "prefix": "/de",
+   "items": [
+    {
+     "value": "skill:deploy",
+     "label": "skill:deploy",
+     "description": "deploy the service"
+    },
+    {
+     "value": "skill:diagnose",
+     "label": "skill:diagnose",
+     "description": "diagnose failures"
+    }
+   ]
+  },
+  {
+   "text": "/skill",
+   "prefix": "/skill",
+   "items": [
+    {
+     "value": "skill:deploy",
+     "label": "skill:deploy",
+     "description": "deploy the service"
+    },
+    {
+     "value": "skill:diagnose",
+     "label": "skill:diagnose",
+     "description": "diagnose failures"
+    },
+    {
+     "value": "skill:other",
+     "label": "skill:other",
+     "description": "unrelated"
+    }
+   ]
+  },
+  {
+   "text": "/skill:",
+   "prefix": "/skill:",
+   "items": [
+    {
+     "value": "skill:deploy",
+     "label": "skill:deploy",
+     "description": "deploy the service"
+    },
+    {
+     "value": "skill:diagnose",
+     "label": "skill:diagnose",
+     "description": "diagnose failures"
+    },
+    {
+     "value": "skill:other",
+     "label": "skill:other",
+     "description": "unrelated"
+    }
+   ]
+  },
+  {
+   "text": "/skill:d",
+   "prefix": "/skill:d",
+   "items": [
+    {
+     "value": "skill:deploy",
+     "label": "skill:deploy",
+     "description": "deploy the service"
+    },
+    {
+     "value": "skill:diagnose",
+     "label": "skill:diagnose",
+     "description": "diagnose failures"
+    }
+   ]
+  },
+  {
+   "text": "/b",
+   "prefix": "/b",
+   "items": [
+    {
+     "value": "build",
+     "label": "build",
+     "description": "[target]"
+    }
+   ]
+  },
+  {
+   "text": "/z",
+   "prefix": null,
+   "items": null
+  }
+ ],
+ "suggestions": [
+  {
+   "text": "open sub/",
+   "prefix": "sub/",
+   "items": [
+    {
+     "value": "sub/inner/",
+     "label": "inner/"
+    },
+    {
+     "value": "sub/file-one.ts",
+     "label": "file-one.ts"
+    },
+    {
+     "value": "sub/file-two.ts",
+     "label": "file-two.ts"
+    }
+   ]
+  },
+  {
+   "text": "open sub/in",
+   "prefix": "sub/in",
+   "items": [
+    {
+     "value": "sub/inner/",
+     "label": "inner/"
+    }
+   ]
+  },
+  {
+   "text": "open \"Folder Na",
+   "prefix": "\"Folder Na",
+   "items": [
+    {
+     "value": "\"Folder Names/\"",
+     "label": "Folder Names/"
+    }
+   ]
+  },
+  {
+   "text": "open folder-weights",
+   "prefix": null,
+   "items": null
+  }
+ ],
+ "provenance": {
+  "autocompleteSha256": "609b8ff2149e6e78e3bbc49c04d75016960b604a80702acfec59d40bbe32244d",
+  "utilsSha256": "5ecbc6c9b4850e78bf19de1fe8859b99b9c4c5f8a6384728d255a8e7e8a610ee",
+  "fuzzySha256": "0ae2bedc6a4f043d875ec415202a6e3d9e45405741359d7d2dc2855240dff633",
+  "node": "v25.8.2",
+  "platform": "win32"
+ }
+}

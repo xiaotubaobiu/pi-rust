@@ -243,6 +243,14 @@ pub enum StopReason {
 /// integers and pass everything else to the default f64 encoding;
 /// deserialization is the standard f64 behavior (`0` and `0.0` both parse to
 /// `0.0`, like `JSON.parse`).
+/// JS-number wire format for classifier floats: whole-number f64s emit as
+/// integers (JS `1`, never `1.0`); everything else takes the shortest f64
+/// form. The module is `pub(crate)` for the classifier types.
+pub(crate) mod js_number {
+    pub(crate) use super::cost_amount::deserialize;
+    pub(crate) use super::cost_amount::serialize;
+}
+
 pub(crate) mod cost_amount {
     use serde::{Deserialize, Deserializer, Serializer};
 

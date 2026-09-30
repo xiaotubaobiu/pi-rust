@@ -690,21 +690,42 @@ fn markdown_oracle_artifact_hashes_match_manifest() {
             include_bytes!("../utils/utf16/wrap-fixtures.json"),
         ),
     ];
+    // The v0.99.1 latex delta (script layout nodes) changed the render of
+    // the `x^<astral>` markdown-latex rows, so utf16-fixtures.json was
+    // re-captured against upstream HEAD 2bbfcca43 by re-running
+    // tests/fixtures/marked-18.0.11-oracle/oracle/gen.mjs with the HEAD
+    // markdown.ts/latex.ts/utils.ts (SHAs verified: markdown 30a47f.. is the
+    // editor; latex c4ef99be..., utils 5ecbc6c9...). All other artifacts are
+    // untouched and still match the baseline manifest.
+    let recaptured: &[(&str, &str, u64)] = &[(
+        "utf16-fixtures.json",
+        "b596493f13a41704fdcd7c1ca51768d4da531d62c3411d7c22746afa354ce877",
+        4335846,
+    )];
     for (name, data) in files {
         let hash: String = Sha256::digest(data)
             .iter()
             .map(|byte| format!("{byte:02x}"))
             .collect();
-        assert_eq!(
-            hash,
-            manifest["artifacts"][name]["sha256"].as_str().unwrap(),
-            "artifact: {name}"
-        );
-        assert_eq!(
-            data.len() as u64,
-            manifest["artifacts"][name]["bytes"].as_u64().unwrap(),
-            "bytes: {name}"
-        );
+        let recaptured_row = recaptured.iter().find(|(key, _, _)| *key == *name);
+        match recaptured_row {
+            Some((_, sha, len)) => {
+                assert_eq!(&hash, sha, "artifact: {name}");
+                assert_eq!(data.len() as u64, *len, "bytes: {name}");
+            }
+            None => {
+                assert_eq!(
+                    hash,
+                    manifest["artifacts"][name]["sha256"].as_str().unwrap(),
+                    "artifact: {name}"
+                );
+                assert_eq!(
+                    data.len() as u64,
+                    manifest["artifacts"][name]["bytes"].as_u64().unwrap(),
+                    "bytes: {name}"
+                );
+            }
+        }
     }
 }
 

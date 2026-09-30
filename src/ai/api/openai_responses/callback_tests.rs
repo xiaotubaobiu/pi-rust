@@ -29,7 +29,7 @@ const NONSTREAM_BODY: &str = r#"{"object":"response","output":[],"usage":{}}"#;
 const DENIED_BODY: &[u8] = br#"{"denied":true}"#;
 
 fn model() -> Model {
-    Model {
+    Model {r#type: None, prompt_cache: None, input_limits: None, 
         id: "gpt-5.4".into(),
         name: "GPT-5.4".into(),
         api: "openai-responses".into(),
@@ -451,7 +451,7 @@ async fn models_generation_routes_callback_bearing_requests_through_the_response
         "openai-responses".to_string(),
         Arc::new(OpenAiResponses) as Arc<dyn ApiImpl>,
     )]);
-    models.set_provider(create_provider(CreateProviderOptions {
+    models.set_provider(create_provider(CreateProviderOptions {filter_all_models: None, images: crate::ai::models::provider::ImagesImpls::new(), classifiers: crate::ai::models::provider::ClassifiersImpls::new(), 
         id: "p1".into(),
         name: None,
         base_url: None,
@@ -463,7 +463,7 @@ async fn models_generation_routes_callback_bearing_requests_through_the_response
             )),
             oauth: None,
         },
-        models: vec![model.clone()],
+        models: vec![crate::ai::types::AnyModel::Chat(model.clone())],
         fetch_models: None,
         filter_models: None,
         api: ApiImpls::PerApi(per_api),

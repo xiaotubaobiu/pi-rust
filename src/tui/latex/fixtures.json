@@ -482,7 +482,7 @@
       "id": "upstream: renders \"\\\\Psi(x,t)=\\n\\\\sum_{n=1}^{\\\\infty}\\n\\\\underbrace{\\nc_n\\n\\\\sqrt{\\\\frac{2}{L}}\\n\\\\sin\\\\!\\\\left(\\\\frac{n\\\\pi x}{L}\\\\right)\\n}_{\\\\text{spatial eigenmode}}\\n\\\\exp\\\\!\\\\left(-\\\\frac{i\\\\hbar n^2\\\\pi^2}{2mL^2}t\\\\right),\\n\\\\qquad\\n|\\\\Psi(x,t)|^2\\n=\\n\\\\begin{cases}\\n\\\\Psi^\\\\ast\\\\Psi, & 0<x<L,\\\\\\\\\\n0, & \\\\text{otherwise}.\\n\\\\end{cases}\"",
       "source": "\\Psi(x,t)=\n\\sum_{n=1}^{\\infty}\n\\underbrace{\nc_n\n\\sqrt{\\frac{2}{L}}\n\\sin\\!\\left(\\frac{n\\pi x}{L}\\right)\n}_{\\text{spatial eigenmode}}\n\\exp\\!\\left(-\\frac{i\\hbar n^2\\pi^2}{2mL^2}t\\right),\n\\qquad\n|\\Psi(x,t)|^2\n=\n\\begin{cases}\n\\Psi^\\ast\\Psi, & 0<x<L,\\\\\n0, & \\text{otherwise}.\n\\end{cases}",
       "display": false,
-      "expected": "Ψ(x,t) = ∑ₙ₌₁^∞ cₙ √(2/L) sin((nπ x)/L)_(spatial eigenmode) exp(-(iℏ n²π²)/(2mL²)t), |Ψ(x,t)|² = ⎧ Ψ^∗Ψ if 0 < x < L,\n⎩ 0 otherwise."
+      "expected": "                                                                                                 ⎧ Ψ^∗Ψ if 0 < x < L,\nΨ(x,t) = ∑ₙ₌₁^∞ cₙ √(2/L) sin((nπ x)/L)_(spatial eigenmode) exp(-(iℏ n²π²)/(2mL²)t), |Ψ(x,t)|² = ⎨\n                                                                                                 ⎩ 0    otherwise."
     },
     {
       "id": "upstream: renders \"x=\\\\frac{-b\\\\pm\\\\sqrt{b^2-4ac}}{2a}\"",
@@ -4220,7 +4220,7 @@
       "id": "NAMED_OPERATORS: arccos_{x \\in X} f(x)",
       "source": "a\\arccos_{x \\in X} f(x)",
       "display": true,
-      "expected": "a arccos_(x ∈ X) f(x)"
+      "expected": "a arccos     f(x)\n        x ∈ X"
     },
     {
       "id": "NAMED_OPERATORS: arccos\\limits^n_0 f(x)",
@@ -4304,7 +4304,7 @@
       "id": "NAMED_OPERATORS: arcsin_{x \\in X} f(x)",
       "source": "a\\arcsin_{x \\in X} f(x)",
       "display": true,
-      "expected": "a arcsin_(x ∈ X) f(x)"
+      "expected": "a arcsin     f(x)\n        x ∈ X"
     },
     {
       "id": "NAMED_OPERATORS: arcsin\\limits^n_0 f(x)",
@@ -4388,7 +4388,7 @@
       "id": "NAMED_OPERATORS: arctan_{x \\in X} f(x)",
       "source": "a\\arctan_{x \\in X} f(x)",
       "display": true,
-      "expected": "a arctan_(x ∈ X) f(x)"
+      "expected": "a arctan     f(x)\n        x ∈ X"
     },
     {
       "id": "NAMED_OPERATORS: arctan\\limits^n_0 f(x)",
@@ -4472,7 +4472,7 @@
       "id": "NAMED_OPERATORS: arg_{x \\in X} f(x)",
       "source": "a\\arg_{x \\in X} f(x)",
       "display": true,
-      "expected": "a arg_(x ∈ X) f(x)"
+      "expected": "a arg     f(x)\n     x ∈ X"
     },
     {
       "id": "NAMED_OPERATORS: arg\\limits^n_0 f(x)",
@@ -4556,7 +4556,7 @@
       "id": "NAMED_OPERATORS: cos_{x \\in X} f(x)",
       "source": "a\\cos_{x \\in X} f(x)",
       "display": true,
-      "expected": "a cos_(x ∈ X) f(x)"
+      "expected": "a cos     f(x)\n     x ∈ X"
     },
     {
       "id": "NAMED_OPERATORS: cos\\limits^n_0 f(x)",
@@ -4640,7 +4640,7 @@
       "id": "NAMED_OPERATORS: cosh_{x \\in X} f(x)",
       "source": "a\\cosh_{x \\in X} f(x)",
       "display": true,
-      "expected": "a cosh_(x ∈ X) f(x)"
+      "expected": "a cosh     f(x)\n      x ∈ X"
     },
     {
       "id": "NAMED_OPERATORS: cosh\\limits^n_0 f(x)",
@@ -4724,7 +4724,7 @@
       "id": "NAMED_OPERATORS: cot_{x \\in X} f(x)",
       "source": "a\\cot_{x \\in X} f(x)",
       "display": true,
-      "expected": "a cot_(x ∈ X) f(x)"
+      "expected": "a cot     f(x)\n     x ∈ X"
     },
     {
       "id": "NAMED_OPERATORS: cot\\limits^n_0 f(x)",
@@ -4808,7 +4808,7 @@
       "id": "NAMED_OPERATORS: coth_{x \\in X} f(x)",
       "source": "a\\coth_{x \\in X} f(x)",
       "display": true,
-      "expected": "a coth_(x ∈ X) f(x)"
+      "expected": "a coth     f(x)\n      x ∈ X"
     },
     {
       "id": "NAMED_OPERATORS: coth\\limits^n_0 f(x)",
@@ -4892,7 +4892,7 @@
       "id": "NAMED_OPERATORS: csc_{x \\in X} f(x)",
       "source": "a\\csc_{x \\in X} f(x)",
       "display": true,
-      "expected": "a csc_(x ∈ X) f(x)"
+      "expected": "a csc     f(x)\n     x ∈ X"
     },
     {
       "id": "NAMED_OPERATORS: csc\\limits^n_0 f(x)",
@@ -4976,7 +4976,7 @@
       "id": "NAMED_OPERATORS: deg_{x \\in X} f(x)",
       "source": "a\\deg_{x \\in X} f(x)",
       "display": true,
-      "expected": "a deg_(x ∈ X) f(x)"
+      "expected": "a deg     f(x)\n     x ∈ X"
     },
     {
       "id": "NAMED_OPERATORS: deg\\limits^n_0 f(x)",
@@ -5060,7 +5060,7 @@
       "id": "NAMED_OPERATORS: det_{x \\in X} f(x)",
       "source": "a\\det_{x \\in X} f(x)",
       "display": true,
-      "expected": "a det_(x ∈ X) f(x)"
+      "expected": "a det     f(x)\n     x ∈ X"
     },
     {
       "id": "NAMED_OPERATORS: det\\limits^n_0 f(x)",
@@ -5144,7 +5144,7 @@
       "id": "NAMED_OPERATORS: dim_{x \\in X} f(x)",
       "source": "a\\dim_{x \\in X} f(x)",
       "display": true,
-      "expected": "a dim_(x ∈ X) f(x)"
+      "expected": "a dim     f(x)\n     x ∈ X"
     },
     {
       "id": "NAMED_OPERATORS: dim\\limits^n_0 f(x)",
@@ -5228,7 +5228,7 @@
       "id": "NAMED_OPERATORS: exp_{x \\in X} f(x)",
       "source": "a\\exp_{x \\in X} f(x)",
       "display": true,
-      "expected": "a exp_(x ∈ X) f(x)"
+      "expected": "a exp     f(x)\n     x ∈ X"
     },
     {
       "id": "NAMED_OPERATORS: exp\\limits^n_0 f(x)",
@@ -5312,7 +5312,7 @@
       "id": "NAMED_OPERATORS: gcd_{x \\in X} f(x)",
       "source": "a\\gcd_{x \\in X} f(x)",
       "display": true,
-      "expected": "a gcd_(x ∈ X) f(x)"
+      "expected": "a gcd     f(x)\n     x ∈ X"
     },
     {
       "id": "NAMED_OPERATORS: gcd\\limits^n_0 f(x)",
@@ -5396,7 +5396,7 @@
       "id": "NAMED_OPERATORS: hom_{x \\in X} f(x)",
       "source": "a\\hom_{x \\in X} f(x)",
       "display": true,
-      "expected": "a hom_(x ∈ X) f(x)"
+      "expected": "a hom     f(x)\n     x ∈ X"
     },
     {
       "id": "NAMED_OPERATORS: hom\\limits^n_0 f(x)",
@@ -5564,7 +5564,7 @@
       "id": "NAMED_OPERATORS: ker_{x \\in X} f(x)",
       "source": "a\\ker_{x \\in X} f(x)",
       "display": true,
-      "expected": "a ker_(x ∈ X) f(x)"
+      "expected": "a ker     f(x)\n     x ∈ X"
     },
     {
       "id": "NAMED_OPERATORS: ker\\limits^n_0 f(x)",
@@ -5648,7 +5648,7 @@
       "id": "NAMED_OPERATORS: lg_{x \\in X} f(x)",
       "source": "a\\lg_{x \\in X} f(x)",
       "display": true,
-      "expected": "a lg_(x ∈ X) f(x)"
+      "expected": "a lg     f(x)\n    x ∈ X"
     },
     {
       "id": "NAMED_OPERATORS: lg\\limits^n_0 f(x)",
@@ -5984,7 +5984,7 @@
       "id": "NAMED_OPERATORS: ln_{x \\in X} f(x)",
       "source": "a\\ln_{x \\in X} f(x)",
       "display": true,
-      "expected": "a ln_(x ∈ X) f(x)"
+      "expected": "a ln     f(x)\n    x ∈ X"
     },
     {
       "id": "NAMED_OPERATORS: ln\\limits^n_0 f(x)",
@@ -6068,7 +6068,7 @@
       "id": "NAMED_OPERATORS: log_{x \\in X} f(x)",
       "source": "a\\log_{x \\in X} f(x)",
       "display": true,
-      "expected": "a log_(x ∈ X) f(x)"
+      "expected": "a log     f(x)\n     x ∈ X"
     },
     {
       "id": "NAMED_OPERATORS: log\\limits^n_0 f(x)",
@@ -6320,7 +6320,7 @@
       "id": "NAMED_OPERATORS: Pr_{x \\in X} f(x)",
       "source": "a\\Pr_{x \\in X} f(x)",
       "display": true,
-      "expected": "a Pr_(x ∈ X) f(x)"
+      "expected": "a Pr     f(x)\n    x ∈ X"
     },
     {
       "id": "NAMED_OPERATORS: Pr\\limits^n_0 f(x)",
@@ -6404,7 +6404,7 @@
       "id": "NAMED_OPERATORS: sec_{x \\in X} f(x)",
       "source": "a\\sec_{x \\in X} f(x)",
       "display": true,
-      "expected": "a sec_(x ∈ X) f(x)"
+      "expected": "a sec     f(x)\n     x ∈ X"
     },
     {
       "id": "NAMED_OPERATORS: sec\\limits^n_0 f(x)",
@@ -6488,7 +6488,7 @@
       "id": "NAMED_OPERATORS: sin_{x \\in X} f(x)",
       "source": "a\\sin_{x \\in X} f(x)",
       "display": true,
-      "expected": "a sin_(x ∈ X) f(x)"
+      "expected": "a sin     f(x)\n     x ∈ X"
     },
     {
       "id": "NAMED_OPERATORS: sin\\limits^n_0 f(x)",
@@ -6572,7 +6572,7 @@
       "id": "NAMED_OPERATORS: sinh_{x \\in X} f(x)",
       "source": "a\\sinh_{x \\in X} f(x)",
       "display": true,
-      "expected": "a sinh_(x ∈ X) f(x)"
+      "expected": "a sinh     f(x)\n      x ∈ X"
     },
     {
       "id": "NAMED_OPERATORS: sinh\\limits^n_0 f(x)",
@@ -6740,7 +6740,7 @@
       "id": "NAMED_OPERATORS: tan_{x \\in X} f(x)",
       "source": "a\\tan_{x \\in X} f(x)",
       "display": true,
-      "expected": "a tan_(x ∈ X) f(x)"
+      "expected": "a tan     f(x)\n     x ∈ X"
     },
     {
       "id": "NAMED_OPERATORS: tan\\limits^n_0 f(x)",
@@ -6824,7 +6824,7 @@
       "id": "NAMED_OPERATORS: tanh_{x \\in X} f(x)",
       "source": "a\\tanh_{x \\in X} f(x)",
       "display": true,
-      "expected": "a tanh_(x ∈ X) f(x)"
+      "expected": "a tanh     f(x)\n      x ∈ X"
     },
     {
       "id": "NAMED_OPERATORS: tanh\\limits^n_0 f(x)",
@@ -11264,49 +11264,49 @@
       "id": "environment: cases",
       "source": "A = \\begin{cases}1&200\\\\[2pt]3000&4\\end{cases}.",
       "display": false,
-      "expected": "A = ⎧ 1 if 200\n⎩ 3000 if 4."
+      "expected": "    ⎧ 1    if 200\nA = ⎨\n    ⎩ 3000 if 4."
     },
     {
       "id": "environment: cases",
       "source": "A = \\begin{cases}1&200\\\\[2pt]3000&4\\end{cases}.",
       "display": true,
-      "expected": "A = ⎧ 1 if 200\n⎩ 3000 if 4."
+      "expected": "    ⎧ 1    if 200\nA = ⎨\n    ⎩ 3000 if 4."
     },
     {
       "id": "environment: cases",
       "source": "A = \\begin{cases}1&2\\\\3&4\\\\5&6\\end{cases}.",
       "display": false,
-      "expected": "A = ⎧ 1 if 2\n⎨ 3 if 4\n⎩ 5 if 6."
+      "expected": "    ⎧ 1 if 2\nA = ⎨ 3 if 4\n    ⎩ 5 if 6."
     },
     {
       "id": "environment: cases",
       "source": "A = \\begin{cases}1&2\\\\3&4\\\\5&6\\end{cases}.",
       "display": true,
-      "expected": "A = ⎧ 1 if 2\n⎨ 3 if 4\n⎩ 5 if 6."
+      "expected": "    ⎧ 1 if 2\nA = ⎨ 3 if 4\n    ⎩ 5 if 6."
     },
     {
       "id": "environment: cases",
       "source": "A = \\begin{cases}x&\\text{when }x>0\\\\-x&\\text{otherwise}\\end{cases}.",
       "display": false,
-      "expected": "A = ⎧ x when x > 0\n⎩ -x otherwise."
+      "expected": "    ⎧ x  when x > 0\nA = ⎨\n    ⎩ -x otherwise."
     },
     {
       "id": "environment: cases",
       "source": "A = \\begin{cases}x&\\text{when }x>0\\\\-x&\\text{otherwise}\\end{cases}.",
       "display": true,
-      "expected": "A = ⎧ x when x > 0\n⎩ -x otherwise."
+      "expected": "    ⎧ x  when x > 0\nA = ⎨\n    ⎩ -x otherwise."
     },
     {
       "id": "environment: cases",
       "source": "A = \\begin{cases}\\frac{1}{2}&中\\\\😀&x^2\\end{cases}.",
       "display": false,
-      "expected": "A = ⎧ 1/2 if 中\n⎩ 😀 if x²."
+      "expected": "    ⎧ 1/2 if 中\nA = ⎨\n    ⎩ 😀  if x²."
     },
     {
       "id": "environment: cases",
       "source": "A = \\begin{cases}\\frac{1}{2}&中\\\\😀&x^2\\end{cases}.",
       "display": true,
-      "expected": "A = ⎧ 1/2 if 中\n⎩ 😀 if x²."
+      "expected": "    ⎧ 1/2 if 中\nA = ⎨\n    ⎩ 😀  if x²."
     },
     {
       "id": "environment: cases*",
@@ -11336,49 +11336,49 @@
       "id": "environment: cases*",
       "source": "A = \\begin{cases*}1&200\\\\[2pt]3000&4\\end{cases*}.",
       "display": false,
-      "expected": "A = ⎧ 1 if 200\n⎩ 3000 if 4."
+      "expected": "    ⎧ 1    if 200\nA = ⎨\n    ⎩ 3000 if 4."
     },
     {
       "id": "environment: cases*",
       "source": "A = \\begin{cases*}1&200\\\\[2pt]3000&4\\end{cases*}.",
       "display": true,
-      "expected": "A = ⎧ 1 if 200\n⎩ 3000 if 4."
+      "expected": "    ⎧ 1    if 200\nA = ⎨\n    ⎩ 3000 if 4."
     },
     {
       "id": "environment: cases*",
       "source": "A = \\begin{cases*}1&2\\\\3&4\\\\5&6\\end{cases*}.",
       "display": false,
-      "expected": "A = ⎧ 1 if 2\n⎨ 3 if 4\n⎩ 5 if 6."
+      "expected": "    ⎧ 1 if 2\nA = ⎨ 3 if 4\n    ⎩ 5 if 6."
     },
     {
       "id": "environment: cases*",
       "source": "A = \\begin{cases*}1&2\\\\3&4\\\\5&6\\end{cases*}.",
       "display": true,
-      "expected": "A = ⎧ 1 if 2\n⎨ 3 if 4\n⎩ 5 if 6."
+      "expected": "    ⎧ 1 if 2\nA = ⎨ 3 if 4\n    ⎩ 5 if 6."
     },
     {
       "id": "environment: cases*",
       "source": "A = \\begin{cases*}x&\\text{when }x>0\\\\-x&\\text{otherwise}\\end{cases*}.",
       "display": false,
-      "expected": "A = ⎧ x when x > 0\n⎩ -x otherwise."
+      "expected": "    ⎧ x  when x > 0\nA = ⎨\n    ⎩ -x otherwise."
     },
     {
       "id": "environment: cases*",
       "source": "A = \\begin{cases*}x&\\text{when }x>0\\\\-x&\\text{otherwise}\\end{cases*}.",
       "display": true,
-      "expected": "A = ⎧ x when x > 0\n⎩ -x otherwise."
+      "expected": "    ⎧ x  when x > 0\nA = ⎨\n    ⎩ -x otherwise."
     },
     {
       "id": "environment: cases*",
       "source": "A = \\begin{cases*}\\frac{1}{2}&中\\\\😀&x^2\\end{cases*}.",
       "display": false,
-      "expected": "A = ⎧ 1/2 if 中\n⎩ 😀 if x²."
+      "expected": "    ⎧ 1/2 if 中\nA = ⎨\n    ⎩ 😀  if x²."
     },
     {
       "id": "environment: cases*",
       "source": "A = \\begin{cases*}\\frac{1}{2}&中\\\\😀&x^2\\end{cases*}.",
       "display": true,
-      "expected": "A = ⎧ 1/2 if 中\n⎩ 😀 if x²."
+      "expected": "    ⎧ 1/2 if 中\nA = ⎨\n    ⎩ 😀  if x²."
     },
     {
       "id": "environment: array",
@@ -12224,7 +12224,7 @@
       "id": "edge",
       "source": "x^{😀}",
       "display": true,
-      "expected": "x^😀"
+      "expected": " 😀\nx"
     },
     {
       "id": "edge",
@@ -12296,7 +12296,7 @@
       "id": "edge",
       "source": "x_{ABC}",
       "display": true,
-      "expected": "x_ABC"
+      "expected": "x\n ABC"
     },
     {
       "id": "edge",
@@ -12308,19 +12308,19 @@
       "id": "edge",
       "source": "x^{Q}",
       "display": true,
-      "expected": "x^Q"
+      "expected": " Q\nx"
     },
     {
       "id": "edge",
       "source": "x_{a﻿+﻿b}",
       "display": false,
-      "expected": "x_(a + b)"
+      "expected": "x_(a+b)"
     },
     {
       "id": "edge",
       "source": "x_{a﻿+﻿b}",
       "display": true,
-      "expected": "x_(a + b)"
+      "expected": "x_(a+b)"
     },
     {
       "id": "edge",
@@ -12542,7 +12542,7 @@
       "id": "composed: 2",
       "source": "e^{\\alpha}+x_{中文}",
       "display": true,
-      "expected": "e^α+x_(中文)"
+      "expected": " α\ne +x_(中文)"
     },
     {
       "id": "composed: 3",
@@ -12686,7 +12686,7 @@
       "id": "composed: 14",
       "source": "e^{a+b}+x_{\\alpha}",
       "display": true,
-      "expected": "eᵃ⁺ᵇ+x_α"
+      "expected": "eᵃ⁺ᵇ+x\n      α"
     },
     {
       "id": "composed: 15",
@@ -12758,7 +12758,7 @@
       "id": "composed: 20",
       "source": "e^{x_1^2}+x_{x}",
       "display": true,
-      "expected": "e^(x₁²)+xₓ"
+      "expected": "  2\n x\n  1\ne  +xₓ"
     },
     {
       "id": "composed: 21",
@@ -12830,7 +12830,7 @@
       "id": "composed: 26",
       "source": "e^{\\sin x}+x_{x_1^2}",
       "display": true,
-      "expected": "e^(sin x)+x_(x₁²)"
+      "expected": "e^(sin x)+x\n            2\n           x\n            1"
     },
     {
       "id": "composed: 27",
@@ -12902,7 +12902,7 @@
       "id": "composed: 32",
       "source": "e^{\\sum_{i=0}^n x_i}+x_{😀}",
       "display": true,
-      "expected": "    n\ne^( ∑  xᵢ)+x_😀\n   i=0"
+      "expected": "  n\n  ∑  x\n i=0  i\ne      +x\n         😀"
     },
     {
       "id": "composed: 33",
@@ -13190,7 +13190,7 @@
       "id": "composed: 56",
       "source": "e^{12}+x_{\\sum_{i=0}^n x_i}",
       "display": true,
-      "expected": "        n\ne¹²+x_( ∑  xᵢ)\n       i=0"
+      "expected": "e¹²+x\n      n\n      ∑  x\n     i=0  i"
     },
     {
       "id": "composed: 57",
@@ -13262,7 +13262,7 @@
       "id": "composed: 62",
       "source": "e^{😀}+x_{\\frac{1}{x}}",
       "display": true,
-      "expected": "e^😀+x_(1/x)"
+      "expected": " 😀\ne  +x_(1/x)"
     },
     {
       "id": "composed: 63",
@@ -16442,13 +16442,13 @@
       "id": "streaming prefix",
       "source": "\\begin{cases}1&x<0\\\\0&\\text{otherwise}\\end{cases}",
       "display": false,
-      "expected": "⎧ 1 if x < 0\n⎩ 0 otherwise"
+      "expected": "⎧ 1 if x < 0\n⎨\n⎩ 0 otherwise"
     },
     {
       "id": "streaming prefix",
       "source": "\\begin{cases}1&x<0\\\\0&\\text{otherwise}\\end{cases}",
       "display": true,
-      "expected": "⎧ 1 if x < 0\n⎩ 0 otherwise"
+      "expected": "⎧ 1 if x < 0\n⎨\n⎩ 0 otherwise"
     },
     {
       "id": "astral boundary",
@@ -16460,7 +16460,13 @@
       "id": "astral boundary",
       "source": "x^😀",
       "display": true,
-      "expected": "x^😀"
+      "expectedUtf16": [
+        32,
+        55357,
+        10,
+        120,
+        56832
+      ]
     },
     {
       "id": "astral boundary",
@@ -16472,7 +16478,13 @@
       "id": "astral boundary",
       "source": "x_😀",
       "display": true,
-      "expected": "x_😀"
+      "expectedUtf16": [
+        120,
+        56832,
+        10,
+        32,
+        55357
+      ]
     },
     {
       "id": "astral boundary",

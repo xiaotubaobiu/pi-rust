@@ -30,7 +30,8 @@ use crate::tui::keybindings::with_keybindings;
 use crate::tui::keys::{decode_printable_key, matches_key};
 use crate::tui::undo_stack::UndoStack;
 use crate::tui::utils::{
-    is_whitespace_char, is_whitespace_segment, slice_by_column, visible_width,
+    is_autocomplete_separator_char, is_cjk_break_char, is_whitespace_char, is_whitespace_segment,
+    slice_by_column, visible_width,
 };
 use crate::tui::word_navigation::{
     find_word_backward, find_word_forward, KillRing, KillRingPushOptions,
@@ -388,6 +389,8 @@ pub struct Editor {
     autocomplete_state: Option<AutocompleteMode>,
     autocomplete_prefix: String,
     autocomplete_max_visible: usize,
+    /// Upstream `autocompleteTriggerCharacters` (default ["@", "#"]).
+    autocomplete_trigger_characters: Vec<char>,
 
     pub disable_submit: bool,
     on_submit: Option<SubmitCallback>,
@@ -396,6 +399,60 @@ pub struct Editor {
 
 fn identity_border(border: &str) -> String {
     border.to_string()
+}
+
+/// Upstream `buildTriggerPattern(triggerCharacters).test(text)` (editor.ts:263):
+/// the pattern is
+/// `(?:^|(?:\s|cjkPunctuation))[([{<\`]*(?:@"[^"]*|[trigger](?:(?!\s|cjkPunctuation).)*)$`
+/// with the `u` flag. The negative lookahead becomes an all-chars predicate, so
+/// this is a hand matcher instead of the `regex` crate.
+fn autocomplete_trigger_pattern_matches(text: &str, trigger_characters: &[char]) -> bool {
+    let is_wrapper = |c: char| matches!(c, '(' | '[' | '{' | '<' | '`');
+    // Candidate starts: position 0 with the `^` branch consuming nothing, or
+    // any position whose first code point is a separator (consumed by the
+    // separator branch).
+    let attempt = |start: usize, consumed: bool| -> bool {
+        let mut cursor = if consumed {
+            start + text[start..].chars().next().expect("char").len_utf8()
+        } else {
+            start
+        };
+        // [([{<`]*
+        while let Some(c) = text[cursor..].chars().next() {
+            if !is_wrapper(c) {
+                break;
+            }
+            cursor += c.len_utf8();
+        }
+        // (?:@"[^"]*|[trigger]nonsep*)$
+        if text[cursor..].starts_with("@\"") && !text[cursor + 2..].contains('"') {
+            return true;
+        }
+        if let Some(c) = text[cursor..].chars().next() {
+            if trigger_characters.contains(&c) {
+                let rest = &text[cursor + c.len_utf8()..];
+                if rest.chars().all(|ch| !is_autocomplete_separator_char(ch)) {
+                    return true;
+                }
+            }
+        }
+        false
+    };
+    if attempt(0, false) {
+        return true;
+    }
+    for (index, character) in text.char_indices() {
+        if is_autocomplete_separator_char(character) && attempt(index, true) {
+            return true;
+        }
+    }
+    false
+}
+
+/// Oracle-test hook for the private trigger matcher.
+#[cfg(test)]
+pub(crate) fn editor_trigger_pattern_matches_for_test(text: &str, characters: &[char]) -> bool {
+    autocomplete_trigger_pattern_matches(text, characters)
 }
 
 fn default_terminal_rows() -> usize {
@@ -442,6 +499,7 @@ impl Editor {
             autocomplete_state: None,
             autocomplete_prefix: String::new(),
             autocomplete_max_visible: 5,
+            autocomplete_trigger_characters: vec!['@', '#'],
             disable_submit: false,
             on_submit: None,
             on_change: None,
@@ -941,6 +999,9 @@ impl Editor {
     fn insert_character(&mut self, text: &str, skip_undo_coalescing: bool) {
         self.exit_history_browsing();
 
+        // Upstream's trigger checks test the typed `char`; keep it reachable
+        // before the full-buffer `text` shadow below.
+        let typed: &str = text;
         if !skip_undo_coalescing {
             let first_char_is_ws = text.chars().next().is_some_and(is_whitespace_char);
             if first_char_is_ws || self.last_action != Some(LastAction::TypeWord) {
@@ -960,31 +1021,39 @@ impl Editor {
             on_change(&text);
         }
 
-        // Autocomplete trigger checks (upstream editor.ts:1216-1245).
+        // Autocomplete trigger checks (upstream editor.ts:1227-1252).
         if self.autocomplete_state.is_none() {
-            if text == "/" && self.is_at_start_of_message() {
+            let current_line = self.state.lines[self.state.cursor_line].clone();
+            let text_before_cursor = &current_line[..self.state.cursor_col];
+            if typed == "/" && self.is_at_start_of_message() {
                 self.try_trigger_autocomplete();
-            } else if self.matches_default_trigger_characters(&text) {
-                let current_line = self.state.lines[self.state.cursor_line].clone();
-                let text_before_cursor = &current_line[..self.state.cursor_col];
-                let char_before = text_before_cursor[..text_before_cursor.len() - text.len()]
-                    .chars()
-                    .next_back();
-                if text_before_cursor.len() == text.len()
-                    || char_before == Some(' ')
-                    || char_before == Some('\t')
-                {
+            }
+            // Auto-trigger for symbol-based completion like @, #, or provider
+            // triggers at token boundaries.
+            else if typed
+                .chars()
+                .next()
+                .is_some_and(|c| self.autocomplete_trigger_characters.contains(&c))
+            {
+                if self.autocomplete_trigger_pattern_matches(text_before_cursor) {
                     self.try_trigger_autocomplete();
                 }
-            } else if text.len() == 1
-                && text
-                    .chars()
-                    .next()
-                    .is_some_and(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | '_'))
+            }
+            // Also auto-trigger when typing letters in a slash command or
+            // symbol completion context.
+            else if typed.len() == 1
+                && typed.chars().next().is_some_and(|c| {
+                    c.is_ascii_alphanumeric()
+                        || matches!(c, '.' | '-' | '_')
+                        || is_cjk_break_char(c)
+                })
             {
-                let current_line = self.state.lines[self.state.cursor_line].clone();
-                let text_before_cursor = &current_line[..self.state.cursor_col];
-                if self.is_in_slash_command_context(text_before_cursor) {
+                // Check if we're in a slash command (with or without space
+                // for arguments) or a symbol-based completion context like @,
+                // #, or provider triggers.
+                if self.is_in_slash_command_context(text_before_cursor)
+                    || self.autocomplete_trigger_pattern_matches(text_before_cursor)
+                {
                     self.try_trigger_autocomplete();
                 }
             }
@@ -1809,9 +1878,10 @@ impl Editor {
         self.set_autocomplete_trigger_characters(trigger);
     }
 
-    fn set_autocomplete_trigger_characters(&mut self, _characters: Vec<char>) {
-        // The default provider triggers are "@" and "#"; custom trigger
-        // pattern compilation joins with the provider-specific slice.
+    fn set_autocomplete_trigger_characters(&mut self, characters: Vec<char>) {
+        // Upstream rebuilds the trigger/debounce regexes from the characters;
+        // the matchers here read the list directly.
+        self.autocomplete_trigger_characters = characters;
     }
 
     pub fn get_autocomplete_max_visible(&self) -> usize {
@@ -1916,9 +1986,12 @@ impl Editor {
         self.is_slash_menu_allowed() && text_before_cursor.trim_start().starts_with('/')
     }
 
-    fn matches_default_trigger_characters(&self, text: &str) -> bool {
-        // Default trigger characters ["@", "#"] against the inserted text.
-        text.chars().next().is_some_and(|c| c == '@' || c == '#')
+    /// Upstream `buildTriggerPattern(...).test(text)` for `characters`
+    /// (editor.ts:263): `(?:^|(?:\s|cjkPunctuation))[([{<\`]*(?:
+    /// @"[^"]* | [trigger](?:(?!\s|cjkPunctuation).)*)$` — implemented as a
+    /// matcher because the JS pattern needs lookaround.
+    pub(crate) fn autocomplete_trigger_pattern_matches(&self, text: &str) -> bool {
+        autocomplete_trigger_pattern_matches(text, &self.autocomplete_trigger_characters)
     }
 
     /// Upstream Tab/Enter application inside autocomplete mode. Returns

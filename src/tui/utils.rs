@@ -188,10 +188,21 @@ fn is_non_printing_char(c: char) -> bool {
         || is_surrogate_char(c)
 }
 
-/// `graphemeWidth` (utils.ts:174).
+/// `graphemeWidth` (utils.ts:180).
 fn grapheme_width(segment: &str) -> usize {
-    if segment == "\t" {
-        return 3;
+    // Fast path: JS `segment.length === 1` — exactly one UTF-16 unit, i.e. a
+    // single BMP code point. Printable ASCII occupies one cell, a tab three.
+    let mut chars = segment.chars();
+    if let (Some(single), None) = (chars.next(), chars.next()) {
+        if single.len_utf16() == 1 {
+            let code = u32::from(single);
+            if (0x20..=0x7e).contains(&code) {
+                return 1;
+            }
+            if code == 0x09 {
+                return 3;
+            }
+        }
     }
 
     // Some marks occupy cells even without a base character. Upstream returns
@@ -268,16 +279,83 @@ pub(crate) fn is_cjk_break_segment(segment: &str) -> bool {
     segment.chars().any(is_cjk_break_char)
 }
 
-/// `visibleWidth` (utils.ts:240). The upstream width cache is an optimization,
+/// JS `\p{Punctuation}` (General_Category=P; distinct from the ASCII
+/// `isPunctuationChar` helper near the word-navigation code).
+fn is_unicode_punctuation_char(c: char) -> bool {
+    use GeneralCategory::*;
+    matches!(
+        general_category_map().get(c),
+        DashPunctuation
+            | OpenPunctuation
+            | ClosePunctuation
+            | InitialPunctuation
+            | FinalPunctuation
+            | ConnectorPunctuation
+            | OtherPunctuation
+    )
+}
+
+/// `cjkPunctuationRegex` against a single code point: a CJK-script char that
+/// is punctuation (`(?=\p{Punctuation})` + the CJK class), or one of the
+/// explicit CJK punctuation literals.
+pub(crate) fn is_cjk_punctuation_char(c: char) -> bool {
+    (is_unicode_punctuation_char(c) && is_cjk_break_char(c))
+        || matches!(
+            c,
+            '，' | '．'
+                | '：'
+                | '；'
+                | '！'
+                | '？'
+                | '（'
+                | '）'
+                | '［'
+                | '］'
+                | '｛'
+                | '｝'
+                | '“'
+                | '”'
+                | '‘'
+                | '’'
+                | '…'
+                | '—'
+        )
+}
+
+/// `autocompleteSeparatorRegex` (`(?:\s|cjkPunctuation)`) against a single
+/// code point: JS `\s` or CJK punctuation.
+pub(crate) fn is_autocomplete_separator_char(c: char) -> bool {
+    crate::tui::markdown_lexer::is_js_space(c) || is_cjk_punctuation_char(c)
+}
+
+/// `autocompleteSeparatorRegex.test(value)` (unanchored search): some code
+/// point matches.
+pub(crate) fn has_autocomplete_separator(value: &str) -> bool {
+    value.chars().any(is_autocomplete_separator_char)
+}
+
+/// `tokenStartRegex` = `autocompleteBoundaryRegex` anchored at the end
+/// (`(?:^|(?:\s|cjkPunctuation))$`): the empty string, or the last code point
+/// is a separator.
+pub(crate) fn is_token_start_boundary(text: &str) -> bool {
+    match text.chars().next_back() {
+        None => true,
+        Some(last) => is_autocomplete_separator_char(last),
+    }
+}
+
+/// `visibleWidth` (utils.ts:251). The upstream width cache is an optimization,
 /// not observable behavior, and is not ported.
 pub fn visible_width(s: &str) -> usize {
     if s.is_empty() {
         return 0;
     }
 
-    // Fast path: pure ASCII printable.
-    if is_printable_ascii(s) {
-        return s.len();
+    // Fast path: printable ASCII, tabs, and ANSI escape sequences. Styled lines
+    // take this path, so re-rendering after a theme change does not run
+    // grapheme segmentation on every line.
+    if let Some(ascii_width) = ascii_visible_width(s) {
+        return ascii_width;
     }
 
     // Normalize: tabs to 3 spaces, strip ANSI escape codes.
@@ -290,6 +368,33 @@ pub fn visible_width(s: &str) -> usize {
     }
 
     clean.graphemes(true).map(grapheme_width).sum()
+}
+
+/// `asciiVisibleWidth` (utils.ts:429): width of a string made of printable
+/// ASCII, tabs, and ANSI escape sequences, or `None` (JS -1) if it contains
+/// anything else. Matches `visibleWidth` for those strings.
+fn ascii_visible_width(s: &str) -> Option<usize> {
+    let mut width = 0;
+    let mut i = 0;
+    while i < s.len() {
+        let code = s.as_bytes()[i];
+        if (0x20..=0x7e).contains(&code) {
+            width += 1;
+            i += 1;
+        } else if code == 0x09 {
+            width += 3;
+            i += 1;
+        } else if code == 0x1b {
+            let length = ansi_code_length(s, i);
+            if length == 0 {
+                return None;
+            }
+            i += length;
+        } else {
+            return None;
+        }
+    }
+    Some(width)
 }
 
 /// `stripTerminalSequences` (utils.ts:298).
@@ -311,45 +416,55 @@ pub fn strip_terminal_sequences(s: &str) -> String {
     result
 }
 
-/// `extractAnsiCode` (utils.ts:406). `pos` must be a char boundary; returns
+/// `extractAnsiCode` (utils.ts:419). `pos` must be a char boundary; returns
 /// the matched escape-sequence slice.
 pub fn extract_ansi_code(s: &str, pos: usize) -> Option<&str> {
+    let length = ansi_code_length(s, pos);
+    if length > 0 {
+        Some(&s[pos..pos + length])
+    } else {
+        None
+    }
+}
+
+/// `ansiCodeLength` (utils.ts:436): length of the ANSI/OSC/APC escape sequence
+/// starting at `pos` (a char boundary), or 0 if there is none. Lengths are in
+/// UTF-16 units upstream and bytes here; every matched sequence is pure ASCII,
+/// so the counts coincide.
+fn ansi_code_length(s: &str, pos: usize) -> usize {
     let bytes = s.as_bytes();
     if pos >= s.len() || bytes[pos] != 0x1b {
-        return None;
+        return 0;
     }
 
     let next = bytes.get(pos + 1).copied();
 
     // CSI sequence: ESC [ ... m/G/K/H/J
     if next == Some(b'[') {
-        let mut j = pos + 2;
-        while j < s.len() && !matches!(bytes[j], b'm' | b'G' | b'K' | b'H' | b'J') {
-            j += 1;
-        }
-        if j < s.len() {
-            return Some(&s[pos..=j]);
-        }
-        return None;
+        let terminator = bytes[pos + 2..]
+            .iter()
+            .position(|byte| matches!(byte, 0x6d | 0x47 | 0x4b | 0x48 | 0x4a));
+        return match terminator {
+            Some(offset) => pos + 2 + offset + 1 - pos,
+            None => 0,
+        };
     }
 
     // OSC / APC sequence: BEL- or ST-terminated. Used for hyperlinks (OSC 8),
     // window titles, cursor markers and application-specific commands.
     if next == Some(b']') || next == Some(b'_') {
-        let mut j = pos + 2;
-        while j < s.len() {
+        for j in pos + 2..s.len() {
             if bytes[j] == 0x07 {
-                return Some(&s[pos..=j]);
+                return j + 1 - pos;
             }
             if bytes[j] == 0x1b && bytes.get(j + 1) == Some(&b'\\') {
-                return Some(&s[pos..j + 2]);
+                return j + 2 - pos;
             }
-            j += 1;
         }
-        return None;
+        return 0;
     }
 
-    None
+    0
 }
 
 /// End of the next run of text that starts at `start` and contains no escape
@@ -1160,7 +1275,7 @@ pub fn get_active_background_ansi(text: &str) -> String {
     tracker.get_active_background_code()
 }
 
-/// `splitIntoTokensWithAnsi` (utils.ts:756).
+/// `splitIntoTokensWithAnsi` (utils.ts:798).
 fn split_into_tokens_with_ansi(text: &str) -> Vec<String> {
     let mut tokens: Vec<String> = Vec::new();
     let mut current = String::new();
@@ -1176,10 +1291,19 @@ fn split_into_tokens_with_ansi(text: &str) -> Vec<String> {
         }
 
         let end = next_text_run_end(text, i);
+        let chunk = &text[i..end];
+        // Printable ASCII characters are single graphemes, so skip the
+        // segmenter for them.
+        let ascii = is_printable_ascii(chunk);
+        let segments: Vec<&str> = if ascii {
+            (0..chunk.len()).map(|k| &chunk[k..k + 1]).collect()
+        } else {
+            chunk.graphemes(true).collect()
+        };
 
-        for segment in text[i..end].graphemes(true) {
+        for segment in segments {
             let segment_is_space = segment == " ";
-            if !segment_is_space && is_cjk_break_segment(segment) {
+            if !ascii && !segment_is_space && is_cjk_break_segment(segment) {
                 flush_current(&mut tokens, &mut current, &mut current_kind);
                 let token = pending_ansi.clone() + segment;
                 pending_ansi.clear();

@@ -143,11 +143,6 @@ impl Text {
         self.0.ends_with(pattern.encode_utf16(&mut [0; 2]))
     }
 
-    pub(super) fn strip_suffix(&self, pattern: char) -> Option<Self> {
-        self.ends_with(pattern)
-            .then(|| self.slice(..self.len() - pattern.len_utf16()))
-    }
-
     pub(super) fn split(&self, pattern: &str) -> Vec<Self> {
         let needle: Vec<_> = pattern.encode_utf16().collect();
         assert!(!needle.is_empty());

@@ -151,9 +151,11 @@ pub fn detect_openai_completions_compat_for_model(
         supports_openai_grammar_tools: Some(false),
         supports_mid_convo_system_messages: Some(false),
         supports_mid_convo_tool_additions: Some(false),
-        supports_strict_mode: Some(
-            !is_moonshot && !is_together && !is_cloudflare_ai_gateway && !is_nvidia,
-        ),
+        // OpenAI compatibility alone does not imply strict JSON-schema tool
+        // support (upstream 890f92088/af7359b90): the detected default is
+        // false, and generated capable models enable it explicitly via
+        // compat.
+        supports_strict_mode: Some(false),
         cache_control_format,
         send_session_affinity_headers: Some(is_openrouter),
         session_affinity_format: Some(if is_openrouter {
@@ -367,7 +369,7 @@ mod tests {
             supports_openai_grammar_tools: Some(false),
             supports_mid_convo_system_messages: Some(false),
             supports_mid_convo_tool_additions: Some(false),
-            supports_strict_mode: Some(true),
+            supports_strict_mode: Some(false),
             cache_control_format: None,
             send_session_affinity_headers: Some(false),
             session_affinity_format: Some(SessionAffinityFormat::Openai),

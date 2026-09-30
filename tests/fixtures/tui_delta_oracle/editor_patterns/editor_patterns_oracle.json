@@ -1,0 +1,382 @@
+{
+ "trigger": [
+  {
+   "text": "",
+   "matches": false
+  },
+  {
+   "text": "@",
+   "matches": true
+  },
+  {
+   "text": "@src",
+   "matches": true
+  },
+  {
+   "text": "hello @src/foo.ts",
+   "matches": true
+  },
+  {
+   "text": "(@src/foo",
+   "matches": true
+  },
+  {
+   "text": "`@src/foo",
+   "matches": true
+  },
+  {
+   "text": "{@a",
+   "matches": true
+  },
+  {
+   "text": "[@a",
+   "matches": true
+  },
+  {
+   "text": "<@a",
+   "matches": true
+  },
+  {
+   "text": "hello @\"quoted path with space",
+   "matches": true
+  },
+  {
+   "text": "@\"unterminated quote \" here",
+   "matches": false
+  },
+  {
+   "text": "a @b c",
+   "matches": false
+  },
+  {
+   "text": "@b c",
+   "matches": false
+  },
+  {
+   "text": "x @",
+   "matches": true
+  },
+  {
+   "text": "email a@b",
+   "matches": false
+  },
+  {
+   "text": "a@@b",
+   "matches": false
+  },
+  {
+   "text": "run `@script arg",
+   "matches": false
+  },
+  {
+   "text": "日本語@ファイル",
+   "matches": false
+  },
+  {
+   "text": "日本語，@ファイル",
+   "matches": true
+  },
+  {
+   "text": "@ファイル 説明",
+   "matches": false
+  },
+  {
+   "text": "#tag",
+   "matches": true
+  },
+  {
+   "text": "#日本語タグ",
+   "matches": true
+  },
+  {
+   "text": "a #tag here",
+   "matches": false
+  },
+  {
+   "text": "@path,more",
+   "matches": true
+  },
+  {
+   "text": "@path，more",
+   "matches": false
+  },
+  {
+   "text": "@path,more",
+   "matches": true
+  },
+  {
+   "text": "text @path ",
+   "matches": false
+  },
+  {
+   "text": "@path ",
+   "matches": false
+  },
+  {
+   "text": "\t@tabbed",
+   "matches": true
+  },
+  {
+   "text": "@a\tb",
+   "matches": false
+  },
+  {
+   "text": "((@nested",
+   "matches": true
+  },
+  {
+   "text": "@((weird",
+   "matches": true
+  },
+  {
+   "text": "chat @文件名.txt。",
+   "matches": false
+  },
+  {
+   "text": "@x=y",
+   "matches": true
+  },
+  {
+   "text": "@x=y ",
+   "matches": false
+  },
+  {
+   "text": "/help",
+   "characters": "/%",
+   "matches": true
+  },
+  {
+   "text": "%x",
+   "characters": "/%",
+   "matches": true
+  },
+  {
+   "text": "a /help b",
+   "characters": "/%",
+   "matches": false
+  },
+  {
+   "text": "/%x",
+   "characters": "/%",
+   "matches": true
+  },
+  {
+   "text": "@path",
+   "characters": "/%",
+   "matches": false
+  },
+  {
+   "text": "run /cmd now",
+   "characters": "/%",
+   "matches": false
+  },
+  {
+   "text": "/help",
+   "characters": "/",
+   "matches": true
+  },
+  {
+   "text": "%x",
+   "characters": "/",
+   "matches": false
+  },
+  {
+   "text": "a /help b",
+   "characters": "/",
+   "matches": false
+  },
+  {
+   "text": "/%x",
+   "characters": "/",
+   "matches": true
+  },
+  {
+   "text": "@path",
+   "characters": "/",
+   "matches": false
+  },
+  {
+   "text": "run /cmd now",
+   "characters": "/",
+   "matches": false
+  },
+  {
+   "text": "/help",
+   "characters": "@",
+   "matches": false
+  },
+  {
+   "text": "%x",
+   "characters": "@",
+   "matches": false
+  },
+  {
+   "text": "a /help b",
+   "characters": "@",
+   "matches": false
+  },
+  {
+   "text": "/%x",
+   "characters": "@",
+   "matches": false
+  },
+  {
+   "text": "@path",
+   "characters": "@",
+   "matches": true
+  },
+  {
+   "text": "run /cmd now",
+   "characters": "@",
+   "matches": false
+  }
+ ],
+ "debounce": [
+  {
+   "text": "",
+   "matches": false
+  },
+  {
+   "text": "@",
+   "matches": true
+  },
+  {
+   "text": "@src",
+   "matches": true
+  },
+  {
+   "text": "hello @src/foo.ts",
+   "matches": true
+  },
+  {
+   "text": "(@src/foo",
+   "matches": true
+  },
+  {
+   "text": "`@src/foo",
+   "matches": true
+  },
+  {
+   "text": "{@a",
+   "matches": true
+  },
+  {
+   "text": "[@a",
+   "matches": true
+  },
+  {
+   "text": "<@a",
+   "matches": true
+  },
+  {
+   "text": "hello @\"quoted path with space",
+   "matches": true
+  },
+  {
+   "text": "@\"unterminated quote \" here",
+   "matches": false
+  },
+  {
+   "text": "a @b c",
+   "matches": false
+  },
+  {
+   "text": "@b c",
+   "matches": false
+  },
+  {
+   "text": "x @",
+   "matches": true
+  },
+  {
+   "text": "email a@b",
+   "matches": false
+  },
+  {
+   "text": "a@@b",
+   "matches": false
+  },
+  {
+   "text": "run `@script arg",
+   "matches": false
+  },
+  {
+   "text": "日本語@ファイル",
+   "matches": false
+  },
+  {
+   "text": "日本語，@ファイル",
+   "matches": true
+  },
+  {
+   "text": "@ファイル 説明",
+   "matches": false
+  },
+  {
+   "text": "#tag",
+   "matches": true
+  },
+  {
+   "text": "#日本語タグ",
+   "matches": true
+  },
+  {
+   "text": "a #tag here",
+   "matches": false
+  },
+  {
+   "text": "@path,more",
+   "matches": true
+  },
+  {
+   "text": "@path，more",
+   "matches": false
+  },
+  {
+   "text": "@path,more",
+   "matches": true
+  },
+  {
+   "text": "text @path ",
+   "matches": false
+  },
+  {
+   "text": "@path ",
+   "matches": false
+  },
+  {
+   "text": "\t@tabbed",
+   "matches": true
+  },
+  {
+   "text": "@a\tb",
+   "matches": false
+  },
+  {
+   "text": "((@nested",
+   "matches": true
+  },
+  {
+   "text": "@((weird",
+   "matches": true
+  },
+  {
+   "text": "chat @文件名.txt。",
+   "matches": false
+  },
+  {
+   "text": "@x=y",
+   "matches": true
+  },
+  {
+   "text": "@x=y ",
+   "matches": false
+  }
+ ],
+ "provenance": {
+  "utilsSha256": "5ecbc6c9b4850e78bf19de1fe8859b99b9c4c5f8a6384728d255a8e7e8a610ee",
+  "editorSha256": "30a47fd49042579be7b85262677df62d4ff37a8f9a3a0e6c41ce3cf1d402b9c3",
+  "node": "v25.8.2",
+  "platform": "win32"
+ }
+}

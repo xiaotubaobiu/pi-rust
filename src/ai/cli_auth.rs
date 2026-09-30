@@ -41,9 +41,25 @@ pub async fn login(
     interaction: Arc<dyn AuthInteraction>,
     options: &AuthOperationOptions,
 ) -> Result<OAuthCredential, AuthError> {
+    login_with_device_id(oauth, provider_id, store, interaction, None, options).await
+}
+
+/// The cli.ts delta's login shape: the app-supplied `LoginOptions`
+/// (`{ getDeviceId: randomUUID }` upstream) ride on the normalized
+/// interaction for flows that need the installation ID.
+#[allow(clippy::too_many_arguments)]
+pub async fn login_with_device_id(
+    oauth: &dyn OAuthAuth,
+    provider_id: &str,
+    store: &dyn CredentialStore,
+    interaction: Arc<dyn AuthInteraction>,
+    login_options: Option<std::sync::Arc<crate::ai::auth::types::LoginOptions>>,
+    options: &AuthOperationOptions,
+) -> Result<OAuthCredential, AuthError> {
     // Upstream: `signal: new AbortController().signal` — a fresh,
     // never-aborted signal scoped to the login.
-    let normalized = ProviderAuthInteraction::new(interaction.clone(), CancellationToken::new());
+    let normalized = ProviderAuthInteraction::new(interaction.clone(), CancellationToken::new())
+        .with_login_options(login_options);
     let credential = oauth.login(normalized).await?;
     let stored = credential.clone();
     store

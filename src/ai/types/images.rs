@@ -1,15 +1,15 @@
 //! Image-generation types from upstream `packages/ai/src/types.ts`:
-//! [`ImagesModel`] (types.ts:985-990), `ImagesContext` (types.ts:551-553),
-//! `AssistantImages` (types.ts:557-567), `ImagesOptions` (types.ts:301-307),
-//! and `ImagesStopReason` (types.ts:555).
+//! `ImagesContext` (types.ts:551-553), `AssistantImages` (types.ts:557-567),
+//! `ImagesOptions` (types.ts:301-307), and `ImagesStopReason`
+//! (types.ts:555).
 //!
-//! Wire format matches the TypeScript interfaces field-for-field (camelCase,
-//! optional fields omitted when `None`). [`ImagesModel`] upstream extends
-//! `Omit<Model<Api>, "api" | "provider" | "reasoning" | "contextWindow" |
-//! "maxTokens" | "compat">`, so it is the shared [`Model`] shape minus the
-//! chat-only fields, plus `api`/`provider`/`output`; the omitted
-//! `thinkingLevelMap`/`samplingParams`/`headers` optional fields carry over
-//! and are skipped in JSON when absent, like upstream `undefined`.
+//! The image model descriptor is [`ImageModel`](super::model::ImageModel)
+//! (upstream `ImageModel<ImageApi>`, the `type: "image"` catalog entry over
+//! the shared `BaseModel` fields), defined alongside the chat
+//! [`Model`](super::model::Model) since the unified catalog
+//! infrastructure (#9948) made chat, image, and classifier entries one
+//! family; the old `ImagesModel` shape (which carried `thinkingLevelMap`/
+//! `samplingParams` and required `output`) is gone upstream.
 //!
 //! `ImagesInputContent`/`ImagesOutputContent` are the upstream
 //! `TextContent | ImageContent` unions (types.ts:549-550) — the same tagged
@@ -22,9 +22,10 @@ use serde::{Deserialize, Serialize};
 use tokio_util::sync::CancellationToken;
 
 use super::message::TextOrImageBlock;
-use super::model::ModelInput;
+use super::model::ImageModel;
 use super::options::{ProviderEnv, ProviderHeaders};
-use super::primitives::{ModelCost, ThinkingLevelMap, Usage};
+use super::primitives::Usage;
+use super::request_callbacks::RequestCallbacks;
 
 /// Upstream `ImagesInputContent`/`ImagesOutputContent` (types.ts:549-550):
 /// `TextContent | ImageContent`. Same tagged union as the message layer's
@@ -40,42 +41,6 @@ pub enum ImagesStopReason {
     Stop,
     Error,
     Aborted,
-}
-
-/// Upstream `ImagesModel<TApi>` (types.ts:985-990). The `api` generic is
-/// erased to an open string, like the chat [`Model`](super::model::Model).
-/// Field declaration order follows the generated catalog entries
-/// (`image-models.generated.ts`: id, name, api, provider, baseUrl, input,
-/// output, cost, then the carried-over optional fields).
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ImagesModel {
-    /// Model identifier used in provider requests.
-    pub id: String,
-    /// Display name.
-    pub name: String,
-    /// Image-generation API id (upstream `ImagesApi`, open-ended string).
-    pub api: String,
-    /// Owning provider id (upstream `ImagesProviderId`).
-    pub provider: String,
-    /// Base URL of the provider endpoint.
-    pub base_url: String,
-    /// Input modalities the model accepts.
-    pub input: Vec<ModelInput>,
-    /// Output modalities the model produces; `"text"` means the model can
-    /// also answer with text alongside images (drives the API `modalities`).
-    pub output: Vec<ModelInput>,
-    /// Pricing in dollars per million tokens.
-    pub cost: ModelCost,
-    /// Carried over from `Model` (optional upstream).
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub thinking_level_map: Option<ThinkingLevelMap>,
-    /// Carried over from `Model` (optional upstream).
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub sampling_params: Option<BTreeMap<String, serde_json::Value>>,
-    /// Custom HTTP headers merged over provider defaults (optional upstream).
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub headers: Option<BTreeMap<String, String>>,
 }
 
 /// Upstream `ImagesContext` (types.ts:551-553): the generation input.
@@ -104,10 +69,20 @@ pub struct AssistantImages {
 }
 
 impl AssistantImages {
-    /// The error result shape shared by every image-generation failure path
-    /// (upstream's inline `{ ..., output: [], stopReason: "error",
-    /// errorMessage, timestamp: Date.now() }` literals).
-    pub fn error(model: &ImagesModel, message: impl Into<String>) -> Self {
+    /// Upstream `imageErrorResult` (`utils/model-operations.ts`): the error
+    /// result shape shared by every image-generation failure path, with
+    /// `aborted` selecting the `"aborted"` stop reason.
+    pub fn error(model: &ImageModel, message: impl Into<String>) -> Self {
+        Self::with_stop_reason(model, message, ImagesStopReason::Error)
+    }
+
+    /// [`AssistantImages::error`] with an explicit stop reason (the upstream
+    /// `aborted` flag).
+    pub fn with_stop_reason(
+        model: &ImageModel,
+        message: impl Into<String>,
+        stop_reason: ImagesStopReason,
+    ) -> Self {
         AssistantImages {
             api: model.api.clone(),
             provider: model.provider.clone(),
@@ -115,7 +90,7 @@ impl AssistantImages {
             output: Vec::new(),
             response_id: None,
             usage: None,
-            stop_reason: ImagesStopReason::Error,
+            stop_reason,
             error_message: Some(message.into()),
             timestamp: crate::ai::now_ms(),
         }
@@ -133,11 +108,15 @@ impl AssistantImages {
 ///   abort an in-flight generation (the chat M2b streams moved cancellation
 ///   onto the call signature instead — image generation has no stream, so the
 ///   options field is the only place it fits).
-/// - `telemetryContext`, `fetch`, `onPayload`, `onResponse` are not ported
-///   (same M2a deferral as the chat options).
+/// - `telemetryContext`, `fetch` are not ported (same M2a deferral as the
+///   chat options); lifecycle callbacks ride on [`RequestCallbacks`].
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ImagesOptions {
+    /// Process-local lifecycle callbacks; never part of the wire
+    /// representation.
+    #[serde(skip)]
+    pub callbacks: RequestCallbacks,
     /// Explicit credential override.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub api_key: Option<String>,
@@ -168,15 +147,19 @@ pub struct ImagesOptions {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ai::types::model::ModelInput;
+    use crate::ai::types::model::ModelType;
+    use crate::ai::types::primitives::ModelCost;
     use crate::ai::types::primitives::UsageCost;
 
-    /// Byte-pinned round-trip against the generated catalog entry shape
-    /// (`image-models.generated.ts`): camelCase names, required fields, and
-    /// the optional carry-over fields omitted when absent.
+    /// Byte-pinned round-trip against the generated catalog entry shape:
+    /// camelCase names, required fields (including the `type: "image"`
+    /// discriminator), and the optional `BaseModel` fields omitted when
+    /// absent.
     #[test]
     fn images_model_round_trips_generated_catalog_shape() {
-        let fixture = r#"{"id":"google/gemini-2.5-flash-image","name":"Google: Nano Banana (Gemini 2.5 Flash Image)","api":"openrouter-images","provider":"openrouter","baseUrl":"https://openrouter.ai/api/v1","input":["image","text"],"output":["image","text"],"cost":{"input":0.3,"output":2.5,"cacheRead":0.03,"cacheWrite":0.0833333333333333}}"#;
-        let model: ImagesModel = serde_json::from_str(fixture).unwrap();
+        let fixture = r#"{"id":"google/gemini-2.5-flash-image","name":"Google: Nano Banana (Gemini 2.5 Flash Image)","api":"openrouter-images","provider":"openrouter","baseUrl":"https://openrouter.ai/api/v1","input":["image","text"],"cost":{"input":0.3,"output":2.5,"cacheRead":0.03,"cacheWrite":0.0833333333333333},"type":"image","output":["image","text"]}"#;
+        let model: ImageModel = serde_json::from_str(fixture).unwrap();
         assert_eq!(model.id, "google/gemini-2.5-flash-image");
         assert_eq!(model.input, vec![ModelInput::Image, ModelInput::Text]);
         assert_eq!(model.output, vec![ModelInput::Image, ModelInput::Text]);
@@ -187,14 +170,14 @@ mod tests {
 
     #[test]
     fn images_model_carries_optional_fields_when_present() {
-        let model = ImagesModel {
+        let model = ImageModel {
             id: "m".into(),
             name: "M".into(),
             api: "test-images".into(),
             provider: "p".into(),
             base_url: "https://example.test/v1".into(),
             input: vec![ModelInput::Text],
-            output: vec![ModelInput::Image],
+            input_limits: None,
             cost: ModelCost {
                 input: 1.0,
                 output: 2.0,
@@ -202,20 +185,20 @@ mod tests {
                 cache_write: 0.0,
                 tiers: None,
             },
-            thinking_level_map: None,
-            sampling_params: None,
             headers: Some(BTreeMap::from([(
                 "HTTP-Referer".to_string(),
-                "https://example.com".to_string(),
+                Some("https://example.com".to_string()),
             )])),
+            r#type: ModelType::Image,
+            output: vec![ModelInput::Image],
         };
         let wire = serde_json::to_string(&model).unwrap();
         assert!(
             wire.contains(r#""headers":{"HTTP-Referer":"https://example.com"}"#),
             "{wire}"
         );
-        assert!(!wire.contains("thinkingLevelMap"), "{wire}");
-        let back: ImagesModel = serde_json::from_str(&wire).unwrap();
+        assert!(wire.contains(r#""type":"image""#), "{wire}");
+        let back: ImageModel = serde_json::from_str(&wire).unwrap();
         assert_eq!(back, model);
     }
 
@@ -298,19 +281,19 @@ mod tests {
         );
     }
 
-    pub(crate) fn test_image_model(provider: &str, id: &str) -> ImagesModel {
-        ImagesModel {
+    pub(crate) fn test_image_model(provider: &str, id: &str) -> ImageModel {
+        ImageModel {
             id: id.to_string(),
             name: id.to_string(),
             api: "test-images".to_string(),
             provider: provider.to_string(),
             base_url: "https://example.test/v1".to_string(),
             input: vec![ModelInput::Text],
-            output: vec![ModelInput::Image],
+            input_limits: None,
             cost: ModelCost::default(),
-            thinking_level_map: None,
-            sampling_params: None,
             headers: None,
+            r#type: ModelType::Image,
+            output: vec![ModelInput::Image],
         }
     }
 

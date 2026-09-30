@@ -299,6 +299,10 @@ pub type ApplyServiceTierPricingHook = Box<dyn FnMut(&mut Usage, Option<String>)
 /// supplied hooks the stream processor applies at finalize time.
 #[derive(Default)]
 pub struct ResponsesStreamOptions {
+    /// Upstream `onProviderStreamEvent` (the openai-responses-shared.ts
+    /// delta): observer for each parsed provider stream event before Pi
+    /// normalization. Adapter-owned data, read-only; absent observer = no-op.
+    pub callbacks: crate::ai::types::request_callbacks::RequestCallbacks,
     /// Upstream `serviceTier`: the request option echo used for pricing
     /// resolution when the response does not report its tier.
     pub service_tier: Option<String>,
@@ -678,14 +682,14 @@ pub fn convert_responses_tools(
             }
 
             let constrained =
-                resolve_json_schema_strict_sampling(tool, options.supports_strict_mode)?;
+                resolve_json_schema_strict_sampling(tool, options.supports_strict_mode, None)?;
             // Upstream line 381: `constrainedStrict ?? defaultStrict`.
             let strict: Option<bool> = match constrained {
                 Some(strict) => Some(strict),
                 None => default_strict,
             };
             let parameters = if strict == Some(true) {
-                make_strict_json_schema(&tool.parameters)?
+                make_strict_json_schema(&tool.parameters, None)?
             } else {
                 tool.parameters.clone()
             };
@@ -1262,13 +1266,43 @@ impl ResponsesStreamProcessor {
         self.output
     }
 
-    /// Upstream post-loop guard (lines 758-760).
+    /// Upstream post-loop guards (lines 758-760 plus the
+    /// unfinished-tool-call rejection from the Responses delta): a terminal
+    /// event must have arrived, and a toolUse message must not carry a call
+    /// whose output_item.done never did (its arguments may be cut off).
     pub fn finish(&self) -> Result<(), String> {
-        if self.saw_terminal_response_event {
-            Ok(())
-        } else {
-            Err("OpenAI Responses stream ended before a terminal response event".to_string())
+        if !self.saw_terminal_response_event {
+            return Err("OpenAI Responses stream ended before a terminal response event".to_string());
         }
+        // The agent runs every tool call in the final message. Refuse to
+        // hand over calls whose scratch buffers were never removed (their
+        // arguments may be cut off or mixed up, e.g. when a non-compliant
+        // server omits output_index); finished calls have their scratch
+        // buffers removed.
+        if self.output.stop_reason == StopReason::ToolUse {
+            for slot in self.output_slots.values() {
+                if let OutputSlot::ToolCall {
+                    content_index,
+                    partial_json,
+                    custom_input,
+                } = slot
+                {
+                    let unfinished = partial_json.as_deref().is_some_and(|json| !json.is_empty())
+                        || custom_input.is_some();
+                    if unfinished {
+                        if let Some(AssistantBlock::ToolCall(tool_call)) =
+                            self.output.content.get(*content_index)
+                        {
+                            return Err(format!(
+                                "OpenAI Responses stream completed with an unfinished tool call: {} ({})",
+                                tool_call.name, tool_call.id
+                            ));
+                        }
+                    }
+                }
+            }
+        }
+        Ok(())
     }
 
     async fn push(&self, tx: &mpsc::Sender<AssistantMessageEvent>, event: AssistantMessageEvent) {
@@ -1286,6 +1320,17 @@ impl ResponsesStreamProcessor {
     }
 
     /// Process one typed SSE event (upstream's for-await body, lines 598-756).
+    /// Upstream `processResponsesStream`'s loop body: the optional
+    /// `onProviderStreamEvent` observer sees each raw provider event before
+    /// Pi normalization.
+    pub async fn observe_raw_event(&mut self, raw: serde_json::Value) -> Result<(), String> {
+        self.options
+            .callbacks
+            .provider_stream_event(raw, &self.model)
+            .await
+            .map_err(|error| error.to_string())
+    }
+
     pub async fn process_event(
         &mut self,
         event: &ResponsesStreamEvent,
@@ -2156,7 +2201,7 @@ mod tests {
     // ---- fixtures ----
 
     fn responses_model() -> Model {
-        Model {
+        Model {r#type: None, prompt_cache: None, input_limits: None, 
             id: "gpt-5.4".to_string(),
             name: "GPT-5.4".to_string(),
             api: "openai-responses".to_string(),

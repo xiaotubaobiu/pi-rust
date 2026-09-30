@@ -91,6 +91,9 @@ pub struct FauxModelDefinition {
     pub reasoning: Option<bool>,
     /// Defaults to `["text", "image"]` (upstream `input?`).
     pub input: Option<Vec<ModelInput>>,
+    /// Provider input limits metadata (upstream `inputLimits?`, the faux
+    /// delta from the unified-catalog slice).
+    pub input_limits: Option<crate::ai::types::ModelInputLimits>,
     /// Defaults to zero rates (upstream `cost?`).
     pub cost: Option<ModelCost>,
     /// Defaults to 128000 (upstream `contextWindow?`).
@@ -354,6 +357,7 @@ impl FauxCore {
                 name: Some(DEFAULT_MODEL_NAME.to_string()),
                 reasoning: Some(false),
                 input: Some(vec![ModelInput::Text, ModelInput::Image]),
+                input_limits: None,
                 cost: Some(ModelCost::default()),
                 context_window: Some(128_000),
                 max_tokens: Some(16_384),
@@ -369,11 +373,14 @@ impl FauxCore {
                 api: api.clone(),
                 provider: provider.clone(),
                 base_url: DEFAULT_BASE_URL.to_string(),
+                r#type: None,
                 reasoning: definition.reasoning.unwrap_or(false),
                 thinking_level_map: None,
+                prompt_cache: None,
                 input: definition
                     .input
                     .unwrap_or_else(|| vec![ModelInput::Text, ModelInput::Image]),
+                input_limits: definition.input_limits,
                 cost: definition.cost.unwrap_or_default(),
                 context_window: definition.context_window.unwrap_or(128_000),
                 max_tokens: definition.max_tokens.unwrap_or(16_384),
@@ -1532,10 +1539,13 @@ pub fn faux_provider(options: FauxProviderOptions) -> FauxProviderHandle {
             api_key: Some(Arc::new(FauxAuth)),
             oauth: None,
         },
-        models: core.models().to_vec(),
+        models: core.models().to_vec().into_iter().map(crate::ai::types::AnyModel::Chat).collect(),
         fetch_models: None,
         filter_models: None,
+        filter_all_models: None,
         api: ApiImpls::Single(Arc::new(FauxApi(core.clone()))),
+        images: crate::ai::models::provider::ImagesImpls::new(),
+        classifiers: crate::ai::models::provider::ClassifiersImpls::new(),
     });
     FauxProviderHandle { provider, core }
 }

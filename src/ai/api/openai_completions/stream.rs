@@ -1464,7 +1464,7 @@ mod tests {
     const TS: i64 = 1758240000000;
 
     fn base_model() -> Model {
-        Model {
+        Model {r#type: None, prompt_cache: None, input_limits: None, 
             id: "gpt-test".to_string(),
             name: "Test Model".to_string(),
             api: "openai-completions".to_string(),

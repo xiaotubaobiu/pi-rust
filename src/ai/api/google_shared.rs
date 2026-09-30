@@ -725,7 +725,7 @@ fn sanitize_for_open_api(schema: &Value) -> Value {
 /// otherwise.
 fn get_json_schema_tool_parameters(tool: &Tool, strict: Option<bool>) -> Result<Value, String> {
     if strict == Some(true) {
-        make_strict_json_schema(&tool.parameters)
+        make_strict_json_schema(&tool.parameters, None)
     } else {
         Ok(tool.parameters.clone())
     }
@@ -746,7 +746,7 @@ pub fn convert_tools(
     let declarations = tools
         .iter()
         .map(|tool| {
-            let strict = resolve_json_schema_strict_sampling(tool, supports_strict_mode)?;
+            let strict = resolve_json_schema_strict_sampling(tool, supports_strict_mode, None)?;
             let parameters = get_json_schema_tool_parameters(tool, strict)?;
             let mut declaration = Map::new();
             declaration.insert("name".into(), json!(tool.name));
@@ -811,7 +811,7 @@ pub fn resolve_google_function_calling_mode(
     // short-circuits on the first strict tool.
     let mut use_strict_mode = false;
     for tool in tools {
-        if resolve_json_schema_strict_sampling(tool, supports_strict_mode)? == Some(true) {
+        if resolve_json_schema_strict_sampling(tool, supports_strict_mode, None)? == Some(true) {
             use_strict_mode = true;
             break;
         }
@@ -951,7 +951,7 @@ mod tests {
     // ---- fixtures ----
 
     fn google_model(id: &str, provider: &str, input: &[ModelInput]) -> Model {
-        Model {
+        Model {r#type: None, prompt_cache: None, input_limits: None, 
             id: id.to_string(),
             name: id.to_string(),
             api: "google-generative-ai".to_string(),
@@ -970,14 +970,14 @@ mod tests {
     }
 
     fn vertex_model(id: &str, provider: &str) -> Model {
-        Model {
+        Model {r#type: None, prompt_cache: None, input_limits: None, 
             api: "google-vertex".to_string(),
             ..google_model(id, provider, &[ModelInput::Text])
         }
     }
 
     fn google_model_with_map(id: &str, provider: &str, map: ThinkingLevelMap) -> Model {
-        Model {
+        Model {r#type: None, prompt_cache: None, input_limits: None, 
             thinking_level_map: Some(map),
             ..google_model(id, provider, &[ModelInput::Text])
         }

@@ -286,6 +286,16 @@ fn resolve_cloudflare_model(model: &Model, env: Option<&ProviderEnv>) -> Option<
     Some(model)
 }
 
+/// Upstream `resolveCloudflareModel` generalized to any model shape with a
+/// base URL (providers/cloudflare-stream.ts:8-24, the #9948 widening): the
+/// placeholder-materialized URL, or the input unchanged without env.
+pub(crate) fn resolve_cloudflare_base_url(base_url: &str, env: Option<&ProviderEnv>) -> String {
+    match env {
+        Some(env) => replace_placeholders(base_url, env),
+        None => base_url.to_string(),
+    }
+}
+
 /// The `replaceAll` pair: env value or the placeholder itself.
 fn placeholder_value(env: &ProviderEnv, name: &str) -> String {
     match env.get(name) {
@@ -365,9 +375,12 @@ pub fn cloudflare_ai_gateway_provider() -> Arc<dyn Provider> {
             api_key: Some(Arc::new(CloudflareAiGatewayAuth)),
             oauth: None,
         },
-        models: embedded_provider_catalog("cloudflare-ai-gateway"),
+        models: embedded_provider_catalog("cloudflare-ai-gateway").into_iter().map(crate::ai::types::AnyModel::Chat).collect(),
         fetch_models: None,
         filter_models: None,
+        filter_all_models: None,
+        images: crate::ai::models::provider::ImagesImpls::new(),
+        classifiers: crate::ai::models::provider::ClassifiersImpls::new(),
         api: per_api(&[
             (
                 "anthropic-messages",
@@ -402,9 +415,12 @@ pub fn cloudflare_workers_ai_provider() -> Arc<dyn Provider> {
             api_key: Some(Arc::new(CloudflareWorkersAiAuth)),
             oauth: None,
         },
-        models: embedded_provider_catalog("cloudflare-workers-ai"),
+        models: embedded_provider_catalog("cloudflare-workers-ai").into_iter().map(crate::ai::types::AnyModel::Chat).collect(),
         fetch_models: None,
         filter_models: None,
+        filter_all_models: None,
+        images: crate::ai::models::provider::ImagesImpls::new(),
+        classifiers: crate::ai::models::provider::ClassifiersImpls::new(),
         api: ApiImpls::Single(Arc::new(CloudflareStreams {
             inner: arc(OpenAiCompletions),
         })),

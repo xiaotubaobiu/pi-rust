@@ -14,8 +14,28 @@
 use std::path::{Path, PathBuf};
 
 use crate::tui::fuzzy::fuzzy_filter;
+use crate::tui::utils::{
+    has_autocomplete_separator, is_autocomplete_separator_char, is_token_start_boundary,
+};
+
+/// A normalized command-suggestion candidate (name, label, description).
+type CommandItem = (String, Option<String>, Option<String>);
+/// A [`CommandItem`] tagged with its provider-list index (the upstream
+/// `bareNameMatchSet` deduplicates by object identity).
+type IndexedCommandItem = (usize, CommandItem);
 
 const PATH_DELIMITERS: &[char] = &[' ', '\t', '"', '\'', '='];
+/// Opening wrappers that may precede a path in prose, mapped to their closing
+/// counterpart.
+const PATH_WRAPPERS: &[(char, char)] =
+    &[('(', ')'), ('[', ']'), ('{', '}'), ('<', '>'), ('`', '`')];
+
+fn path_wrapper_closer(opening: char) -> Option<char> {
+    PATH_WRAPPERS
+        .iter()
+        .find(|(open, _)| *open == opening)
+        .map(|(_, close)| *close)
+}
 
 /// Upstream `AutocompleteItem`.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -97,10 +117,35 @@ fn is_path_delimiter(c: char) -> bool {
 }
 
 fn find_last_delimiter(text: &str) -> Option<usize> {
-    text.char_indices()
-        .rev()
-        .find(|(_, c)| is_path_delimiter(*c))
-        .map(|(i, _)| i)
+    // Upstream walks code points and returns the UTF-16 index of the LAST UNIT
+    // of the matched character; callers slice after it. The byte offset after
+    // the character is the same boundary.
+    let mut last_delimiter_end: Option<usize> = None;
+    for (index, character) in text.char_indices() {
+        if is_path_delimiter(character) || is_autocomplete_separator_char(character) {
+            last_delimiter_end = Some(index + character.len_utf8());
+        }
+    }
+    last_delimiter_end
+}
+
+/// Strip opening wrappers before a path, e.g. "(~/Dev" -> "~/Dev" or
+/// "`src/ma" -> "src/ma". Keep a wrapper if the token also contains its
+/// closer, e.g. "app/[slug]/pa" or "(group)/pa".
+fn strip_leading_wrappers(token: &str) -> String {
+    let mut result = token;
+    while !result.is_empty() {
+        let Some(closer) = path_wrapper_closer(result.chars().next().unwrap_or('\0')) else {
+            break;
+        };
+        let mut chars = result.char_indices();
+        chars.next(); // the opening wrapper itself
+        if result[chars.next().map_or(result.len(), |(index, _)| index)..].contains(closer) {
+            break;
+        }
+        result = &result[1..];
+    }
+    result.to_string()
 }
 
 fn find_unclosed_quote_start(text: &str) -> Option<usize> {
@@ -122,11 +167,18 @@ fn find_unclosed_quote_start(text: &str) -> Option<usize> {
 }
 
 fn is_token_start(text: &str, index: usize) -> bool {
-    index == 0
-        || text[..index]
-            .chars()
-            .next_back()
-            .is_some_and(is_path_delimiter)
+    // Walk back over opening wrappers (`(@src` / `` `@src ``), then require a
+    // path delimiter or a separator boundary (whitespace/CJK punctuation).
+    let mut start = index;
+    while start > 0 {
+        let previous = text[..start].chars().next_back().unwrap_or('\0');
+        if path_wrapper_closer(previous).is_none() {
+            break;
+        }
+        start -= previous.len_utf8();
+    }
+    let char_before = text[..start].chars().next_back();
+    is_path_delimiter(char_before.unwrap_or('\0')) || is_token_start_boundary(&text[..start])
 }
 
 fn extract_quoted_prefix(text: &str) -> Option<String> {
@@ -167,7 +219,7 @@ fn build_completion_value(
     is_at_prefix: bool,
     is_quoted_prefix: bool,
 ) -> String {
-    let needs_quotes = is_quoted_prefix || path.contains(' ');
+    let needs_quotes = is_quoted_prefix || has_autocomplete_separator(path);
     let prefix = if is_at_prefix { "@" } else { "" };
 
     if !needs_quotes {
@@ -219,12 +271,13 @@ impl CombinedAutocompleteProvider {
             }
         }
 
-        let token_start = find_last_delimiter(text).map_or(0, |index| {
-            index + text[index..].chars().next().map_or(1, char::len_utf8)
+        let token = strip_leading_wrappers(match find_last_delimiter(text) {
+            Some(after_delimiter) => &text[after_delimiter..],
+            None => text,
         });
 
-        if text[token_start..].starts_with('@') {
-            Some(text[token_start..].to_string())
+        if token.starts_with('@') {
+            Some(token)
         } else {
             None
         }
@@ -235,14 +288,10 @@ impl CombinedAutocompleteProvider {
             return Some(quoted_prefix);
         }
 
-        let path_prefix = match find_last_delimiter(text) {
-            Some(index) => {
-                let skip = index + text[index..].chars().next().map_or(1, char::len_utf8);
-                &text[skip..]
-            }
+        let path_prefix = strip_leading_wrappers(match find_last_delimiter(text) {
+            Some(after_delimiter) => &text[after_delimiter..],
             None => text,
-        }
-        .to_string();
+        });
 
         if force_extract {
             return Some(path_prefix);
@@ -255,7 +304,10 @@ impl CombinedAutocompleteProvider {
             return Some(path_prefix);
         }
 
-        if path_prefix.is_empty() && text.ends_with(' ') {
+        // Return an empty prefix after whitespace or CJK punctuation, but not
+        // for empty text. Empty text should not trigger file suggestions —
+        // that's for forced Tab completion.
+        if path_prefix.is_empty() && !text.is_empty() && is_token_start_boundary(text) {
             return Some(path_prefix);
         }
 
@@ -412,10 +464,11 @@ impl CombinedAutocompleteProvider {
             });
         }
 
-        // Directories first, then alphabetical.
+        // Directories first (by label), then alphabetical (localeCompare is a
+        // pre-existing disclosed seam; the delta only moved value -> label).
         suggestions.sort_by(|a, b| {
-            let a_is_dir = a.value.ends_with('/');
-            let b_is_dir = b.value.ends_with('/');
+            let a_is_dir = a.label.ends_with('/');
+            let b_is_dir = b.label.ends_with('/');
             if a_is_dir && !b_is_dir {
                 std::cmp::Ordering::Less
             } else if !a_is_dir && b_is_dir {
@@ -491,7 +544,31 @@ impl AutocompleteProvider for CombinedAutocompleteProvider {
                     ));
                 }
 
-                let filtered = fuzzy_filter(command_items, &prefix, |item| &item.0);
+                // `skill:` commands first match by bare name; names that only
+                // match with the prefix are appended after the bare matches.
+                // Identity dedup upstream becomes index dedup here.
+                let indexed: Vec<IndexedCommandItem> =
+                    command_items.into_iter().enumerate().collect();
+                let bare_name_matches = fuzzy_filter(indexed.clone(), &prefix, |(_, item)| {
+                    item.0.strip_prefix("skill:").unwrap_or(item.0.as_str())
+                });
+                let bare_name_match_indices: std::collections::HashSet<usize> =
+                    bare_name_matches.iter().map(|(index, _)| *index).collect();
+                let full_name_only_matches = fuzzy_filter(
+                    indexed
+                        .into_iter()
+                        .filter(|(index, item)| {
+                            item.0.starts_with("skill:") && !bare_name_match_indices.contains(index)
+                        })
+                        .collect(),
+                    &prefix,
+                    |(_, item)| item.0.as_str(),
+                );
+                let filtered: Vec<(String, Option<String>, Option<String>)> = bare_name_matches
+                    .into_iter()
+                    .chain(full_name_only_matches)
+                    .map(|(_, item)| item)
+                    .collect();
                 if filtered.is_empty() {
                     return None;
                 }

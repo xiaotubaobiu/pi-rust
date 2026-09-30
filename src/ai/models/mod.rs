@@ -29,7 +29,8 @@ pub use faux::{
     FauxToolCallOptions,
 };
 pub use provider::{
-    create_provider, ApiImpls, CreateProviderOptions, FetchModelsFn, FilterModelsFn, Provider,
+    create_provider, ApiImpls, ClassifierApiImpl, ClassifiersImpls, CreateProviderOptions,
+    FetchModelsFn, FilterAllModelsFn, FilterModelsFn, ImagesApiImpl, ImagesImpls, Provider,
     StandardProvider,
 };
 pub use providers::{
@@ -57,12 +58,19 @@ use crate::ai::auth::types::{
     ApiKeyAuthInput, ApiKeyCredential, AuthCheck, AuthContext, AuthError, AuthOperationOptions,
     AuthResult, AuthType, Credential,
 };
+use crate::ai::model_operations::{
+    assert_classifier_model, assert_image_model, classifier_error_result, get_model_type,
+    image_error_result, is_model_type,
+};
 use crate::ai::transcript::{normalize_context, TranscriptContext};
 use crate::ai::types::events::{AssistantMessageEvent, ErrorReason, PartialAssistant};
 use crate::ai::types::message::AssistantMessage;
 use crate::ai::types::options::{ProviderEnv, ProviderHeaders, SimpleStreamOptions, StreamOptions};
 use crate::ai::types::primitives::{StopReason, Usage};
-use crate::ai::types::Model;
+use crate::ai::types::{
+    AnyModel, AssistantImages, ClassifierContext, ClassifierModel, ClassifierOptions,
+    ClassifierResult, ImageModel, ImagesContext, ImagesOptions, Model, ModelType,
+};
 use crate::ai::{now_ms, Context, ProviderConfig};
 
 /// Upstream `CreateModelsOptions` (models.ts:244-249).
@@ -107,6 +115,28 @@ pub struct ModelsApiStreamOptions {
 pub struct ModelsSimpleStreamOptions {
     /// Base request/stream options plus the simple-request extension fields.
     pub simple: SimpleStreamOptions,
+    /// Runs once over the assembled headers before dispatch (upstream
+    /// `transformHeaders`).
+    pub transform_headers: Option<TransformHeaders>,
+}
+
+/// Upstream `ModelsImagesOptions` (models.ts): `ImagesOptions` plus the
+/// Models-only header transform.
+#[derive(Clone, Default)]
+pub struct ModelsImagesOptions {
+    /// Base image-generation request options.
+    pub images: ImagesOptions,
+    /// Runs once over the assembled headers before dispatch (upstream
+    /// `transformHeaders`).
+    pub transform_headers: Option<TransformHeaders>,
+}
+
+/// Upstream `ModelsClassifierOptions` (models.ts): `ClassifierOptions` plus
+/// the Models-only header transform.
+#[derive(Clone, Default)]
+pub struct ModelsClassifierOptions {
+    /// Base classification request options.
+    pub classifier: ClassifierOptions,
     /// Runs once over the assembled headers before dispatch (upstream
     /// `transformHeaders`).
     pub transform_headers: Option<TransformHeaders>,
@@ -435,6 +465,16 @@ pub fn get_supported_thinking_levels(model: &Model) -> Vec<&'static str> {
         .collect()
 }
 
+/// Upstream `modelsAreEqual` (models.ts): check if two models are equal by
+/// comparing their type, id, and provider. `None` (upstream null/undefined)
+/// on either side is false.
+pub fn models_are_equal(a: Option<&AnyModel>, b: Option<&AnyModel>) -> bool {
+    let (Some(a), Some(b)) = (a, b) else {
+        return false;
+    };
+    get_model_type(a) == get_model_type(b) && a.id() == b.id() && a.provider() == b.provider()
+}
+
 impl Models {
     /// Upstream `MutableModels.setProvider` (models.ts:239, 281-284): upsert
     /// by provider id — ids are unique and replacement keeps the original
@@ -523,6 +563,46 @@ impl Models {
         self.get_models(Some(provider))
             .into_iter()
             .find(|model| model.id == id)
+    }
+
+    /// Upstream `Models.getAllModels` (models.ts): sync read of last-known
+    /// models of every type from one provider or all providers. Best-effort
+    /// like [`Models::get_models`].
+    pub fn get_all_models(&self, provider: Option<&str>) -> Vec<AnyModel> {
+        match provider {
+            Some(id) => self
+                .get_provider(id)
+                .and_then(|entry| entry.get_all_models().ok())
+                .unwrap_or_default(),
+            None => self
+                .get_providers()
+                .iter()
+                .filter_map(|entry| entry.get_all_models().ok())
+                .flatten()
+                .collect(),
+        }
+    }
+
+    /// Upstream `Models.getModelsOfType` (models.ts): last-known models of
+    /// one type.
+    pub fn get_models_of_type(&self, model_type: ModelType, provider: Option<&str>) -> Vec<AnyModel> {
+        self.get_all_models(provider)
+            .into_iter()
+            .filter(|model| is_model_type(model, model_type))
+            .collect()
+    }
+
+    /// Upstream `Models.getModelOfType` (models.ts): sync runtime lookup of a
+    /// model of one type against last-known lists.
+    pub fn get_model_of_type(
+        &self,
+        model_type: ModelType,
+        provider: &str,
+        id: &str,
+    ) -> Option<AnyModel> {
+        self.get_models_of_type(model_type, Some(provider))
+            .into_iter()
+            .find(|model| model.id() == id)
     }
 
     /// Upstream `Models.refresh` (models.ts:180-184, 398-458): refresh the
@@ -671,6 +751,89 @@ impl Models {
                     .filter_models(&models, credential.as_ref())
                     .unwrap_or(models),
             );
+        }
+        Ok(available)
+    }
+
+    /// Upstream `Models.getAvailableOfType` (models.ts): models of one type
+    /// whose providers have complete auth configuration, via
+    /// [`Models::get_all_available`].
+    pub async fn get_available_of_type(
+        &self,
+        model_type: ModelType,
+        provider_id: Option<&str>,
+        options: Option<&AuthOperationOptions>,
+    ) -> Result<Vec<AnyModel>, AuthError> {
+        Ok(self
+            .get_all_available(provider_id, options)
+            .await?
+            .into_iter()
+            .filter(|model| is_model_type(model, model_type))
+            .collect())
+    }
+
+    /// Upstream `Models.getAllAvailable` (models.ts): models of every type
+    /// whose providers have complete auth configuration. A provider's
+    /// `filterAllModels` wins; otherwise `filterModels` applies to the chat
+    /// models (matched by id) and every other model is kept.
+    pub async fn get_all_available(
+        &self,
+        provider_id: Option<&str>,
+        options: Option<&AuthOperationOptions>,
+    ) -> Result<Vec<AnyModel>, AuthError> {
+        let options = options.cloned().unwrap_or_default();
+        options.check()?;
+        let providers: Vec<Arc<dyn Provider>> = match provider_id {
+            Some(id) => self.get_provider(id).into_iter().collect(),
+            None => self.get_providers(),
+        };
+        let checks = futures::future::join_all(providers.iter().map(|provider| {
+            let credentials = Arc::clone(&self.credentials);
+            let auth_context = Arc::clone(&self.auth_context);
+            let options = options.clone();
+            let provider = Arc::clone(provider);
+            async move {
+                let credential = read_refresh_credential(&*credentials, provider.id()).await?;
+                let auth = check_provider_auth(
+                    &*provider,
+                    credential.as_ref(),
+                    &*credentials,
+                    &*auth_context,
+                    &options,
+                )
+                .await?;
+                Ok::<_, AuthError>((provider, credential, auth))
+            }
+        }));
+        let checks = tokio::select! {
+            checks = checks => checks,
+            _ = options.cancelled() => return Err(AuthError::Cancelled),
+        };
+        let mut available = Vec::new();
+        for check in checks {
+            let (provider, credential, auth) = check?;
+            if auth.is_none() {
+                continue;
+            }
+            let models = provider.get_all_models().map_err(AuthError::Models)?;
+            if let Some(filtered) = provider.filter_all_models(&models, credential.as_ref()) {
+                available.extend(filtered);
+                continue;
+            }
+            if !provider.has_filter_models() {
+                available.extend(models);
+                continue;
+            }
+            let chat = provider.get_models().map_err(AuthError::Models)?;
+            let available_chat_ids: HashSet<String> = provider
+                .filter_models(&chat, credential.as_ref())
+                .unwrap_or(chat)
+                .into_iter()
+                .map(|model| model.id)
+                .collect();
+            available.extend(models.into_iter().filter(|model| {
+                model.model_type() != ModelType::Chat || available_chat_ids.contains(model.id())
+            }));
         }
         Ok(available)
     }
@@ -881,6 +1044,136 @@ impl Models {
             .map_err(anyhow::Error::msg)
     }
 
+    /// Upstream `Models.generateImages` (models.ts): generate images through
+    /// the owning provider with auth resolved like `stream()`. Never rejects:
+    /// unknown providers, unconfigured auth, non-image models, and providers
+    /// without the capability all return an error `AssistantImages` (upstream
+    /// `try { ... } catch (error) { return imageErrorResult(...) }`).
+    pub async fn generate_images(
+        &self,
+        model: &ImageModel,
+        context: &ImagesContext,
+        options: Option<ModelsImagesOptions>,
+    ) -> AssistantImages {
+        let options = options.unwrap_or_default();
+        let result: Result<AssistantImages, ModelsError> = async {
+            let any = AnyModel::Image(model.clone());
+            assert_image_model(&any)?;
+            let provider = self
+                .get_provider(&model.provider)
+                .ok_or_else(|| {
+                    ModelsError::new(
+                        ModelsErrorCode::Provider,
+                        format!("Unknown provider: {}", model.provider),
+                    )
+                })?;
+            let implementation = provider
+                .images_for(&model.api)
+                .ok_or_else(|| {
+                    ModelsError::new(
+                        ModelsErrorCode::Provider,
+                        format!(
+                            "Provider {} does not support image generation",
+                            model.provider
+                        ),
+                    )
+                })?;
+            let applied = apply_auth_one_shot(
+                provider.as_ref(),
+                &any,
+                self.credentials.as_ref(),
+                self.auth_context.as_ref(),
+                &options.images.api_key,
+                &options.images.env,
+                &options.images.headers,
+                &options.images.signal,
+                options.transform_headers.clone(),
+            )
+            .await?;
+            let mut image_options = options.images.clone();
+            image_options.api_key = applied.api_key;
+            image_options.headers = applied.headers;
+            image_options.env = applied.env;
+            let model = match applied.request_model {
+                AnyModel::Image(model) => model,
+                _ => model.clone(),
+            };
+            implementation
+                .generate_images(&applied.config, &model, context, &image_options)
+                .await
+        }
+        .await;
+        match result {
+            Ok(images) => images,
+            Err(error) => image_error_result(model, error, options.images.signal.is_some_and(|s| s.is_cancelled())),
+        }
+    }
+
+    /// Upstream `Models.classify` (models.ts): classify structured state
+    /// through the owning provider. Never rejects; failures are returned as
+    /// an error `ClassifierResult`.
+    pub async fn classify(
+        &self,
+        model: &ClassifierModel,
+        context: &ClassifierContext,
+        options: Option<ModelsClassifierOptions>,
+    ) -> ClassifierResult {
+        let options = options.unwrap_or_default();
+        let result: Result<ClassifierResult, ModelsError> = async {
+            let any = AnyModel::Classifier(model.clone());
+            assert_classifier_model(&any)?;
+            let provider = self
+                .get_provider(&model.provider)
+                .ok_or_else(|| {
+                    ModelsError::new(
+                        ModelsErrorCode::Provider,
+                        format!("Unknown provider: {}", model.provider),
+                    )
+                })?;
+            let implementation = provider
+                .classifiers_for(&model.api)
+                .ok_or_else(|| {
+                    ModelsError::new(
+                        ModelsErrorCode::Provider,
+                        format!(
+                            "Provider {} does not support classification",
+                            model.provider
+                        ),
+                    )
+                })?;
+            let applied = apply_auth_one_shot(
+                provider.as_ref(),
+                &any,
+                self.credentials.as_ref(),
+                self.auth_context.as_ref(),
+                &options.classifier.api_key,
+                &options.classifier.env,
+                &options.classifier.headers,
+                &options.classifier.signal,
+                options.transform_headers.clone(),
+            )
+            .await?;
+            let mut classifier_options = options.classifier.clone();
+            classifier_options.api_key = applied.api_key;
+            classifier_options.headers = applied.headers;
+            classifier_options.env = applied.env;
+            let model = match applied.request_model {
+                AnyModel::Classifier(model) => model,
+                _ => model.clone(),
+            };
+            implementation
+                .classify(&applied.config, &model, context, &classifier_options)
+                .await
+        }
+        .await;
+        match result {
+            Ok(result) => result,
+            Err(error) => {
+                classifier_error_result(model, error, options.classifier.signal.is_some_and(|s| s.is_cancelled()))
+            }
+        }
+    }
+
     /// Upstream `lazyStream` (api/lazy.ts:43-60) as a channel: the routing
     /// setup runs in a spawned task behind the returned receiver; setup
     /// failures emit a single error event (upstream `createSetupErrorMessage`)
@@ -990,6 +1283,19 @@ pub(crate) fn merge_headers(
 /// upstream `mergeHeaders`.
 fn merge_model_headers(mut resolution: AuthResult, model: &Model) -> AuthResult {
     if let Some(model_headers) = model.headers.as_ref().filter(|headers| !headers.is_empty()) {
+        resolution.auth.headers =
+            merge_headers(resolution.auth.headers.as_ref(), Some(model_headers));
+    }
+    resolution
+}
+
+/// [`merge_model_headers`] over any model variant's static headers (upstream
+/// `getAuth(model)` is typed over `AnyModel` since the unified catalog).
+fn merge_model_headers_value(
+    mut resolution: AuthResult,
+    model_headers: Option<&ProviderHeaders>,
+) -> AuthResult {
+    if let Some(model_headers) = model_headers.filter(|headers| !headers.is_empty()) {
         resolution.auth.headers =
             merge_headers(resolution.auth.headers.as_ref(), Some(model_headers));
     }
@@ -1147,6 +1453,110 @@ async fn apply_auth(
     })
 }
 
+/// The one-shot (image/classifier) resolved request: upstream
+/// `applyAuth<TModel extends AnyModel>` (models.ts) is generic over the model
+/// type, so the request model keeps its variant with the auth-derived
+/// `baseUrl` override.
+pub(crate) struct AppliedAuthOneShot {
+    pub request_model: AnyModel,
+    pub config: ProviderConfig,
+    pub api_key: Option<String>,
+    pub headers: Option<ProviderHeaders>,
+    pub env: Option<ProviderEnv>,
+}
+
+/// Upstream `applyAuth` for image/classifier models: the same precedence
+/// (explicit options win per field, Models-only transform last) over the
+/// one-shot options shapes, which carry `apiKey`/`env`/`headers`/`signal`
+/// directly instead of a `StreamOptions`.
+#[allow(clippy::too_many_arguments)]
+async fn apply_auth_one_shot(
+    provider: &dyn Provider,
+    model: &AnyModel,
+    credentials: &dyn CredentialStore,
+    auth_context: &dyn AuthContext,
+    options_api_key: &Option<String>,
+    options_env: &Option<ProviderEnv>,
+    options_headers: &Option<ProviderHeaders>,
+    signal: &Option<CancellationToken>,
+    transform_headers: Option<TransformHeaders>,
+) -> Result<AppliedAuthOneShot, ModelsError> {
+    let overrides = AuthResolutionOverrides {
+        api_key: options_api_key.clone(),
+        env: options_env.clone(),
+        signal: signal.clone(),
+        ..AuthResolutionOverrides::default()
+    };
+    let resolution = resolve_provider_auth(
+        model.provider(),
+        provider.auth(),
+        credentials,
+        auth_context,
+        Some(&overrides),
+    )
+    .await
+    .map_err(|error| match error {
+        AuthError::Models(error) => error,
+        AuthError::Cancelled => {
+            ModelsError::new(ModelsErrorCode::Auth, crate::ai::api::REQUEST_ABORTED)
+        }
+        other => ModelsError::with_cause(ModelsErrorCode::Auth, "Auth resolution failed", other),
+    })?;
+    let Some(resolution) = resolution else {
+        return Err(ModelsError::new(
+            ModelsErrorCode::Auth,
+            format!("Provider is not configured: {}", model.provider()),
+        ));
+    };
+    // getAuth(model) folds the model's static headers in (models.ts:656-663).
+    let resolution = merge_model_headers_value(resolution, model.headers());
+    let auth = &resolution.auth;
+
+    let api_key = options_api_key.clone().or_else(|| auth.api_key.clone());
+    let mut headers = merge_headers(auth.headers.as_ref(), options_headers.as_ref());
+    if let Some(transform_headers) = transform_headers {
+        headers = Some(transform_headers(headers.unwrap_or_default()).await);
+    }
+    let env = match (resolution.env.as_ref(), options_env.as_ref()) {
+        (None, None) => None,
+        (resolved, explicit) => {
+            let mut merged: ProviderEnv = resolved.cloned().unwrap_or_default();
+            merged.extend(explicit.cloned().unwrap_or_default());
+            Some(merged)
+        }
+    };
+    let config = ProviderConfig {
+        base_url: auth
+            .base_url
+            .clone()
+            .unwrap_or_else(|| model.base_url().to_string()),
+        api_key: api_key.clone().unwrap_or_default(),
+        // Image/classifier models carry no maxTokens upstream.
+        max_tokens: 0,
+    };
+    let mut request_model = model.clone();
+    if let Some(auth_base_url) = auth.base_url.clone() {
+        set_base_url(&mut request_model, auth_base_url);
+    }
+    Ok(AppliedAuthOneShot {
+        request_model,
+        config,
+        api_key,
+        headers,
+        env,
+    })
+}
+
+/// The auth-derived `baseUrl` override on any model variant (upstream
+/// `{ ...model, baseUrl: auth.baseUrl }`).
+fn set_base_url(model: &mut AnyModel, base_url: String) {
+    match model {
+        AnyModel::Chat(inner) => inner.base_url = base_url,
+        AnyModel::Image(inner) => inner.base_url = base_url,
+        AnyModel::Classifier(inner) => inner.base_url = base_url,
+    }
+}
+
 /// Upstream `requireProvider` + `applyAuth` + the provider dispatch
 /// (models.ts:640-718): resolve auth through the owning provider, assemble
 /// the request (config/options), then route to the model's API
@@ -1160,6 +1570,19 @@ async fn route_stream(
     auth_context: &dyn AuthContext,
     options: RoutedOptions,
 ) -> Result<mpsc::Receiver<AssistantMessageEvent>, String> {
+    // requireChatProvider (models.ts): `assertChatModel(model)` first — a
+    // catalog entry typed image/classifier has no chat stream — then
+    // `requireProvider`. The Rust entry points are statically chat-typed;
+    // this defends the parsed-model edge where `Model.r#type` is set.
+    if let Some(model_type) = model.r#type {
+        if model_type != ModelType::Chat {
+            return Err(ModelsError::new(
+                ModelsErrorCode::Provider,
+                format!("Model {}/{} is not a chat model", model.provider, model.id),
+            )
+            .to_string());
+        }
+    }
     // requireProvider (models.ts:640-646).
     let provider = provider.ok_or_else(|| {
         ModelsError::new(
@@ -1378,6 +1801,18 @@ async fn run_provider_refresh(run: RefreshRun<'_>) -> Result<(), RefreshModelsEr
     run_provider_refresh_phase(&run, Some(credential), true, run.force).await
 }
 
+/// Upstream `withKnownModelTypes` (models.ts): drops stored models whose type
+/// this version does not know ("Models from stores and remote sources may
+/// have types that only newer versions know"). The [`AnyModel`] parse layer
+/// falls unknown `type` values back to chat, so every parsed model is of a
+/// known type — the filter is kept for upstream parity.
+fn with_known_model_types(mut entry: ModelsStoreEntry) -> ModelsStoreEntry {
+    entry
+        .models
+        .retain(crate::ai::models::provider::has_known_model_type);
+    entry
+}
+
 /// Upstream `runProviderRefreshPhase` (models.ts:379-396): read the
 /// provider's stored catalog, then hand the phase context to
 /// `provider.refreshModels`, raced against the refresh token.
@@ -1396,8 +1831,9 @@ async fn run_provider_refresh_phase(
     let context = RefreshModelsContext {
         credential,
         // Store reads already return owned values, the port equivalent of
-        // upstream's `structuredClone(stored)`.
-        stored,
+        // upstream's `structuredClone(stored)`; `withKnownModelTypes` drops
+        // stored models whose type this version does not know (models.ts).
+        stored: stored.map(with_known_model_types),
         allow_network,
         // Upstream `force: allowNetwork ? force : undefined` (models.ts:393).
         force: if allow_network { force } else { None },
@@ -1591,7 +2027,7 @@ mod tests {
     /// Upstream `testModel` fixture (models-runtime.test.ts:9-22): api
     /// "test-api".
     fn test_model(provider: &str, id: &str) -> Model {
-        Model {
+        Model {r#type: None, prompt_cache: None, input_limits: None, 
             id: id.to_string(),
             name: id.to_string(),
             api: "test-api".to_string(),
@@ -1684,12 +2120,15 @@ mod tests {
         api: ApiImpls,
     ) -> Arc<dyn Provider> {
         create_provider(CreateProviderOptions {
+            filter_all_models: None,
+            images: crate::ai::models::provider::ImagesImpls::new(),
+            classifiers: crate::ai::models::provider::ClassifiersImpls::new(),
             id: id.to_string(),
             name: None,
             base_url: None,
             headers: None,
             auth,
-            models,
+            models: models.into_iter().map(crate::ai::types::AnyModel::Chat).collect(),
             fetch_models: None,
             filter_models: None,
             api,
@@ -2693,11 +3132,16 @@ mod tests {
     #[tokio::test]
     async fn stream_produces_error_events_for_routing_failures() {
         let mut models = create_models(CreateModelsOptions::default());
+            // Upstream rejects an EMPTY api map at createProvider (the delta:
+            // at least one of api/images/classifiers is required); a map keyed
+            // by a different api reproduces the routing-miss error path.
         models.set_provider(test_provider_with_auth_and_api(
             "p1",
             vec![test_model("p1", "model-a")],
             auth_with(EnvKeyAuthFixture::missing()),
-            ApiImpls::PerApi(BTreeMap::new()),
+            ApiImpls::PerApi(BTreeMap::from([
+                ("other-api".to_string(), Arc::new(StubApi) as Arc<dyn ApiImpl>),
+            ])),
         ));
         let context = user_context();
 
@@ -2731,7 +3175,9 @@ mod tests {
             "p1",
             vec![test_model("p1", "model-a")],
             auth_with(EnvKeyAuthFixture::env("key")),
-            ApiImpls::PerApi(BTreeMap::new()),
+            ApiImpls::PerApi(BTreeMap::from([
+                ("other-api".to_string(), Arc::new(StubApi) as Arc<dyn ApiImpl>),
+            ])),
         ));
         let message = configured
             .complete_simple(&test_model("p1", "model-a"), &context, None)
@@ -2972,7 +3418,7 @@ mod tests {
         auth: ProviderAuth,
         fetch_models: Option<FetchModelsFn>,
     ) -> Arc<dyn Provider> {
-        create_provider(CreateProviderOptions {
+        create_provider(CreateProviderOptions {filter_all_models: None, images: crate::ai::models::provider::ImagesImpls::new(), classifiers: crate::ai::models::provider::ClassifiersImpls::new(), 
             id: id.to_string(),
             name: None,
             base_url: None,
@@ -3315,7 +3761,7 @@ mod tests {
             .write(
                 "dynamic",
                 ModelsStoreEntry {
-                    models: vec![test_model("dynamic", "cached")],
+                    models: vec![crate::ai::types::AnyModel::Chat(test_model("dynamic", "cached"))],
                     ..ModelsStoreEntry::default()
                 },
                 &StoreOptions::NONE,
@@ -3379,7 +3825,7 @@ mod tests {
     #[tokio::test]
     async fn refresh_deletes_persistently_and_publishes_ephemerally_atomically() {
         let state = Arc::new(std::sync::Mutex::new(Some(ModelsStoreEntry {
-            models: vec![test_model("dynamic", "stored")],
+            models: vec![crate::ai::types::AnyModel::Chat(test_model("dynamic", "stored"))],
             ..ModelsStoreEntry::default()
         })));
         let store = SharedStateStore {
@@ -3392,7 +3838,7 @@ mod tests {
             let behavior_state = behavior_state.clone();
             let behavior_entry = behavior_entry.clone();
             Box::pin(async move {
-                assert_eq!(context.stored.as_ref().unwrap().models[0].id, "stored");
+                assert_eq!(context.stored.as_ref().unwrap().models[0].id(), "stored");
                 let state_for_update = Arc::clone(&behavior_state);
                 let entry_for_update = Arc::clone(&behavior_entry);
                 let applied = context
@@ -3468,7 +3914,9 @@ mod tests {
         let fetched = test_model("dynamic", "fetched");
         let fetch_models: FetchModelsFn = Arc::new(move |_context| {
             let fetched = fetched.clone();
-            Box::pin(async move { Ok(vec![fetched]) })
+            Box::pin(async move {
+                Ok(vec![crate::ai::types::AnyModel::Chat(fetched)])
+            })
         });
         let mut online = create_models(CreateModelsOptions {
             credentials: Some(Arc::clone(&credentials) as Arc<dyn CredentialStore>),
@@ -3717,7 +4165,7 @@ mod tests {
                 context
                     .publish(ModelsPublication {
                         persist: Some(Some(ModelsStoreEntry {
-                            models: vec![test_model("dynamic", "fresh")],
+                            models: vec![crate::ai::types::AnyModel::Chat(test_model("dynamic", "fresh"))],
                             ..ModelsStoreEntry::default()
                         })),
                         update: None,
@@ -3887,7 +4335,7 @@ mod tests {
                 let applied = context
                     .publish(ModelsPublication {
                         persist: Some(Some(ModelsStoreEntry {
-                            models: vec![model],
+                            models: vec![crate::ai::types::AnyModel::Chat(model)],
                             ..ModelsStoreEntry::default()
                         })),
                         update: Some(Box::new(move || {
@@ -3940,7 +4388,7 @@ mod tests {
             .await
             .unwrap()
             .unwrap();
-        assert_eq!(stored.models[0].id, "generation-2");
+        assert_eq!(stored.models[0].id(), "generation-2");
     }
 
     /// Oracle "checks provider auth without refreshing OAuth and filters

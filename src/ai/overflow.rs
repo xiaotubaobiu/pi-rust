@@ -16,10 +16,13 @@ impl CaseInsensitive {
     }
 }
 
-/// Upstream `OVERFLOW_PATTERNS` (`overflow.ts:37-65`), order preserved.
+/// Upstream `OVERFLOW_PATTERNS` (`overflow.ts:37-67`), order preserved.
+/// The z.ai delta widens the Anthropic pattern to `prompt (?:is )?too long`
+/// and adds the CN-endpoint `prompt exceeds max length` grammar.
 static OVERFLOW_PATTERNS: LazyLock<Vec<Regex>> = LazyLock::new(|| {
     [
-        r"prompt is too long",
+        r"prompt (?:is )?too long",
+        r"prompt exceeds max length",
         r"request_too_large",
         r"input is too long for requested model",
         r"exceeds the context window",

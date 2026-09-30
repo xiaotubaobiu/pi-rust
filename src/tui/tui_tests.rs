@@ -20,9 +20,7 @@ use serde_json::json;
 use super::*;
 use crate::tui::component::{TuiMouseButton, TuiMouseEventType};
 use crate::tui::terminal::Terminal;
-use crate::tui::terminal_colors::{
-    RgbColor as OracleRgbColor, TerminalColorScheme as OracleColorScheme,
-};
+use crate::tui::terminal_colors::{RgbColor as OracleRgbColor, TerminalColors};
 use crate::tui::terminal_image::{
     reset_capabilities_cache, set_capabilities, TerminalCapabilities,
 };
@@ -74,14 +72,51 @@ pub const CELL_SIZE_RESPONSE: &str =
 pub const CELL_SIZE_AFTER: &str = "{\"inputs\":[\"q\"]}";
 pub const CELL_SIZE_DISABLED_START_WRITES: &[&str] = &["\u{1b}[?25l"];
 pub const CELL_SIZE_DISABLED_ESCAPE: &str = "{\"inputs\":[\"\\u001b\"]}";
-pub const OSC11_QUERY_WRITES: &[&str] = &["\u{1b}]11;?\u{7}", "\u{1b}]11;?\u{7}"];
-pub const OSC11_RESPONSE: &str =
-    "{\"results\":[[\"first\",{\"b\":0,\"g\":255,\"r\":34}]],\"writes\":[]}";
-pub const OSC11_TIMEOUT: &str = "{\"results\":[null]}";
-pub const SCHEME_QUERY_WRITES: &[&str] = &["\u{1b}[?996n"];
-pub const SCHEME_REPORT: &str =
-    "{\"schemes\":[[\"listener\",\"dark\"],[\"query\",\"dark\"]],\"writes\":[]}";
-pub const SCHEME_TIMEOUT: &str = "{\"schemes\":[null]}";
+// v0.99.1 queryTerminalColors oracle data: captured by
+// tests/fixtures/tui_delta_oracle/tui/capture.mjs from the real upstream
+// tui.ts (see delta_oracle_tests.rs for provenance SHAs).
+pub const TUI_COLOR_QUERY_WRITE: &str = "\u{1b}]10;?\u{7}\u{1b}]11;?\u{7}\u{1b}]4;0;?\u{7}\u{1b}]4;1;?\u{7}\u{1b}]4;2;?\u{7}\u{1b}]4;3;?\u{7}\u{1b}]4;4;?\u{7}\u{1b}]4;5;?\u{7}\u{1b}]4;6;?\u{7}\u{1b}]4;7;?\u{7}\u{1b}]4;8;?\u{7}\u{1b}]4;9;?\u{7}\u{1b}]4;10;?\u{7}\u{1b}]4;11;?\u{7}\u{1b}]4;12;?\u{7}\u{1b}]4;13;?\u{7}\u{1b}]4;14;?\u{7}\u{1b}]4;15;?\u{7}\u{1b}[c";
+pub const PALETTE_REPLIES: [&str; 16] = [
+    "\u{1b}]4;0;#000000\u{7}",
+    "\u{1b}]4;1;#000000\u{7}",
+    "\u{1b}]4;2;#000000\u{7}",
+    "\u{1b}]4;3;#000000\u{7}",
+    "\u{1b}]4;4;#000000\u{7}",
+    "\u{1b}]4;5;#000000\u{7}",
+    "\u{1b}]4;6;#000000\u{7}",
+    "\u{1b}]4;7;#000000\u{7}",
+    "\u{1b}]4;8;#000000\u{7}",
+    "\u{1b}]4;9;#000000\u{7}",
+    "\u{1b}]4;10;#000000\u{7}",
+    "\u{1b}]4;11;#000000\u{7}",
+    "\u{1b}]4;12;#000000\u{7}",
+    "\u{1b}]4;13;#000000\u{7}",
+    "\u{1b}]4;14;#000000\u{7}",
+    "\u{1b}]4;15;#000000\u{7}",
+];
+pub const TUI_COLOR_QUERY_RESOLVED: &str =
+    "{\"foreground\":{\"r\":255,\"g\":255,\"b\":255},\"background\":{\"r\":0,\"g\":0,\"b\":0},\"palette\":[{\"r\":0,\"g\":0,\"b\":0},{\"r\":0,\"g\":0,\"b\":0},{\"r\":0,\"g\":0,\"b\":0},{\"r\":0,\"g\":0,\"b\":0},{\"r\":0,\"g\":0,\"b\":0},{\"r\":0,\"g\":0,\"b\":0},{\"r\":0,\"g\":0,\"b\":0},{\"r\":0,\"g\":0,\"b\":0},{\"r\":0,\"g\":0,\"b\":0},{\"r\":0,\"g\":0,\"b\":0},{\"r\":0,\"g\":0,\"b\":0},{\"r\":0,\"g\":0,\"b\":0},{\"r\":0,\"g\":0,\"b\":0},{\"r\":0,\"g\":0,\"b\":0},{\"r\":0,\"g\":0,\"b\":0},{\"r\":0,\"g\":0,\"b\":0}]}";
+pub const TUI_COLOR_QUERY_INPUTS: &str = "{\"inputs\":[\"x\"]}";
+pub const TUI_COLOR_FIFO_FIRST: &str =
+    "{\"foreground\":null,\"background\":{\"r\":0,\"g\":0,\"b\":0},\"palette\":null}";
+pub const TUI_COLOR_FIFO_SECOND: &str =
+    "{\"foreground\":null,\"background\":null,\"palette\":null}";
+pub const TUI_COLOR_TIMEOUT: &str = "{\"foreground\":null,\"background\":null,\"palette\":null}";
+pub const TUI_COLOR_LATE_REPLY: &str =
+    "{\"foreground\":null,\"background\":{\"r\":255,\"g\":255,\"b\":255},\"palette\":null}";
+
+/// JSON shape shared with the upstream test assertions.
+fn colors_oracle_json(colors: &TerminalColors) -> serde_json::Value {
+    let rgb_json = |rgb: OracleRgbColor| json!({ "r": rgb.r, "g": rgb.g, "b": rgb.b });
+    json!({
+        "foreground": colors.foreground.map(rgb_json),
+        "background": colors.background.map(rgb_json),
+        "palette": colors
+            .palette
+            .as_ref()
+            .map(|palette| palette.iter().map(|rgb| rgb_json(*rgb)).collect::<Vec<_>>()),
+    })
+}
 pub const SHRINK_INITIAL_WRITES: &[&str] = &["\u{1b}[?25l", "\u{1b}[?2026h\u{1b}[?2026l", "\u{1b}[?25l", "\u{1b}[?2026hLine 0\u{1b}[0m\u{1b}]8;;\u{7}\r\nLine 1\u{1b}[0m\u{1b}]8;;\u{7}\r\nLine 2\u{1b}[0m\u{1b}]8;;\u{7}\r\nLine 3\u{1b}[0m\u{1b}]8;;\u{7}\r\nLine 4\u{1b}[0m\u{1b}]8;;\u{7}\r\nLine 5\u{1b}[0m\u{1b}]8;;\u{7}\u{1b}[?2026l", "\u{1b}[?25l"];
 pub const SHRINK_WRITES: &[&str] = &["\u{1b}[?2026h\u{1b}[2J\u{1b}[H\u{1b}[3JLine 0\u{1b}[0m\u{1b}]8;;\u{7}\r\nLine 1\u{1b}[0m\u{1b}]8;;\u{7}\u{1b}[?2026l", "\u{1b}[?25l"];
 pub const SHRINK_CLEAR: &str = "{\"delta\":2,\"viewport\":[\"Line 0\",\"Line 1\"]}";
@@ -421,11 +456,25 @@ impl Component for ScriptedOverlay {
 }
 
 /// Non-focusable static-lines component (upstream StaticLines/StaticOverlay).
-struct StaticLines(Vec<String>);
+struct StaticLines {
+    lines: Vec<String>,
+    inputs: Vec<String>,
+}
+
+impl StaticLines {
+    /// The forwarded input sequences (upstream InputRecorder.inputs).
+    fn inputs(&self) -> Vec<String> {
+        self.inputs.clone()
+    }
+}
 
 impl Component for StaticLines {
     fn render(&mut self, _width: usize) -> Vec<String> {
-        self.0.clone()
+        self.lines.clone()
+    }
+
+    fn handle_input(&mut self, data: &str) {
+        self.inputs.push(data.to_string());
     }
 }
 
@@ -443,9 +492,10 @@ fn scripted_handle(lines: &[&str]) -> (ComponentHandle, Rc<RefCell<ScriptedOverl
 }
 
 fn static_handle(lines: &[&str]) -> (ComponentHandle, Rc<RefCell<StaticLines>>) {
-    let (handle, shared) = ComponentHandle::with_shared(StaticLines(
-        lines.iter().map(|l| (*l).to_string()).collect(),
-    ));
+    let (handle, shared) = ComponentHandle::with_shared(StaticLines {
+        lines: lines.iter().map(|l| (*l).to_string()).collect(),
+        inputs: Vec::new(),
+    });
     (handle, shared)
 }
 
@@ -885,21 +935,6 @@ fn test_lock() -> std::sync::MutexGuard<'static, ()> {
     LOCK.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
 }
 
-fn rgb_oracle_json(rgb: Option<OracleRgbColor>) -> serde_json::Value {
-    match rgb {
-        Some(rgb) => json!({ "r": rgb.r, "g": rgb.g, "b": rgb.b }),
-        None => serde_json::Value::Null,
-    }
-}
-
-fn scheme_oracle_json(scheme: Option<OracleColorScheme>) -> serde_json::Value {
-    match scheme {
-        Some(TerminalColorScheme::Dark) => json!("dark"),
-        Some(TerminalColorScheme::Light) => json!("light"),
-        None => serde_json::Value::Null,
-    }
-}
-
 fn viewport_of(harness: &Harness) -> Vec<String> {
     harness
         .renderer
@@ -998,7 +1033,7 @@ fn request_render_throttles_until_timer() {
     harness.tui.start();
     settle(&mut harness);
 
-    shared.borrow_mut().0 = vec!["two".to_string()];
+    shared.borrow_mut().lines = vec!["two".to_string()];
     harness.tui.request_render(false);
     harness.tui.run_next_ticks();
     assert_eq!(harness.renderer.borrow().render_count, THROTTLED_BEFORE_RC);
@@ -1208,71 +1243,174 @@ fn forwards_bare_escape_without_image_capability() {
     settle(&mut harness);
 }
 
-/// OSC 11 background color queries: FIFO responses, timeout, byte writes.
+/// Upstream `TUI.queryTerminalColors` ("queries all colors in one write and
+/// consumes the replies"): one terminal.write carries OSC 10 + 11 + 16
+/// palette queries + DA1; the query resolves once every color replied,
+/// without waiting for DA1.
 #[test]
-fn osc11_background_query_response_and_timeout() {
+fn query_terminal_colors_consumes_replies_in_one_write() {
+    let _tui_test_lock = test_lock();
+    let mut harness = make_harness(80, 24);
+    let (component, shared) = static_handle(&[]);
+    harness.tui.add_child(component.clone());
+    harness.tui.set_focus(Some(component));
+    harness.tui.start();
+    settle(&mut harness);
+    harness.terminal.borrow_mut().writes.clear();
+
+    let resolved: Rc<RefCell<Option<TerminalColors>>> = Rc::new(RefCell::new(None));
+    {
+        let resolved = resolved.clone();
+        harness.tui.query_terminal_colors(
+            5000.0,
+            move |colors| *resolved.borrow_mut() = Some(colors),
+            None,
+        );
+    }
+    // The query write goes out synchronously (a pending focus render may
+    // flush on the next-tick drain afterwards).
+    assert_writes(&writes_of(&harness), &[TUI_COLOR_QUERY_WRITE]);
+    harness.terminal.borrow_mut().writes.clear();
+    harness.tui.run_next_ticks();
+
+    send_input(&mut harness, "x");
+    send_input(&mut harness, "\x1b]10;#ffffff\x07");
+    send_input(&mut harness, "\x1b]11;rgb:0000/0000/0000\x1b\\");
+    for reply in PALETTE_REPLIES {
+        send_input(&mut harness, reply);
+    }
+    harness.tui.run_next_ticks();
+    let colors = resolved
+        .borrow()
+        .clone()
+        .expect("query resolved without DA1");
+    let resolved_json = colors_oracle_json(&colors);
+    assert_oracle_json(resolved_json, TUI_COLOR_QUERY_RESOLVED);
+    // (The "x" keystroke renders the empty component; upstream asserts only
+    // the recorded inputs here.)
+    harness.terminal.borrow_mut().writes.clear();
+    // The DA1 reply after completion is forwarded as ordinary input.
+    send_input(&mut harness, "\x1b[?62;22c");
+    harness.tui.run_next_ticks();
+    {
+        let component_ref = shared.borrow();
+        assert_oracle_json(
+            json!({ "inputs": component_ref.inputs() }),
+            TUI_COLOR_QUERY_INPUTS,
+        );
+    }
+    harness.tui.stop(TuiStopOptions::default());
+    settle(&mut harness);
+}
+
+/// Upstream "resolves on DA1 with the replies that arrived, in query order".
+#[test]
+fn query_terminal_colors_resolves_on_da1_in_query_order() {
     let _tui_test_lock = test_lock();
     let mut harness = make_harness(80, 24);
     harness.tui.start();
     settle(&mut harness);
     harness.terminal.borrow_mut().writes.clear();
 
-    let first: Rc<RefCell<Option<Option<RgbColor>>>> = Rc::new(RefCell::new(None));
-    let second: Rc<RefCell<Option<Option<RgbColor>>>> = Rc::new(RefCell::new(None));
+    let first: Rc<RefCell<Option<TerminalColors>>> = Rc::new(RefCell::new(None));
+    let second: Rc<RefCell<Option<TerminalColors>>> = Rc::new(RefCell::new(None));
     {
         let first = first.clone();
-        harness
-            .tui
-            .query_terminal_background_color(5000.0, move |rgb| *first.borrow_mut() = Some(rgb));
+        harness.tui.query_terminal_colors(
+            5000.0,
+            move |colors| *first.borrow_mut() = Some(colors),
+            None,
+        );
         let second = second.clone();
-        harness
-            .tui
-            .query_terminal_background_color(5000.0, move |rgb| *second.borrow_mut() = Some(rgb));
-    }
-    harness.tui.run_next_ticks();
-    assert_writes(&writes_of(&harness), OSC11_QUERY_WRITES);
-    harness.terminal.borrow_mut().writes.clear();
-
-    send_input(&mut harness, "\x1b]11;rgb:2222/ffff/0000\x07");
-    harness.tui.run_next_ticks();
-    {
-        let first = first.borrow().expect("first query settled");
-        assert_oracle_json(
-            json!({
-                "results": [["first", rgb_oracle_json(first)]],
-                "writes": writes_of(&harness),
-            }),
-            OSC11_RESPONSE,
+        harness.tui.query_terminal_colors(
+            5000.0,
+            move |colors| *second.borrow_mut() = Some(colors),
+            None,
         );
     }
-    assert!(
-        second.borrow().is_none(),
-        "FIFO: second query still pending"
-    );
-
-    let timeout_result: Rc<RefCell<Option<Option<RgbColor>>>> = Rc::new(RefCell::new(None));
-    {
-        let timeout_result = timeout_result.clone();
-        harness
-            .tui
-            .query_terminal_background_color(20.0, move |rgb| {
-                *timeout_result.borrow_mut() = Some(rgb)
-            });
-    }
     harness.tui.run_next_ticks();
-    pump(&mut harness, 60.0);
-    let timed_out = timeout_result.borrow().expect("timeout settles the query");
-    assert_oracle_json(
-        json!({ "results": [rgb_oracle_json(timed_out)] }),
-        OSC11_TIMEOUT,
-    );
+    harness.terminal.borrow_mut().writes.clear();
+
+    send_input(&mut harness, "\x1b]11;#000000\x07");
+    // An incomplete palette is dropped.
+    for reply in &PALETTE_REPLIES[..8] {
+        send_input(&mut harness, reply);
+    }
+    send_input(&mut harness, "\x1b[?62;22c");
+    send_input(&mut harness, "\x1b[?62;22c");
+    harness.tui.run_next_ticks();
+
+    let first_colors = first.borrow().clone().expect("first query settled");
+    let second_colors = second.borrow().clone().expect("second query settled");
+    assert_oracle_json(colors_oracle_json(&first_colors), TUI_COLOR_FIFO_FIRST);
+    assert_oracle_json(colors_oracle_json(&second_colors), TUI_COLOR_FIFO_SECOND);
     harness.tui.stop(TuiStopOptions::default());
     settle(&mut harness);
 }
 
-/// Color scheme query: listener fires, query resolves, timeout resolves null.
+/// Upstream "reports late replies after a timeout and consumes them until
+/// DA1"; with no query pending, color replies are ordinary input again.
 #[test]
-fn color_scheme_query_listener_and_timeout() {
+fn query_terminal_colors_reports_late_replies_after_timeout() {
+    let _tui_test_lock = test_lock();
+    let mut harness = make_harness(80, 24);
+    let (component, shared) = static_handle(&[]);
+    harness.tui.add_child(component.clone());
+    harness.tui.set_focus(Some(component));
+    harness.tui.start();
+    settle(&mut harness);
+    harness.terminal.borrow_mut().writes.clear();
+
+    let timed_out: Rc<RefCell<Option<TerminalColors>>> = Rc::new(RefCell::new(None));
+    let late: Rc<RefCell<Vec<TerminalColors>>> = Rc::new(RefCell::new(Vec::new()));
+    {
+        let timed_out = timed_out.clone();
+        let late = late.clone();
+        harness.tui.query_terminal_colors(
+            20.0,
+            move |colors| *timed_out.borrow_mut() = Some(colors),
+            Some(Box::new(move |colors| late.borrow_mut().push(colors))),
+        );
+    }
+    pump(&mut harness, 60.0);
+    let timeout_result = timed_out
+        .borrow()
+        .clone()
+        .expect("timeout settles the query");
+    assert_oracle_json(colors_oracle_json(&timeout_result), TUI_COLOR_TIMEOUT);
+
+    send_input(&mut harness, "\x1b]11;#ffffff\x07");
+    send_input(&mut harness, "\x1b[?62;22c");
+    harness.tui.run_next_ticks();
+    {
+        let late = late.borrow();
+        assert_eq!(late.len(), 1, "one late delivery");
+        assert_oracle_json(colors_oracle_json(&late[0]), TUI_COLOR_LATE_REPLY);
+        let component_ref = shared.borrow();
+        assert_oracle_json(
+            json!({ "inputs": component_ref.inputs() }),
+            "{\"inputs\":[]}",
+        );
+    }
+
+    // With no query pending, color replies are ordinary input again.
+    send_input(&mut harness, "\x1b]11;#ffffff\x07");
+    harness.tui.run_next_ticks();
+    {
+        let component_ref = shared.borrow();
+        assert_oracle_json(
+            json!({ "inputs": component_ref.inputs() }),
+            "{\"inputs\":[\"\\u001b]11;#ffffff\\u0007\"]}",
+        );
+    }
+    harness.tui.stop(TuiStopOptions::default());
+    settle(&mut harness);
+}
+
+/// The DSR color-scheme report still notifies listeners
+/// (upstream `onTerminalColorSchemeChange`).
+#[test]
+fn color_scheme_report_notifies_listeners() {
     let _tui_test_lock = test_lock();
     let mut harness = make_harness(80, 24);
     harness.tui.start();
@@ -1289,59 +1427,16 @@ fn color_scheme_query_listener_and_timeout() {
             });
         });
     }
-    let query_result: Rc<RefCell<Option<Option<TerminalColorScheme>>>> =
-        Rc::new(RefCell::new(None));
-    {
-        let query_result = query_result.clone();
-        harness
-            .tui
-            .query_terminal_color_scheme(5000.0, move |scheme| {
-                *query_result.borrow_mut() = Some(scheme)
-            });
-    }
-    harness.tui.run_next_ticks();
-    assert_writes(&writes_of(&harness), SCHEME_QUERY_WRITES);
-    harness.terminal.borrow_mut().writes.clear();
-
     send_input(&mut harness, "\x1b[?997;1n");
     harness.tui.run_next_ticks();
-    {
-        let query_scheme = query_result.borrow().expect("query settled");
-        let scheme_name = match query_scheme {
-            Some(TerminalColorScheme::Dark) => "dark",
-            Some(TerminalColorScheme::Light) => "light",
-            None => "null",
-        };
-        assert_oracle_json(
-            json!({
-                "schemes": [["listener", listener_schemes.borrow()[0]], ["query", scheme_name]],
-                "writes": writes_of(&harness),
-            }),
-            SCHEME_REPORT,
-        );
-    }
-
-    let timeout_result: Rc<RefCell<Option<Option<TerminalColorScheme>>>> =
-        Rc::new(RefCell::new(None));
-    {
-        let timeout_result = timeout_result.clone();
-        harness
-            .tui
-            .query_terminal_color_scheme(20.0, move |scheme| {
-                *timeout_result.borrow_mut() = Some(scheme)
-            });
-    }
-    harness.tui.run_next_ticks();
-    pump(&mut harness, 60.0);
-    let timed_out = timeout_result.borrow().expect("timeout settles the query");
-    assert_oracle_json(
-        json!({ "schemes": [scheme_oracle_json(timed_out)] }),
-        SCHEME_TIMEOUT,
+    assert_eq!(
+        listener_schemes.borrow().as_slice(),
+        ["dark"],
+        "listener received the scheme report"
     );
     harness.tui.stop(TuiStopOptions::default());
     settle(&mut harness);
 }
-
 /// tui-shrink.test.ts + render shrink tests: clearOnShrink full redraws.
 #[test]
 fn clear_on_shrink_triggers_full_renders() {
@@ -1354,7 +1449,7 @@ fn clear_on_shrink_triggers_full_renders() {
     settle(&mut harness);
     let redraws_before = harness.tui.full_redraws();
 
-    shared.borrow_mut().0 = ["Line 0", "Line 1", "Line 2", "Line 3", "Line 4", "Line 5"]
+    shared.borrow_mut().lines = ["Line 0", "Line 1", "Line 2", "Line 3", "Line 4", "Line 5"]
         .iter()
         .map(|line| (*line).to_string())
         .collect();
@@ -1363,7 +1458,7 @@ fn clear_on_shrink_triggers_full_renders() {
     assert_writes(&writes_of(&harness), SHRINK_INITIAL_WRITES);
 
     let offset = harness.terminal.borrow().writes.len();
-    shared.borrow_mut().0 = vec!["Line 0".to_string(), "Line 1".to_string()];
+    shared.borrow_mut().lines = vec!["Line 0".to_string(), "Line 1".to_string()];
     harness.tui.request_render(false);
     settle(&mut harness);
     assert_writes(&writes_from(&harness, offset), SHRINK_WRITES);
@@ -1376,11 +1471,11 @@ fn clear_on_shrink_triggers_full_renders() {
     );
 
     // Shrink to a single line, then to empty.
-    shared.borrow_mut().0 = vec!["Only line".to_string()];
+    shared.borrow_mut().lines = vec!["Only line".to_string()];
     harness.tui.request_render(false);
     settle(&mut harness);
     let single_viewport = viewport_of(&harness);
-    shared.borrow_mut().0.clear();
+    shared.borrow_mut().lines.clear();
     harness.tui.request_render(false);
     settle(&mut harness);
     assert_oracle_json(
@@ -1412,7 +1507,7 @@ fn differential_render_handles_midline_changes() {
         SPINNER_FRAME_3,
     ];
     for (frame_index, frame) in ["|", "/", "-", "\\"].iter().enumerate() {
-        shared.borrow_mut().0 = vec![
+        shared.borrow_mut().lines = vec![
             "Header".to_string(),
             format!("Working {frame}"),
             "Footer".to_string(),
@@ -1439,13 +1534,13 @@ fn deleted_lines_move_viewport_up_then_append_differentially() {
     settle(&mut harness);
     let redraws_before = harness.tui.full_redraws();
 
-    shared.borrow_mut().0 = (0..12).map(|i| format!("Line {i}")).collect();
+    shared.borrow_mut().lines = (0..12).map(|i| format!("Line {i}")).collect();
     harness.tui.request_render(false);
     settle(&mut harness);
     assert_writes(&writes_of(&harness), DELETED_GROWN_WRITES);
 
     let offset = harness.terminal.borrow().writes.len();
-    shared.borrow_mut().0 = (0..7).map(|i| format!("Line {i}")).collect();
+    shared.borrow_mut().lines = (0..7).map(|i| format!("Line {i}")).collect();
     harness.tui.request_render(false);
     settle(&mut harness);
     assert_writes(&writes_from(&harness, offset), DELETED_SHRINK_WRITES);
@@ -1459,7 +1554,7 @@ fn deleted_lines_move_viewport_up_then_append_differentially() {
 
     let offset = harness.terminal.borrow().writes.len();
     let redraws_after_shrink = harness.tui.full_redraws();
-    shared.borrow_mut().0 = (0..3).map(|i| format!("Line {i}")).collect();
+    shared.borrow_mut().lines = (0..3).map(|i| format!("Line {i}")).collect();
     harness.tui.request_render(false);
     settle(&mut harness);
     assert_writes(&writes_from(&harness, offset), APPEND_WRITES);
@@ -1484,20 +1579,22 @@ fn clears_stale_content_after_transient_inflation() {
     let (editor, editor_shared) = static_handle(&[]);
     harness.tui.add_child(chat);
     harness.tui.add_child(editor);
-    chat_shared.borrow_mut().0 = (0..15).map(|i| format!("Chat {i}")).collect();
-    editor_shared.borrow_mut().0 = vec!["Editor 0".into(), "Editor 1".into(), "Editor 2".into()];
+    chat_shared.borrow_mut().lines = (0..15).map(|i| format!("Chat {i}")).collect();
+    editor_shared.borrow_mut().lines =
+        vec!["Editor 0".into(), "Editor 1".into(), "Editor 2".into()];
     harness.tui.start();
     settle(&mut harness);
 
-    editor_shared.borrow_mut().0 = (0..8).map(|i| format!("Selector {i}")).collect();
+    editor_shared.borrow_mut().lines = (0..8).map(|i| format!("Selector {i}")).collect();
     harness.tui.request_render(false);
     settle(&mut harness);
-    editor_shared.borrow_mut().0 = vec!["Editor 0".into(), "Editor 1".into(), "Editor 2".into()];
+    editor_shared.borrow_mut().lines =
+        vec!["Editor 0".into(), "Editor 1".into(), "Editor 2".into()];
     harness.tui.request_render(false);
     settle(&mut harness);
 
     let redraws_before_switch = harness.tui.full_redraws();
-    chat_shared.borrow_mut().0 = (0..12).map(|i| format!("Chat {i}")).collect();
+    chat_shared.borrow_mut().lines = (0..12).map(|i| format!("Chat {i}")).collect();
     let offset = harness.terminal.borrow().writes.len();
     harness.tui.request_render(false);
     settle(&mut harness);
@@ -1522,7 +1619,7 @@ fn resize_triggers_full_re_renders() {
     harness.tui.add_child(component);
     harness.tui.start();
     settle(&mut harness);
-    shared.borrow_mut().0 = vec!["Line 0".into(), "Line 1".into(), "Line 2".into()];
+    shared.borrow_mut().lines = vec!["Line 0".into(), "Line 1".into(), "Line 2".into()];
     harness.tui.request_render(false);
     settle(&mut harness);
     let redraws_before = harness.tui.full_redraws();
@@ -1814,7 +1911,10 @@ fn overlay_options_layout_matrix() {
     for case in cases {
         let mut harness = make_harness(case.term.0, case.term.1);
         harness.tui.add_child(ComponentHandle::new(EmptyContent));
-        let (overlay, _shared) = ComponentHandle::with_shared(StaticLines(case.lines.clone()));
+        let (overlay, _shared) = ComponentHandle::with_shared(StaticLines {
+            lines: case.lines.clone(),
+            inputs: Vec::new(),
+        });
         harness.tui.show_overlay(overlay, Some(case.options));
         harness.tui.start();
         render_and_flush(&mut harness);
@@ -1845,7 +1945,10 @@ fn stacked_overlays_composite_in_order() {
     let mut harness = make_harness(80, 24);
     harness.tui.add_child(ComponentHandle::new(EmptyContent));
     harness.tui.show_overlay(
-        ComponentHandle::new(StaticLines(vec!["FIRST-OVERLAY".into()])),
+        ComponentHandle::new(StaticLines {
+            lines: vec!["FIRST-OVERLAY".into()],
+            inputs: Vec::new(),
+        }),
         Some(OverlayOptions {
             anchor: Some(OverlayAnchor::TopLeft),
             width: Some(SizeValue::Number(20.0)),
@@ -1853,7 +1956,10 @@ fn stacked_overlays_composite_in_order() {
         }),
     );
     harness.tui.show_overlay(
-        ComponentHandle::new(StaticLines(vec!["SECOND".into()])),
+        ComponentHandle::new(StaticLines {
+            lines: vec!["SECOND".into()],
+            inputs: Vec::new(),
+        }),
         Some(OverlayOptions {
             anchor: Some(OverlayAnchor::TopLeft),
             width: Some(SizeValue::Number(10.0)),
@@ -1886,7 +1992,7 @@ fn overlay_compositing_resets_styles() {
     let mut harness = make_harness(width, 6);
     let (base, shared) = static_handle(&[]);
     harness.tui.add_child(base);
-    shared.borrow_mut().0 = vec![base_line.clone(), "INPUT".to_string()];
+    shared.borrow_mut().lines = vec![base_line.clone(), "INPUT".to_string()];
     harness.tui.start();
     render_and_flush(&mut harness);
     let no_overlay_lines: Vec<String> = harness.renderer.borrow().last_new_lines.clone();
@@ -1898,9 +2004,12 @@ fn overlay_compositing_resets_styles() {
     let mut harness = make_harness(width, 6);
     let (base, shared) = static_handle(&[]);
     harness.tui.add_child(base);
-    shared.borrow_mut().0 = vec![base_line.clone(), "INPUT".to_string()];
+    shared.borrow_mut().lines = vec![base_line.clone(), "INPUT".to_string()];
     harness.tui.show_overlay(
-        ComponentHandle::new(StaticLines(vec!["OVR".into()])),
+        ComponentHandle::new(StaticLines {
+            lines: vec!["OVR".into()],
+            inputs: Vec::new(),
+        }),
         Some(OverlayOptions {
             row: Some(SizeValue::Number(0.0)),
             col: Some(SizeValue::Number(5.0)),
@@ -1956,14 +2065,14 @@ fn cursor_marker_extraction_and_positioning() {
     harness.tui.add_child(component.clone());
     harness.tui.set_focus(Some(component));
     harness.tui.set_show_hardware_cursor(true);
-    shared.borrow_mut().0 = vec![format!("alpha{CURSOR_MARKER}"), "beta".to_string()];
+    shared.borrow_mut().lines = vec![format!("alpha{CURSOR_MARKER}"), "beta".to_string()];
     harness.tui.start();
     settle(&mut harness);
     assert_writes(&writes_of(&harness), CURSOR_MARKER_WRITES);
     assert_oracle_json(json!(viewport_of(&harness)), CURSOR_MARKER_VIEWPORT);
 
     harness.terminal.borrow_mut().writes.clear();
-    shared.borrow_mut().0 = vec!["alpha".to_string(), format!("beta{CURSOR_MARKER}")];
+    shared.borrow_mut().lines = vec!["alpha".to_string(), format!("beta{CURSOR_MARKER}")];
     harness.tui.request_render(false);
     settle(&mut harness);
     assert_writes(&writes_of(&harness), CURSOR_MARKER_MOVED_WRITES);
@@ -3287,7 +3396,10 @@ fn visual_order_harness() -> Harness {
 
 fn show_static_overlay(harness: &mut Harness, line: &str, non_capturing: bool) -> OverlayHandle {
     harness.tui.show_overlay(
-        ComponentHandle::new(StaticLines(vec![line.to_string()])),
+        ComponentHandle::new(StaticLines {
+            lines: vec![line.to_string()],
+            inputs: Vec::new(),
+        }),
         Some(OverlayOptions {
             row: Some(SizeValue::Number(0.0)),
             col: Some(SizeValue::Number(0.0)),

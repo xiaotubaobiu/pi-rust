@@ -1418,7 +1418,7 @@ mod tests {
     // ---- fixtures ----
 
     fn model(base_url: &str) -> Model {
-        Model {
+        Model {r#type: None, prompt_cache: None, input_limits: None, 
             id: "gemini-2.5-flash".to_string(),
             name: "Gemini 2.5 Flash".to_string(),
             api: API.to_string(),
@@ -1443,7 +1443,7 @@ mod tests {
     }
 
     fn model_with_id(base_url: &str, id: &str) -> Model {
-        Model {
+        Model {r#type: None, prompt_cache: None, input_limits: None, 
             id: id.to_string(),
             ..model(base_url)
         }
@@ -2361,7 +2361,7 @@ mod tests {
     #[tokio::test]
     async fn thinking_map_error_precedes_the_adc_fallback() {
         let server = wiremock::MockServer::start().await;
-        let model = Model {
+        let model = Model {r#type: None, prompt_cache: None, input_limits: None, 
             thinking_level_map: Some(level_map(&[("xhigh", Some("extreme"))])),
             ..model_with_id(&format!("{}/v1", server.uri()), "gemini-2.5-flash")
         };
@@ -2649,7 +2649,7 @@ mod tests {
     async fn custom_budgets_override_mapped_levels() {
         let server = wiremock::MockServer::start().await;
         mount(&server, &[text_chunk("pong")]).await;
-        let model = Model {
+        let model = Model {r#type: None, prompt_cache: None, input_limits: None, 
             thinking_level_map: Some(level_map(&[("xhigh", Some("high"))])),
             ..model_with_id(&format!("{}/v1", server.uri()), "gemini-2.5-flash")
         };
@@ -2707,7 +2707,7 @@ mod tests {
     async fn unsupported_level_mapping_is_a_lone_error_event() {
         let server = wiremock::MockServer::start().await;
         mount(&server, &[text_chunk("pong")]).await;
-        let model = Model {
+        let model = Model {r#type: None, prompt_cache: None, input_limits: None, 
             thinking_level_map: Some(level_map(&[("xhigh", Some("extreme"))])),
             ..model_with_id(&format!("{}/v1", server.uri()), "gemini-2.5-flash")
         };

@@ -51,11 +51,10 @@ impl Box {
         let vis_len = visible_width(line);
         let pad_needed = width.saturating_sub(vis_len);
         let padded = format!("{line}{}", " ".repeat(pad_needed));
+        // Already padded to width, so apply the background directly instead of
+        // measuring the line again.
         match &self.bg_fn {
-            Some(bg) => {
-                let bg = Arc::clone(bg);
-                crate::tui::utils::apply_background_to_line(&padded, width, move |text| bg(text))
-            }
+            Some(bg) => bg(&padded),
             None => padded,
         }
     }
@@ -70,10 +69,15 @@ impl Component for Box {
         let content_width = (width.saturating_sub(self.padding_x * 2)).max(1);
         let left_pad = " ".repeat(self.padding_x);
 
+        // Render all children. Keep the child lines unpadded: children usually
+        // return the same string objects every frame upstream, so the render
+        // cache check is a cheap identity comparison per line. Padding here
+        // would create new strings that must be compared character by
+        // character; the padding lands on the composed line instead.
         let mut child_lines: Vec<String> = Vec::new();
         for child in &mut self.children {
             for line in child.render(content_width) {
-                child_lines.push(format!("{left_pad}{line}"));
+                child_lines.push(line);
             }
         }
         if child_lines.is_empty() {
@@ -85,7 +89,7 @@ impl Component for Box {
             result.push(self.apply_bg("", width));
         }
         for line in &child_lines {
-            result.push(self.apply_bg(line, width));
+            result.push(self.apply_bg(&format!("{left_pad}{line}"), width));
         }
         for _ in 0..self.padding_y {
             result.push(self.apply_bg("", width));

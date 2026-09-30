@@ -63,6 +63,7 @@ use crate::ai::api::openai_codex_responses::OpenAiCodexResponses;
 use crate::ai::api::openai_completions::OpenAiCompletions;
 use crate::ai::api::openai_responses::OpenAiResponses;
 use crate::ai::auth::helpers::{env_api_key_auth, lazy_oauth, OAuthLoader};
+use crate::ai::api::typesafe_system_one::TypeSafeSystemOneApi;
 use crate::ai::auth::oauth::load::{
     load_kimi_coding_oauth, load_openai_codex_oauth, load_openrouter_oauth, load_xai_oauth,
 };
@@ -93,6 +94,7 @@ pub fn builtin_providers() -> Vec<Arc<dyn Provider>> {
         groq_provider(),
         huggingface_provider(),
         kimi_coding_provider(),
+        meta_provider(),
         minimax_provider(),
         minimax_cn_provider(),
         mistral_provider(),
@@ -109,6 +111,7 @@ pub fn builtin_providers() -> Vec<Arc<dyn Provider>> {
         qwen_token_plan_individual_provider(),
         radius_provider(RadiusProviderOptions::default()),
         together_provider(),
+        typesafe_provider(),
         vercel_ai_gateway_provider(),
         xai_provider(),
         xiaomi_provider(),
@@ -229,10 +232,16 @@ fn thin_provider(
             api_key: Some(env_api_key_auth(key_label, env_vars)),
             oauth: None,
         },
-        models: embedded_provider_catalog(id),
+        models: embedded_provider_catalog(id)
+            .into_iter()
+            .map(crate::ai::types::AnyModel::Chat)
+            .collect(),
         fetch_models: None,
         filter_models: None,
+        filter_all_models: None,
         api,
+        images: crate::ai::models::provider::ImagesImpls::new(),
+        classifiers: crate::ai::models::provider::ClassifiersImpls::new(),
     })
 }
 
@@ -256,11 +265,43 @@ fn oauth_thin_provider(
             api_key: Some(env_api_key_auth(key_label, env_vars)),
             oauth: Some(Arc::new(oauth)),
         },
-        models: embedded_provider_catalog(id),
+        models: embedded_provider_catalog(id)
+            .into_iter()
+            .map(crate::ai::types::AnyModel::Chat)
+            .collect(),
         fetch_models: None,
         filter_models: None,
+        filter_all_models: None,
         api,
+        images: crate::ai::models::provider::ImagesImpls::new(),
+        classifiers: crate::ai::models::provider::ClassifiersImpls::new(),
     })
+}
+
+/// A classifier-capable catalog: chat entries plus the classifier entries of
+/// the generated shard (upstream `[...Object.values(X_MODELS),
+/// ...Object.values(X_CLASSIFIER_MODELS)]`). Image entries join where the
+/// upstream factory lists them (openrouter only in this snapshot's factories).
+fn catalog_with_classifiers(id: &str) -> Vec<crate::ai::types::AnyModel> {
+    embedded_provider_catalog(id)
+        .into_iter()
+        .map(crate::ai::types::AnyModel::Chat)
+        .chain(
+            crate::ai::models::catalog::embedded_provider_classifier_catalog(id)
+                .into_iter()
+                .map(crate::ai::types::AnyModel::Classifier),
+        )
+        .collect()
+}
+
+/// One classifier-implementation map (upstream `classifiers: { ... }`).
+fn classifiers(
+    entries: &[(&str, Arc<dyn crate::ai::models::provider::ClassifierApiImpl>)],
+) -> crate::ai::models::provider::ClassifiersImpls {
+    entries
+        .iter()
+        .map(|(api, implementation)| ((*api).to_string(), Arc::clone(implementation)))
+        .collect()
 }
 
 // ---------------------------------------------------------------------------
@@ -475,14 +516,39 @@ pub fn nvidia_provider() -> Arc<dyn Provider> {
     )
 }
 
-/// Upstream `openaiProvider` (openai.ts).
+/// Upstream `openaiProvider` (openai.ts): env key plus the Sign in with
+/// ChatGPT subscription flow (the openai.ts delta). The flow loader is the
+/// shared seam; the flow itself lands with the auth/oauth slice, so the
+/// lazy hook reports the login unavailable when exercised.
 pub fn openai_provider() -> Arc<dyn Provider> {
-    thin_provider(
+    oauth_thin_provider(
         "openai",
         "OpenAI",
         Some("https://api.openai.com/v1"),
         "OpenAI API key",
         &["OPENAI_API_KEY"],
+        lazy_oauth(
+            "OpenAI (ChatGPT subscription)".to_string(),
+            true,
+            Some("Sign in with ChatGPT".to_string()),
+            Arc::new(|| {
+                match crate::ai::auth::oauth::load::load_openai_chatgpt_oauth() {
+                    Ok(flow) => {
+                        let flow: Arc<dyn crate::ai::auth::types::OAuthAuth> = flow;
+                        Box::pin(async move { Ok(flow) })
+                            as BoxFuture<
+                                'static,
+                                Result<Arc<dyn crate::ai::auth::types::OAuthAuth>, AuthError>,
+                            >
+                    }
+                    Err(message) => Box::pin(async move { Err(AuthError::Operation(message)) })
+                        as BoxFuture<
+                            'static,
+                            Result<Arc<dyn crate::ai::auth::types::OAuthAuth>, AuthError>,
+                        >,
+                }
+            }) as Arc<OAuthLoader>,
+        ),
         single(OpenAiResponses),
     )
 }
@@ -492,7 +558,7 @@ pub fn openai_provider() -> Arc<dyn Provider> {
 pub fn openai_codex_provider() -> Arc<dyn Provider> {
     create_provider(CreateProviderOptions {
         id: "openai-codex".to_string(),
-        name: Some("OpenAI Codex".to_string()),
+        name: Some("OpenAI Codex (legacy)".to_string()),
         base_url: Some("https://chatgpt.com/backend-api".to_string()),
         headers: None,
         auth: ProviderAuth {
@@ -504,9 +570,12 @@ pub fn openai_codex_provider() -> Arc<dyn Provider> {
                 load_openai_codex_oauth,
             ))),
         },
-        models: embedded_provider_catalog("openai-codex"),
+        models: embedded_provider_catalog("openai-codex").into_iter().map(crate::ai::types::AnyModel::Chat).collect(),
         fetch_models: None,
         filter_models: None,
+        filter_all_models: None,
+        images: crate::ai::models::provider::ImagesImpls::new(),
+        classifiers: crate::ai::models::provider::ClassifiersImpls::new(),
         api: single(OpenAiCodexResponses),
     })
 }
@@ -515,23 +584,53 @@ pub fn openai_codex_provider() -> Arc<dyn Provider> {
 /// per-API implementations for both wire formats. Session-affinity routing is
 /// the API implementations' compat auto-detection (M2b), not factory logic.
 pub fn openrouter_provider() -> Arc<dyn Provider> {
-    oauth_thin_provider(
-        "openrouter",
-        "OpenRouter",
-        Some("https://openrouter.ai/api/v1"),
-        "OpenRouter API key",
-        &["OPENROUTER_API_KEY"],
-        lazy_flow(
-            "OpenRouter OAuth",
-            false,
-            Some("Sign in with OpenRouter"),
-            load_openrouter_oauth,
-        ),
-        per_api(&[
+    // Upstream #9948: the chat provider also carries the image models (the
+    // deleted providers/openrouter-images.ts factory became the `images`
+    // map) and the System One classifier models.
+    let models: Vec<crate::ai::types::AnyModel> = embedded_provider_catalog("openrouter")
+        .into_iter()
+        .map(crate::ai::types::AnyModel::Chat)
+        .chain(
+            crate::ai::models::catalog::embedded_provider_image_catalog("openrouter")
+                .into_iter()
+                .map(crate::ai::types::AnyModel::Image),
+        )
+        .chain(
+            crate::ai::models::catalog::embedded_provider_classifier_catalog("openrouter")
+                .into_iter()
+                .map(crate::ai::types::AnyModel::Classifier),
+        )
+        .collect();
+    let mut images = crate::ai::models::provider::ImagesImpls::new();
+    images.insert(
+        "openrouter-images".to_string(),
+        Arc::new(crate::ai::images::openrouter_images::OpenRouterImagesApi),
+    );
+    create_provider(CreateProviderOptions {
+        id: "openrouter".to_string(),
+        name: Some("OpenRouter".to_string()),
+        base_url: Some("https://openrouter.ai/api/v1".to_string()),
+        headers: None,
+        auth: ProviderAuth {
+            api_key: Some(env_api_key_auth("OpenRouter API key", &["OPENROUTER_API_KEY"])),
+            oauth: Some(Arc::new(lazy_flow(
+                "OpenRouter OAuth",
+                false,
+                Some("Sign in with OpenRouter"),
+                load_openrouter_oauth,
+            ))),
+        },
+        models,
+        fetch_models: None,
+        filter_models: None,
+        filter_all_models: None,
+        api: per_api(&[
             ("anthropic-messages", arc(AnthropicMessages)),
             ("openai-completions", arc(OpenAiCompletions)),
         ]),
-    )
+        images,
+        classifiers: classifiers(&[("typesafe-system-one", Arc::new(TypeSafeSystemOneApi))]),
+    })
 }
 
 /// Upstream `qwenTokenPlanProvider` (qwen-token-plan.ts).
@@ -584,15 +683,30 @@ pub fn together_provider() -> Arc<dyn Provider> {
 }
 
 /// Upstream `vercelAIGatewayProvider` (vercel-ai-gateway.ts).
+/// Upstream `vercelAIGatewayProvider` (vercel-ai-gateway.ts, the #9948
+/// delta): AI Gateway serves TypeSafe's System One protocol, so the
+/// classifier models join the chat catalog and the implementation map.
 pub fn vercel_ai_gateway_provider() -> Arc<dyn Provider> {
-    thin_provider(
-        "vercel-ai-gateway",
-        "Vercel AI Gateway",
-        Some("https://ai-gateway.vercel.sh"),
-        "Vercel AI Gateway API key",
-        &["AI_GATEWAY_API_KEY"],
-        single(AnthropicMessages),
-    )
+    create_provider(CreateProviderOptions {
+        id: "vercel-ai-gateway".to_string(),
+        name: Some("Vercel AI Gateway".to_string()),
+        base_url: Some("https://ai-gateway.vercel.sh".to_string()),
+        headers: None,
+        auth: ProviderAuth {
+            api_key: Some(env_api_key_auth(
+                "Vercel AI Gateway API key",
+                &["AI_GATEWAY_API_KEY"],
+            )),
+            oauth: None,
+        },
+        models: catalog_with_classifiers("vercel-ai-gateway"),
+        fetch_models: None,
+        filter_models: None,
+        filter_all_models: None,
+        api: single(AnthropicMessages),
+        images: crate::ai::models::provider::ImagesImpls::new(),
+        classifiers: classifiers(&[("typesafe-system-one", Arc::new(TypeSafeSystemOneApi))]),
+    })
 }
 
 /// Upstream `xaiProvider` (xai.ts): env key plus the Grok/X subscription
@@ -685,6 +799,68 @@ pub fn zai_coding_cn_provider() -> Arc<dyn Provider> {
         &["ZAI_CODING_CN_API_KEY"],
         single(OpenAiCompletions),
     )
+}
+
+/// Upstream `metaProvider` (meta.ts, the Meta Muse delta): the Meta Model
+/// API with the Muse subscription OAuth flow (the flow lands with the
+/// auth/oauth slice; the lazy hook reports it unavailable meanwhile).
+pub fn meta_provider() -> Arc<dyn Provider> {
+    oauth_thin_provider(
+        "meta",
+        "Meta",
+        Some("https://api.meta.ai/v1"),
+        "Meta Model API key",
+        &["META_API_KEY"],
+        lazy_oauth(
+            "Meta (Muse subscription)".to_string(),
+            true,
+            Some("Sign in with Meta".to_string()),
+            Arc::new(|| {
+                match crate::ai::auth::oauth::load::load_meta_oauth() {
+                    Ok(flow) => {
+                        let flow: Arc<dyn crate::ai::auth::types::OAuthAuth> = flow;
+                        Box::pin(async move { Ok(flow) })
+                            as BoxFuture<
+                                'static,
+                                Result<Arc<dyn crate::ai::auth::types::OAuthAuth>, AuthError>,
+                            >
+                    }
+                    Err(message) => Box::pin(async move { Err(AuthError::Operation(message)) })
+                        as BoxFuture<
+                            'static,
+                            Result<Arc<dyn crate::ai::auth::types::OAuthAuth>, AuthError>,
+                        >,
+                }
+            }) as Arc<OAuthLoader>,
+        ),
+        single(OpenAiResponses),
+    )
+}
+
+/// Upstream `typesafeProvider` (typesafe.ts, the #9948 delta):
+/// classifier-only provider — no chat `api`, just the System One
+/// classifier implementation over its generated catalog.
+pub fn typesafe_provider() -> Arc<dyn Provider> {
+    create_provider(CreateProviderOptions {
+        id: "typesafe".to_string(),
+        name: Some("TypeSafe".to_string()),
+        base_url: None,
+        headers: None,
+        auth: ProviderAuth {
+            api_key: Some(env_api_key_auth("TypeSafe API key", &["TYPESAFE_API_KEY"])),
+            oauth: None,
+        },
+        models: crate::ai::models::catalog::embedded_provider_classifier_catalog("typesafe")
+            .into_iter()
+            .map(crate::ai::types::AnyModel::Classifier)
+            .collect(),
+        fetch_models: None,
+        filter_models: None,
+        filter_all_models: None,
+        api: ApiImpls::None,
+        images: crate::ai::models::provider::ImagesImpls::new(),
+        classifiers: classifiers(&[("typesafe-system-one", Arc::new(TypeSafeSystemOneApi))]),
+    })
 }
 
 /// `Date.parse` reduced to the generator's UTC ISO-8601 shape
@@ -791,12 +967,21 @@ mod tests {
         let all = models.get_models(None);
         assert!(all.len() > 500, "{} models total", all.len());
 
-        // Static providers list models immediately; radius is purely dynamic
-        // and kimi-coding has no generated shard in this snapshot.
+        // Static providers list models immediately; radius is purely dynamic,
+        // kimi-coding/typesafe/meta have no generated chat shard in this
+        // snapshot (typesafe is classifier-only), so their chat lists are
+        // empty.
         for provider in &providers {
             let list = models.get_models(Some(provider.id()));
-            if provider.id() == "radius" || provider.id() == "kimi-coding" {
-                assert!(list.is_empty(), "{} should list no models", provider.id());
+            if matches!(
+                provider.id(),
+                "radius" | "kimi-coding" | "typesafe" | "meta"
+            ) {
+                assert!(
+                    list.is_empty(),
+                    "{} should list no chat models",
+                    provider.id()
+                );
             } else {
                 assert!(!list.is_empty(), "{} lists no models", provider.id());
             }
@@ -828,6 +1013,7 @@ mod tests {
             "groq",
             "huggingface",
             "kimi-coding",
+            "meta",
             "minimax",
             "minimax-cn",
             "mistral",
@@ -844,6 +1030,7 @@ mod tests {
             "qwen-token-plan-individual",
             "radius",
             "together",
+            "typesafe",
             "vercel-ai-gateway",
             "xai",
             "xiaomi",
@@ -1195,7 +1382,7 @@ mod tests {
     async fn openai_codex_is_oauth_only() {
         let provider = openai_codex_provider();
         assert_eq!(provider.id(), "openai-codex");
-        assert_eq!(provider.name(), "OpenAI Codex");
+        assert_eq!(provider.name(), "OpenAI Codex (legacy)");
         assert_eq!(provider.base_url(), Some("https://chatgpt.com/backend-api"));
         assert!(provider.auth().api_key.is_none());
         assert_eq!(

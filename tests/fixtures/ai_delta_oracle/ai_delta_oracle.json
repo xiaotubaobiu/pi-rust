@@ -1,0 +1,663 @@
+{
+ "llamaCpp": {
+  "llamaServerRoot": [
+   "https://api.example.com",
+   "https://api.example.com",
+   "https://api.example.com",
+   "http://localhost:8080"
+  ],
+  "renderQuestion": {
+   "choice1": {
+    "content": "State:\n{\n \"alpha\": 1,\n \"beta\": [\n  true,\n  false\n ],\n \"gamma\": {\n  \"deep\": \"x\"\n }\n}\n\nTask: answer each of the following questions about the state.\n\nQuestion: Pick the best option.\n\nOptions:\n- cost: Cheap\n- quality: Accurate\n- speed: Fast\n\nQuestion: Rate the reply.\n\nLevels:\n0. Bad\n1. OK\n2. Great\n\nQuestion: Is the state positive?\n\nYes means: Yes it is\nNo means: No it is not\n\nState:\n{\n \"alpha\": 1,\n \"beta\": [\n  true,\n  false\n ],\n \"gamma\": {\n  \"deep\": \"x\"\n }\n}\n\nQuestion: Pick the best option.\n\nOptions:\nA. cost: Cheap\nB. quality: Accurate\nC. speed: Fast\n\nAnswer with one letter.",
+    "labels": [
+     "A",
+     "B",
+     "C"
+    ],
+    "keys": [
+     "cost",
+     "quality",
+     "speed"
+    ]
+   },
+   "score1": {
+    "content": "State:\n{\n \"alpha\": 1,\n \"beta\": [\n  true,\n  false\n ],\n \"gamma\": {\n  \"deep\": \"x\"\n }\n}\n\nTask: answer each of the following questions about the state.\n\nQuestion: Pick the best option.\n\nOptions:\n- cost: Cheap\n- quality: Accurate\n- speed: Fast\n\nQuestion: Rate the reply.\n\nLevels:\n0. Bad\n1. OK\n2. Great\n\nQuestion: Is the state positive?\n\nYes means: Yes it is\nNo means: No it is not\n\nState:\n{\n \"alpha\": 1,\n \"beta\": [\n  true,\n  false\n ],\n \"gamma\": {\n  \"deep\": \"x\"\n }\n}\n\nQuestion: Rate the reply.\n\nLevels:\n0. Bad\n1. OK\n2. Great\n\nAnswer with one level number.",
+    "labels": [
+     "0",
+     "1",
+     "2"
+    ],
+    "keys": [
+     "0",
+     "1",
+     "2"
+    ]
+   },
+   "bool1": {
+    "content": "State:\n{\n \"alpha\": 1,\n \"beta\": [\n  true,\n  false\n ],\n \"gamma\": {\n  \"deep\": \"x\"\n }\n}\n\nTask: answer each of the following questions about the state.\n\nQuestion: Pick the best option.\n\nOptions:\n- cost: Cheap\n- quality: Accurate\n- speed: Fast\n\nQuestion: Rate the reply.\n\nLevels:\n0. Bad\n1. OK\n2. Great\n\nQuestion: Is the state positive?\n\nYes means: Yes it is\nNo means: No it is not\n\nState:\n{\n \"alpha\": 1,\n \"beta\": [\n  true,\n  false\n ],\n \"gamma\": {\n  \"deep\": \"x\"\n }\n}\n\nQuestion: Is the state positive?\n\nYes means: Yes it is\nNo means: No it is not\n\nAnswer Yes or No.",
+    "labels": [
+     "Yes",
+     "No"
+    ],
+    "keys": [
+     "true",
+     "false"
+    ]
+   }
+  },
+  "labelProbabilities": [
+   [
+    0.218560138498254,
+    0.2950253279368993,
+    0.4864145335648466
+   ],
+   [
+    0.27369823410470107,
+    0.3179919805571037,
+    0.4083097853381953
+   ],
+   [
+    0,
+    0.5,
+    0.5
+   ]
+  ],
+  "peakConfidence": [
+   0,
+   1,
+   0.10000000000000009
+  ],
+  "answerFromProbabilities": [
+   {
+    "type": "choice",
+    "choice": "cost",
+    "probabilities": {
+     "cost": 0.6,
+     "quality": 0.3,
+     "speed": 0.1
+    },
+    "confidence": 0.3999999999999999
+   },
+   {
+    "type": "score",
+    "score": 1.5999999999999999,
+    "confidence": 0.5499999999999998
+   },
+   {
+    "type": "bool",
+    "probability": 0.9
+   }
+  ],
+  "renderQuestionErrors": [
+   "A choice question needs 2 to 62 options, got 1",
+   "A score question needs 2 to 10 levels, got 1",
+   "Unknown question: missing"
+  ]
+ },
+ "systemOne": {
+  "typesafe": {
+   "canned": {
+    "answers": {
+     "q1": {
+      "type": "choice",
+      "choice": "polite",
+      "probabilities": {
+       "polite": 0.8,
+       "rude": 0.2
+      },
+      "confidence": 0.6
+     },
+     "q2": {
+      "type": "score",
+      "score": 1,
+      "confidence": 0.5
+     },
+     "q3": {
+      "type": "noul",
+      "noul": 0.75
+     }
+    },
+    "usage": {
+     "input_tokens": 1500,
+     "output_tokens": 50
+    }
+   },
+   "requests": [
+    {
+     "label": "typesafe",
+     "url": "https://api.typesafe.example/v1/systemone",
+     "method": "POST",
+     "headers": {
+      "authorization": "Bearer sk-test",
+      "content-type": "application/json"
+     },
+     "body": "{\"model\":\"jev-1\",\"state\":{\"channel\":\"support\",\"turns\":3},\"questions\":{\"q1\":{\"type\":\"choice\",\"instructions\":\"Tone?\",\"criteria\":{\"polite\":\"Kind\",\"rude\":\"Harsh\"}},\"q2\":{\"type\":\"score\",\"instructions\":\"Quality?\",\"criteria\":[\"Low\",\"High\"]},\"q3\":{\"type\":\"noul\",\"instructions\":\"Resolved?\",\"criteria\":{\"true\":\"Yes\",\"false\":\"No\"}}}}"
+    }
+   ],
+   "result": {
+    "api": "typesafe-system-one",
+    "provider": "typesafe",
+    "model": "jev-1",
+    "answers": {
+     "q1": {
+      "type": "choice",
+      "choice": "polite",
+      "probabilities": {
+       "polite": 0.8,
+       "rude": 0.2
+      },
+      "confidence": 0.6
+     },
+     "q2": {
+      "type": "score",
+      "score": 1,
+      "confidence": 0.5
+     },
+     "q3": {
+      "type": "bool",
+      "probability": 0.75
+     }
+    },
+    "stopReason": "stop",
+    "timestamp": 1758240000000,
+    "usage": {
+     "input": 1500,
+     "output": 50,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 1550,
+     "cost": {
+      "input": 0.003,
+      "output": 0.00039999999999999996,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0.0034000000000000002
+     }
+    }
+   }
+  },
+  "cloudflare": {
+   "canned": {
+    "success": true,
+    "result": {
+     "state": "Completed",
+     "result": {
+      "answers": {
+       "q1": {
+        "type": "choice",
+        "choice": "rude",
+        "probabilities": {
+         "polite": 0.25,
+         "rude": 0.75
+        },
+        "confidence": 0.5
+       },
+       "q2": {
+        "type": "score",
+        "score": 0,
+        "confidence": 1
+       },
+       "q3": {
+        "type": "noul",
+        "noul": 0.1
+       }
+      },
+      "usage": {
+       "input_tokens": 0,
+       "output_tokens": 12
+      }
+     }
+    }
+   },
+   "requests": [
+    {
+     "label": "cloudflare",
+     "url": "https://api.cloudflare.example/client/v4/accounts/acc123/ai/run",
+     "method": "POST",
+     "headers": {
+      "authorization": "Bearer sk-test",
+      "content-type": "application/json"
+     },
+     "body": "{\"model\":\"jev-cf\",\"input\":{\"state\":{\"channel\":\"support\",\"turns\":3},\"questions\":{\"q1\":{\"type\":\"choice\",\"instructions\":\"Tone?\",\"criteria\":{\"polite\":\"Kind\",\"rude\":\"Harsh\"}},\"q2\":{\"type\":\"score\",\"instructions\":\"Quality?\",\"criteria\":[\"Low\",\"High\"]},\"q3\":{\"type\":\"noul\",\"instructions\":\"Resolved?\",\"criteria\":{\"true\":\"Yes\",\"false\":\"No\"}}}}}"
+    }
+   ],
+   "result": {
+    "api": "cloudflare-workers-ai-system-one",
+    "provider": "cloudflare-workers-ai",
+    "model": "jev-cf",
+    "answers": {
+     "q1": {
+      "type": "choice",
+      "choice": "rude",
+      "probabilities": {
+       "polite": 0.25,
+       "rude": 0.75
+      },
+      "confidence": 0.5
+     },
+     "q2": {
+      "type": "score",
+      "score": 0,
+      "confidence": 1
+     },
+     "q3": {
+      "type": "bool",
+      "probability": 0.1
+     }
+    },
+    "stopReason": "stop",
+    "timestamp": 1758240000000,
+    "usage": {
+     "input": 0,
+     "output": 12,
+     "cacheRead": 0,
+     "cacheWrite": 0,
+     "totalTokens": 12,
+     "cost": {
+      "input": 0,
+      "output": 0.000096,
+      "cacheRead": 0,
+      "cacheWrite": 0,
+      "total": 0.000096
+     }
+    }
+   }
+  },
+  "errors": [
+   {
+    "canned": "{\"error\":\"boom\"}",
+    "requests": [
+     {
+      "label": "typesafe-error",
+      "url": "https://api.typesafe.example/v1/systemone",
+      "method": "POST",
+      "headers": {
+       "authorization": "Bearer sk-test",
+       "content-type": "application/json"
+      },
+      "body": "{\"model\":\"jev-1\",\"state\":{\"channel\":\"support\",\"turns\":3},\"questions\":{\"q1\":{\"type\":\"choice\",\"instructions\":\"Tone?\",\"criteria\":{\"polite\":\"Kind\",\"rude\":\"Harsh\"}},\"q2\":{\"type\":\"score\",\"instructions\":\"Quality?\",\"criteria\":[\"Low\",\"High\"]},\"q3\":{\"type\":\"noul\",\"instructions\":\"Resolved?\",\"criteria\":{\"true\":\"Yes\",\"false\":\"No\"}}}}"
+     }
+    ],
+    "result": {
+     "api": "typesafe-system-one",
+     "provider": "typesafe",
+     "model": "jev-1",
+     "answers": {},
+     "stopReason": "error",
+     "timestamp": 1758240000000,
+     "errorMessage": "System One API error (503): {\"error\":\"boom\"}"
+    }
+   },
+   {
+    "canned": {
+     "success": true,
+     "result": {
+      "state": "Running"
+     }
+    },
+    "requests": [
+     {
+      "label": "cloudflare-not-complete",
+      "url": "https://api.cloudflare.example/client/v4/accounts/acc123/ai/run",
+      "method": "POST",
+      "headers": {
+       "authorization": "Bearer sk-test",
+       "content-type": "application/json"
+      },
+      "body": "{\"model\":\"jev-cf\",\"input\":{\"state\":{\"channel\":\"support\",\"turns\":3},\"questions\":{\"q1\":{\"type\":\"choice\",\"instructions\":\"Tone?\",\"criteria\":{\"polite\":\"Kind\",\"rude\":\"Harsh\"}},\"q2\":{\"type\":\"score\",\"instructions\":\"Quality?\",\"criteria\":[\"Low\",\"High\"]},\"q3\":{\"type\":\"noul\",\"instructions\":\"Resolved?\",\"criteria\":{\"true\":\"Yes\",\"false\":\"No\"}}}}}"
+     }
+    ],
+    "result": {
+     "api": "cloudflare-workers-ai-system-one",
+     "provider": "cloudflare-workers-ai",
+     "model": "jev-cf",
+     "answers": {},
+     "stopReason": "error",
+     "timestamp": 1758240000000,
+     "errorMessage": "Cloudflare Workers AI run did not complete (state: Running)"
+    }
+   },
+   {
+    "canned": {
+     "success": false,
+     "errors": [
+      {
+       "message": "first"
+      },
+      {
+       "code": 7
+      },
+      {
+       "message": "second"
+      }
+     ]
+    },
+    "requests": [
+     {
+      "label": "cloudflare-failed",
+      "url": "https://api.cloudflare.example/client/v4/accounts/acc123/ai/run",
+      "method": "POST",
+      "headers": {
+       "authorization": "Bearer sk-test",
+       "content-type": "application/json"
+      },
+      "body": "{\"model\":\"jev-cf\",\"input\":{\"state\":{\"channel\":\"support\",\"turns\":3},\"questions\":{\"q1\":{\"type\":\"choice\",\"instructions\":\"Tone?\",\"criteria\":{\"polite\":\"Kind\",\"rude\":\"Harsh\"}},\"q2\":{\"type\":\"score\",\"instructions\":\"Quality?\",\"criteria\":[\"Low\",\"High\"]},\"q3\":{\"type\":\"noul\",\"instructions\":\"Resolved?\",\"criteria\":{\"true\":\"Yes\",\"false\":\"No\"}}}}}"
+     }
+    ],
+    "result": {
+     "api": "cloudflare-workers-ai-system-one",
+     "provider": "cloudflare-workers-ai",
+     "model": "jev-cf",
+     "answers": {},
+     "stopReason": "error",
+     "timestamp": 1758240000000,
+     "errorMessage": "Cloudflare Workers AI error: first; second"
+    }
+   },
+   {
+    "canned": {
+     "answers": {
+      "q1": {
+       "type": "choice",
+       "choice": "polite",
+       "probabilities": {
+        "polite": 0.8,
+        "rude": 0.2
+       },
+       "confidence": 0.6
+      },
+      "q2": {
+       "type": "score",
+       "score": 1,
+       "confidence": 0.5
+      }
+     }
+    },
+    "requests": [
+     {
+      "label": "typesafe-missing-answer",
+      "url": "https://api.typesafe.example/v1/systemone",
+      "method": "POST",
+      "headers": {
+       "authorization": "Bearer sk-test",
+       "content-type": "application/json"
+      },
+      "body": "{\"model\":\"jev-1\",\"state\":{\"channel\":\"support\",\"turns\":3},\"questions\":{\"q1\":{\"type\":\"choice\",\"instructions\":\"Tone?\",\"criteria\":{\"polite\":\"Kind\",\"rude\":\"Harsh\"}},\"q2\":{\"type\":\"score\",\"instructions\":\"Quality?\",\"criteria\":[\"Low\",\"High\"]},\"q3\":{\"type\":\"noul\",\"instructions\":\"Resolved?\",\"criteria\":{\"true\":\"Yes\",\"false\":\"No\"}}}}"
+     }
+    ],
+    "result": {
+     "api": "typesafe-system-one",
+     "provider": "typesafe",
+     "model": "jev-1",
+     "answers": {},
+     "stopReason": "error",
+     "timestamp": 1758240000000,
+     "errorMessage": "System One API did not return an answer for q3"
+    }
+   }
+  ]
+ },
+ "modelCatalog": {
+  ".manifest": {
+   "chat": {},
+   "image": {},
+   "classifier": {}
+  },
+  "amazon-bedrock": {
+   "chat": {},
+   "image": {},
+   "classifier": {}
+  },
+  "ant-ling": {
+   "chat": {},
+   "image": {},
+   "classifier": {}
+  },
+  "anthropic": {
+   "chat": {},
+   "image": {},
+   "classifier": {}
+  },
+  "azure-openai-responses": {
+   "chat": {},
+   "image": {},
+   "classifier": {}
+  },
+  "baseten": {
+   "chat": {},
+   "image": {},
+   "classifier": {}
+  },
+  "cerebras": {
+   "chat": {},
+   "image": {},
+   "classifier": {}
+  },
+  "cloudflare-ai-gateway": {
+   "chat": {},
+   "image": {},
+   "classifier": {}
+  },
+  "cloudflare-workers-ai": {
+   "chat": {},
+   "image": {},
+   "classifier": {}
+  },
+  "deepseek": {
+   "chat": {},
+   "image": {},
+   "classifier": {}
+  },
+  "fireworks": {
+   "chat": {},
+   "image": {},
+   "classifier": {}
+  },
+  "github-copilot": {
+   "chat": {},
+   "image": {},
+   "classifier": {}
+  },
+  "google-vertex": {
+   "chat": {},
+   "image": {},
+   "classifier": {}
+  },
+  "google": {
+   "chat": {},
+   "image": {},
+   "classifier": {}
+  },
+  "groq": {
+   "chat": {},
+   "image": {},
+   "classifier": {}
+  },
+  "huggingface": {
+   "chat": {},
+   "image": {},
+   "classifier": {}
+  },
+  "minimax-cn": {
+   "chat": {},
+   "image": {},
+   "classifier": {}
+  },
+  "minimax": {
+   "chat": {},
+   "image": {},
+   "classifier": {}
+  },
+  "mistral": {
+   "chat": {},
+   "image": {},
+   "classifier": {}
+  },
+  "moonshotai-cn": {
+   "chat": {},
+   "image": {},
+   "classifier": {}
+  },
+  "moonshotai": {
+   "chat": {},
+   "image": {},
+   "classifier": {}
+  },
+  "nvidia": {
+   "chat": {},
+   "image": {},
+   "classifier": {}
+  },
+  "openai-codex": {
+   "chat": {},
+   "image": {},
+   "classifier": {}
+  },
+  "openai": {
+   "chat": {},
+   "image": {},
+   "classifier": {}
+  },
+  "opencode-go": {
+   "chat": {},
+   "image": {},
+   "classifier": {}
+  },
+  "opencode": {
+   "chat": {},
+   "image": {},
+   "classifier": {}
+  },
+  "openrouter": {
+   "chat": {},
+   "image": {},
+   "classifier": {}
+  },
+  "qwen-token-plan-cn": {
+   "chat": {},
+   "image": {},
+   "classifier": {}
+  },
+  "qwen-token-plan-individual": {
+   "chat": {},
+   "image": {},
+   "classifier": {}
+  },
+  "qwen-token-plan": {
+   "chat": {},
+   "image": {},
+   "classifier": {}
+  },
+  "together": {
+   "chat": {},
+   "image": {},
+   "classifier": {}
+  },
+  "vercel-ai-gateway": {
+   "chat": {},
+   "image": {},
+   "classifier": {}
+  },
+  "xai": {
+   "chat": {},
+   "image": {},
+   "classifier": {}
+  },
+  "xiaomi-token-plan-ams": {
+   "chat": {},
+   "image": {},
+   "classifier": {}
+  },
+  "xiaomi-token-plan-cn": {
+   "chat": {},
+   "image": {},
+   "classifier": {}
+  },
+  "xiaomi-token-plan-sgp": {
+   "chat": {},
+   "image": {},
+   "classifier": {}
+  },
+  "xiaomi": {
+   "chat": {},
+   "image": {},
+   "classifier": {}
+  },
+  "zai-coding-cn": {
+   "chat": {},
+   "image": {},
+   "classifier": {}
+  },
+  "zai": {
+   "chat": {},
+   "image": {},
+   "classifier": {}
+  },
+  "<synthetic>": {
+   "chat": {
+    "v1": {
+     "id": "v1",
+     "name": "V1",
+     "api": "openai-completions",
+     "provider": "p",
+     "baseUrl": "https://p.example",
+     "type": "chat",
+     "reasoning": false,
+     "input": [
+      "text"
+     ],
+     "cost": {
+      "input": 1,
+      "output": 2,
+      "cacheRead": 0,
+      "cacheWrite": 0
+     },
+     "contextWindow": 8,
+     "maxTokens": 4
+    }
+   },
+   "image": {
+    "i1": {
+     "id": "i1",
+     "name": "I1",
+     "api": "openrouter-images",
+     "provider": "p",
+     "baseUrl": "https://p.example",
+     "type": "image",
+     "input": [
+      "text"
+     ],
+     "output": [
+      "image"
+     ],
+     "cost": {
+      "input": 1,
+      "output": 2,
+      "cacheRead": 0,
+      "cacheWrite": 0
+     }
+    }
+   },
+   "classifier": {
+    "c1": {
+     "id": "c1",
+     "name": "C1",
+     "api": "typesafe-system-one",
+     "provider": "p",
+     "baseUrl": "https://p.example",
+     "type": "classifier",
+     "input": [
+      "text"
+     ],
+     "cost": {
+      "input": 1,
+      "output": 2,
+      "cacheRead": 0,
+      "cacheWrite": 0
+     },
+     "contextWindow": 16
+    }
+   }
+  }
+ }
+}

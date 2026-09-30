@@ -1104,7 +1104,7 @@ fn convert_tool_config(
     }
     let mut bedrock_tools = Vec::with_capacity(tools.len());
     for tool in tools {
-        let strict = resolve_json_schema_strict_sampling(tool, supports_strict_mode)
+        let strict = resolve_json_schema_strict_sampling(tool, supports_strict_mode, None)
             .map_err(BedrockFailure::plain)?;
         let mut spec = json!({
             "name": tool.name,
@@ -1136,7 +1136,7 @@ fn convert_tool_config(
 /// so a failure here is unreachable and falls back to the verbatim schema.
 fn get_json_schema_tool_parameters(tool: &Tool, strict: Option<bool>) -> Value {
     if strict == Some(true) {
-        make_strict_json_schema(&tool.parameters).unwrap_or_else(|_| tool.parameters.clone())
+        make_strict_json_schema(&tool.parameters, None).unwrap_or_else(|_| tool.parameters.clone())
     } else {
         tool.parameters.clone()
     }
@@ -2351,7 +2351,7 @@ mod tests {
     }
 
     fn model(id: &str, name: &str) -> Model {
-        Model {
+        Model {r#type: None, prompt_cache: None, input_limits: None, 
             id: id.to_string(),
             name: name.to_string(),
             api: API.to_string(),

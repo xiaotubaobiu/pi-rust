@@ -516,6 +516,7 @@ pub async fn create_agent_session(
                         Ok(())
                     })
                 })),
+                on_provider_stream_event: None,
             },
             transform_context: Some(Arc::new(move |messages| {
                 let slot = context_slot.clone();

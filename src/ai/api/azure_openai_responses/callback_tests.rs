@@ -19,7 +19,7 @@ const COMPLETED_SSE: &str = concat!(
 );
 
 fn model(server: &wiremock::MockServer) -> Model {
-    Model {
+    Model {r#type: None, prompt_cache: None, input_limits: None, 
         id: "gpt-4o-mini".to_string(),
         name: "GPT-4o mini".to_string(),
         api: "azure-openai-responses".to_string(),

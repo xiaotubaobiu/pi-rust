@@ -10,6 +10,7 @@ use crate::tui::components::stack::{
 };
 use crate::tui::layout::{render_layout_frame, LayoutFrame, ScrollbarGeometry};
 use crate::tui::viewport_mouse::*;
+use crate::tui::wheel_scroll;
 use serde_json::{json, Value};
 use std::sync::{Arc, Mutex, OnceLock};
 
@@ -277,18 +278,56 @@ fn wheel_line_normalization_and_alt_multiplier_match_actual_alt_screen() {
     for case in cases {
         let mut h = Harness::new();
         let implicit = h.implicit(1);
-        let controller = ViewportScrollMouse::new(
+        let mut controller = ViewportScrollMouse::new(
             implicit,
             (!case["value"].is_null()).then(|| number(&case["value"])),
             h.render_callback(),
         );
-        let actual = controller.wheel_scroll_lines(case["button"].as_i64().unwrap());
-        let expected = number(&case["result"]);
+        // The v0.99.1 delta moved the fixed-line normalization into
+        // WheelScrollAccelerator::next: finite values keep `max(1, floor(v))`,
+        // and non-finite values (NaN/±Infinity) now yield 1 instead of
+        // propagating NaN. Fixed lines ignore the clock, so now = 0.
+        let button = case["button"].as_i64().unwrap();
+        let actual = controller.wheel_scroll_lines(button, 0.0, 1);
+        // Non-finite options (NaN / Infinity / -Infinity; JSON null when
+        // captured) now behave like `Number.isFinite === false`: one line
+        // (times the Alt multiplier).
+        let expected = match case["value"].as_str() {
+            Some(raw) if !raw.parse::<f64>().map(|v| v.is_finite()).unwrap_or(false) => {
+                if button & 8 != 0 {
+                    ALT_WHEEL_SCROLL_MULTIPLIER
+                } else {
+                    1.0
+                }
+            }
+            _ => number(&case["result"]),
+        };
         assert!(
             actual == expected || (actual.is_nan() && expected.is_nan()),
             "{case}:actual {actual},expected {expected}"
         );
     }
+}
+
+/// Upstream `tui-alt-screen.test.ts` "applies runtime wheel line count
+/// updates" (#9758): counts change at runtime; Alt keeps its multiplier.
+#[test]
+fn wheel_runtime_line_count_updates() {
+    let mut h = Harness::new();
+    let implicit = h.implicit(4);
+    let mut controller = ViewportScrollMouse::new(implicit, Some(3.0), h.render_callback());
+    let now = 1000.0;
+    // Up notches move -3 lines.
+    let up = parse_wheel_event("\x1b[<64;1;1M").expect("wheel event");
+    let delta_up = controller.wheel_scroll_lines(up.button, now, -1);
+    // setWheelScrollLines(2): the next down notch moves +2.
+    controller.set_wheel_scroll_lines(wheel_scroll::WheelScrollLines::Fixed(2.0));
+    let down = parse_wheel_event("\x1b[<65;1;1M").expect("wheel event");
+    let delta_down = controller.wheel_scroll_lines(down.button, now + 100.0, 1);
+    // Alt (button 72 = 64 | 8) moves five times as far.
+    let alt = parse_wheel_event("\x1b[<72;1;1M").expect("wheel event");
+    let delta_alt = controller.wheel_scroll_lines(alt.button, now + 200.0, -1);
+    assert_eq!((delta_up, delta_down, delta_alt), (-3.0, 2.0, -10.0));
 }
 #[test]
 fn live_viewport_wheel_hover_and_drag_match_actual_alt_screen() {
@@ -301,7 +340,23 @@ fn live_viewport_wheel_hover_and_drag_match_actual_alt_screen() {
             .sum::<usize>(),
         6692
     );
-    for case in cases {
+    // Cases with non-finite wheelLines ("numeric-NaN-*", "numeric-Infinity-*",
+    // "numeric--Infinity-*") pinned the PRE-delta behavior where the option
+    // propagated as NaN/Infinity into the wheel delta. v0.99.1 routes fixed
+    // line counts through WheelScrollAccelerator::next, whose
+    // Number.isFinite guard yields one line for them (pinned by the
+    // tui_delta_oracle wheel fixture and wheel_runtime_line_count_updates);
+    // the captured scroll states for those nine cases are stale, so they are
+    // skipped here.
+    let finite_cases: Vec<&Value> = cases
+        .iter()
+        .filter(|case| match case["wheelLines"].as_str() {
+            Some(raw) => raw.parse::<f64>().map(|v| v.is_finite()).unwrap_or(false),
+            None => true,
+        })
+        .collect();
+    assert_eq!(finite_cases.len(), 136);
+    for case in finite_cases {
         let width = case["width"].as_u64().unwrap() as usize;
         let height = case["height"].as_u64().unwrap() as usize;
         let mut h = Harness::new();
@@ -329,7 +384,7 @@ fn live_viewport_wheel_hover_and_drag_match_actual_alt_screen() {
                 }
                 "clearFrame" => frame = None,
                 "overlay" => overlay = action["value"].as_bool().unwrap(),
-                "wheel" => controller.route_wheel(frame.as_ref(), overlay, wheel(action)),
+                "wheel" => controller.route_wheel(frame.as_ref(), overlay, wheel(action), 0.0),
                 "mouse" => {
                     let trace = h.trace.clone();
                     result = json!(controller.handle_scrollbar_mouse_event(

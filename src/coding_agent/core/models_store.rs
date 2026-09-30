@@ -57,7 +57,7 @@ type StoredModels = Vec<(String, ModelsStoreEntry)>;
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct ModelsStoreEntryWire {
-    models: Vec<crate::ai::types::Model>,
+    models: Vec<crate::ai::types::AnyModel>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     last_modified: Option<i64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]

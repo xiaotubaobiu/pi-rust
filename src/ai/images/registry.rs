@@ -7,22 +7,24 @@
 //!   that message through the [`ImagesApiFn`] error channel (the upstream
 //!   synchronous-throw channel — providers map every `Err` to an
 //!   [`AssistantImages`] error result, exactly like upstream's total
-//!   try/catch in `ImagesModels.generateImages`).
+//!   try/catch in `Models.generateImages`).
 //! - `packages/ai/src/images.ts`: the [`generate_images`] entry point plus
 //!   the `providers/images/register-builtins.ts` import side effect, which
 //!   the port models as [`ensure_builtin_images_apis_registered`] (Rust has
 //!   no import side effects).
-//! - `packages/ai/src/image-models.ts` + `image-models.generated.ts`: the
-//!   static image-model catalog. The generated data is embedded at compile
-//!   time from `assets/image-models.json` — byte-identical to upstream's
-//!   inline object literal (`54` openrouter models, snapshot 2026-09-21) —
-//!   and parsed once into a provider -> model-id -> [`ImagesModel`] map.
-//!   Upstream's type-level `KnownImagesProvider` narrowing erases to plain
+//! - `packages/ai/src/image-models.ts`: the static image-model catalog
+//!   compat reads. Since #9948 upstream reads `IMAGE_MODELS` from the
+//!   unified generated catalog (`models.generated.ts`, flattened
+//!   `type: "image"` entries of `providers/data/*.json`); the port flattens
+//!   the same embedded shards (`assets/model-data/`) — empty in this
+//!   snapshot, whose data predates the image/classifier entry format (see
+//!   `models::catalog`). Upstream's type-level narrowing erases to plain
 //!   string lookups, like every other generic in the port.
 //!
 //! Also ported here is `parseOpenRouterImageModels`
-//! (`scripts/generate-image-models.ts:36-90`), the catalog generator's
-//! OpenRouter API parser (oracle `image-model-data.test.ts`).
+//! (`scripts/generate-image-models.ts:36-90`, deleted upstream with the
+//! generated image catalog it fed), the catalog generator's OpenRouter API
+//! parser (oracle `image-model-data.test.ts`).
 
 use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex, OnceLock};
@@ -30,8 +32,8 @@ use std::sync::{Arc, Mutex, OnceLock};
 use futures::future::BoxFuture;
 use serde_json::Value;
 
-use crate::ai::types::images::{AssistantImages, ImagesContext, ImagesModel, ImagesOptions};
-use crate::ai::types::model::ModelInput;
+use crate::ai::types::images::{AssistantImages, ImagesContext, ImagesOptions};
+use crate::ai::types::model::{ImageModel, ModelInput, ModelType};
 
 use super::openrouter_images;
 
@@ -43,7 +45,7 @@ use super::openrouter_images;
 /// throw into the same shape.
 pub type ImagesApiFn = Arc<
     dyn Fn(
-            ImagesModel,
+            ImageModel,
             ImagesContext,
             Option<ImagesOptions>,
         ) -> BoxFuture<'static, Result<AssistantImages, String>>
@@ -130,7 +132,7 @@ pub fn ensure_builtin_images_apis_registered() {
 /// handler for the model's api. Upstream throws when unregistered; the port
 /// returns the same message through the `Err` channel.
 pub async fn generate_images(
-    model: ImagesModel,
+    model: ImageModel,
     context: ImagesContext,
     options: Option<ImagesOptions>,
 ) -> Result<AssistantImages, String> {
@@ -141,44 +143,52 @@ pub async fn generate_images(
 }
 
 // ---------------------------------------------------------------------------
-// Static image-model catalog (image-models.ts + image-models.generated.ts)
+// Static image-model catalog (image-models.ts over the unified generated data)
 // ---------------------------------------------------------------------------
 
-/// The embedded generated catalog (upstream `IMAGE_MODELS`), one JSON
-/// document: provider -> model id -> ImagesModel. Byte-identical to
-/// upstream's inline `image-models.generated.ts` data.
-const IMAGE_MODELS_JSON: &str = include_str!("../../../assets/image-models.json");
-
-/// Upstream `imageModelRegistry` (image-models.ts:4-12): the one-time parse
-/// of the generated data into lookup maps.
-fn image_model_registry() -> &'static BTreeMap<String, BTreeMap<String, ImagesModel>> {
-    static REGISTRY: OnceLock<BTreeMap<String, BTreeMap<String, ImagesModel>>> = OnceLock::new();
+/// Upstream `imageModelsByProvider` (image-models.ts): the one-time build of
+/// the per-provider image-model lookup maps from `IMAGE_MODELS` — here the
+/// `type: "image"` entries of the embedded unified shards. Providers with no
+/// image models are omitted (upstream `if (imageModels.size > 0)`).
+fn image_model_registry() -> &'static BTreeMap<String, BTreeMap<String, ImageModel>> {
+    static REGISTRY: OnceLock<BTreeMap<String, BTreeMap<String, ImageModel>>> = OnceLock::new();
     REGISTRY.get_or_init(|| {
-        let parsed: BTreeMap<String, BTreeMap<String, ImagesModel>> =
-            serde_json::from_str(IMAGE_MODELS_JSON)
-                .expect("embedded image-models.json must deserialize");
-        parsed
+        let mut registry: BTreeMap<String, BTreeMap<String, ImageModel>> = BTreeMap::new();
+        for provider in crate::ai::models::catalog::catalog_provider_ids() {
+            let models = crate::ai::models::catalog::embedded_provider_image_catalog(provider);
+            if models.is_empty() {
+                continue;
+            }
+            registry.insert(
+                provider.to_string(),
+                models
+                    .into_iter()
+                    .map(|model| (model.id.clone(), model))
+                    .collect(),
+            );
+        }
+        registry
     })
 }
 
-/// Upstream `getImageModel` (image-models.ts:23-29): one static catalog
-/// entry, `None` when the provider or model id is unknown (upstream returns
+/// Upstream `getImageModel` (image-models.ts): one static catalog entry,
+/// `None` when the provider or model id is unknown (upstream returns
 /// `undefined` typed as always-present — the port makes the miss honest).
-pub fn get_image_model(provider: &str, model_id: &str) -> Option<ImagesModel> {
+pub fn get_image_model(provider: &str, model_id: &str) -> Option<ImageModel> {
     image_model_registry()
         .get(provider)
         .and_then(|models| models.get(model_id))
         .cloned()
 }
 
-/// Upstream `getImageProviders` (image-models.ts:31-33).
+/// Upstream `getImageProviders` (image-models.ts).
 pub fn get_image_providers() -> Vec<String> {
     image_model_registry().keys().cloned().collect()
 }
 
-/// Upstream `getImageModels` (image-models.ts:35-42): every catalog entry of
+/// Upstream `getImageModels` (image-models.ts): every catalog entry of
 /// one provider, empty when unknown.
-pub fn get_image_models(provider: &str) -> Vec<ImagesModel> {
+pub fn get_image_models(provider: &str) -> Vec<ImageModel> {
     image_model_registry()
         .get(provider)
         .map(|models| models.values().cloned().collect())
@@ -257,7 +267,7 @@ fn pricing_value(pricing: Option<&Value>, field: &str) -> f64 {
 pub fn parse_open_router_image_models(
     payload: &Value,
     strict: bool,
-) -> Result<Vec<ImagesModel>, String> {
+) -> Result<Vec<ImageModel>, String> {
     let data = payload.get("data").and_then(Value::as_array);
     let Some(data) = data else {
         return if strict {
@@ -286,14 +296,14 @@ pub fn parse_open_router_image_models(
             input.push(ModelInput::Text);
         }
         let pricing = entry.get("pricing");
-        models.push(ImagesModel {
+        models.push(ImageModel {
             id: str_field(entry, "id"),
             name: str_field(entry, "name"),
             api: openrouter_images::OPENROUTER_IMAGES_API.to_string(),
             provider: "openrouter".to_string(),
             base_url: OPENROUTER_BASE_URL.to_string(),
             input,
-            output,
+            input_limits: None,
             cost: crate::ai::types::primitives::ModelCost {
                 input: pricing_value(pricing, "prompt") * 1_000_000.0,
                 output: pricing_value(pricing, "completion") * 1_000_000.0,
@@ -301,9 +311,9 @@ pub fn parse_open_router_image_models(
                 cache_write: pricing_value(pricing, "input_cache_write") * 1_000_000.0,
                 tiers: None,
             },
-            thinking_level_map: None,
-            sampling_params: None,
             headers: None,
+            r#type: ModelType::Image,
+            output,
         });
     }
 
@@ -350,35 +360,15 @@ mod tests {
     use super::*;
     use crate::ai::types::model::ModelInput;
 
-    /// Upstream `image-models.generated.ts` snapshot: one provider
-    /// (openrouter), 54 models, every entry api "openrouter-images".
+    /// The unified generated catalog carries no `type: "image"` entries in
+    /// this snapshot (the embedded 2026-09-21 data predates the image/
+    /// classifier entry format), so the compat reads serve an empty registry,
+    /// exactly like upstream running against the same data.
     #[test]
-    fn embedded_catalog_matches_the_generated_snapshot() {
-        let providers = get_image_providers();
-        assert_eq!(providers, ["openrouter"]);
-        let models = get_image_models("openrouter");
-        assert_eq!(models.len(), 54);
-        assert!(models.iter().all(|model| model.api == "openrouter-images"));
-        assert!(models.iter().all(|model| model.provider == "openrouter"));
-        assert!(models
-            .iter()
-            .all(|model| model.base_url == "https://openrouter.ai/api/v1"));
-
-        let flux = get_image_model("openrouter", "black-forest-labs/flux.2-pro").unwrap();
-        assert_eq!(flux.name, "Black Forest Labs: FLUX.2 Pro");
-        assert_eq!(flux.input, vec![ModelInput::Text, ModelInput::Image]);
-        assert_eq!(flux.output, vec![ModelInput::Image]);
-        assert_eq!(flux.cost.input, 0.0);
-
-        let banana = get_image_model("openrouter", "google/gemini-2.5-flash-image").unwrap();
-        assert_eq!(banana.name, "Google: Nano Banana (Gemini 2.5 Flash Image)");
-        assert_eq!(banana.output, vec![ModelInput::Image, ModelInput::Text]);
-        assert_eq!(banana.cost.input, 0.3);
-
-        // Unknown provider/model miss honestly.
+    fn image_catalog_serves_the_unified_generated_shards() {
+        assert_eq!(get_image_providers(), Vec::<String>::new());
+        assert!(get_image_models("openrouter").is_empty());
         assert!(get_image_model("openrouter", "nope").is_none());
-        assert!(get_image_model("nope", "nope").is_none());
-        assert!(get_image_models("nope").is_empty());
     }
 
     // Oracle image-model-data.test.ts, "rejects a missing or empty strict
@@ -501,18 +491,18 @@ mod tests {
     /// entry point's unregistered-api error (upstream `images.ts` throw).
     #[tokio::test]
     async fn images_api_registry_registers_and_dispatches() {
-        let model = crate::ai::types::images::ImagesModel {
+        let model = ImageModel {
             id: "m".into(),
             name: "m".into(),
             api: "custom-images".into(),
             provider: "p".into(),
             base_url: "https://example.test".into(),
             input: vec![ModelInput::Text],
-            output: vec![ModelInput::Image],
+            input_limits: None,
             cost: crate::ai::types::primitives::ModelCost::default(),
-            thinking_level_map: None,
-            sampling_params: None,
             headers: None,
+            r#type: ModelType::Image,
+            output: vec![ModelInput::Image],
         };
         let context = ImagesContext::default();
         let handler: ImagesApiFn = Arc::new(|model, _context, _options| {

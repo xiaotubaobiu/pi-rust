@@ -54,6 +54,16 @@ pub struct AltScreenFrame {
     pub show_hardware_cursor: bool,
 }
 
+/// Options for [`compute_alt_screen_frame_with_options`].
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct AltScreenFrameOptions {
+    /// Upstream `clearRowsBeforeKittyImages`: WezTerm erases intersecting
+    /// Kitty image cells when a later EL clears a covered row, so frames that
+    /// place images separate clearing from drawing. Text-only frames and every
+    /// other terminal keep the interleaved output.
+    pub clear_rows_before_kitty_images: bool,
+}
+
 /// Upstream `doRender`: diff `screen` against the previous frame.
 pub fn compute_alt_screen_frame(
     state: &mut AltScreenState,
@@ -62,6 +72,27 @@ pub fn compute_alt_screen_frame(
     height: usize,
     cursor_pos: Option<(usize, usize)>,
     show_hardware_cursor: bool,
+) -> AltScreenFrame {
+    compute_alt_screen_frame_with_options(
+        state,
+        screen,
+        width,
+        height,
+        cursor_pos,
+        show_hardware_cursor,
+        AltScreenFrameOptions::default(),
+    )
+}
+
+/// Upstream `doRender` with the WezTerm Kitty-image frame option.
+pub fn compute_alt_screen_frame_with_options(
+    state: &mut AltScreenState,
+    screen: Vec<String>,
+    width: usize,
+    height: usize,
+    cursor_pos: Option<(usize, usize)>,
+    show_hardware_cursor: bool,
+    options: AltScreenFrameOptions,
 ) -> AltScreenFrame {
     let mut screen = screen;
     // Upstream keeps the LAST `height` rows when the screen overflows.
@@ -86,12 +117,32 @@ pub fn compute_alt_screen_frame(
         ops.push(BEGIN_SYNCHRONIZED_OUTPUT.to_string());
     }
 
+    // WezTerm erases intersecting Kitty image cells when a later EL clears a
+    // covered row. Only separate clearing from drawing for WezTerm frames that
+    // place images; preserve the existing interleaved output for text-only
+    // frames and every other terminal.
+    let clear_rows_before_kitty_images = options.clear_rows_before_kitty_images;
+    if clear_rows_before_kitty_images {
+        for row in 0..height {
+            let current = screen.get(row).cloned().unwrap_or_default();
+            if !full_redraw && state.previous_screen.get(row) == Some(&current) {
+                continue;
+            }
+            ops.push(format!("\x1b[{};1H\x1b[2K", row + 1));
+        }
+    }
+
     for row in 0..height {
         let current = screen.get(row).cloned().unwrap_or_default();
         if !full_redraw && state.previous_screen.get(row) == Some(&current) {
             continue;
         }
-        ops.push(format!("\x1b[{};1H\x1b[2K{current}", row + 1));
+        let clear = if clear_rows_before_kitty_images {
+            ""
+        } else {
+            "\x1b[2K"
+        };
+        ops.push(format!("\x1b[{};1H{clear}{current}", row + 1));
     }
 
     if let Some((row, col)) = cursor_pos {

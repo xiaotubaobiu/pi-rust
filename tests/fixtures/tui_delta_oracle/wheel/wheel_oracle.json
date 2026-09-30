@@ -1,0 +1,428 @@
+{
+ "scenarios": [
+  {
+   "id": "fixed-3-fast-terminal",
+   "lines": 3,
+   "accelerate": true,
+   "calls": [
+    {
+     "direction": 1,
+     "time": 0
+    },
+    {
+     "direction": 1,
+     "time": 10
+    },
+    {
+     "direction": 1,
+     "time": 20
+    },
+    {
+     "direction": 1,
+     "time": 1000
+    }
+   ],
+   "outputs": [
+    3,
+    3,
+    3,
+    3
+   ]
+  },
+  {
+   "id": "set-lines-0.5",
+   "lines": 3,
+   "accelerate": true,
+   "calls": [
+    {
+     "direction": 1,
+     "time": 0
+    },
+    {
+     "direction": 1,
+     "time": 10
+    },
+    {
+     "direction": 1,
+     "time": 20
+    },
+    {
+     "direction": 1,
+     "time": 1000
+    },
+    {
+     "direction": 1,
+     "time": 2000
+    }
+   ],
+   "outputs": [
+    3,
+    3,
+    3,
+    3,
+    1
+   ],
+   "reconfiguredAfter": 4,
+   "reconfiguredLines": 0.5
+  },
+  {
+   "id": "auto-no-accelerate",
+   "lines": "auto",
+   "accelerate": false,
+   "calls": [
+    {
+     "direction": 1,
+     "time": 0
+    },
+    {
+     "direction": 1,
+     "time": 10
+    },
+    {
+     "direction": 1,
+     "time": 20
+    },
+    {
+     "direction": 1,
+     "time": 30
+    }
+   ],
+   "outputs": [
+    1,
+    1,
+    1,
+    1
+   ]
+  },
+  {
+   "id": "auto-slow-150ms",
+   "lines": "auto",
+   "accelerate": true,
+   "calls": [
+    {
+     "direction": 1,
+     "time": 0
+    },
+    {
+     "direction": 1,
+     "time": 150
+    },
+    {
+     "direction": 1,
+     "time": 300
+    },
+    {
+     "direction": 1,
+     "time": 450
+    }
+   ],
+   "outputs": [
+    1,
+    1,
+    1,
+    1
+   ]
+  },
+  {
+   "id": "auto-medium-50ms",
+   "lines": "auto",
+   "accelerate": true,
+   "calls": [
+    {
+     "direction": 1,
+     "time": 1000
+    },
+    {
+     "direction": 1,
+     "time": 1050
+    },
+    {
+     "direction": 1,
+     "time": 1100
+    },
+    {
+     "direction": 1,
+     "time": 1150
+    }
+   ],
+   "outputs": [
+    1,
+    2,
+    2,
+    2
+   ]
+  },
+  {
+   "id": "auto-fast-20ms",
+   "lines": "auto",
+   "accelerate": true,
+   "calls": [
+    {
+     "direction": 1,
+     "time": 2000
+    },
+    {
+     "direction": 1,
+     "time": 2020
+    },
+    {
+     "direction": 1,
+     "time": 2040
+    },
+    {
+     "direction": 1,
+     "time": 2060
+    }
+   ],
+   "outputs": [
+    1,
+    5,
+    5,
+    5
+   ]
+  },
+  {
+   "id": "auto-very-fast-10ms",
+   "lines": "auto",
+   "accelerate": true,
+   "calls": [
+    {
+     "direction": 1,
+     "time": 3000
+    },
+    {
+     "direction": 1,
+     "time": 3010
+    },
+    {
+     "direction": 1,
+     "time": 3020
+    },
+    {
+     "direction": 1,
+     "time": 3030
+    }
+   ],
+   "outputs": [
+    1,
+    6,
+    6,
+    6
+   ]
+  },
+  {
+   "id": "burst-3ms",
+   "lines": "auto",
+   "accelerate": true,
+   "calls": [
+    {
+     "direction": 1,
+     "time": 0
+    },
+    {
+     "direction": 1,
+     "time": 3
+    },
+    {
+     "direction": 1,
+     "time": 6
+    },
+    {
+     "direction": 1,
+     "time": 9
+    }
+   ],
+   "outputs": [
+    1,
+    1,
+    1,
+    1
+   ]
+  },
+  {
+   "id": "direction-change",
+   "lines": "auto",
+   "accelerate": true,
+   "calls": [
+    {
+     "direction": 1,
+     "time": 0
+    },
+    {
+     "direction": 1,
+     "time": 20
+    },
+    {
+     "direction": 1,
+     "time": 40
+    },
+    {
+     "direction": -1,
+     "time": 60
+    },
+    {
+     "direction": 1,
+     "time": 500
+    },
+    {
+     "direction": 1,
+     "time": 520
+    }
+   ],
+   "outputs": [
+    1,
+    5,
+    5,
+    1,
+    1,
+    5
+   ]
+  },
+  {
+   "id": "carry-40ms",
+   "lines": "auto",
+   "accelerate": true,
+   "calls": [
+    {
+     "direction": 1,
+     "time": 0
+    },
+    {
+     "direction": 1,
+     "time": 40
+    },
+    {
+     "direction": 1,
+     "time": 80
+    },
+    {
+     "direction": 1,
+     "time": 120
+    },
+    {
+     "direction": 1,
+     "time": 160
+    }
+   ],
+   "outputs": [
+    1,
+    2,
+    3,
+    2,
+    3
+   ]
+  },
+  {
+   "id": "fixed-0",
+   "lines": 0,
+   "accelerate": true,
+   "calls": [
+    {
+     "direction": 1,
+     "time": 0
+    },
+    {
+     "direction": 1,
+     "time": 50
+    }
+   ],
+   "outputs": [
+    1,
+    1
+   ]
+  },
+  {
+   "id": "fixed-nan",
+   "lines": null,
+   "accelerate": true,
+   "calls": [
+    {
+     "direction": 1,
+     "time": 0
+    },
+    {
+     "direction": 1,
+     "time": 50
+    }
+   ],
+   "outputs": [
+    1,
+    1
+   ]
+  },
+  {
+   "id": "fixed-infinity",
+   "lines": null,
+   "accelerate": true,
+   "calls": [
+    {
+     "direction": 1,
+     "time": 0
+    },
+    {
+     "direction": 1,
+     "time": 50
+    }
+   ],
+   "outputs": [
+    1,
+    1
+   ]
+  },
+  {
+   "id": "fixed-negative",
+   "lines": -4,
+   "accelerate": true,
+   "calls": [
+    {
+     "direction": 1,
+     "time": 0
+    },
+    {
+     "direction": 1,
+     "time": 50
+    }
+   ],
+   "outputs": [
+    1,
+    1
+   ]
+  },
+  {
+   "id": "set-lines-resets-gesture",
+   "lines": "auto",
+   "accelerate": true,
+   "calls": [
+    {
+     "direction": 1,
+     "time": 0
+    },
+    {
+     "direction": 1,
+     "time": 20
+    },
+    {
+     "direction": 1,
+     "time": 40
+    },
+    {
+     "direction": 1,
+     "time": 60
+    }
+   ],
+   "outputs": [
+    1,
+    5,
+    1,
+    5
+   ],
+   "reconfiguredAfter": 2,
+   "reconfiguredLines": "auto"
+  }
+ ],
+ "provenance": {
+  "wheelScrollSha256": "a969a50d0a3627fde0052f766443e3668a6355b3ecf312ea078025080d303f82",
+  "node": "v25.8.2",
+  "platform": "win32"
+ }
+}

@@ -1,0 +1,363 @@
+{
+ "cellSize": [
+  {
+   "input": {
+    "image": {
+     "widthPx": 600,
+     "heightPx": 400
+    },
+    "maxWidth": 40,
+    "cell": {
+     "widthPx": 9,
+     "heightPx": 18
+    },
+    "optimizeAspectRatio": false
+   },
+   "size": {
+    "columns": 40,
+    "rows": 14
+   }
+  },
+  {
+   "input": {
+    "image": {
+     "widthPx": 600,
+     "heightPx": 400
+    },
+    "maxWidth": 40,
+    "cell": {
+     "widthPx": 9,
+     "heightPx": 18
+    },
+    "optimizeAspectRatio": true
+   },
+   "size": {
+    "columns": 40,
+    "rows": 13
+   }
+  },
+  {
+   "input": {
+    "image": {
+     "widthPx": 600,
+     "heightPx": 400
+    },
+    "maxWidth": 40,
+    "maxHeight": 10,
+    "cell": {
+     "widthPx": 9,
+     "heightPx": 18
+    },
+    "optimizeAspectRatio": true
+   },
+   "size": {
+    "columns": 30,
+    "rows": 10
+   }
+  },
+  {
+   "input": {
+    "image": {
+     "widthPx": 400,
+     "heightPx": 600
+    },
+    "maxWidth": 40,
+    "maxHeight": 30,
+    "cell": {
+     "widthPx": 9,
+     "heightPx": 18
+    },
+    "optimizeAspectRatio": true
+   },
+   "size": {
+    "columns": 40,
+    "rows": 30
+   }
+  },
+  {
+   "input": {
+    "image": {
+     "widthPx": 400,
+     "heightPx": 600
+    },
+    "maxWidth": 40,
+    "maxHeight": 30,
+    "cell": {
+     "widthPx": 9,
+     "heightPx": 18
+    },
+    "optimizeAspectRatio": false
+   },
+   "size": {
+    "columns": 40,
+    "rows": 30
+   }
+  },
+  {
+   "input": {
+    "image": {
+     "widthPx": 100,
+     "heightPx": 100
+    },
+    "maxWidth": 12,
+    "maxHeight": 12,
+    "cell": {
+     "widthPx": 9,
+     "heightPx": 18
+    },
+    "optimizeAspectRatio": true
+   },
+   "size": {
+    "columns": 12,
+    "rows": 6
+   }
+  },
+  {
+   "input": {
+    "image": {
+     "widthPx": 9,
+     "heightPx": 18
+    },
+    "maxWidth": 10,
+    "maxHeight": 10,
+    "cell": {
+     "widthPx": 9,
+     "heightPx": 18
+    },
+    "optimizeAspectRatio": true
+   },
+   "size": {
+    "columns": 10,
+    "rows": 10
+   }
+  },
+  {
+   "input": {
+    "image": {
+     "widthPx": 1920,
+     "heightPx": 1080
+    },
+    "maxWidth": 80,
+    "maxHeight": 24,
+    "cell": {
+     "widthPx": 9,
+     "heightPx": 18
+    },
+    "optimizeAspectRatio": true
+   },
+   "size": {
+    "columns": 80,
+    "rows": 23
+   }
+  },
+  {
+   "input": {
+    "image": {
+     "widthPx": 1920,
+     "heightPx": 1080
+    },
+    "maxWidth": 80,
+    "maxHeight": 24,
+    "cell": {
+     "widthPx": 9,
+     "heightPx": 18
+    },
+    "optimizeAspectRatio": false
+   },
+   "size": {
+    "columns": 80,
+    "rows": 23
+   }
+  },
+  {
+   "input": {
+    "image": {
+     "widthPx": 50,
+     "heightPx": 2000
+    },
+    "maxWidth": 20,
+    "maxHeight": 8,
+    "cell": {
+     "widthPx": 9,
+     "heightPx": 18
+    },
+    "optimizeAspectRatio": true
+   },
+   "size": {
+    "columns": 1,
+    "rows": 8
+   }
+  },
+  {
+   "input": {
+    "image": {
+     "widthPx": 2000,
+     "heightPx": 50
+    },
+    "maxWidth": 20,
+    "maxHeight": 8,
+    "cell": {
+     "widthPx": 9,
+     "heightPx": 18
+    },
+    "optimizeAspectRatio": true
+   },
+   "size": {
+    "columns": 20,
+    "rows": 1
+   }
+  },
+  {
+   "input": {
+    "image": {
+     "widthPx": 3,
+     "heightPx": 3
+    },
+    "maxWidth": 2,
+    "cell": {
+     "widthPx": 9,
+     "heightPx": 18
+    },
+    "optimizeAspectRatio": true
+   },
+   "size": {
+    "columns": 2,
+    "rows": 1
+   }
+  },
+  {
+   "input": {
+    "image": {
+     "widthPx": 600,
+     "heightPx": 400
+    },
+    "maxWidth": 1,
+    "cell": {
+     "widthPx": 9,
+     "heightPx": 18
+    },
+    "optimizeAspectRatio": true
+   },
+   "size": {
+    "columns": 1,
+    "rows": 1
+   }
+  },
+  {
+   "input": {
+    "image": {
+     "widthPx": 600,
+     "heightPx": 400
+    },
+    "maxWidth": 40,
+    "cell": {
+     "widthPx": 7,
+     "heightPx": 14
+    },
+    "optimizeAspectRatio": true
+   },
+   "size": {
+    "columns": 40,
+    "rows": 13
+   }
+  },
+  {
+   "input": {
+    "image": {
+     "widthPx": 333,
+     "heightPx": 333
+    },
+    "maxWidth": 30,
+    "maxHeight": 30,
+    "cell": {
+     "widthPx": 10,
+     "heightPx": 20
+    },
+    "optimizeAspectRatio": true
+   },
+   "size": {
+    "columns": 30,
+    "rows": 15
+   }
+  }
+ ],
+ "detection": [
+  {
+   "env": {
+    "TERM": "xterm-direct"
+   },
+   "trueColor": true,
+   "images": null,
+   "hyperlinks": false,
+   "colorMode": "truecolor",
+   "defaultColorMode": "truecolor"
+  },
+  {
+   "env": {
+    "TERM": "xterm-256color"
+   },
+   "trueColor": true,
+   "images": null,
+   "hyperlinks": false,
+   "colorMode": "truecolor",
+   "defaultColorMode": "truecolor"
+  },
+  {
+   "env": {
+    "TERM": "xterm-direct"
+   },
+   "trueColor": true,
+   "images": null,
+   "hyperlinks": false,
+   "colorMode": "truecolor",
+   "defaultColorMode": "truecolor"
+  },
+  {
+   "env": {
+    "COLORTERM": "truecolor"
+   },
+   "trueColor": true,
+   "images": null,
+   "hyperlinks": false,
+   "colorMode": "truecolor",
+   "defaultColorMode": "truecolor"
+  },
+  {
+   "env": {
+    "COLORTERM": "24bit"
+   },
+   "trueColor": true,
+   "images": null,
+   "hyperlinks": false,
+   "colorMode": "truecolor",
+   "defaultColorMode": "truecolor"
+  },
+  {
+   "env": {
+    "TERM": "xterm-direct",
+    "KITTY_WINDOW_ID": "1"
+   },
+   "trueColor": true,
+   "images": "kitty",
+   "hyperlinks": true,
+   "colorMode": "truecolor",
+   "defaultColorMode": "truecolor"
+  },
+  {
+   "env": {
+    "TERM": "linux-direct"
+   },
+   "trueColor": true,
+   "images": null,
+   "hyperlinks": false,
+   "colorMode": "truecolor",
+   "defaultColorMode": "truecolor"
+  }
+ ],
+ "colorMode": [],
+ "provenance": {
+  "terminalImageSha256": "b901b8df0ad84e04ac0ee612c419b45d960430f63d2bdaa974c8dd9d89f3e6e5",
+  "node": "v25.8.2",
+  "platform": "win32"
+ }
+}

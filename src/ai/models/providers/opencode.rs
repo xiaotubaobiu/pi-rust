@@ -15,7 +15,7 @@ use crate::ai::api::openai_responses::OpenAiResponses;
 use crate::ai::auth::types::ProviderAuth;
 use crate::ai::models::catalog::embedded_provider_catalog;
 use crate::ai::models::provider::{create_provider, ApiImpls, CreateProviderOptions};
-use crate::ai::models::providers::{arc, per_api};
+use crate::ai::models::providers::{arc, catalog_with_classifiers, per_api};
 use crate::ai::models::Provider;
 use crate::ai::transcript::TranscriptContext;
 use crate::ai::types::events::AssistantMessageEvent;
@@ -113,15 +113,27 @@ pub fn opencode_provider() -> Arc<dyn Provider> {
             )),
             oauth: None,
         },
-        models: embedded_provider_catalog("opencode"),
+        models: catalog_with_classifiers("opencode"),
         fetch_models: None,
         filter_models: None,
+        filter_all_models: None,
         api: wrapped_per_api(&[
             ("anthropic-messages", arc(AnthropicMessages)),
             ("google-generative-ai", arc(GoogleGenerativeAi)),
             ("openai-completions", arc(OpenAiCompletions)),
             ("openai-responses", arc(OpenAiResponses)),
         ]),
+        // OpenCode Zen serves TypeSafe's System One protocol at
+        // /zen/v1/systemone (the opencode.ts #9948 delta).
+        images: crate::ai::models::provider::ImagesImpls::new(),
+        classifiers: {
+            let mut map = crate::ai::models::provider::ClassifiersImpls::new();
+            map.insert(
+                "typesafe-system-one".to_string(),
+                Arc::new(crate::ai::api::typesafe_system_one::TypeSafeSystemOneApi),
+            );
+            map
+        },
     })
 }
 
@@ -140,9 +152,12 @@ pub fn opencode_go_provider() -> Arc<dyn Provider> {
             )),
             oauth: None,
         },
-        models: embedded_provider_catalog("opencode-go"),
+        models: embedded_provider_catalog("opencode-go").into_iter().map(crate::ai::types::AnyModel::Chat).collect(),
         fetch_models: None,
         filter_models: None,
+        filter_all_models: None,
+        images: crate::ai::models::provider::ImagesImpls::new(),
+        classifiers: crate::ai::models::provider::ClassifiersImpls::new(),
         api: wrapped_per_api(&[
             ("anthropic-messages", arc(AnthropicMessages)),
             ("openai-completions", arc(OpenAiCompletions)),

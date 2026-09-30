@@ -9,6 +9,11 @@ use crate::tui::layout::{
     get_scroll_view_box_id, get_scroll_views_at, get_scrollbar_geometry, LayoutFrame,
     ScrollbarGeometry,
 };
+use crate::tui::wheel_scroll::{WheelScrollAccelerator, WheelScrollLines};
+
+/// Upstream `ALT_WHEEL_SCROLL_MULTIPLIER` (tui-alt-screen.ts): Alt+wheel moves
+/// five times as far.
+pub const ALT_WHEEL_SCROLL_MULTIPLIER: f64 = 5.0;
 
 /// SGR coordinates are signed: the protocol accepts a zero field (cell -1).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -125,33 +130,46 @@ pub struct ScrollbarDrag {
 /// recreated per event. `request_render` must schedule on the owning host loop.
 pub struct ViewportScrollMouse {
     implicit_scroll: ScrollHandle,
-    wheel_scroll_lines: f64,
+    wheel_scroll: WheelScrollAccelerator,
     request_render: RequestRender,
     scrollbar_hover: Option<ScrollHandle>,
     scrollbar_drag: Option<ScrollbarDrag>,
 }
 impl ViewportScrollMouse {
+    /// Upstream `TuiAltScreen` constructor: the wheel-line option defaults to
+    /// 1 line (not `"auto"`); acceleration uses the platform/SSH detection.
     pub fn new(
         implicit_scroll: ScrollHandle,
         wheel_scroll_lines: Option<f64>,
         request_render: RequestRender,
     ) -> Self {
-        let value = wheel_scroll_lines.unwrap_or(1.0).floor();
         Self {
             implicit_scroll,
-            // f64::max ignores NaN; JS Math.max propagates it.
-            wheel_scroll_lines: if value.is_nan() {
-                value
-            } else {
-                value.max(1.0)
-            },
+            wheel_scroll: WheelScrollAccelerator::new(
+                wheel_scroll_lines.map_or(WheelScrollLines::Fixed(1.0), WheelScrollLines::Fixed),
+                None,
+            ),
             request_render,
             scrollbar_hover: None,
             scrollbar_drag: None,
         }
     }
-    pub fn wheel_scroll_lines(&self, button: i64) -> f64 {
-        self.wheel_scroll_lines * if button & 8 != 0 { 5.0 } else { 1.0 }
+
+    /// Upstream `setWheelScrollLines`: reconfigure and reset the gesture state.
+    pub fn set_wheel_scroll_lines(&mut self, lines: WheelScrollLines) {
+        self.wheel_scroll.set_lines(lines);
+    }
+    /// Upstream `routeWheel` wheel-delta step: the accelerated line count for
+    /// a wheel event in `direction` (-1 | 1) at time `now` (ms), times the
+    /// Alt multiplier when the SGR button code has bit 3 set.
+    pub fn wheel_scroll_lines(&mut self, button: i64, now: f64, direction: i64) -> f64 {
+        let lines = self.wheel_scroll.next(direction, now);
+        let scaled = if button & 8 != 0 {
+            lines * ALT_WHEEL_SCROLL_MULTIPLIER
+        } else {
+            lines
+        };
+        direction as f64 * scaled
     }
     pub fn scrollbar_hover(&self) -> Option<&ScrollHandle> {
         self.scrollbar_hover.as_ref()
@@ -221,17 +239,19 @@ impl ViewportScrollMouse {
     /// Route after overlay/component handling has declined the wheel event.
     /// Upstream containment breaks the hit chain, NOT the separate primary
     /// fallback. A primary not already visited still receives unused delta.
+    /// `now` is the monotonic clock in milliseconds (upstream performance.now).
     pub fn route_wheel(
         &mut self,
         frame: Option<&LayoutFrame>,
         has_overlay: bool,
         event: WheelEvent,
+        now: f64,
     ) {
         let direction = match event.direction {
             WheelDirection::Up => -1.0,
             WheelDirection::Down => 1.0,
         };
-        let mut remaining = direction * self.wheel_scroll_lines(event.button);
+        let mut remaining = self.wheel_scroll_lines(event.button, now, direction as i64);
         let mut seen = Vec::new();
         for scroll in frame
             .map(|f| get_scroll_views_at(f, event.x, event.y))

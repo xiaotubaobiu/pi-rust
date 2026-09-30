@@ -16,14 +16,14 @@ use std::sync::RwLock;
 use futures::future::BoxFuture;
 use tokio_util::sync::CancellationToken;
 
-use crate::ai::types::Model;
+use crate::ai::types::AnyModel;
 
 /// Upstream `ModelsStoreEntry` (models-store.ts:3-14): one provider's
 /// persisted catalog plus the remote-validation metadata its fetcher keeps
 /// alongside it.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct ModelsStoreEntry {
-    pub models: Vec<Model>,
+    pub models: Vec<AnyModel>,
     /// Unix timestamp from the remote catalog's Last-Modified header.
     pub last_modified: Option<i64>,
     /// Unix timestamp of the last completed remote check.
@@ -173,9 +173,10 @@ impl ModelsStore for InMemoryModelsStore {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ai::types::Model;
 
     fn test_model(provider: &str, id: &str) -> Model {
-        Model {
+        Model {r#type: None, prompt_cache: None, input_limits: None, 
             id: id.to_string(),
             name: id.to_string(),
             api: "test-api".to_string(),
@@ -195,7 +196,7 @@ mod tests {
 
     fn entry(provider: &str, id: &str) -> ModelsStoreEntry {
         ModelsStoreEntry {
-            models: vec![test_model(provider, id)],
+            models: vec![AnyModel::Chat(test_model(provider, id))],
             last_modified: Some(1),
             checked_at: Some(2),
             etag: Some("\"e\"".to_string()),
@@ -217,7 +218,10 @@ mod tests {
         assert_eq!(read_back, entry("p1", "m1"));
 
         // Mutating the read copy never reaches the store...
-        read_back.models[0].id = "mutated".to_string();
+        read_back.models[0] = crate::ai::types::AnyModel::Chat(Model {
+            id: "mutated".to_string(),
+            ..read_back.models[0].as_chat().unwrap().clone()
+        });
         assert_eq!(
             store.read("p1", &options).await.unwrap().unwrap(),
             entry("p1", "m1")
@@ -229,7 +233,7 @@ mod tests {
             .write(
                 "p2",
                 ModelsStoreEntry {
-                    models: vec![test_model("p2", "m2")],
+                    models: vec![AnyModel::Chat(test_model("p2", "m2"))],
                     ..ModelsStoreEntry::default()
                 },
                 &options,

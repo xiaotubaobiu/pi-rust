@@ -16,17 +16,28 @@ pub type PayloadHook =
     dyn Fn(Value, Model) -> BoxFuture<'static, anyhow::Result<Option<Value>>> + Send + Sync;
 pub type ResponseHook =
     dyn Fn(ProviderResponse, Model) -> BoxFuture<'static, anyhow::Result<()>> + Send + Sync;
+/// Upstream `StreamOptions.onProviderStreamEvent` (types.ts): observer for
+/// each parsed provider stream event before Pi normalization. Event data is
+/// adapter-owned (`unknown` upstream, a JSON value here) and read-only — the
+/// hook cannot transform the stream.
+pub type ProviderStreamEventHook =
+    dyn Fn(Value, Model) -> BoxFuture<'static, anyhow::Result<()>> + Send + Sync;
 
 #[derive(Clone, Default)]
 pub struct RequestCallbacks {
     pub on_payload: Option<Arc<PayloadHook>>,
     pub on_response: Option<Arc<ResponseHook>>,
+    pub on_provider_stream_event: Option<Arc<ProviderStreamEventHook>>,
 }
 impl std::fmt::Debug for RequestCallbacks {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("RequestCallbacks")
             .field("on_payload", &self.on_payload.is_some())
             .field("on_response", &self.on_response.is_some())
+            .field(
+                "on_provider_stream_event",
+                &self.on_provider_stream_event.is_some(),
+            )
             .finish()
     }
 }
@@ -39,12 +50,33 @@ impl PartialEq for RequestCallbacks {
                 _ => false,
             }
         }
-        same(&self.on_payload, &other.on_payload) && same(&self.on_response, &other.on_response)
+        same(&self.on_payload, &other.on_payload)
+            && same(&self.on_response, &other.on_response)
+            && same(
+                &self.on_provider_stream_event,
+                &other.on_provider_stream_event,
+            )
     }
 }
 impl RequestCallbacks {
     pub fn is_empty(&self) -> bool {
-        self.on_payload.is_none() && self.on_response.is_none()
+        self.on_payload.is_none()
+            && self.on_response.is_none()
+            && self.on_provider_stream_event.is_none()
+    }
+    /// Whether a provider-stream-event observer is attached (upstream
+    /// `options.onProviderStreamEvent !== undefined`; "Adapter support is
+    /// explicit; unsupported adapters do not invoke it").
+    pub fn has_provider_stream_event(&self) -> bool {
+        self.on_provider_stream_event.is_some()
+    }
+    /// Invokes the provider-stream-event observer when one is attached; a
+    /// no-op otherwise (the absent-observer path).
+    pub async fn provider_stream_event(&self, data: Value, model: &Model) -> anyhow::Result<()> {
+        if let Some(callback) = &self.on_provider_stream_event {
+            callback(data, model.clone()).await?;
+        }
+        Ok(())
     }
     pub async fn payload(&self, payload: Value, model: &Model) -> anyhow::Result<Value> {
         match &self.on_payload {
@@ -94,6 +126,7 @@ mod tests {
         RequestCallbacks {
             on_payload: Some(Arc::new(|_, _| Box::pin(async { Ok(None) }))),
             on_response: Some(Arc::new(|_, _| Box::pin(async { Ok(()) }))),
+            on_provider_stream_event: Some(Arc::new(|_, _| Box::pin(async { Ok(()) }))),
         }
     }
 
@@ -135,7 +168,8 @@ mod tests {
             callbacks,
             RequestCallbacks {
                 on_payload: Some(Arc::new(|_, _| Box::pin(async { Ok(None) }))),
-                on_response: None
+                on_response: None,
+                on_provider_stream_event: None,
             }
         );
         assert_eq!(RequestCallbacks::default(), RequestCallbacks::default());

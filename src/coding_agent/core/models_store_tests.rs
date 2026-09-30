@@ -28,7 +28,7 @@ fn oracle() -> serde_json::Value {
 
 /// The upstream test's `model()` fixture (matching the oracle script).
 fn model(provider: &str, id: &str) -> Model {
-    Model {
+    Model {r#type: None, prompt_cache: None, input_limits: None, 
         id: id.to_string(),
         name: id.to_string(),
         api: "openai-completions".to_string(),
@@ -48,7 +48,7 @@ fn model(provider: &str, id: &str) -> Model {
 
 fn entry(models: Vec<Model>, checked_at: i64) -> ModelsStoreEntry {
     ModelsStoreEntry {
-        models,
+        models: models.into_iter().map(crate::ai::types::AnyModel::Chat).collect(),
         last_modified: None,
         checked_at: Some(checked_at),
         etag: None,
@@ -57,7 +57,7 @@ fn entry(models: Vec<Model>, checked_at: i64) -> ModelsStoreEntry {
 
 fn entry_with_meta(models: Vec<Model>) -> ModelsStoreEntry {
     ModelsStoreEntry {
-        models,
+        models: models.into_iter().map(crate::ai::types::AnyModel::Chat).collect(),
         last_modified: Some(4),
         checked_at: Some(5),
         etag: Some("\"abc\"".to_string()),
@@ -162,13 +162,13 @@ async fn persists_catalogs_without_replacing_unrelated_providers() {
     let reloaded = FileModelsStore::new(path.to_str().unwrap());
     let one = reloaded.read("one", &options()).await.unwrap().unwrap();
     assert_eq!(
-        one.models.iter().map(|m| m.id.as_str()).collect::<Vec<_>>(),
+        one.models.iter().map(|m| m.id()).collect::<Vec<_>>(),
         ["m1"]
     );
     assert_eq!(one.checked_at, Some(100));
     let two = reloaded.read("two", &options()).await.unwrap().unwrap();
     assert_eq!(
-        two.models.iter().map(|m| m.id.as_str()).collect::<Vec<_>>(),
+        two.models.iter().map(|m| m.id()).collect::<Vec<_>>(),
         ["m2"]
     );
     let expected_one: ModelsStoreEntry =
@@ -181,7 +181,7 @@ async fn persists_catalogs_without_replacing_unrelated_providers() {
     assert_eq!(reloaded.read("one", &options()).await.unwrap(), None);
     let two = reloaded.read("two", &options()).await.unwrap().unwrap();
     assert_eq!(
-        two.models.iter().map(|m| m.id.as_str()).collect::<Vec<_>>(),
+        two.models.iter().map(|m| m.id()).collect::<Vec<_>>(),
         ["m2"]
     );
     let expected_two: ModelsStoreEntry =
@@ -252,12 +252,12 @@ async fn coalesces_file_reloads_across_concurrent_readers() {
     );
     let one = one.unwrap().unwrap();
     assert_eq!(
-        one.models.iter().map(|m| m.id.as_str()).collect::<Vec<_>>(),
+        one.models.iter().map(|m| m.id()).collect::<Vec<_>>(),
         ["old"]
     );
     let two = two.unwrap().unwrap();
     assert_eq!(
-        two.models.iter().map(|m| m.id.as_str()).collect::<Vec<_>>(),
+        two.models.iter().map(|m| m.id()).collect::<Vec<_>>(),
         ["m2"]
     );
     assert_eq!(missing.unwrap(), None);
@@ -273,7 +273,7 @@ async fn coalesces_file_reloads_across_concurrent_readers() {
         cached
             .models
             .iter()
-            .map(|m| m.id.as_str())
+            .map(|m| m.id())
             .collect::<Vec<_>>(),
         ["old"]
     );
@@ -301,8 +301,8 @@ async fn coalesces_file_reloads_across_concurrent_readers() {
     let third_store = FileModelsStore::new(path.to_str().unwrap());
     let (first_reload, third_reload) =
         tokio::join!(first.read("one", &opts), third_store.read("one", &opts),);
-    assert_eq!(first_reload.unwrap().unwrap().models[0].id, "newest-model");
-    assert_eq!(third_reload.unwrap().unwrap().models[0].id, "newest-model");
+    assert_eq!(first_reload.unwrap().unwrap().models[0].id(), "newest-model");
+    assert_eq!(third_reload.unwrap().unwrap().models[0].id(), "newest-model");
     assert_eq!(
         LOCK_CALLS.load(std::sync::atomic::Ordering::SeqCst),
         3,
@@ -380,7 +380,7 @@ async fn keeps_a_coalesced_reload_alive_while_another_reader_waits() {
         second_result
             .models
             .iter()
-            .map(|m| m.id.as_str())
+            .map(|m| m.id())
             .collect::<Vec<_>>(),
         ["stored"]
     );
@@ -458,9 +458,11 @@ async fn in_memory_store_read_write_delete_are_value_isolated() {
 
     // Mutation of the read copy never reaches the store (structuredClone).
     let mut first = store.read("p", &options()).await.unwrap().unwrap();
-    first.models[0].id = "mutated".to_string();
+    let mut mutated = first.models[0].as_chat().unwrap().clone();
+    mutated.id = "mutated".to_string();
+    first.models[0] = crate::ai::types::AnyModel::Chat(mutated);
     let after_mutation = store.read("p", &options()).await.unwrap().unwrap();
-    assert_eq!(after_mutation.models[0].id, "m");
+    assert_eq!(after_mutation.models[0].id(), "m");
     let expected: ModelsStoreEntry = serde_json::from_value::<ModelsStoreEntryWire>(
         snapshots["in_memory_after_mutation"].clone(),
     )
