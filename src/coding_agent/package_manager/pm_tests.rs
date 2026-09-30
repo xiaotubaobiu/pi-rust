@@ -511,7 +511,7 @@ fn canonicalize_resource_order(value: &mut Value) {
             for key in ["extensions", "skills", "prompts", "themes"] {
                 if let Some(Value::Array(entries)) = object.get_mut(key) {
                     if entries.iter().all(|entry| entry.get("rel").is_some()) {
-                        entries.sort_by(|a, b| resource_rank(a).cmp(&resource_rank(b)));
+                        entries.sort_by_key(resource_rank);
                     }
                 }
             }

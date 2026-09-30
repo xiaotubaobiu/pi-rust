@@ -134,7 +134,7 @@ fn resolve_read_path_tries_the_macos_screenshot_variant() {
     // Host-native join so the fixture file is a child of the temp dir on both
     // platforms and the expectation matches `resolve_read_path`'s own
     // separator flavor.
-    let narrow = std::path::Path::new(&dir).join(format!("Screenshot\u{202F}AM."));
+    let narrow = std::path::Path::new(&dir).join("Screenshot\u{202F}AM.");
     std::fs::write(&narrow, b"x").unwrap();
     assert_eq!(
         resolve_read_path("Screenshot AM.", &dir),
@@ -148,7 +148,7 @@ fn resolve_read_path_tries_the_macos_screenshot_variant() {
 fn resolve_read_path_tries_the_curly_quote_variant() {
     let dir = temp_dir("curly");
     // Host-native join (see the screenshot variant above).
-    let curly = std::path::Path::new(&dir).join(format!("Capture d\u{2019}cran.txt"));
+    let curly = std::path::Path::new(&dir).join("Capture d\u{2019}cran.txt");
     std::fs::write(&curly, b"x").unwrap();
     assert_eq!(
         resolve_read_path("Capture d'cran.txt", &dir),

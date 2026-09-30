@@ -16,7 +16,7 @@ jobs:
       CARGO_INCREMENTAL: "0"
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@1.98.1
         with:
           components: rustfmt, clippy
       # ubuntu-latest ships ~45 GB of preinstalled toolchains the build never

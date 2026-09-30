@@ -375,7 +375,7 @@ fn normalize_conflict_races(value: &Value) -> Value {
         }
         (path.to_string(), error.to_string())
     }
-    fn sort_by_path(items: &mut Vec<Value>) {
+    fn sort_by_path(items: &mut [Value]) {
         items.sort_by_key(|item| {
             item.get("path")
                 .and_then(Value::as_str)

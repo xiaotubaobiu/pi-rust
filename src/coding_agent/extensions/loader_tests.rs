@@ -619,7 +619,7 @@ fn synthetic_source_info_matches_oracle() {
     // separators, and upstream-on-linux would render POSIX ones. Unify
     // separators to `/` on both sides so the pin covers the path shape, not
     // the capture host's separator.
-    let mut expected = oracle_scenario("loader", "source_info")["observed"].clone();
+    let expected = oracle_scenario("loader", "source_info")["observed"].clone();
     let expected = rel_root_fwd(&root, &expected);
     let observed = rel_root_fwd(&root, &observed);
     assert_eq!(observed, expected);
