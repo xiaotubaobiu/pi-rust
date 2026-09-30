@@ -41,11 +41,19 @@ jobs:
           sudo docker image prune -af || true
           df -h /
       - run: cargo build --release --target ${{ matrix.target }} --bin pirs
+      # rename to the release asset name: the built file is `pirs` on every
+      # unix target, and merge-multiple download would otherwise collapse
+      # same-named files from different platform artifacts into one
+      - name: Stage artifact under its asset name
+        shell: bash
+        run: |
+          mkdir -p stage
+          cp "target/${{ matrix.target }}/release/${{ matrix.binary }}" "stage/${{ matrix.asset }}"
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.asset }}
-          path: target/${{ matrix.target }}/release/${{ matrix.binary }}
+          path: stage/${{ matrix.asset }}
 
   publish:
     needs: build
@@ -63,3 +71,4 @@ jobs:
           gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 \
             || gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --verify-tag --generate-notes
           gh release upload "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --clobber dist/*
+          gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name'
