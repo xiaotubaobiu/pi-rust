@@ -161,6 +161,37 @@ mod session_share_tests {
     /// share export must match byte for byte.
     #[test]
     fn exports_match_the_node_oracle_byte_for_byte() {
+        // environment-anchored: both sides normalized. The fixture header's
+        // win32 cwd `C:\pi-oracle-cwd` is drive-absolute, so the win32 export
+        // carries it through verbatim (the captured form). On POSIX the same
+        // fixture input is relative and the session manager resolves it
+        // against the process cwd at open time exactly like upstream node
+        // (`path.resolve`) before re-serializing the header; collapse any
+        // resolved prefix back to the raw fixture anchor on BOTH sides so the
+        // byte comparison covers the export body, not the host cwd
+        // resolution. (Prefix-agnostic: sibling tests in this binary chdir.)
+        const ANCHOR: &str = "C:\\\\pi-oracle-cwd"; // JSON-escaped separator
+        let normalize = |bytes: Vec<u8>| -> Vec<u8> {
+            let text = match String::from_utf8(bytes) {
+                Ok(text) => text,
+                Err(error) => return error.into_bytes(),
+            };
+            match text.find(ANCHOR) {
+                Some(anchor_start) => {
+                    let head = &text[..anchor_start];
+                    let prefix_end = head
+                        .rfind("\"cwd\":\"")
+                        .map(|index| index + "\"cwd\":\"".len())
+                        .unwrap_or(anchor_start);
+                    let mut out = String::with_capacity(text.len());
+                    out.push_str(&text[..prefix_end]);
+                    out.push_str(ANCHOR);
+                    out.push_str(&text[anchor_start + ANCHOR.len()..]);
+                    out.into_bytes()
+                }
+                None => text.into_bytes(),
+            }
+        };
         let temp = std::env::temp_dir().join(format!("pi-r16-oracle-{}", std::process::id()));
         std::fs::create_dir_all(&temp).expect("temp dir");
         let manager = open_fixture_session(&temp);
@@ -175,8 +206,8 @@ mod session_share_tests {
         .expect("export");
         assert_eq!(written, normal_path.to_str().unwrap());
         assert_eq!(
-            std::fs::read(&normal_path).expect("read"),
-            ORACLE_NORMAL.as_bytes()
+            normalize(std::fs::read(&normal_path).expect("read")),
+            normalize(ORACLE_NORMAL.as_bytes().to_vec())
         );
 
         let share_path = temp.join("share.jsonl");
@@ -197,8 +228,8 @@ mod session_share_tests {
         )
         .expect("export");
         assert_eq!(
-            std::fs::read(&share_path).expect("read"),
-            ORACLE_SHARE.as_bytes()
+            normalize(std::fs::read(&share_path).expect("read")),
+            normalize(ORACLE_SHARE.as_bytes().to_vec())
         );
 
         std::fs::remove_dir_all(&temp).expect("cleanup");

@@ -546,28 +546,61 @@ mod tests {
         {
             assert_eq!(format_tokens(value), want);
         }
-        assert_eq!(
-            format_cwd_for_footer("C:\\Users\\n\\proj", Some("C:\\Users\\n")),
-            "~\\proj"
-        );
-        assert_eq!(
-            format_cwd_for_footer("C:\\Users\\n\\proj", Some("C:\\Users\\m")),
-            "C:\\Users\\n\\proj"
-        );
-        assert_eq!(
-            format_cwd_for_footer("C:\\Users\\n", Some("C:\\Users\\n")),
-            "~"
-        );
-        assert_eq!(format_cwd_for_footer("C:\\other", None), "C:\\other");
-        assert_eq!(
-            format_cwd_for_footer("C:\\Users\\n\\..\\elsewhere", Some("C:\\Users\\n")),
-            "C:\\Users\\n\\..\\elsewhere"
-        );
+        // environment-anchored: the cwd/home anchors are host-shaped inputs.
+        // The capture pins upstream-on-win32 (`path.sep` = `\`); on POSIX the
+        // same scenarios use POSIX-shaped anchors and upstream node renders
+        // them with `/` (its `path.resolve`/`relative`/`sep` are
+        // platform-dispatched), so the expectations are split with the input.
+        if cfg!(windows) {
+            assert_eq!(
+                format_cwd_for_footer("C:\\Users\\n\\proj", Some("C:\\Users\\n")),
+                "~\\proj"
+            );
+            assert_eq!(
+                format_cwd_for_footer("C:\\Users\\n\\proj", Some("C:\\Users\\m")),
+                "C:\\Users\\n\\proj"
+            );
+            assert_eq!(
+                format_cwd_for_footer("C:\\Users\\n", Some("C:\\Users\\n")),
+                "~"
+            );
+            assert_eq!(format_cwd_for_footer("C:\\other", None), "C:\\other");
+            assert_eq!(
+                format_cwd_for_footer("C:\\Users\\n\\..\\elsewhere", Some("C:\\Users\\n")),
+                "C:\\Users\\n\\..\\elsewhere"
+            );
+        } else {
+            assert_eq!(
+                format_cwd_for_footer("/home/n/proj", Some("/home/n")),
+                "~/proj"
+            );
+            assert_eq!(
+                format_cwd_for_footer("/home/n/proj", Some("/home/m")),
+                "/home/n/proj"
+            );
+            assert_eq!(format_cwd_for_footer("/home/n", Some("/home/n")), "~");
+            assert_eq!(format_cwd_for_footer("/other", None), "/other");
+            assert_eq!(
+                format_cwd_for_footer("/home/n/../elsewhere", Some("/home/n")),
+                "/home/n/../elsewhere"
+            );
+        }
     }
 
     #[test]
     fn footer_render_matches_oracle() {
         let theme = dark();
+        // environment-anchored: the fixture cwd must render raw (outside the
+        // live HOME), which is only meaningful with a host-shaped absolute
+        // path. The capture used a fake win32 profile path; on POSIX the fake
+        // `C:\...` input is relative and would resolve under the live HOME
+        // (upstream `resolve()` behaves identically), so mirror the scenario
+        // with a POSIX-absolute anchor outside any plausible HOME.
+        let cwd = if cfg!(windows) {
+            "C:\\Users\\n\\proj".to_string()
+        } else {
+            "/pi-footer-oracle-cwd/proj".to_string()
+        };
         let session = FixedSession {
             model: Some(FooterModel {
                 id: "kimi-k2".to_string(),
@@ -577,7 +610,7 @@ mod tests {
             }),
             thinking_level: Some("high".to_string()),
             context_usage: Some((200_000, Some(42.55))),
-            cwd: "C:\\Users\\n\\proj".to_string(),
+            cwd,
             session_name: Some("my-session".to_string()),
             entries: vec![
                 FooterEntry::AssistantMessage(usage(1500, 250, 100, 50, 0.5)),
@@ -596,9 +629,14 @@ mod tests {
         };
         let footer = FooterComponent::new(&session, &provider);
         let lines = footer.render_footer(80, &theme);
+        let pwd_segment = if cfg!(windows) {
+            "C:\\Users\\n\\proj".to_string()
+        } else {
+            "/pi-footer-oracle-cwd/proj".to_string()
+        };
         assert_eq!(
             lines[0],
-            "\x1b[38;2;102;102;102mC:\\Users\\n\\proj (main) • my-session\x1b[39m"
+            format!("\x1b[38;2;102;102;102m{pwd_segment} (main) • my-session\x1b[39m")
         );
         assert_eq!(
             lines[1],

@@ -320,6 +320,33 @@ fn scrub_scanner_prose(value: &mut Value) {
     }
 }
 
+/// environment-anchored: the shared scrub's root-anchored branch prepends the
+/// `<DRV>:/` placeholder to strings that already start with `/`, so POSIX
+/// actuals (root-anchored fixture inputs stay `/...` there) render as
+/// `<DRV>://...` while the win32 capture resolves onto the live drive and
+/// renders `<DRV>:/...` through the drive-rewrite branch. Collapse the
+/// duplicated separator on BOTH sides — the same stated rule on every
+/// platform — so the pin covers the path itself, not which scrub branch
+/// rendered it (upstream-on-linux reports the same POSIX path).
+fn collapse_drive_placeholder(value: &mut Value) {
+    match value {
+        Value::String(text) => {
+            *text = text.replace("<DRV>://", "<DRV>:/");
+        }
+        Value::Array(items) => {
+            for item in items {
+                collapse_drive_placeholder(item);
+            }
+        }
+        Value::Object(entries) => {
+            for (_, child) in entries.iter_mut() {
+                collapse_drive_placeholder(child);
+            }
+        }
+        _ => {}
+    }
+}
+
 fn assert_matches(name: &str, observed: &Value, replacements: &Roots) {
     let mut expected = scenario(name);
     let mut actual = normalize(observed, replacements);
@@ -329,6 +356,8 @@ fn assert_matches(name: &str, observed: &Value, replacements: &Roots) {
     // scrub on both sides.
     crate::coding_agent::oracle_scrub::scrub_value(&mut expected);
     crate::coding_agent::oracle_scrub::scrub_value(&mut actual);
+    collapse_drive_placeholder(&mut expected);
+    collapse_drive_placeholder(&mut actual);
     scrub_scanner_prose(&mut expected);
     scrub_scanner_prose(&mut actual);
     assert_eq!(

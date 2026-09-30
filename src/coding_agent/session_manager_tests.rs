@@ -162,10 +162,39 @@ fn canon(root: &str, value: &impl Serialize) -> String {
     // shared anchor scrub (separators + drive/root anchors) before the
     // canonical comparison.
     crate::coding_agent::oracle_scrub::scrub_value(&mut scrubbed);
+    // environment-anchored: both sides normalized. On POSIX the
+    // root-anchored inputs stay `/...` and the shared scrub's root-anchored
+    // branch prepends the `<DRV>:/` placeholder to a leading `/`, rendering
+    // `<DRV>://...`; the win32 capture resolves onto the live drive and
+    // renders `<DRV>:/...`. Collapse the duplicated separator on BOTH sides
+    // (upstream-on-linux reports the same POSIX path) so the pin covers the
+    // path, not the scrub branch.
+    collapse_drive_placeholder(&mut scrubbed);
     // The Node oracle explicitly sorts its canonical comparison tree. Keep
     // this test-only normalization separate from raw JSONL wire assertions.
     scrubbed.sort_all_objects();
     serde_json::to_string(&scrubbed).expect("canon string")
+}
+
+/// environment-anchored companion to `canon`: collapse the `<DRV>://`
+/// rendering (see `canon`) on both comparison sides.
+fn collapse_drive_placeholder(value: &mut Value) {
+    match value {
+        Value::String(text) => {
+            *text = text.replace("<DRV>://", "<DRV>:/");
+        }
+        Value::Array(items) => {
+            for item in items {
+                collapse_drive_placeholder(item);
+            }
+        }
+        Value::Object(object) => {
+            for (_, child) in object.iter_mut() {
+                collapse_drive_placeholder(child);
+            }
+        }
+        _ => {}
+    }
 }
 
 /// Order-preserving scrub of raw JSONL file text (textual replacements keep
@@ -259,9 +288,29 @@ fn assert_canon_matches(root: &str, value: &impl Serialize, oracle_path: &[&str]
 }
 
 fn assert_file_bytes_match(root: &str, actual: &str, key: &str) {
+    // environment-anchored: both sides normalized. The separators inside a
+    // `<root>`/`<cwd>`-anchored path are the host join separators (upstream
+    // on POSIX writes posix joins where the win32 capture wrote `\`; inside
+    // JSON strings the backslash form appears JSON-escaped). Unify every
+    // separator within those path tokens to `/` on both sides so the byte
+    // comparison stays host-independent.
+    static PATH_TOKEN: OnceLock<Regexp> = OnceLock::new();
+    let path_token = PATH_TOKEN.get_or_init(|| {
+        // Path characters as they appear inside the JSONL strings; `\`
+        // matches the (doubled) JSON-escaped separators.
+        Regexp::new(r#"(<root>|<cwd>)[A-Za-z0-9_./<>:\\-]*"#).expect("path token regex")
+    });
+    let normalize_placeholders = |text: &str| -> String {
+        path_token
+            .replace_all(text, |caps: &regex::Captures| {
+                // JSON-escaped backslash pair -> posix separator.
+                caps[0].replace("\\\\", "/")
+            })
+            .into_owned()
+    };
     assert_eq!(
-        scrub_file_text(root, actual),
-        oracle_file_bytes(key),
+        normalize_placeholders(&scrub_file_text(root, actual)),
+        normalize_placeholders(oracle_file_bytes(key)),
         "file bytes for {key}"
     );
 }
@@ -1278,9 +1327,36 @@ fn find_most_recent_session_matches_oracle() {
 fn default_session_dir_matches_oracle() {
     let agent_dir = std::env::temp_dir().join("pi-sm-oracle-agent-home");
     let _ = std::fs::remove_dir_all(agent_dir.join("sessions"));
-    let created =
-        get_default_session_dir_with("C:\\oracle-fixed-cwd", &agent_dir.to_string_lossy());
-    let expected = oracle()["defaultDir"].clone();
+    // environment-anchored: the fixed cwd is a capture-machine anchor. The
+    // capture pinned upstream-on-win32 with the drive-absolute
+    // `C:\oracle-fixed-cwd`; on POSIX that input is relative and upstream
+    // node resolves it against the process cwd, so the port's raw name would
+    // embed the runner's cwd. Mirror the capture with the root-anchored
+    // `/oracle-fixed-cwd` (`C:` is the capture drive anchor) — the encoding
+    // then strips the leading separator exactly like the captured `C:\...`
+    // form keeps none.
+    let (fixed_cwd, expected_path) = if cfg!(windows) {
+        (
+            "C:\\oracle-fixed-cwd".to_string(),
+            oracle()["defaultDir"]["path"]
+                .as_str()
+                .expect("path")
+                .to_string(),
+        )
+    } else {
+        // Same stated rule on the oracle side: host separators become POSIX
+        // and the captured drive-anchored dir name maps to the POSIX fixed
+        // cwd's encoding.
+        (
+            "/oracle-fixed-cwd".to_string(),
+            oracle()["defaultDir"]["path"]
+                .as_str()
+                .expect("path")
+                .replace('\\', "/")
+                .replace("--C--oracle-fixed-cwd--", "--oracle-fixed-cwd--"),
+        )
+    };
+    let created = get_default_session_dir_with(&fixed_cwd, &agent_dir.to_string_lossy());
     assert_eq!(
         created.replace(
             std::env::temp_dir()
@@ -1288,7 +1364,7 @@ fn default_session_dir_matches_oracle() {
                 .trim_end_matches(std::path::is_separator),
             "<tmp>"
         ),
-        expected["path"].as_str().expect("path"),
+        expected_path,
         "default session dir path"
     );
     assert!(

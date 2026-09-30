@@ -4364,6 +4364,32 @@ mod upper_oracle {
             .clone()
     }
 
+    /// environment-anchored: on POSIX the root-anchored fixture inputs stay
+    /// `/...` and the shared scrub's root-anchored branch prepends the
+    /// `<DRV>:/` placeholder to a leading `/`, rendering `<DRV>://...`; the
+    /// win32 capture resolves onto the live drive and renders `<DRV>:/...`.
+    /// Collapse the duplicated separator on BOTH sides (upstream-on-linux
+    /// reports the same POSIX path) so the pin covers the path, not the scrub
+    /// branch.
+    fn collapse_drive_placeholder(value: &mut Value) {
+        match value {
+            Value::String(text) => {
+                *text = text.replace("<DRV>://", "<DRV>:/");
+            }
+            Value::Array(items) => {
+                for item in items {
+                    collapse_drive_placeholder(item);
+                }
+            }
+            Value::Object(entries) => {
+                for (_, child) in entries.iter_mut() {
+                    collapse_drive_placeholder(child);
+                }
+            }
+            _ => {}
+        }
+    }
+
     /// The drive's `describeArg`: top-level `null` is the JS `undefined`
     /// sentinel and renders `"undefined"`; nested message payloads keep
     /// their JSON nulls; `__describe` markers render the handle shape.
@@ -6159,6 +6185,19 @@ mod upper_oracle {
         }
         for entry in expected.iter_mut() {
             crate::coding_agent::oracle_scrub::scrub_value(entry);
+        }
+        // environment-anchored: both sides normalized. On POSIX the
+        // root-anchored inputs stay `/...` and the shared scrub's
+        // root-anchored branch prepends the `<DRV>:/` placeholder to a
+        // leading `/`, rendering `<DRV>://...`; the win32 capture resolves
+        // onto the live drive and renders `<DRV>:/...`. Collapse the
+        // duplicated separator on BOTH sides (upstream-on-linux reports the
+        // same POSIX path) so the pin covers the path, not the scrub branch.
+        for entry in ours.iter_mut() {
+            collapse_drive_placeholder(entry);
+        }
+        for entry in expected.iter_mut() {
+            collapse_drive_placeholder(entry);
         }
         let failures: Vec<String> = ours
             .iter()

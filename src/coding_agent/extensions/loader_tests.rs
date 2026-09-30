@@ -598,7 +598,15 @@ fn synthetic_source_info_matches_oracle() {
     .unwrap();
 
     let loader = TestLoader::default();
-    let local_path = format!("{root}\\sub\\local.ts");
+    // The win32 capture registers a backslash-joined path (the host
+    // separator); on POSIX the same synthetic input uses `/` — `\` is not a
+    // separator there, so dirname would land outside the fixture root
+    // (upstream node's `path.dirname` behaves identically).
+    let local_path = if cfg!(windows) {
+        format!("{root}\\sub\\local.ts")
+    } else {
+        format!("{root}/sub/local.ts")
+    };
     loader.register(&local_path, Arc::new(|_api: &ExtensionApi| Ok(())));
     let via_load = load_extensions(&[local_path], &root, None, None, &loader);
 
@@ -606,10 +614,15 @@ fn synthetic_source_info_matches_oracle() {
         "inline": source_info_value(&inline.source_info, &root),
         "local": source_info_value(&via_load.extensions[0].source_info, &root),
     });
-    assert_eq!(
-        observed,
-        oracle_scenario("loader", "source_info")["observed"]
-    );
+    // environment-anchored: both sides normalized. The captured path/baseDir
+    // carry win32 separators (`<root>\sub\local.ts`); the port renders host
+    // separators, and upstream-on-linux would render POSIX ones. Unify
+    // separators to `/` on both sides so the pin covers the path shape, not
+    // the capture host's separator.
+    let mut expected = oracle_scenario("loader", "source_info")["observed"].clone();
+    let expected = rel_root_fwd(&root, &expected);
+    let observed = rel_root_fwd(&root, &observed);
+    assert_eq!(observed, expected);
     let _ = fs::remove_dir_all(&root);
 }
 
@@ -841,18 +854,47 @@ fn discovery_battery_matches_oracle() {
             None,
             &loader,
         );
+        // environment-anchored: both sides sorted. Upstream discovers through
+        // unsorted `fs.readdirSync`, so the raw order is the OS readdir order
+        // and differs between the win32 capture machine and POSIX; sorting
+        // both sides pins the discovered set instead of the host readdir
+        // order.
+        let mut paths: Vec<Value> = result
+            .extensions
+            .iter()
+            .map(|extension| rel_root_fwd(&root, &Value::String(extension.path.clone())))
+            .collect();
+        paths.sort_by(|a, b| {
+            a.as_str()
+                .unwrap_or_default()
+                .cmp(b.as_str().unwrap_or_default())
+        });
         observed.insert(
             label.to_string(),
             json!({
-                // Unsorted: pins the OS readdir discovery order.
-                "paths": result.extensions.iter().map(|extension| rel_root_fwd(&root, &Value::String(extension.path.clone()))).collect::<Vec<_>>(),
+                "paths": paths,
                 "errors": result.errors.iter().map(|error| json!({"path": error.path, "error": error.error})).collect::<Vec<_>>(),
             }),
         );
     }
 
-    let expected = oracle_scenario("loader", "discovery_battery")["observed"].clone();
-    assert_eq!(Value::Object(observed), rel_root_fwd(&root, &expected));
+    // Same stated rule on the oracle side: sort each scenario's `paths`.
+    let mut expected = rel_root_fwd(
+        &root,
+        &oracle_scenario("loader", "discovery_battery")["observed"].clone(),
+    );
+    if let Value::Object(entries) = &mut expected {
+        for (_, scenario) in entries.iter_mut() {
+            if let Some(paths) = scenario.get_mut("paths").and_then(Value::as_array_mut) {
+                paths.sort_by(|a, b| {
+                    a.as_str()
+                        .unwrap_or_default()
+                        .cmp(b.as_str().unwrap_or_default())
+                });
+            }
+        }
+    }
+    assert_eq!(Value::Object(observed), expected);
     let _ = fs::remove_dir_all(&root);
 }
 

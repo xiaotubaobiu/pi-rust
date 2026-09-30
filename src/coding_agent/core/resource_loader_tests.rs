@@ -347,6 +347,65 @@ fn assert_matches(name: &str, observed: &Value, root: &str) {
     );
 }
 
+/// environment-anchored: both sides normalized. Extension discovery walks
+/// `agent/extensions` in OS readdir order (upstream uses unsorted
+/// `fs.readdirSync`), and readdir order decides which extension registers a
+/// duplicate tool first: the win32 capture saw ext1 win (ext2 reported as the
+/// conflict), POSIX readdir returned ext2 first. Canonicalize both sides by a
+/// single stated rule — sort the extensions array by path, and render each
+/// `conflicts with` error attached to the lower path with the higher path as
+/// owner — so the oracle pair (ext1 owner-side, ext2 conflict-side) stays
+/// byte-exact while the platform readdir race is abstracted. Upstream on
+/// linux reproduces our port's raw output exactly; only the capture-side
+/// readdir order is environment-anchored.
+fn normalize_conflict_races(value: &Value) -> Value {
+    const CONFLICT_MARK: &str = " conflicts with ";
+    fn canonicalize_error(path: &str, error: &str) -> (String, String) {
+        if let Some(owner_start) = error.find(CONFLICT_MARK) {
+            let owner = &error[owner_start + CONFLICT_MARK.len()..];
+            let tool_prefix = &error[..owner_start];
+            // Re-attach the error to the lower of the two paths so both
+            // readdir orders canonicalize to the same rendering.
+            if owner < path {
+                return (
+                    owner.to_string(),
+                    format!("{tool_prefix}{CONFLICT_MARK}{path}"),
+                );
+            }
+        }
+        (path.to_string(), error.to_string())
+    }
+    fn sort_by_path(items: &mut Vec<Value>) {
+        items.sort_by_key(|item| {
+            item.get("path")
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+                .to_string()
+        });
+    }
+    let mut out = value.clone();
+    if let Some(extensions) = out.get_mut("extensions").and_then(Value::as_array_mut) {
+        sort_by_path(extensions);
+    }
+    if let Some(errors) = out.get_mut("errors").and_then(Value::as_array_mut) {
+        let mut canonical: Vec<Value> = errors
+            .iter()
+            .map(|error| {
+                let path = error.get("path").and_then(Value::as_str).unwrap_or("");
+                let text = error.get("error").and_then(Value::as_str).unwrap_or("");
+                let (path, text) = canonicalize_error(path, text);
+                let mut entry = Map::new();
+                entry.insert("path".to_string(), jstr(&path));
+                entry.insert("error".to_string(), jstr(&text));
+                Value::Object(entry)
+            })
+            .collect();
+        sort_by_path(&mut canonical);
+        *errors = canonical;
+    }
+    out
+}
+
 // ===========================================================================
 // Fixture scaffolding
 // ===========================================================================
@@ -1375,10 +1434,14 @@ fn oracle_extension_tool_conflict_matches_the_capture() {
     });
     loader.reload_without_trust().expect("reload");
     let snapshot = loader_snapshot(&loader);
-    assert_matches(
-        "extensions:tool-conflict",
-        &snapshot["extensions"],
-        &root.strpath(),
+    // environment-anchored: both sides normalized (see
+    // `normalize_conflict_races`) — readdir order decides the duplicate-tool
+    // winner per platform.
+    let expected = normalize_conflict_races(&scenario("extensions:tool-conflict"));
+    let actual = normalize_conflict_races(&normalize(&snapshot["extensions"], &root.strpath()));
+    assert_eq!(
+        actual, expected,
+        "oracle mismatch for extensions:tool-conflict\nactual:   {actual}\nexpected: {expected}"
     );
 }
 
