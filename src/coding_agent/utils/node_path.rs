@@ -1021,9 +1021,90 @@ mod tests {
         }
     }
 
-    #[cfg(windows)] // only the win32 grids resolve against the live cwd
-    fn cwd() -> String {
-        current_dir_string()
+    /// environment-anchored: the win32 grids' !CWD/!REL/!DEPTH markers expand
+    /// against the process cwd, and node resolves drive-relative paths
+    /// through `env['=<drive>:'] || process.cwd()` — the real process cwd,
+    /// not a parameter. Runner cwd shapes vary and can even share segments
+    /// with grid paths (GitHub's Windows runner checks out under `D:\a\...`,
+    /// so retargeting the capture drive turns grid paths into `D:\a...` and
+    /// steals the `..` chain). Anchor both grids on a synthetic fixed-depth
+    /// directory on the live drive instead: create it, point the process at
+    /// it, and clear the shell-injected per-drive cwd var, so both comparison
+    /// sides expand against one deterministic value on any machine. Restored
+    /// on drop; run the suite serially (the gate protocol) when other tests
+    /// read the process cwd.
+    #[cfg(windows)] // only the win32 grids resolve against a process cwd
+    struct GridCwd {
+        // field order is drop order: the original cwd is restored before the
+        // lock releases, so the synthetic cwd is only live while held
+        _restore: RestoreOriginalCwd,
+        _lock: std::sync::MutexGuard<'static, ()>,
+    }
+
+    #[cfg(windows)]
+    struct RestoreOriginalCwd {
+        original: String,
+        synthetic: String,
+    }
+
+    #[cfg(windows)]
+    impl Drop for RestoreOriginalCwd {
+        fn drop(&mut self) {
+            let _ = std::env::set_current_dir(&self.original);
+            // best-effort cleanup of the empty synthetic chain (recreated on
+            // demand by the next grid test)
+            let mut tail = self.synthetic.clone();
+            for name in ["\\q2", "\\q1", "\\q0"] {
+                if !tail.ends_with(name) || std::fs::remove_dir(&tail).is_err() {
+                    break;
+                }
+                tail.truncate(tail.len() - name.len());
+            }
+        }
+    }
+
+    #[cfg(windows)]
+    impl GridCwd {
+        fn enter() -> Self {
+            static LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+            // serialize the two grids (both anchor the process cwd) so
+            // concurrent cwd switches cannot race each other
+            let lock = LOCK.lock().unwrap_or_else(|error| error.into_inner());
+            let original = current_dir_string();
+            if let Some(live) = crate::coding_agent::oracle_scrub::live_drive_letter() {
+                std::env::remove_var(format!("={live}:"));
+            }
+            // Device prefix of the original cwd (drive root, or UNC share
+            // root), always terminating in a separator. `q0`/`q1`/`q2` appear
+            // in no grid path, so no retargeted grid path shares a prefix
+            // with the synthetic directory.
+            let device = if original.starts_with("\\\\") {
+                let parts: Vec<&str> =
+                    original.split('\\').filter(|part| !part.is_empty()).collect();
+                match parts.as_slice() {
+                    [server, share, ..] => format!("\\\\{server}\\{share}\\"),
+                    _ => original.clone(),
+                }
+            } else {
+                let end = original.find('\\').map(|index| index + 1).unwrap_or(original.len());
+                original[..end].to_string()
+            };
+            let device = if device.ends_with('\\') {
+                device
+            } else {
+                format!("{device}\\")
+            };
+            let synthetic = format!("{device}q0\\q1\\q2");
+            std::fs::create_dir_all(&synthetic).expect("create synthetic grid cwd");
+            std::env::set_current_dir(&synthetic).expect("enter synthetic grid cwd");
+            Self {
+                _restore: RestoreOriginalCwd {
+                    original,
+                    synthetic,
+                },
+                _lock: lock,
+            }
+        }
     }
 
     /// oracle values may embed the captured cwd as a "!CWD" prefix marker, as
@@ -1106,15 +1187,17 @@ mod tests {
     #[test]
     #[cfg(windows)] // grid captured with a win32 process cwd
     fn node_path_win32_resolve_grid() {
+        let _grid_cwd = GridCwd::enter();
+        let c = current_dir_string();
         for (args, expected) in oracle::NODE_PATH_WIN32_RESOLVE {
             let retargeted = retarget_args(args, expected);
             let refs: Vec<&str> = retargeted.iter().map(String::as_str).collect();
-            let got = win32_resolve(&refs, &cwd());
+            let got = win32_resolve(&refs, &c);
             // node resolves win32 paths case-insensitively and preserves the
             // input's drive case, so compare case-insensitively.
             assert!(
                 strip_trailing_separator(&got, true).eq_ignore_ascii_case(
-                    strip_trailing_separator(&expand_marker(expected, true, &cwd()), true)
+                    strip_trailing_separator(&expand_marker(expected, true, &c), true)
                 ),
                 "win32 resolve {args:?}: {got:?} != {expected:?}"
             );
@@ -1163,7 +1246,8 @@ mod tests {
     #[test]
     #[cfg(windows)] // grid captured with a win32 process cwd
     fn node_path_win32_relative_grid() {
-        let c = cwd();
+        let _grid_cwd = GridCwd::enter();
+        let c = current_dir_string();
         for (from, to, expected) in oracle::NODE_PATH_WIN32_RELATIVE {
             let retargeted = retarget_args(&[from, to], expected);
             assert_eq!(
