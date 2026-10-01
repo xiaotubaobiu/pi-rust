@@ -58,6 +58,7 @@ pub mod model_registry;
 pub mod model_resolver;
 pub mod model_runtime;
 pub mod models_store;
+pub mod nested_tool_calls;
 pub mod output_guard;
 pub mod project_trust;
 pub mod provider_attribution;

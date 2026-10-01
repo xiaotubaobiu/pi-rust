@@ -2595,3 +2595,10 @@ WORK_LOG追加前缀：386287 bytes / cadeaf51fe906e35a1531ffc26058289e7d44c061d
 - CI fix: clippy 1.98 question_mark lint in tui/terminal_colors.rs osc_color_response_value (pre-existing code, toolchain drift).
 - Tests: 2 (combine semantics incl. optional-presence, breakdown grouping/order/drop).
 - Gates: clippy -D warnings 0, fmt clean.
+
+## 2026-09-30 coding-agent: nested-tool-calls recorder (wave 3e) + CI OOM fix
+- Ported upstream nested-tool-calls.ts recorder half to src/coding_agent/core/nested_tool_calls.rs: NESTED_CALL_LIMITS (256 calls / 8KiB per-call / 32KiB total / 500-char error), NestedCallRecorder with JSON.stringify byte accounting (compact serde output matches), drop-vs-omit semantics (dropped calls do not count toward the total), complete flag defaulting TRUE (upstream field initializer; the Default derive silently broke it), snapshot completeness rule, usage summing via usage_totals::combine_usage. Clock injected at start/finish (upstream performance.now()).
+- The Runner half (NestedToolCallHost/runToolCall/queue) lands with the agent-session slice.
+- CI OOM fix: rustc-LLVM out of memory compiling the 528k-line test binary on 7GB runners (run 36827495809 both platforms) -> [profile.test] debug = line-tables-only.
+- Tests: 6 (arguments/durations, missing-args empty object, per-call + total caps, error truncation, usage summing, empty/cap semantics).
+- Gates: clippy -D warnings 0, fmt clean.

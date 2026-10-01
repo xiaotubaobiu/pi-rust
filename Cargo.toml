@@ -122,3 +122,9 @@ fs2 = "0.4.3"
 # instantly and deterministically.
 tokio = { version = "1.53.1", features = ["test-util"] }
 wiremock = "0.6.5"
+
+# CI runners (2-core, 7 GB) OOM'd LLVM codegen for the 528k-line crate's test
+# binary with full debuginfo; line tables keep panic backtraces usable at a
+# fraction of the cost. Behavior of the tests themselves is unchanged.
+[profile.test]
+debug = "line-tables-only"
