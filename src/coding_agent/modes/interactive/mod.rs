@@ -91,12 +91,17 @@ pub mod external_editor;
 pub mod model_catalog_refresh;
 pub mod model_search;
 pub mod session_share;
+pub mod system_theme;
 pub mod theme;
 pub mod theme_json;
 
 #[cfg(test)]
 #[path = "interactive_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "system_theme_oracle_tests.rs"]
+mod system_theme_oracle_tests;
 
 #[cfg(test)]
 #[path = "shell_oracle_tests.rs"]

@@ -104,119 +104,13 @@ pub fn oklab_to_linear_srgb(lab: Vector) -> Vector {
     multiply(&LMS_TO_LINEAR_SRGB, lms)
 }
 
-/// Cube root with IEEE correctly-rounded semantics. V8's `Math.cbrt` (a
-/// fdlibm port) deviates from the correctly-rounded result by 1 ULP on
-/// ~8.5% of inputs, and the OKHSL saturation curve amplifies that near the
-/// gamut cusp; the residual divergence on RAW channel floats is the
-/// disclosed seam of this port (see the module header). Everything that
-/// passes through `Math.round` (sRGB channels) still matches upstream
-/// except on exact x.5 boundaries, which the colors oracle pins.
+/// V8's `Math.cbrt` is the fdlibm implementation; `libm`'s `cbrt` is a
+/// faithful port of the same algorithm, so the results are bit-identical to
+/// node. This pins the OKHSL saturation curve exactly, including the
+/// raw-channel floats the system-theme solver chains through further
+/// conversions (the colors oracle's raw-channel tolerance seam closes).
 fn js_cbrt(x: f64) -> f64 {
-    if !x.is_finite() || x == 0.0 {
-        return x + x; // cbrt(NaN, ±Inf, ±0) is itself (sign preserved)
-    }
-    let neg = x < 0.0;
-    let abs_x = f64::from_bits(x.to_bits() & !(1u64 << 63));
-
-    // fdlibm-style 5-bit seed from the biased exponent/mantissa word.
-    let bits = abs_x.to_bits();
-    let hx = (bits >> 32) as u32;
-    let mut t = if hx < 0x0010_0000 {
-        // Subnormal: scale by 2**54 first.
-        let scaled = f64::from_bits(0x4350_0000u64 << 32) * abs_x;
-        let high = (scaled.to_bits() >> 32) as u32;
-        f64::from_bits(u64::from(high / 3 + 696219795) << 32)
-    } else {
-        f64::from_bits(u64::from(hx / 3 + 715094163) << 32)
-    };
-
-    // Newton iterations t <- (2t + x/t²)/3 in plain f64: 5 bits -> ~47 bits
-    // after three steps, so the double-double steps below only need to
-    // converge the rest of the way.
-    for _ in 0..3 {
-        t = (2.0 * t + abs_x / (t * t)) / 3.0;
-    }
-
-    // Two double-double Newton steps: error -> ~2^-104, then rounding the
-    // pair to the nearest double is the IEEE correctly-rounded cube root.
-    let mut low = 0.0f64;
-    for _ in 0..2 {
-        // tt = t² exact (Dekker product via the always-exact fma).
-        let tt = t * t;
-        let tt_lo = t.mul_add(t, -tt);
-        // r = (x, 0) / (tt, tt_lo) as a full double-double division
-        // (QD-library style: quotient corrections q2/q3, every partial
-        // product accumulated into the residual).
-        let q1 = abs_x / tt;
-        let (b1, b1_lo) = {
-            let p = q1 * tt;
-            let p_lo = q1.mul_add(tt, -p);
-            let cross = q1 * tt_lo;
-            let s = p + cross;
-            (s, ((p - s) + cross) + p_lo)
-        };
-        let (r1, r1_lo) = {
-            let s = abs_x - b1;
-            (s, ((abs_x - s) - b1) + b1_lo)
-        };
-        let q2 = r1 / tt;
-        let (b2, b2_lo) = {
-            let p = q2 * tt;
-            let p_lo = q2.mul_add(tt, -p);
-            let cross = q2 * tt_lo;
-            let s = p + cross;
-            (s, ((p - s) + cross) + p_lo)
-        };
-        let (r2, r2_lo) = {
-            let s = r1 - b2;
-            (s, ((r1 - s) - b2) + b2_lo + r1_lo)
-        };
-        let q3 = r2 / tt;
-        let q3_lo = r2_lo / tt;
-        // num = (2t, 0) + (q1, q2 + q3).
-        let mut q = q1 + q2;
-        let mut q_lo = (q1 - q) + q2;
-        let next = q + q3;
-        q_lo += (q - next) + q3 + q3_lo;
-        q = next;
-        let two_t = 2.0 * t;
-        let sum = two_t + q;
-        let sum_lo = ((two_t - sum) + q) + q_lo;
-        // result = sum/3 with the remainder folded back. 3*result must be
-        // exact (two-sum of 2*result + result) or the low word inherits a
-        // 2^-53-level error.
-        let result = sum / 3.0;
-        let doubled = 2.0 * result;
-        let triple = doubled + result;
-        let triple_lo = (doubled - triple) + result;
-        let remainder = (sum - triple) + (sum_lo - triple_lo);
-        let result_lo = remainder / 3.0;
-        // Renormalize the pair.
-        let renorm = result + result_lo;
-        low = (result - (renorm - result_lo)) + result_lo;
-        t = renorm;
-    }
-    // Round the pair (t, low) to the nearest double, ties to even.
-    let mut rounded = t;
-    if low != 0.0 {
-        let (boundary, direction) = if low > 0.0 {
-            (f64::from_bits(t.to_bits() + 1), 1i64)
-        } else {
-            (f64::from_bits(t.to_bits() - 1), -1i64)
-        };
-        let distance_to_t = if low > 0.0 {
-            boundary - t
-        } else {
-            t - boundary
-        };
-        if low.abs() > distance_to_t || (low.abs() == distance_to_t && (t.to_bits() & 1) == 1) {
-            rounded = f64::from_bits((t.to_bits() as i64 + direction) as u64);
-        }
-    }
-    if neg {
-        rounded = -rounded;
-    }
-    rounded
+    libm::cbrt(x)
 }
 
 /// Linear sRGB [r, g, b] (0-1) to Oklab [L, a, b].
@@ -380,6 +274,19 @@ fn chroma_stops(l: f64, a: f64, b: f64) -> (f64, f64, f64) {
 /// * `saturation` - Saturation, 0-1.
 /// * `lightness` - Lightness, 0-1.
 pub fn okhsl_to_rgb(hue: f64, saturation: f64, lightness: f64) -> RgbColor {
+    let [r, g, b] = okhsl_to_rgb_f64(hue, saturation, lightness);
+    RgbColor {
+        r: r.round() as u8,
+        g: g.round() as u8,
+        b: b.round() as u8,
+    }
+}
+
+/// The unrounded float pipeline behind [`okhsl_to_rgb`]: upstream
+/// `linearSrgbToRgb` returns 0-255 floats and consumers round at display
+/// time. The system-theme solver's lightness binary searches run on these
+/// floats, so the rounding cannot happen inside `okhslColor`.
+pub fn okhsl_to_rgb_f64(hue: f64, saturation: f64, lightness: f64) -> [f64; 3] {
     let l = okhsl_to_oklab_lightness(lightness);
     let mut lab: Vector = [l, 0.0, 0.0];
     if l > 0.0 && l < 1.0 && saturation > 0.0 {
@@ -399,7 +306,7 @@ pub fn okhsl_to_rgb(hue: f64, saturation: f64, lightness: f64) -> RgbColor {
         };
         lab = [l, chroma * a, chroma * b];
     }
-    linear_srgb_to_rgb(oklab_to_linear_srgb(lab))
+    oklab_to_linear_srgb(lab).map(|value| linear_to_srgb(value).clamp(0.0, 1.0) * 255.0)
 }
 
 /// Convert sRGB channels (0-255) to OKHSL. Channels are JS numbers upstream.

@@ -2569,3 +2569,11 @@ WORK_LOG追加前缀：386287 bytes / cadeaf51fe906e35a1531ffc26058289e7d44c061d
 - Fixed real behavioral gap: anthropic AuthUrl instructions carried the manual-prompt message; upstream sends the separate browser instructions sentence (anthropic.ts:158-163).
 - Gates: clippy -D warnings 0; fmt check clean; oauth 270/0; chord 55/0 (serial).
 - Remaining: coding-agent core delta (~14k), pi-mcp + extensions/mcp + tool-search, pi-codemode + quickjs engine, pi-durable (zero consumers, last).
+
+## 2026-09-30 coding-agent theme: system-theme solver (standalone, oracle-green)
+- Ported upstream system-theme.ts (636 lines) to src/coding_agent/modes/interactive/system_theme.rs: 14 color families, 55-token table, 15 contrast-level polynomial curves, 56 rules, dependency-ordered solve, relaxation binary search, palette anchoring, WCAG text-contrast floors, indexed tier.
+- KEY FINDING: upstream linearSrgbToRgb Math.rounds channels to integers (oklab.ts) - the whole Color model is quantized. The solver runs on the existing u8 pipeline (tui colors::okhsl_color), not floats. An initial float pipeline produced 1-ULP hex divergences (scrollbarThumb #8e979d vs #8e979c); quantized rewrite replays byte-identically.
+- Oracle: tests/fixtures/coding_agent_theme_delta_oracle/oracle/ (capture.mjs under node --experimental-strip-types with pi-tui barrel resolve hook; sources SHA-pinned; 42 generation scenarios covering all 3 tiers + relaxation + grayscale + appearance hints, 12 appearance combos, luminance/contrast grids). Rust replay: 3/3 tests.
+- js_cbrt replaced with libm::cbrt (=0.2.16, new dep, fdlibm port = V8 Math.cbrt bit-exact) - closes the colors oracle raw-channel tolerance seam T1 disclosed. System powf/cos/sin/atan2 stay (UCRT already matches V8; musl libm does NOT - verified empirically, T1 fixtures green again after revert).
+- Remaining theme slice: theme.ts rewrite wiring (+300/-375), theme-json appearance key, theme-controller delta, dark/light.json okhsl data - next pass (needs interactive-mode integration).
+- Gates: clippy -D warnings 0, fmt clean, tui 568/0, system_theme 3/3.
