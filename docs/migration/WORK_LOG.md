@@ -2602,3 +2602,9 @@ WORK_LOG追加前缀：386287 bytes / cadeaf51fe906e35a1531ffc26058289e7d44c061d
 - CI OOM fix: rustc-LLVM out of memory compiling the 528k-line test binary on 7GB runners (run 36827495809 both platforms) -> [profile.test] debug = line-tables-only.
 - Tests: 6 (arguments/durations, missing-args empty object, per-call + total caps, error truncation, usage summing, empty/cap semantics).
 - Gates: clippy -D warnings 0, fmt clean.
+
+## 2026-09-30 CI round-trip fixes for the restructure + capture replays (wave 3f)
+- CI 36831260741: OOM gone (line-tables-only); ubuntu 5224 passed, 2 platform failures fixed:
+  (1) r20 session_selector delete-flow oracle embedded capture-machine scratch/ paths in the JSON (9 rewritten to tests/fixtures) and the live windows branch still built scratch paths (now tests/fixtures);
+  (2) tui delta terminal_image detection rows were captured on a win32 console but replayed with cfg!(windows) - replay now pins is_windows_console=true (same fix as the r17-era matrix).
+- Gates: clippy -D warnings 0, fmt clean, session_selector 15/0, tui delta 14/0.

@@ -1145,7 +1145,9 @@ fn terminal_image_delta_oracle_matches() {
         let env = case["env"].as_object().unwrap();
         let lookup = |name: &str| env.get(name).and_then(Value::as_str).map(str::to_string);
         let no_tmux_forward = || false;
-        let capabilities = terminal_image::detect_with(&lookup, &no_tmux_forward, cfg!(windows));
+        // The capture ran on a win32 console; the replay pins the same
+        // platform bit so the rows are environment-determined on every host.
+        let capabilities = terminal_image::detect_with(&lookup, &no_tmux_forward, true);
         assert_eq!(
             capabilities.true_color,
             case["trueColor"].as_bool().unwrap(),

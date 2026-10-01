@@ -1141,7 +1141,7 @@
 			"name": "session_selector_delete_flow",
 			"result": {
 				"confirmationsGone": [
-					"C:\\Users\\13063\\Desktop\\code\\agent work\\pi-rust\\scratch\\interactive_r20_components_oracle\\tmp\\del\\gone.jsonl"
+					"C:\\Users\\13063\\Desktop\\code\\agent work\\pi-rust\\tests\\fixtures\\interactive_r20_components_oracle\\tmp\\del\\gone.jsonl"
 				],
 				"errorRender": [
 					"",
@@ -1176,24 +1176,24 @@
 					"\u001b[38;2;138;190;183m────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────\u001b[39m"
 				],
 				"confirmationsAfterQuery": [
-					"C:\\Users\\13063\\Desktop\\code\\agent work\\pi-rust\\scratch\\interactive_r20_components_oracle\\tmp\\del\\gone.jsonl",
+					"C:\\Users\\13063\\Desktop\\code\\agent work\\pi-rust\\tests\\fixtures\\interactive_r20_components_oracle\\tmp\\del\\gone.jsonl",
 					null,
-					"C:\\Users\\13063\\Desktop\\code\\agent work\\pi-rust\\scratch\\interactive_r20_components_oracle\\tmp\\del\\b.jsonl",
+					"C:\\Users\\13063\\Desktop\\code\\agent work\\pi-rust\\tests\\fixtures\\interactive_r20_components_oracle\\tmp\\del\\b.jsonl",
 					null
 				],
 				"confirmationsCtrlBackspace": [
-					"C:\\Users\\13063\\Desktop\\code\\agent work\\pi-rust\\scratch\\interactive_r20_components_oracle\\tmp\\del\\gone.jsonl",
+					"C:\\Users\\13063\\Desktop\\code\\agent work\\pi-rust\\tests\\fixtures\\interactive_r20_components_oracle\\tmp\\del\\gone.jsonl",
 					null,
-					"C:\\Users\\13063\\Desktop\\code\\agent work\\pi-rust\\scratch\\interactive_r20_components_oracle\\tmp\\del\\b.jsonl",
+					"C:\\Users\\13063\\Desktop\\code\\agent work\\pi-rust\\tests\\fixtures\\interactive_r20_components_oracle\\tmp\\del\\b.jsonl",
 					null,
-					"C:\\Users\\13063\\Desktop\\code\\agent work\\pi-rust\\scratch\\interactive_r20_components_oracle\\tmp\\del\\a.jsonl"
+					"C:\\Users\\13063\\Desktop\\code\\agent work\\pi-rust\\tests\\fixtures\\interactive_r20_components_oracle\\tmp\\del\\a.jsonl"
 				],
 				"confirmationsAfterCancel": [
-					"C:\\Users\\13063\\Desktop\\code\\agent work\\pi-rust\\scratch\\interactive_r20_components_oracle\\tmp\\del\\gone.jsonl",
+					"C:\\Users\\13063\\Desktop\\code\\agent work\\pi-rust\\tests\\fixtures\\interactive_r20_components_oracle\\tmp\\del\\gone.jsonl",
 					null,
-					"C:\\Users\\13063\\Desktop\\code\\agent work\\pi-rust\\scratch\\interactive_r20_components_oracle\\tmp\\del\\b.jsonl",
+					"C:\\Users\\13063\\Desktop\\code\\agent work\\pi-rust\\tests\\fixtures\\interactive_r20_components_oracle\\tmp\\del\\b.jsonl",
 					null,
-					"C:\\Users\\13063\\Desktop\\code\\agent work\\pi-rust\\scratch\\interactive_r20_components_oracle\\tmp\\del\\a.jsonl",
+					"C:\\Users\\13063\\Desktop\\code\\agent work\\pi-rust\\tests\\fixtures\\interactive_r20_components_oracle\\tmp\\del\\a.jsonl",
 					null
 				],
 				"confirmRender": [

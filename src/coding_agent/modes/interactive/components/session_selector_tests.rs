@@ -380,7 +380,7 @@ fn oracle_tmp_dir(name: &str) -> std::path::PathBuf {
     // both sides normalized through `scrub_str` at the comparison sites.
     if cfg!(windows) {
         std::path::PathBuf::from(format!(
-            "{}\\scratch\\interactive_r20_components_oracle\\tmp\\{}",
+            "{}\\tests\\fixtures\\interactive_r20_components_oracle\\tmp\\{}",
             env!("CARGO_MANIFEST_DIR"),
             name
         ))
