@@ -962,17 +962,17 @@ mod tests {
             "-1 keep alpha, drop beta\n+1 keep alpha, keep beta, add gamma",
         ];
         let expected: &[&str] = &[
-            "\x1b[38;2;128;128;128m\x1b[39m",
-            "\x1b[38;2;128;128;128mcontext line\x1b[39m\n\x1b[38;2;128;128;128manother ctx\x1b[39m",
-            "\x1b[38;2;181;189;104m+12 added line\x1b[39m\n\x1b[38;2;204;102;102m-3 removed line\x1b[39m",
-            "\x1b[38;2;204;102;102m-3 \x1b[7mold\x1b[27m value\x1b[39m\n\x1b[38;2;181;189;104m+3 \x1b[7mnew\x1b[27m value\x1b[39m",
-            "\x1b[38;2;204;102;102m-3 const a = \x1b[7malpha\x1b[27m;\x1b[39m\n\x1b[38;2;181;189;104m+3 const a = \x1b[7mbeta\x1b[27m;\x1b[39m",
-            "\x1b[38;2;204;102;102m-3 alpha beta \x1b[7mgamma\x1b[27m\x1b[39m\n\x1b[38;2;181;189;104m+3 alpha beta \x1b[7mdelta\x1b[27m\x1b[39m\n\x1b[38;2;204;102;102m-7 \x1b[7mx\x1b[27m\x1b[39m\n\x1b[38;2;181;189;104m+7 \x1b[7my\x1b[27m\x1b[39m",
-            "\x1b[38;2;128;128;128m 1 shared\x1b[39m\n\x1b[38;2;204;102;102m-2 \x1b[7mgone\x1b[27m\x1b[39m\n\x1b[38;2;181;189;104m+2 \x1b[7mhere\x1b[27m\x1b[39m\n\x1b[38;2;128;128;128m 3 tail\x1b[39m",
-            "\x1b[38;2;204;102;102m-1 tabbed   \x1b[39m\n\x1b[38;2;181;189;104m+1 tabbed   \x1b[7mtwo\x1b[27m\x1b[39m",
-            "\x1b[38;2;181;189;104m+5 only added\x1b[39m\n\x1b[38;2;181;189;104m+6 second\x1b[39m",
-            "\x1b[38;2;204;102;102m-1 only removed\x1b[39m\n\x1b[38;2;204;102;102m-2 second removed\x1b[39m",
-            "\x1b[38;2;204;102;102m-1 keep alpha, \x1b[7mdrop\x1b[27m beta\x1b[39m\n\x1b[38;2;181;189;104m+1 keep alpha, \x1b[7mkeep\x1b[27m beta\x1b[7m, add gamma\x1b[27m\x1b[39m",
+            "\x1b[38;2;157;165;169m\x1b[39m",
+            "\x1b[38;2;157;165;169mcontext line\x1b[39m\n\x1b[38;2;157;165;169manother ctx\x1b[39m",
+            "\x1b[38;2;104;183;141m+12 added line\x1b[39m\n\x1b[38;2;234;127;129m-3 removed line\x1b[39m",
+            "\x1b[38;2;234;127;129m-3 \x1b[7mold\x1b[27m value\x1b[39m\n\x1b[38;2;104;183;141m+3 \x1b[7mnew\x1b[27m value\x1b[39m",
+            "\x1b[38;2;234;127;129m-3 const a = \x1b[7malpha\x1b[27m;\x1b[39m\n\x1b[38;2;104;183;141m+3 const a = \x1b[7mbeta\x1b[27m;\x1b[39m",
+            "\x1b[38;2;234;127;129m-3 alpha beta \x1b[7mgamma\x1b[27m\x1b[39m\n\x1b[38;2;104;183;141m+3 alpha beta \x1b[7mdelta\x1b[27m\x1b[39m\n\x1b[38;2;234;127;129m-7 \x1b[7mx\x1b[27m\x1b[39m\n\x1b[38;2;104;183;141m+7 \x1b[7my\x1b[27m\x1b[39m",
+            "\x1b[38;2;157;165;169m 1 shared\x1b[39m\n\x1b[38;2;234;127;129m-2 \x1b[7mgone\x1b[27m\x1b[39m\n\x1b[38;2;104;183;141m+2 \x1b[7mhere\x1b[27m\x1b[39m\n\x1b[38;2;157;165;169m 3 tail\x1b[39m",
+            "\x1b[38;2;234;127;129m-1 tabbed   \x1b[39m\n\x1b[38;2;104;183;141m+1 tabbed   \x1b[7mtwo\x1b[27m\x1b[39m",
+            "\x1b[38;2;104;183;141m+5 only added\x1b[39m\n\x1b[38;2;104;183;141m+6 second\x1b[39m",
+            "\x1b[38;2;234;127;129m-1 only removed\x1b[39m\n\x1b[38;2;234;127;129m-2 second removed\x1b[39m",
+            "\x1b[38;2;234;127;129m-1 keep alpha, \x1b[7mdrop\x1b[27m beta\x1b[39m\n\x1b[38;2;104;183;141m+1 keep alpha, \x1b[7mkeep\x1b[27m beta\x1b[7m, add gamma\x1b[27m\x1b[39m",
         ];
         for (input, want) in inputs.iter().zip(expected.iter()) {
             assert_eq!(

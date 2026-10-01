@@ -329,13 +329,13 @@ mod tests {
         // borderMuted → darkGray → #505050 (dark.json vars)
         assert_eq!(
             style_span(&theme, SpanClass::Border, "x"),
-            "\x1b[38;2;80;80;80mx\x1b[39m"
+            "\x1b[38;2;118;129;134mx\x1b[39m"
         );
-        assert!(style_span(&theme, SpanClass::Text, "x").starts_with("\x1b[38;2;212;212;212m"));
-        assert!(style_span(&theme, SpanClass::Edge, "x").starts_with("\x1b[38;2;138;190;183m"));
-        assert!(style_span(&theme, SpanClass::EdgeLabel, "x").starts_with("\x1b[38;2;128;128;128m"));
+        assert!(style_span(&theme, SpanClass::Text, "x").starts_with("\x1b[38;2;222;224;225m"));
+        assert!(style_span(&theme, SpanClass::Edge, "x").starts_with("\x1b[38;2;167;152;215m"));
+        assert!(style_span(&theme, SpanClass::EdgeLabel, "x").starts_with("\x1b[38;2;157;165;169m"));
         assert!(
-            style_span(&theme, SpanClass::Title, "x").starts_with("\x1b[38;2;138;190;183m\x1b[1m")
+            style_span(&theme, SpanClass::Title, "x").starts_with("\x1b[38;2;167;152;215m\x1b[1m")
         );
         assert_eq!(style_span(&theme, SpanClass::None, "x"), "x");
     }

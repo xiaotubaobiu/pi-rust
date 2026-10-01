@@ -746,7 +746,7 @@ mod tests {
         let rendered = plain.render(60);
         assert!(rendered
             .join("\n")
-            .contains("\x1b[38;2;212;212;212m\x1b[1mread\x1b[22m\x1b[39m"));
+            .contains("\x1b[38;2;222;224;225m\x1b[1mread\x1b[22m\x1b[39m"));
         // oracle plainContent rows: ANSI-stripped, padding-trimmed render rows
         assert!(plain_rows(&rendered).contains("{\n  \"path\": \"a.txt\",\n  \"n\": 2\n}"));
 
@@ -1051,17 +1051,17 @@ mod tests {
         );
         let rendered = throwing.render(60).join("\n");
         assert!(
-            rendered.contains("\x1b[38;2;212;212;212m\x1b[1mt\x1b[22m\x1b[39m"),
+            rendered.contains("\x1b[38;2;222;224;225m\x1b[1mt\x1b[22m\x1b[39m"),
             "call fallback"
         );
         assert!(rendered.contains("fallback output"), "result fallback");
         // 12 output lines exceed FALLBACK_PREVIEW_LINES (10) → the expand hint
         // (byte-faithful: the muted ")" follows keyHint's reset)
         assert!(
-            rendered.contains("to expand\x1b[39m\x1b[38;2;128;128;128m)"),
+            rendered.contains("to expand\x1b[39m\x1b[38;2;157;165;169m)"),
             "preview hint"
         );
-        assert!(rendered.contains("\x1b[48;2;60;40;40m"), "toolErrorBg");
+        assert!(rendered.contains("\x1b[48;2;91;40;42m"), "toolErrorBg");
     }
 
     /// render-utils getTextOutput probe (oracle `textOutputProbe`).

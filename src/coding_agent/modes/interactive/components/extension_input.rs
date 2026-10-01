@@ -225,7 +225,7 @@ mod tests {
         input.tick_countdown();
         assert_eq!(
             input.title_text(),
-            "\x1b[38;2;138;190;183mPick one (2s)\x1b[39m"
+            "\x1b[38;2;167;152;215mPick one (2s)\x1b[39m"
         );
         input.handle_input("h");
         input.handle_input("i");
@@ -234,7 +234,7 @@ mod tests {
         input.tick_countdown();
         assert_eq!(
             input.title_text(),
-            "\x1b[38;2;138;190;183mPick one (1s)\x1b[39m"
+            "\x1b[38;2;167;152;215mPick one (1s)\x1b[39m"
         );
         input.tick_countdown();
         assert_eq!(

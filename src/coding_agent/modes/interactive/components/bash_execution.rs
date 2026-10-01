@@ -461,7 +461,7 @@ mod tests {
         let mut excluded = BashExecutionComponent::new(theme, "!! ls", true);
         assert!(excluded.exclude_from_context());
         let rendered = excluded.render(20);
-        assert!(rendered[1].contains("\x1b[38;2;102;102;102m"));
+        assert!(rendered[1].contains("\x1b[38;2;126;136;142m"));
     }
 
     #[test]

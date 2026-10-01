@@ -149,19 +149,19 @@ mod tests {
         let theme = dark();
         let probes = ["match", "", "multi word match", "↑"];
         let expected_match = [
-            "\x1b[4m\x1b[48;2;58;58;74m\x1b[38;2;212;212;212mmatch\x1b[39m\x1b[49m\x1b[24m",
-            "\x1b[4m\x1b[48;2;58;58;74m\x1b[38;2;212;212;212m\x1b[39m\x1b[49m\x1b[24m",
-            "\x1b[4m\x1b[48;2;58;58;74m\x1b[38;2;212;212;212mmulti word match\x1b[39m\x1b[49m\x1b[24m",
-            "\x1b[4m\x1b[48;2;58;58;74m\x1b[38;2;212;212;212m↑\x1b[39m\x1b[49m\x1b[24m",
+            "\x1b[4m\x1b[48;2;78;47;27m\x1b[38;2;157;165;169mmatch\x1b[39m\x1b[49m\x1b[24m",
+            "\x1b[4m\x1b[48;2;78;47;27m\x1b[38;2;157;165;169m\x1b[39m\x1b[49m\x1b[24m",
+            "\x1b[4m\x1b[48;2;78;47;27m\x1b[38;2;157;165;169mmulti word match\x1b[39m\x1b[49m\x1b[24m",
+            "\x1b[4m\x1b[48;2;78;47;27m\x1b[38;2;157;165;169m↑\x1b[39m\x1b[49m\x1b[24m",
         ];
         for (probe, expected) in probes.iter().zip(expected_match.iter()) {
             assert_eq!(&search_match_style(&theme, probe), expected);
         }
         let expected_current = [
-            "\x1b[1m\x1b[7m\x1b[48;2;58;58;74m\x1b[38;2;212;212;212mmatch\x1b[39m\x1b[49m\x1b[27m\x1b[22m",
-            "\x1b[1m\x1b[7m\x1b[48;2;58;58;74m\x1b[38;2;212;212;212m\x1b[39m\x1b[49m\x1b[27m\x1b[22m",
-            "\x1b[1m\x1b[7m\x1b[48;2;58;58;74m\x1b[38;2;212;212;212mmulti word match\x1b[39m\x1b[49m\x1b[27m\x1b[22m",
-            "\x1b[1m\x1b[7m\x1b[48;2;58;58;74m\x1b[38;2;212;212;212m↑\x1b[39m\x1b[49m\x1b[27m\x1b[22m",
+            "\x1b[1m\x1b[7m\x1b[48;2;78;47;27m\x1b[38;2;157;165;169mmatch\x1b[39m\x1b[49m\x1b[27m\x1b[22m",
+            "\x1b[1m\x1b[7m\x1b[48;2;78;47;27m\x1b[38;2;157;165;169m\x1b[39m\x1b[49m\x1b[27m\x1b[22m",
+            "\x1b[1m\x1b[7m\x1b[48;2;78;47;27m\x1b[38;2;157;165;169mmulti word match\x1b[39m\x1b[49m\x1b[27m\x1b[22m",
+            "\x1b[1m\x1b[7m\x1b[48;2;78;47;27m\x1b[38;2;157;165;169m↑\x1b[39m\x1b[49m\x1b[27m\x1b[22m",
         ];
         for (probe, expected) in probes.iter().zip(expected_current.iter()) {
             assert_eq!(&search_current_match_style(&theme, probe), expected);
@@ -182,12 +182,12 @@ mod tests {
             crate::coding_agent::modes::interactive::components::model_selector::key_display_text(
                 "tui.altScreen.bottom",
             );
-        let expected = "\x1b[48;2;58;58;74m\x1b[38;2;212;212;212m ↓ Jump to latest message · End \x1b[39m\x1b[49m";
+        let expected = "\x1b[48;2;33;59;73m\x1b[38;2;222;224;225m ↓ Jump to latest message · End \x1b[39m\x1b[49m";
         assert_eq!(scroll_to_end_indicator(&theme, Some(&shortcut)), expected);
         // No shortcut: the label keeps its trailing space but drops the separator.
         assert_eq!(
             scroll_to_end_indicator(&theme, None),
-            "\x1b[48;2;58;58;74m\x1b[38;2;212;212;212m ↓ Jump to latest message \x1b[39m\x1b[49m"
+            "\x1b[48;2;33;59;73m\x1b[38;2;222;224;225m ↓ Jump to latest message \x1b[39m\x1b[49m"
         );
     }
 

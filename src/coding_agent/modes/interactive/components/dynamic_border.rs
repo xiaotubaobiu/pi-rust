@@ -50,7 +50,7 @@ mod tests {
         let lines = default_border.0.render(10);
         assert_eq!(
             lines,
-            vec!["\x1b[38;2;95;135;255m──────────\x1b[39m".to_string()]
+            vec!["\x1b[38;2;95;168;204m──────────\x1b[39m".to_string()]
         );
         let accent_border = new_border_with_color(Box::new({
             let theme = Arc::clone(&theme);
@@ -59,7 +59,7 @@ mod tests {
         let lines = accent_border.0.render(4);
         assert_eq!(
             lines,
-            vec!["\x1b[38;2;138;190;183m────\x1b[39m".to_string()]
+            vec!["\x1b[38;2;167;152;215m────\x1b[39m".to_string()]
         );
     }
 }

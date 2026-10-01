@@ -1043,7 +1043,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mTUI mode: fullscreen\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mTUI mode: fullscreen\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -1290,7 +1290,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mTUI mode: fullscreen\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mTUI mode: fullscreen\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -1547,7 +1547,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;204;102;102mError: Unknown thinking level \"bogus\". Available levels: off, minimal, low, medium, high.\u001b[39m",
+						"text": "\u001b[38;2;234;127;129mError: Unknown thinking level \"bogus\". Available levels: off, minimal, low, medium, high.\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -1589,7 +1589,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mThinking level: high\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mThinking level: high\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -1706,7 +1706,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mThinking level: low\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mThinking level: low\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -1820,7 +1820,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mDefault thinking level: high\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mDefault thinking level: high\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -1984,7 +1984,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mModel: gpt-5.5\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mModel: gpt-5.5\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -2031,7 +2031,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mModel: gpt-5.5\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mModel: gpt-5.5\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -2056,7 +2056,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mRefreshing model catalogs…\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mRefreshing model catalogs…\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -2134,7 +2134,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mRefreshing model catalogs…\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mRefreshing model catalogs…\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -2212,7 +2212,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;204;102;102mError: model rejected\u001b[39m",
+						"text": "\u001b[38;2;234;127;129mError: model rejected\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -2351,7 +2351,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mModel: gpt-5.5\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mModel: gpt-5.5\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -2489,7 +2489,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mDefault model: anthropic/claude-opus-4-8\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mDefault model: anthropic/claude-opus-4-8\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -2517,7 +2517,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;255;255;0mWarning: Anthropic subscription auth is active. Third-party harness usage draws from extra usage and is billed per token, not your Claude plan limits. Manage extra usage at https://claude.ai/settings/usage. Disable this warning in /settings.\u001b[39m",
+						"text": "\u001b[38;2;205;154;34mWarning: Anthropic subscription auth is active. Third-party harness usage draws from extra usage and is billed per token, not your Claude plan limits. Manage extra usage at https://claude.ai/settings/usage. Disable this warning in /settings.\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -2824,7 +2824,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mModel selection saved to settings\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mModel selection saved to settings\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -2969,7 +2969,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mModel selection saved to settings\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mModel selection saved to settings\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -2983,8 +2983,8 @@
 				],
 				[
 					"Text.setText",
-					"\u001b[38;2;102;102;102mModel selection saved to settings\u001b[39m",
-					"\u001b[38;2;102;102;102mModel selection saved to settings\u001b[39m"
+					"\u001b[38;2;126;136;142mModel selection saved to settings\u001b[39m",
+					"\u001b[38;2;126;136;142mModel selection saved to settings\u001b[39m"
 				],
 				[
 					"ui.requestRender"
@@ -3046,7 +3046,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mNo messages to fork from\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mNo messages to fork from\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -3152,7 +3152,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mForked to new session\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mForked to new session\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -3265,7 +3265,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mCloned to new session\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mCloned to new session\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -3301,7 +3301,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mCloned to new session\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mCloned to new session\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -3326,7 +3326,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mNo entries in session\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mNo entries in session\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -3424,7 +3424,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mAlready at this point\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mAlready at this point\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -3876,7 +3876,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mNavigated to selected point\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mNavigated to selected point\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -4242,7 +4242,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mNavigated to selected point\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mNavigated to selected point\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -4303,7 +4303,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;204;102;102mError: Selected entry has no text to copy\u001b[39m",
+						"text": "\u001b[38;2;234;127;129mError: Selected entry has no text to copy\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -4368,7 +4368,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mCopied selected message to clipboard\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mCopied selected message to clipboard\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -4457,7 +4457,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mResumed session\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mResumed session\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -4574,7 +4574,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mResumed session in current cwd\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mResumed session in current cwd\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -4694,7 +4694,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mSaved trust decision: trusted. Restart pi for this to take effect.\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mSaved trust decision: trusted. Restart pi for this to take effect.\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -5278,7 +5278,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mLogged in to Anthropic. Credentials saved to /home/u/.pi/agent/auth.json\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mLogged in to Anthropic. Credentials saved to /home/u/.pi/agent/auth.json\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -5322,7 +5322,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mNo subscription providers available.\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mNo subscription providers available.\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -5332,16 +5332,16 @@
 				],
 				[
 					"Text.setText",
-					"\u001b[38;2;102;102;102mNo subscription providers available.\u001b[39m",
-					"\u001b[38;2;102;102;102mNo API key providers available.\u001b[39m"
+					"\u001b[38;2;126;136;142mNo subscription providers available.\u001b[39m",
+					"\u001b[38;2;126;136;142mNo API key providers available.\u001b[39m"
 				],
 				[
 					"ui.requestRender"
 				],
 				[
 					"Text.setText",
-					"\u001b[38;2;102;102;102mNo API key providers available.\u001b[39m",
-					"\u001b[38;2;102;102;102mNo login providers available.\u001b[39m"
+					"\u001b[38;2;126;136;142mNo API key providers available.\u001b[39m",
+					"\u001b[38;2;126;136;142mNo login providers available.\u001b[39m"
 				],
 				[
 					"ui.requestRender"
@@ -5460,7 +5460,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mLogged in to Anthropic. Credentials saved to /home/u/.pi/agent/auth.json\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mLogged in to Anthropic. Credentials saved to /home/u/.pi/agent/auth.json\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -5601,7 +5601,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mSaved API key for OpenAI. Credentials saved to /home/u/.pi/agent/auth.json\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mSaved API key for OpenAI. Credentials saved to /home/u/.pi/agent/auth.json\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -5686,9 +5686,9 @@
 				[
 					"LoginDialogComponent.showDetails",
 					[
-						"\u001b[38;2;212;212;212mYou can also use an AWS profile, IAM keys, or role-based credentials.\u001b[39m",
-						"\u001b[38;2;128;128;128mSee:\u001b[39m",
-						"\u001b[38;2;138;190;183m  \\docs\\providers.md\u001b[39m"
+						"\u001b[38;2;222;224;225mYou can also use an AWS profile, IAM keys, or role-based credentials.\u001b[39m",
+						"\u001b[38;2;157;165;169mSee:\u001b[39m",
+						"\u001b[38;2;167;152;215m  \\docs\\providers.md\u001b[39m"
 					]
 				],
 				[
@@ -5791,7 +5791,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mSaved API key for Bedrock. Credentials saved to /home/u/.pi/agent/auth.json\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mSaved API key for Bedrock. Credentials saved to /home/u/.pi/agent/auth.json\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -6022,7 +6022,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;204;102;102mError: Could not read stored credentials: this.session.modelRuntime.getProvider is not a function\u001b[39m",
+						"text": "\u001b[38;2;234;127;129mError: Could not read stored credentials: this.session.modelRuntime.getProvider is not a function\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -6047,7 +6047,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mNo stored credentials to remove. /logout only removes credentials saved by /login; environment variables and models.json config are unchanged.\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mNo stored credentials to remove. /logout only removes credentials saved by /login; environment variables and models.json config are unchanged.\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -6072,7 +6072,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;204;102;102mError: Could not read stored credentials: keychain locked\u001b[39m",
+						"text": "\u001b[38;2;234;127;129mError: Could not read stored credentials: keychain locked\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -6111,7 +6111,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mSaved API key for OpenAI. Credentials saved to /home/u/.pi/agent/auth.json\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mSaved API key for OpenAI. Credentials saved to /home/u/.pi/agent/auth.json\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -6181,7 +6181,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mLogged in to Anthropic. Selected claude-opus-4-8. Credentials saved to /home/u/.pi/agent/auth.json\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mLogged in to Anthropic. Selected claude-opus-4-8. Credentials saved to /home/u/.pi/agent/auth.json\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -6218,7 +6218,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;255;255;0mWarning: Anthropic subscription auth is active. Third-party harness usage draws from extra usage and is billed per token, not your Claude plan limits. Manage extra usage at https://claude.ai/settings/usage. Disable this warning in /settings.\u001b[39m",
+						"text": "\u001b[38;2;205;154;34mWarning: Anthropic subscription auth is active. Third-party harness usage draws from extra usage and is billed per token, not your Claude plan limits. Manage extra usage at https://claude.ai/settings/usage. Disable this warning in /settings.\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -6253,7 +6253,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mLogged in to Radius. Credentials saved to /home/u/.pi/agent/auth.json. Refreshing model catalog…\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mLogged in to Radius. Credentials saved to /home/u/.pi/agent/auth.json. Refreshing model catalog…\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -6286,8 +6286,8 @@
 				],
 				[
 					"Text.setText",
-					"\u001b[38;2;102;102;102mLogged in to Radius. Credentials saved to /home/u/.pi/agent/auth.json. Refreshing model catalog…\u001b[39m",
-					"\u001b[38;2;102;102;102mLogged in to Radius. Credentials saved to /home/u/.pi/agent/auth.json\u001b[39m"
+					"\u001b[38;2;126;136;142mLogged in to Radius. Credentials saved to /home/u/.pi/agent/auth.json. Refreshing model catalog…\u001b[39m",
+					"\u001b[38;2;126;136;142mLogged in to Radius. Credentials saved to /home/u/.pi/agent/auth.json\u001b[39m"
 				],
 				[
 					"ui.requestRender"
@@ -6304,7 +6304,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;204;102;102mError: Logged in to Radius, but no models are available for that provider. Use /model to select a model.\u001b[39m",
+						"text": "\u001b[38;2;234;127;129mError: Logged in to Radius, but no models are available for that provider. Use /model to select a model.\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -6353,7 +6353,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mSaved API key for llama.cpp. Credentials saved to /home/u/.pi/agent/auth.json\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mSaved API key for llama.cpp. Credentials saved to /home/u/.pi/agent/auth.json\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -6373,7 +6373,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;204;102;102mError: Saved API key for llama.cpp. No llama.cpp models are loaded. Use /llama to load a model, then /model to select it.\u001b[39m",
+						"text": "\u001b[38;2;234;127;129mError: Saved API key for llama.cpp. No llama.cpp models are loaded. Use /llama to load a model, then /model to select it.\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -6431,7 +6431,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mSaved API key for Mystery. Credentials saved to /home/u/.pi/agent/auth.json\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mSaved API key for Mystery. Credentials saved to /home/u/.pi/agent/auth.json\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -6451,7 +6451,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;204;102;102mError: Saved API key for Mystery, but no default model is configured for provider \"mystery-provider\". Use /model to select a model.\u001b[39m",
+						"text": "\u001b[38;2;234;127;129mError: Saved API key for Mystery, but no default model is configured for provider \"mystery-provider\". Use /model to select a model.\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -6499,7 +6499,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;255;255;0mWarning: Anthropic subscription auth is active. Third-party harness usage draws from extra usage and is billed per token, not your Claude plan limits. Manage extra usage at https://claude.ai/settings/usage. Disable this warning in /settings.\u001b[39m",
+						"text": "\u001b[38;2;205;154;34mWarning: Anthropic subscription auth is active. Third-party harness usage draws from extra usage and is billed per token, not your Claude plan limits. Manage extra usage at https://claude.ai/settings/usage. Disable this warning in /settings.\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -6532,7 +6532,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;255;255;0mWarning: Anthropic subscription auth is active. Third-party harness usage draws from extra usage and is billed per token, not your Claude plan limits. Manage extra usage at https://claude.ai/settings/usage. Disable this warning in /settings.\u001b[39m",
+						"text": "\u001b[38;2;205;154;34mWarning: Anthropic subscription auth is active. Third-party harness usage draws from extra usage and is billed per token, not your Claude plan limits. Manage extra usage at https://claude.ai/settings/usage. Disable this warning in /settings.\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -6569,7 +6569,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;255;255;0mWarning: Session name was normalized from \"My Session\" to undefined\u001b[39m",
+						"text": "\u001b[38;2;205;154;34mWarning: Session name was normalized from \"My Session\" to undefined\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -6589,7 +6589,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mSession name set: My Session\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mSession name set: My Session\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -6614,7 +6614,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;255;255;0mWarning: Usage: /name <name>\u001b[39m",
+						"text": "\u001b[38;2;205;154;34mWarning: Usage: /name <name>\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -6642,7 +6642,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mSession name: existing\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mSession name: existing\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -6671,7 +6671,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;255;255;0mWarning: Session name was normalized from \"raw name\" to \"normalized\"\u001b[39m",
+						"text": "\u001b[38;2;205;154;34mWarning: Session name was normalized from \"raw name\" to \"normalized\"\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -6691,7 +6691,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mSession name set: normalized\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mSession name set: normalized\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -6716,7 +6716,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[1mSession Info\u001b[22m\n\n\u001b[38;2;102;102;102mFile:\u001b[39m /s.jsonl\n\u001b[38;2;102;102;102mID:\u001b[39m abc123\n\n\u001b[1mMessages\u001b[22m\n\u001b[38;2;102;102;102mTotal:\u001b[39m 4\n\u001b[38;2;102;102;102mUser:\u001b[39m 2\n\u001b[38;2;102;102;102mAssistant:\u001b[39m 1\n\u001b[38;2;102;102;102mTools:\u001b[39m 1 calls, 1 results\n\n\u001b[1mTokens\u001b[22m\n\u001b[38;2;102;102;102mInput:\u001b[39m 1,300\n  \u001b[38;2;102;102;102mCached:\u001b[39m 0 \u001b[38;2;102;102;102m(0.0%)\u001b[39m\n  \u001b[38;2;102;102;102mUncached:\u001b[39m 1,300 \u001b[38;2;102;102;102m(100 written to cache)\u001b[39m\n\u001b[38;2;102;102;102mOutput:\u001b[39m 34\n\u001b[38;2;102;102;102mTotal:\u001b[39m 1,334\n\n\u001b[1mCost\u001b[22m\n\u001b[38;2;102;102;102mTotal:\u001b[39m $0.012\n  \u001b[38;2;102;102;102manthropic/claude-opus-4-8:\u001b[39m $0.010 \u001b[38;2;102;102;102m(1.0k tokens)\u001b[39m\n  \u001b[38;2;102;102;102mopenai/gpt-5.5:\u001b[39m $0.002 \u001b[38;2;102;102;102m(334 tokens)\u001b[39m\n\u001b[38;2;102;102;102mCache Re-billed:\u001b[39m $0.020 \u001b[38;2;102;102;102m(25,000 tokens, 2 misses)\u001b[39m",
+						"text": "\u001b[1mSession Info\u001b[22m\n\n\u001b[38;2;126;136;142mFile:\u001b[39m /s.jsonl\n\u001b[38;2;126;136;142mID:\u001b[39m abc123\n\n\u001b[1mMessages\u001b[22m\n\u001b[38;2;126;136;142mTotal:\u001b[39m 4\n\u001b[38;2;126;136;142mUser:\u001b[39m 2\n\u001b[38;2;126;136;142mAssistant:\u001b[39m 1\n\u001b[38;2;126;136;142mTools:\u001b[39m 1 calls, 1 results\n\n\u001b[1mTokens\u001b[22m\n\u001b[38;2;126;136;142mInput:\u001b[39m 1,300\n  \u001b[38;2;126;136;142mCached:\u001b[39m 0 \u001b[38;2;126;136;142m(0.0%)\u001b[39m\n  \u001b[38;2;126;136;142mUncached:\u001b[39m 1,300 \u001b[38;2;126;136;142m(100 written to cache)\u001b[39m\n\u001b[38;2;126;136;142mOutput:\u001b[39m 34\n\u001b[38;2;126;136;142mTotal:\u001b[39m 1,334\n\n\u001b[1mCost\u001b[22m\n\u001b[38;2;126;136;142mTotal:\u001b[39m $0.012\n  \u001b[38;2;126;136;142manthropic/claude-opus-4-8:\u001b[39m $0.010 \u001b[38;2;126;136;142m(1.0k tokens)\u001b[39m\n  \u001b[38;2;126;136;142mopenai/gpt-5.5:\u001b[39m $0.002 \u001b[38;2;126;136;142m(334 tokens)\u001b[39m\n\u001b[38;2;126;136;142mCache Re-billed:\u001b[39m $0.020 \u001b[38;2;126;136;142m(25,000 tokens, 2 misses)\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -6749,7 +6749,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[1m\u001b[38;2;138;190;183mWhat's New\u001b[39m\u001b[22m",
+						"text": "\u001b[1m\u001b[38;2;167;152;215mWhat's New\u001b[39m\u001b[22m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -6806,7 +6806,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[1m\u001b[38;2;138;190;183mKeyboard Shortcuts\u001b[39m\u001b[22m",
+						"text": "\u001b[1m\u001b[38;2;167;152;215mKeyboard Shortcuts\u001b[39m\u001b[22m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -6864,7 +6864,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;138;190;183m✓ Debug log written\u001b[39m\n\u001b[38;2;128;128;128m/tmp/pi-debug.log\u001b[39m",
+						"text": "\u001b[38;2;167;152;215m✓ Debug log written\u001b[39m\n\u001b[38;2;157;165;169m/tmp/pi-debug.log\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 1
 					}
@@ -6943,7 +6943,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mSession exported to: out.jsonl\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mSession exported to: out.jsonl\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -6975,7 +6975,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mSession exported to: /out.html\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mSession exported to: /out.html\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -7000,7 +7000,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;204;102;102mError: Failed to export session: disk full\u001b[39m",
+						"text": "\u001b[38;2;234;127;129mError: Failed to export session: disk full\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -7121,7 +7121,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mSession imported from: in.jsonl\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mSession imported from: in.jsonl\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -7226,7 +7226,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mImport cancelled\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mImport cancelled\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -7423,7 +7423,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mSession imported from: in.jsonl\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mSession imported from: in.jsonl\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -7544,7 +7544,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;204;102;102mError: Failed to import session: file not found: in.jsonl\u001b[39m",
+						"text": "\u001b[38;2;234;127;129mError: Failed to import session: file not found: in.jsonl\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -7798,7 +7798,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mCopied last agent message to clipboard\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mCopied last agent message to clipboard\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -7827,7 +7827,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mCopied last agent message to clipboard\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mCopied last agent message to clipboard\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -7852,7 +7852,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;204;102;102mError: No agent messages to copy yet.\u001b[39m",
+						"text": "\u001b[38;2;234;127;129mError: No agent messages to copy yet.\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -7892,7 +7892,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;138;190;183m✓ New session started\u001b[39m",
+						"text": "\u001b[38;2;167;152;215m✓ New session started\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 1
 					}
@@ -8135,7 +8135,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;204;102;102mError: Bash command failed: spawn failed\u001b[39m",
+						"text": "\u001b[38;2;234;127;129mError: Bash command failed: spawn failed\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -8261,7 +8261,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;255;255;0mWarning: Wait for the current response to finish before reloading.\u001b[39m",
+						"text": "\u001b[38;2;205;154;34mWarning: Wait for the current response to finish before reloading.\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -8286,7 +8286,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;255;255;0mWarning: Wait for compaction to finish before reloading.\u001b[39m",
+						"text": "\u001b[38;2;205;154;34mWarning: Wait for compaction to finish before reloading.\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -8438,7 +8438,7 @@
 					"container",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;128;128;128mReloading keybindings, extensions, skills, prompts, themes, and context files...\u001b[39m",
+						"text": "\u001b[38;2;157;165;169mReloading keybindings, extensions, skills, prompts, themes, and context files...\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -8479,7 +8479,7 @@
 								"height": 1
 							},
 							{
-								"text": "\u001b[38;2;128;128;128mReloading keybindings, extensions, skills, prompts, themes, and context files...\u001b[39m",
+								"text": "\u001b[38;2;157;165;169mReloading keybindings, extensions, skills, prompts, themes, and context files...\u001b[39m",
 								"paddingX": 1,
 								"paddingY": 0
 							},
@@ -8597,7 +8597,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mReloaded keybindings, extensions, skills, prompts, themes, and context files\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mReloaded keybindings, extensions, skills, prompts, themes, and context files\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -8789,7 +8789,7 @@
 					"container",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;128;128;128mReloading keybindings, extensions, skills, prompts, themes, and context files...\u001b[39m",
+						"text": "\u001b[38;2;157;165;169mReloading keybindings, extensions, skills, prompts, themes, and context files...\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -8830,7 +8830,7 @@
 								"height": 1
 							},
 							{
-								"text": "\u001b[38;2;128;128;128mReloading keybindings, extensions, skills, prompts, themes, and context files...\u001b[39m",
+								"text": "\u001b[38;2;157;165;169mReloading keybindings, extensions, skills, prompts, themes, and context files...\u001b[39m",
 								"paddingX": 1,
 								"paddingY": 0
 							},
@@ -8899,7 +8899,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;204;102;102mError: Reload failed: boom\u001b[39m",
+						"text": "\u001b[38;2;234;127;129mError: Reload failed: boom\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -9430,7 +9430,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102minfo message\u001b[39m",
+						"text": "\u001b[38;2;126;136;142minfo message\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -9450,7 +9450,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;255;255;0mWarning: warn message\u001b[39m",
+						"text": "\u001b[38;2;205;154;34mWarning: warn message\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -9470,7 +9470,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;204;102;102mError: error message\u001b[39m",
+						"text": "\u001b[38;2;234;127;129mError: error message\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -9488,7 +9488,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;204;102;102mExtension \"/ext/path.ts\" error: exploded\u001b[39m",
+						"text": "\u001b[38;2;234;127;129mExtension \"/ext/path.ts\" error: exploded\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -9498,7 +9498,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102m  at fn (/ext/path.ts:1:1)\u001b[39m\n\u001b[38;2;102;102;102m  at inner (/x:2:2)\u001b[39m",
+						"text": "\u001b[38;2;126;136;142m  at fn (/ext/path.ts:1:1)\u001b[39m\n\u001b[38;2;126;136;142m  at inner (/x:2:2)\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -9834,7 +9834,7 @@
 					"loadedResources",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;240;198;116m[Context]\u001b[39m\n\u001b[38;2;102;102;102m  C:\\work\\PI.md, C:\\work\\EXTRA.md, C:\\work\\AGENTS.md\u001b[39m",
+						"text": "\u001b[38;2;205;154;34m[Context]\u001b[39m\n\u001b[38;2;126;136;142m  C:\\work\\PI.md, C:\\work\\EXTRA.md, C:\\work\\AGENTS.md\u001b[39m",
 						"paddingX": 0,
 						"paddingY": 0
 					}
@@ -9851,7 +9851,7 @@
 					"loadedResources",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;240;198;116m[Skills]\u001b[39m\n\u001b[38;2;102;102;102m  search\u001b[39m",
+						"text": "\u001b[38;2;205;154;34m[Skills]\u001b[39m\n\u001b[38;2;126;136;142m  search\u001b[39m",
 						"paddingX": 0,
 						"paddingY": 0
 					}
@@ -9868,7 +9868,7 @@
 					"loadedResources",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;240;198;116m[Extensions]\u001b[39m\n\u001b[38;2;102;102;102m  tag.ts\u001b[39m",
+						"text": "\u001b[38;2;205;154;34m[Extensions]\u001b[39m\n\u001b[38;2;126;136;142m  tag.ts\u001b[39m",
 						"paddingX": 0,
 						"paddingY": 0
 					}
@@ -9885,7 +9885,7 @@
 					"loadedResources",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;240;198;116m[Themes]\u001b[39m\n\u001b[38;2;102;102;102m  solarized\u001b[39m",
+						"text": "\u001b[38;2;205;154;34m[Themes]\u001b[39m\n\u001b[38;2;126;136;142m  solarized\u001b[39m",
 						"paddingX": 0,
 						"paddingY": 0
 					}
@@ -9911,7 +9911,7 @@
 					"loadedResources",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;255;255;0m[Skill conflicts]\u001b[39m\n\u001b[38;2;255;255;0m  /a/SKILL.md\u001b[39m\n\u001b[38;2;255;255;0m    two skills named search\u001b[39m",
+						"text": "\u001b[38;2;205;154;34m[Skill conflicts]\u001b[39m\n\u001b[38;2;205;154;34m  /a/SKILL.md\u001b[39m\n\u001b[38;2;205;154;34m    two skills named search\u001b[39m",
 						"paddingX": 0,
 						"paddingY": 0
 					}
@@ -9928,7 +9928,7 @@
 					"loadedResources",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;255;255;0m[Prompt conflicts]\u001b[39m\n\u001b[38;2;255;255;0m  /p.md\u001b[39m\n\u001b[38;2;255;255;0m    prompt shadowed\u001b[39m",
+						"text": "\u001b[38;2;205;154;34m[Prompt conflicts]\u001b[39m\n\u001b[38;2;205;154;34m  /p.md\u001b[39m\n\u001b[38;2;205;154;34m    prompt shadowed\u001b[39m",
 						"paddingX": 0,
 						"paddingY": 0
 					}
@@ -9945,7 +9945,7 @@
 					"loadedResources",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;255;255;0m[Extension issues]\u001b[39m\n\u001b[38;2;204;102;102m  /broken.ts\u001b[39m\n\u001b[38;2;204;102;102m    cannot load\u001b[39m\n\u001b[38;2;255;255;0m  /c.ts\u001b[39m\n\u001b[38;2;255;255;0m    conflicts with built-in\u001b[39m",
+						"text": "\u001b[38;2;205;154;34m[Extension issues]\u001b[39m\n\u001b[38;2;234;127;129m  /broken.ts\u001b[39m\n\u001b[38;2;234;127;129m    cannot load\u001b[39m\n\u001b[38;2;205;154;34m  /c.ts\u001b[39m\n\u001b[38;2;205;154;34m    conflicts with built-in\u001b[39m",
 						"paddingX": 0,
 						"paddingY": 0
 					}
@@ -9962,7 +9962,7 @@
 					"loadedResources",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;255;255;0m[Theme conflicts]\u001b[39m\n\u001b[38;2;204;102;102m  /t.json\u001b[39m\n\u001b[38;2;204;102;102m    bad theme\u001b[39m",
+						"text": "\u001b[38;2;205;154;34m[Theme conflicts]\u001b[39m\n\u001b[38;2;234;127;129m  /t.json\u001b[39m\n\u001b[38;2;234;127;129m    bad theme\u001b[39m",
 						"paddingX": 0,
 						"paddingY": 0
 					}
@@ -10273,7 +10273,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;204;102;102mError: Failed to resume session: gone\u001b[39m",
+						"text": "\u001b[38;2;234;127;129mError: Failed to resume session: gone\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}

@@ -636,11 +636,11 @@ mod tests {
         };
         assert_eq!(
             lines[0],
-            format!("\x1b[38;2;102;102;102m{pwd_segment} (main) • my-session\x1b[39m")
+            format!("\x1b[38;2;126;136;142m{pwd_segment} (main) • my-session\x1b[39m")
         );
         assert_eq!(
             lines[1],
-            "\x1b[38;2;102;102;102m↑1.6k ↓265 R100 W50 CH6.1% $0.560 (sub) 42.5%/200k (auto)\x1b[39m\x1b[38;2;102;102;102m         kimi-k2 • high\x1b[39m"
+            "\x1b[38;2;126;136;142m↑1.6k ↓265 R100 W50 CH6.1% $0.560 (sub) 42.5%/200k (auto)\x1b[39m\x1b[38;2;126;136;142m         kimi-k2 • high\x1b[39m"
         );
         assert_eq!(lines[2], "first status second status");
     }
@@ -678,7 +678,7 @@ mod tests {
         };
         let footer = FooterComponent::new(&over90, &provider);
         let lines = footer.render_footer(80, &theme);
-        assert!(lines[1].contains("\x1b[38;2;204;102;102m91.1%/200k (auto)\x1b[39m"));
+        assert!(lines[1].contains("\x1b[38;2;234;127;129m91.1%/200k (auto)\x1b[39m"));
 
         let unknown = FixedSession {
             context_usage: Some((200_000, None)),

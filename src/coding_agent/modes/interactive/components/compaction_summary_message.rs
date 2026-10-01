@@ -199,7 +199,7 @@ mod tests {
         assert!(collapsed.contains("Compacted from 1,234,567 tokens ("));
         // oracle compactionCollapsed bytes: dim "ctrl+o" then customMessageText " to expand)"
         assert!(collapsed
-            .contains("\x1b[38;2;102;102;102mctrl+o\x1b[39m\x1b[38;2;212;212;212m to expand)"));
+            .contains("\x1b[38;2;126;136;142mctrl+o\x1b[39m\x1b[38;2;157;165;169m to expand)"));
 
         component.set_expanded(true);
         let expanded = component.render(80).join("\n");

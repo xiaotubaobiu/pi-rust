@@ -1,0 +1,4153 @@
+{
+	"builtin_truecolor": {
+		"dark": {
+			"name": "dark",
+			"appearance": "dark",
+			"colorMode": "truecolor",
+			"fg": {
+				"accent": "\u001b[38;2;167;152;215m",
+				"border": "\u001b[38;2;95;168;204m",
+				"borderAccent": "\u001b[38;2;160;142;213m",
+				"borderMuted": "\u001b[38;2;118;129;134m",
+				"success": "\u001b[38;2;104;183;141m",
+				"error": "\u001b[38;2;234;127;129m",
+				"warning": "\u001b[38;2;205;154;34m",
+				"muted": "\u001b[38;2;157;165;169m",
+				"dim": "\u001b[38;2;126;136;142m",
+				"text": "\u001b[38;2;222;224;225m",
+				"thinkingText": "\u001b[38;2;150;160;164m",
+				"scrollbarTrack": "\u001b[38;2;72;78;82m",
+				"scrollbarThumb": "\u001b[38;2;151;160;165m",
+				"searchMatchText": "\u001b[38;2;157;165;169m",
+				"userMessageText": "\u001b[38;2;222;224;225m",
+				"customMessageText": "\u001b[38;2;157;165;169m",
+				"customMessageLabel": "\u001b[38;2;167;152;215m",
+				"toolTitle": "\u001b[38;2;222;224;225m",
+				"toolOutput": "\u001b[38;2;157;165;169m",
+				"mdHeading": "\u001b[38;2;205;154;34m",
+				"mdLink": "\u001b[38;2;105;173;208m",
+				"mdLinkUrl": "\u001b[38;2;157;165;169m",
+				"mdCode": "\u001b[38;2;167;152;215m",
+				"mdCodeBlock": "\u001b[38;2;104;183;141m",
+				"mdCodeBlockBorder": "\u001b[38;2;157;165;169m",
+				"mdQuote": "\u001b[38;2;157;165;169m",
+				"mdQuoteBorder": "\u001b[38;2;157;165;169m",
+				"mdHr": "\u001b[38;2;157;165;169m",
+				"mdListBullet": "\u001b[38;2;167;152;215m",
+				"toolDiffAdded": "\u001b[38;2;104;183;141m",
+				"toolDiffRemoved": "\u001b[38;2;234;127;129m",
+				"toolDiffContext": "\u001b[38;2;157;165;169m",
+				"syntaxComment": "\u001b[38;2;157;165;169m",
+				"syntaxKeyword": "\u001b[38;2;105;173;208m",
+				"syntaxFunction": "\u001b[38;2;205;154;34m",
+				"syntaxVariable": "\u001b[38;2;93;179;186m",
+				"syntaxString": "\u001b[38;2;222;141;90m",
+				"syntaxNumber": "\u001b[38;2;104;183;141m",
+				"syntaxType": "\u001b[38;2;167;152;215m",
+				"syntaxOperator": "\u001b[38;2;157;165;169m",
+				"syntaxPunctuation": "\u001b[38;2;157;165;169m",
+				"thinkingOff": "\u001b[38;2;108;118;123m",
+				"thinkingMinimal": "\u001b[38;2;104;128;141m",
+				"thinkingLow": "\u001b[38;2;84;137;164m",
+				"thinkingMedium": "\u001b[38;2;97;133;204m",
+				"thinkingHigh": "\u001b[38;2;151;118;229m",
+				"thinkingXhigh": "\u001b[38;2;222;84;193m",
+				"thinkingMax": "\u001b[38;2;254;84;98m",
+				"bashMode": "\u001b[38;2;94;178;134m"
+			},
+			"bg": {
+				"selectedBg": "\u001b[48;2;33;59;73m",
+				"searchMatchBg": "\u001b[48;2;78;47;27m",
+				"userMessageBg": "\u001b[48;2;33;59;73m",
+				"customMessageBg": "\u001b[48;2;58;48;85m",
+				"toolPendingBg": "\u001b[48;2;52;56;58m",
+				"toolSuccessBg": "\u001b[48;2;37;65;49m",
+				"toolErrorBg": "\u001b[48;2;91;40;42m"
+			},
+			"colorsHex": {
+				"accent": "#a798d7",
+				"border": "#5fa8cc",
+				"borderAccent": "#a08ed5",
+				"borderMuted": "#768186",
+				"success": "#68b78d",
+				"error": "#ea7f81",
+				"warning": "#cd9a22",
+				"muted": "#9da5a9",
+				"dim": "#7e888e",
+				"text": "#dee0e1",
+				"thinkingText": "#96a0a4",
+				"scrollbarTrack": "#484e52",
+				"scrollbarThumb": "#97a0a5",
+				"searchMatchText": "#9da5a9",
+				"userMessageText": "#dee0e1",
+				"customMessageText": "#9da5a9",
+				"customMessageLabel": "#a798d7",
+				"toolTitle": "#dee0e1",
+				"toolOutput": "#9da5a9",
+				"mdHeading": "#cd9a22",
+				"mdLink": "#69add0",
+				"mdLinkUrl": "#9da5a9",
+				"mdCode": "#a798d7",
+				"mdCodeBlock": "#68b78d",
+				"mdCodeBlockBorder": "#9da5a9",
+				"mdQuote": "#9da5a9",
+				"mdQuoteBorder": "#9da5a9",
+				"mdHr": "#9da5a9",
+				"mdListBullet": "#a798d7",
+				"toolDiffAdded": "#68b78d",
+				"toolDiffRemoved": "#ea7f81",
+				"toolDiffContext": "#9da5a9",
+				"syntaxComment": "#9da5a9",
+				"syntaxKeyword": "#69add0",
+				"syntaxFunction": "#cd9a22",
+				"syntaxVariable": "#5db3ba",
+				"syntaxString": "#de8d5a",
+				"syntaxNumber": "#68b78d",
+				"syntaxType": "#a798d7",
+				"syntaxOperator": "#9da5a9",
+				"syntaxPunctuation": "#9da5a9",
+				"thinkingOff": "#6c767b",
+				"thinkingMinimal": "#68808d",
+				"thinkingLow": "#5489a4",
+				"thinkingMedium": "#6185cc",
+				"thinkingHigh": "#9776e5",
+				"thinkingXhigh": "#de54c1",
+				"thinkingMax": "#fe5462",
+				"bashMode": "#5eb286",
+				"selectedBg": "#213b49",
+				"searchMatchBg": "#4e2f1b",
+				"userMessageBg": "#213b49",
+				"customMessageBg": "#3a3055",
+				"toolPendingBg": "#34383a",
+				"toolSuccessBg": "#254131",
+				"toolErrorBg": "#5b282a"
+			},
+			"stylers": {
+				"bold": "\u001b[1mx\u001b[22m",
+				"italic": "\u001b[3mx\u001b[23m",
+				"underline": "\u001b[4mx\u001b[24m",
+				"inverse": "\u001b[7mx\u001b[27m",
+				"strikethrough": "\u001b[9mx\u001b[29m"
+			},
+			"probes": {
+				"fg_accent": "\u001b[38;2;167;152;215mx\u001b[39m",
+				"bg_selectedBg": "\u001b[48;2;33;59;73mx\u001b[49m",
+				"style_fg_token": "\u001b[38;2;167;152;215mx\u001b[39m",
+				"style_fg_dim": "\u001b[38;2;126;136;142mx\u001b[39m",
+				"style_fg_bg_tokens": "\u001b[38;2;157;165;169m\u001b[48;2;52;56;58mx\u001b[49m\u001b[39m",
+				"style_attributes": "\u001b[38;2;222;224;225m\u001b[1m\u001b[4mx\u001b[24m\u001b[22m\u001b[39m",
+				"style_italic_dim": "\u001b[38;2;126;136;142m\u001b[3mx\u001b[23m\u001b[39m",
+				"unknown_fg": {
+					"error": "Unknown theme color: nope"
+				},
+				"unknown_bg": {
+					"error": "Unknown theme color: nope"
+				}
+			}
+		},
+		"light": {
+			"name": "light",
+			"appearance": "light",
+			"colorMode": "truecolor",
+			"fg": {
+				"accent": "\u001b[38;2;116;89;180m",
+				"border": "\u001b[38;2;61;142;179m",
+				"borderAccent": "\u001b[38;2;138;114;203m",
+				"borderMuted": "\u001b[38;2;154;162;167m",
+				"success": "\u001b[38;2;51;126;88m",
+				"error": "\u001b[38;2;200;37;61m",
+				"warning": "\u001b[38;2;143;104;2m",
+				"muted": "\u001b[38;2;103;113;118m",
+				"dim": "\u001b[38;2;135;144;149m",
+				"text": "\u001b[38;2;59;63;65m",
+				"thinkingText": "\u001b[38;2;124;134;140m",
+				"scrollbarTrack": "\u001b[38;2;225;227;228m",
+				"scrollbarThumb": "\u001b[38;2;150;160;164m",
+				"searchMatchText": "\u001b[38;2;103;113;118m",
+				"userMessageText": "\u001b[38;2;59;63;65m",
+				"customMessageText": "\u001b[38;2;103;113;118m",
+				"customMessageLabel": "\u001b[38;2;116;89;180m",
+				"toolTitle": "\u001b[38;2;59;63;65m",
+				"toolOutput": "\u001b[38;2;103;113;118m",
+				"mdHeading": "\u001b[38;2;143;104;2m",
+				"mdLink": "\u001b[38;2;47;120;153m",
+				"mdLinkUrl": "\u001b[38;2;103;113;118m",
+				"mdCode": "\u001b[38;2;116;89;180m",
+				"mdCodeBlock": "\u001b[38;2;51;126;88m",
+				"mdCodeBlockBorder": "\u001b[38;2;103;113;118m",
+				"mdQuote": "\u001b[38;2;103;113;118m",
+				"mdQuoteBorder": "\u001b[38;2;103;113;118m",
+				"mdHr": "\u001b[38;2;103;113;118m",
+				"mdListBullet": "\u001b[38;2;116;89;180m",
+				"toolDiffAdded": "\u001b[38;2;51;126;88m",
+				"toolDiffRemoved": "\u001b[38;2;200;37;61m",
+				"toolDiffContext": "\u001b[38;2;103;113;118m",
+				"syntaxComment": "\u001b[38;2;103;113;118m",
+				"syntaxKeyword": "\u001b[38;2;47;120;153m",
+				"syntaxFunction": "\u001b[38;2;143;104;2m",
+				"syntaxVariable": "\u001b[38;2;40;122;129m",
+				"syntaxString": "\u001b[38;2;164;84;23m",
+				"syntaxNumber": "\u001b[38;2;51;126;88m",
+				"syntaxType": "\u001b[38;2;116;89;180m",
+				"syntaxOperator": "\u001b[38;2;103;113;118m",
+				"syntaxPunctuation": "\u001b[38;2;103;113;118m",
+				"thinkingOff": "\u001b[38;2;194;200;202m",
+				"thinkingMinimal": "\u001b[38;2;181;196;203m",
+				"thinkingLow": "\u001b[38;2;159;194;213m",
+				"thinkingMedium": "\u001b[38;2;162;183;224m",
+				"thinkingHigh": "\u001b[38;2;181;165;232m",
+				"thinkingXhigh": "\u001b[38;2;229;133;205m",
+				"thinkingMax": "\u001b[38;2;254;116;121m",
+				"bashMode": "\u001b[38;2;64;151;108m"
+			},
+			"bg": {
+				"selectedBg": "\u001b[48;2;223;231;236m",
+				"searchMatchBg": "\u001b[48;2;237;227;221m",
+				"userMessageBg": "\u001b[48;2;223;231;236m",
+				"customMessageBg": "\u001b[48;2;230;228;238m",
+				"toolPendingBg": "\u001b[48;2;228;229;230m",
+				"toolSuccessBg": "\u001b[48;2;222;233;225m",
+				"toolErrorBg": "\u001b[48;2;238;226;225m"
+			},
+			"colorsHex": {
+				"accent": "#7459b4",
+				"border": "#3d8eb3",
+				"borderAccent": "#8a72cb",
+				"borderMuted": "#9aa2a7",
+				"success": "#337e58",
+				"error": "#c8253d",
+				"warning": "#8f6802",
+				"muted": "#677176",
+				"dim": "#879095",
+				"text": "#3b3f41",
+				"thinkingText": "#7c868c",
+				"scrollbarTrack": "#e1e3e4",
+				"scrollbarThumb": "#96a0a4",
+				"searchMatchText": "#677176",
+				"userMessageText": "#3b3f41",
+				"customMessageText": "#677176",
+				"customMessageLabel": "#7459b4",
+				"toolTitle": "#3b3f41",
+				"toolOutput": "#677176",
+				"mdHeading": "#8f6802",
+				"mdLink": "#2f7899",
+				"mdLinkUrl": "#677176",
+				"mdCode": "#7459b4",
+				"mdCodeBlock": "#337e58",
+				"mdCodeBlockBorder": "#677176",
+				"mdQuote": "#677176",
+				"mdQuoteBorder": "#677176",
+				"mdHr": "#677176",
+				"mdListBullet": "#7459b4",
+				"toolDiffAdded": "#337e58",
+				"toolDiffRemoved": "#c8253d",
+				"toolDiffContext": "#677176",
+				"syntaxComment": "#677176",
+				"syntaxKeyword": "#2f7899",
+				"syntaxFunction": "#8f6802",
+				"syntaxVariable": "#287a81",
+				"syntaxString": "#a45417",
+				"syntaxNumber": "#337e58",
+				"syntaxType": "#7459b4",
+				"syntaxOperator": "#677176",
+				"syntaxPunctuation": "#677176",
+				"thinkingOff": "#c2c8ca",
+				"thinkingMinimal": "#b5c4cb",
+				"thinkingLow": "#9fc2d5",
+				"thinkingMedium": "#a2b7e0",
+				"thinkingHigh": "#b5a5e8",
+				"thinkingXhigh": "#e585cd",
+				"thinkingMax": "#fe7479",
+				"bashMode": "#40976c",
+				"selectedBg": "#dfe7ec",
+				"searchMatchBg": "#ede3dd",
+				"userMessageBg": "#dfe7ec",
+				"customMessageBg": "#e6e4ee",
+				"toolPendingBg": "#e4e5e6",
+				"toolSuccessBg": "#dee9e1",
+				"toolErrorBg": "#eee2e1"
+			},
+			"stylers": {
+				"bold": "\u001b[1mx\u001b[22m",
+				"italic": "\u001b[3mx\u001b[23m",
+				"underline": "\u001b[4mx\u001b[24m",
+				"inverse": "\u001b[7mx\u001b[27m",
+				"strikethrough": "\u001b[9mx\u001b[29m"
+			},
+			"probes": {
+				"fg_accent": "\u001b[38;2;116;89;180mx\u001b[39m",
+				"bg_selectedBg": "\u001b[48;2;223;231;236mx\u001b[49m",
+				"style_fg_token": "\u001b[38;2;116;89;180mx\u001b[39m",
+				"style_fg_dim": "\u001b[38;2;135;144;149mx\u001b[39m",
+				"style_fg_bg_tokens": "\u001b[38;2;103;113;118m\u001b[48;2;228;229;230mx\u001b[49m\u001b[39m",
+				"style_attributes": "\u001b[38;2;59;63;65m\u001b[1m\u001b[4mx\u001b[24m\u001b[22m\u001b[39m",
+				"style_italic_dim": "\u001b[38;2;135;144;149m\u001b[3mx\u001b[23m\u001b[39m",
+				"unknown_fg": {
+					"error": "Unknown theme color: nope"
+				},
+				"unknown_bg": {
+					"error": "Unknown theme color: nope"
+				}
+			}
+		}
+	},
+	"builtin_256color": {
+		"dark": {
+			"name": "dark",
+			"appearance": "dark",
+			"colorMode": "256color",
+			"fg": {
+				"accent": "\u001b[38;5;140m",
+				"border": "\u001b[38;5;74m",
+				"borderAccent": "\u001b[38;5;140m",
+				"borderMuted": "\u001b[38;5;102m",
+				"success": "\u001b[38;5;72m",
+				"error": "\u001b[38;5;174m",
+				"warning": "\u001b[38;5;172m",
+				"muted": "\u001b[38;5;145m",
+				"dim": "\u001b[38;5;102m",
+				"text": "\u001b[38;5;254m",
+				"thinkingText": "\u001b[38;5;109m",
+				"scrollbarTrack": "\u001b[38;5;59m",
+				"scrollbarThumb": "\u001b[38;5;109m",
+				"searchMatchText": "\u001b[38;5;145m",
+				"userMessageText": "\u001b[38;5;254m",
+				"customMessageText": "\u001b[38;5;145m",
+				"customMessageLabel": "\u001b[38;5;140m",
+				"toolTitle": "\u001b[38;5;254m",
+				"toolOutput": "\u001b[38;5;145m",
+				"mdHeading": "\u001b[38;5;172m",
+				"mdLink": "\u001b[38;5;74m",
+				"mdLinkUrl": "\u001b[38;5;145m",
+				"mdCode": "\u001b[38;5;140m",
+				"mdCodeBlock": "\u001b[38;5;72m",
+				"mdCodeBlockBorder": "\u001b[38;5;145m",
+				"mdQuote": "\u001b[38;5;145m",
+				"mdQuoteBorder": "\u001b[38;5;145m",
+				"mdHr": "\u001b[38;5;145m",
+				"mdListBullet": "\u001b[38;5;140m",
+				"toolDiffAdded": "\u001b[38;5;72m",
+				"toolDiffRemoved": "\u001b[38;5;174m",
+				"toolDiffContext": "\u001b[38;5;145m",
+				"syntaxComment": "\u001b[38;5;145m",
+				"syntaxKeyword": "\u001b[38;5;74m",
+				"syntaxFunction": "\u001b[38;5;172m",
+				"syntaxVariable": "\u001b[38;5;73m",
+				"syntaxString": "\u001b[38;5;173m",
+				"syntaxNumber": "\u001b[38;5;72m",
+				"syntaxType": "\u001b[38;5;140m",
+				"syntaxOperator": "\u001b[38;5;145m",
+				"syntaxPunctuation": "\u001b[38;5;145m",
+				"thinkingOff": "\u001b[38;5;66m",
+				"thinkingMinimal": "\u001b[38;5;66m",
+				"thinkingLow": "\u001b[38;5;67m",
+				"thinkingMedium": "\u001b[38;5;68m",
+				"thinkingHigh": "\u001b[38;5;104m",
+				"thinkingXhigh": "\u001b[38;5;169m",
+				"thinkingMax": "\u001b[38;5;203m",
+				"bashMode": "\u001b[38;5;72m"
+			},
+			"bg": {
+				"selectedBg": "\u001b[48;5;23m",
+				"searchMatchBg": "\u001b[48;5;52m",
+				"userMessageBg": "\u001b[48;5;23m",
+				"customMessageBg": "\u001b[48;5;59m",
+				"toolPendingBg": "\u001b[48;5;237m",
+				"toolSuccessBg": "\u001b[48;5;23m",
+				"toolErrorBg": "\u001b[48;5;52m"
+			},
+			"colorsHex": {
+				"accent": "#a798d7",
+				"border": "#5fa8cc",
+				"borderAccent": "#a08ed5",
+				"borderMuted": "#768186",
+				"success": "#68b78d",
+				"error": "#ea7f81",
+				"warning": "#cd9a22",
+				"muted": "#9da5a9",
+				"dim": "#7e888e",
+				"text": "#dee0e1",
+				"thinkingText": "#96a0a4",
+				"scrollbarTrack": "#484e52",
+				"scrollbarThumb": "#97a0a5",
+				"searchMatchText": "#9da5a9",
+				"userMessageText": "#dee0e1",
+				"customMessageText": "#9da5a9",
+				"customMessageLabel": "#a798d7",
+				"toolTitle": "#dee0e1",
+				"toolOutput": "#9da5a9",
+				"mdHeading": "#cd9a22",
+				"mdLink": "#69add0",
+				"mdLinkUrl": "#9da5a9",
+				"mdCode": "#a798d7",
+				"mdCodeBlock": "#68b78d",
+				"mdCodeBlockBorder": "#9da5a9",
+				"mdQuote": "#9da5a9",
+				"mdQuoteBorder": "#9da5a9",
+				"mdHr": "#9da5a9",
+				"mdListBullet": "#a798d7",
+				"toolDiffAdded": "#68b78d",
+				"toolDiffRemoved": "#ea7f81",
+				"toolDiffContext": "#9da5a9",
+				"syntaxComment": "#9da5a9",
+				"syntaxKeyword": "#69add0",
+				"syntaxFunction": "#cd9a22",
+				"syntaxVariable": "#5db3ba",
+				"syntaxString": "#de8d5a",
+				"syntaxNumber": "#68b78d",
+				"syntaxType": "#a798d7",
+				"syntaxOperator": "#9da5a9",
+				"syntaxPunctuation": "#9da5a9",
+				"thinkingOff": "#6c767b",
+				"thinkingMinimal": "#68808d",
+				"thinkingLow": "#5489a4",
+				"thinkingMedium": "#6185cc",
+				"thinkingHigh": "#9776e5",
+				"thinkingXhigh": "#de54c1",
+				"thinkingMax": "#fe5462",
+				"bashMode": "#5eb286",
+				"selectedBg": "#213b49",
+				"searchMatchBg": "#4e2f1b",
+				"userMessageBg": "#213b49",
+				"customMessageBg": "#3a3055",
+				"toolPendingBg": "#34383a",
+				"toolSuccessBg": "#254131",
+				"toolErrorBg": "#5b282a"
+			},
+			"stylers": {
+				"bold": "\u001b[1mx\u001b[22m",
+				"italic": "\u001b[3mx\u001b[23m",
+				"underline": "\u001b[4mx\u001b[24m",
+				"inverse": "\u001b[7mx\u001b[27m",
+				"strikethrough": "\u001b[9mx\u001b[29m"
+			},
+			"probes": {
+				"fg_accent": "\u001b[38;5;140mx\u001b[39m",
+				"bg_selectedBg": "\u001b[48;5;23mx\u001b[49m",
+				"style_fg_token": "\u001b[38;5;140mx\u001b[39m",
+				"style_fg_dim": "\u001b[38;5;102mx\u001b[39m",
+				"style_fg_bg_tokens": "\u001b[38;5;145m\u001b[48;5;237mx\u001b[49m\u001b[39m",
+				"style_attributes": "\u001b[38;5;254m\u001b[1m\u001b[4mx\u001b[24m\u001b[22m\u001b[39m",
+				"style_italic_dim": "\u001b[38;5;102m\u001b[3mx\u001b[23m\u001b[39m",
+				"unknown_fg": {
+					"error": "Unknown theme color: nope"
+				},
+				"unknown_bg": {
+					"error": "Unknown theme color: nope"
+				}
+			}
+		},
+		"light": {
+			"name": "light",
+			"appearance": "light",
+			"colorMode": "256color",
+			"fg": {
+				"accent": "\u001b[38;5;97m",
+				"border": "\u001b[38;5;67m",
+				"borderAccent": "\u001b[38;5;98m",
+				"borderMuted": "\u001b[38;5;109m",
+				"success": "\u001b[38;5;65m",
+				"error": "\u001b[38;5;161m",
+				"warning": "\u001b[38;5;94m",
+				"muted": "\u001b[38;5;60m",
+				"dim": "\u001b[38;5;102m",
+				"text": "\u001b[38;5;237m",
+				"thinkingText": "\u001b[38;5;102m",
+				"scrollbarTrack": "\u001b[38;5;254m",
+				"scrollbarThumb": "\u001b[38;5;109m",
+				"searchMatchText": "\u001b[38;5;60m",
+				"userMessageText": "\u001b[38;5;237m",
+				"customMessageText": "\u001b[38;5;60m",
+				"customMessageLabel": "\u001b[38;5;97m",
+				"toolTitle": "\u001b[38;5;237m",
+				"toolOutput": "\u001b[38;5;60m",
+				"mdHeading": "\u001b[38;5;94m",
+				"mdLink": "\u001b[38;5;30m",
+				"mdLinkUrl": "\u001b[38;5;60m",
+				"mdCode": "\u001b[38;5;97m",
+				"mdCodeBlock": "\u001b[38;5;65m",
+				"mdCodeBlockBorder": "\u001b[38;5;60m",
+				"mdQuote": "\u001b[38;5;60m",
+				"mdQuoteBorder": "\u001b[38;5;60m",
+				"mdHr": "\u001b[38;5;60m",
+				"mdListBullet": "\u001b[38;5;97m",
+				"toolDiffAdded": "\u001b[38;5;65m",
+				"toolDiffRemoved": "\u001b[38;5;161m",
+				"toolDiffContext": "\u001b[38;5;60m",
+				"syntaxComment": "\u001b[38;5;60m",
+				"syntaxKeyword": "\u001b[38;5;30m",
+				"syntaxFunction": "\u001b[38;5;94m",
+				"syntaxVariable": "\u001b[38;5;30m",
+				"syntaxString": "\u001b[38;5;130m",
+				"syntaxNumber": "\u001b[38;5;65m",
+				"syntaxType": "\u001b[38;5;97m",
+				"syntaxOperator": "\u001b[38;5;60m",
+				"syntaxPunctuation": "\u001b[38;5;60m",
+				"thinkingOff": "\u001b[38;5;251m",
+				"thinkingMinimal": "\u001b[38;5;152m",
+				"thinkingLow": "\u001b[38;5;146m",
+				"thinkingMedium": "\u001b[38;5;146m",
+				"thinkingHigh": "\u001b[38;5;146m",
+				"thinkingXhigh": "\u001b[38;5;176m",
+				"thinkingMax": "\u001b[38;5;210m",
+				"bashMode": "\u001b[38;5;65m"
+			},
+			"bg": {
+				"selectedBg": "\u001b[48;5;189m",
+				"searchMatchBg": "\u001b[48;5;224m",
+				"userMessageBg": "\u001b[48;5;189m",
+				"customMessageBg": "\u001b[48;5;189m",
+				"toolPendingBg": "\u001b[48;5;254m",
+				"toolSuccessBg": "\u001b[48;5;188m",
+				"toolErrorBg": "\u001b[48;5;224m"
+			},
+			"colorsHex": {
+				"accent": "#7459b4",
+				"border": "#3d8eb3",
+				"borderAccent": "#8a72cb",
+				"borderMuted": "#9aa2a7",
+				"success": "#337e58",
+				"error": "#c8253d",
+				"warning": "#8f6802",
+				"muted": "#677176",
+				"dim": "#879095",
+				"text": "#3b3f41",
+				"thinkingText": "#7c868c",
+				"scrollbarTrack": "#e1e3e4",
+				"scrollbarThumb": "#96a0a4",
+				"searchMatchText": "#677176",
+				"userMessageText": "#3b3f41",
+				"customMessageText": "#677176",
+				"customMessageLabel": "#7459b4",
+				"toolTitle": "#3b3f41",
+				"toolOutput": "#677176",
+				"mdHeading": "#8f6802",
+				"mdLink": "#2f7899",
+				"mdLinkUrl": "#677176",
+				"mdCode": "#7459b4",
+				"mdCodeBlock": "#337e58",
+				"mdCodeBlockBorder": "#677176",
+				"mdQuote": "#677176",
+				"mdQuoteBorder": "#677176",
+				"mdHr": "#677176",
+				"mdListBullet": "#7459b4",
+				"toolDiffAdded": "#337e58",
+				"toolDiffRemoved": "#c8253d",
+				"toolDiffContext": "#677176",
+				"syntaxComment": "#677176",
+				"syntaxKeyword": "#2f7899",
+				"syntaxFunction": "#8f6802",
+				"syntaxVariable": "#287a81",
+				"syntaxString": "#a45417",
+				"syntaxNumber": "#337e58",
+				"syntaxType": "#7459b4",
+				"syntaxOperator": "#677176",
+				"syntaxPunctuation": "#677176",
+				"thinkingOff": "#c2c8ca",
+				"thinkingMinimal": "#b5c4cb",
+				"thinkingLow": "#9fc2d5",
+				"thinkingMedium": "#a2b7e0",
+				"thinkingHigh": "#b5a5e8",
+				"thinkingXhigh": "#e585cd",
+				"thinkingMax": "#fe7479",
+				"bashMode": "#40976c",
+				"selectedBg": "#dfe7ec",
+				"searchMatchBg": "#ede3dd",
+				"userMessageBg": "#dfe7ec",
+				"customMessageBg": "#e6e4ee",
+				"toolPendingBg": "#e4e5e6",
+				"toolSuccessBg": "#dee9e1",
+				"toolErrorBg": "#eee2e1"
+			},
+			"stylers": {
+				"bold": "\u001b[1mx\u001b[22m",
+				"italic": "\u001b[3mx\u001b[23m",
+				"underline": "\u001b[4mx\u001b[24m",
+				"inverse": "\u001b[7mx\u001b[27m",
+				"strikethrough": "\u001b[9mx\u001b[29m"
+			},
+			"probes": {
+				"fg_accent": "\u001b[38;5;97mx\u001b[39m",
+				"bg_selectedBg": "\u001b[48;5;189mx\u001b[49m",
+				"style_fg_token": "\u001b[38;5;97mx\u001b[39m",
+				"style_fg_dim": "\u001b[38;5;102mx\u001b[39m",
+				"style_fg_bg_tokens": "\u001b[38;5;60m\u001b[48;5;254mx\u001b[49m\u001b[39m",
+				"style_attributes": "\u001b[38;5;237m\u001b[1m\u001b[4mx\u001b[24m\u001b[22m\u001b[39m",
+				"style_italic_dim": "\u001b[38;5;102m\u001b[3mx\u001b[23m\u001b[39m",
+				"unknown_fg": {
+					"error": "Unknown theme color: nope"
+				},
+				"unknown_bg": {
+					"error": "Unknown theme color: nope"
+				}
+			}
+		}
+	},
+	"defaults_guessed": {
+		"defaults": {
+			"name": "defaults-dummy",
+			"appearance": "dark",
+			"colorMode": "truecolor",
+			"fg": {
+				"accent": "\u001b[38;2;255;0;0m",
+				"border": "\u001b[39m",
+				"borderAccent": "\u001b[38;2;72;138;203m",
+				"borderMuted": "\u001b[38;5;24m",
+				"success": "\u001b[38;2;105;160;116m",
+				"error": "\u001b[38;2;0;255;0m",
+				"warning": "\u001b[38;2;0;0;255m",
+				"muted": "\u001b[38;2;128;128;128m",
+				"dim": "\u001b[38;2;160;160;160m",
+				"text": "\u001b[39m",
+				"thinkingText": "\u001b[38;2;192;192;192m",
+				"scrollbarTrack": "\u001b[38;2;128;128;128m",
+				"scrollbarThumb": "\u001b[39m",
+				"searchMatchText": "\u001b[39m",
+				"userMessageText": "\u001b[38;2;255;255;255m",
+				"customMessageText": "\u001b[38;2;238;238;238m",
+				"customMessageLabel": "\u001b[38;2;221;221;221m",
+				"toolTitle": "\u001b[38;2;240;240;240m",
+				"toolOutput": "\u001b[38;2;224;224;224m",
+				"mdHeading": {
+					"error": "Unknown theme color: mdHeading"
+				},
+				"mdLink": {
+					"error": "Unknown theme color: mdLink"
+				},
+				"mdLinkUrl": {
+					"error": "Unknown theme color: mdLinkUrl"
+				},
+				"mdCode": {
+					"error": "Unknown theme color: mdCode"
+				},
+				"mdCodeBlock": {
+					"error": "Unknown theme color: mdCodeBlock"
+				},
+				"mdCodeBlockBorder": {
+					"error": "Unknown theme color: mdCodeBlockBorder"
+				},
+				"mdQuote": {
+					"error": "Unknown theme color: mdQuote"
+				},
+				"mdQuoteBorder": {
+					"error": "Unknown theme color: mdQuoteBorder"
+				},
+				"mdHr": {
+					"error": "Unknown theme color: mdHr"
+				},
+				"mdListBullet": {
+					"error": "Unknown theme color: mdListBullet"
+				},
+				"toolDiffAdded": {
+					"error": "Unknown theme color: toolDiffAdded"
+				},
+				"toolDiffRemoved": {
+					"error": "Unknown theme color: toolDiffRemoved"
+				},
+				"toolDiffContext": {
+					"error": "Unknown theme color: toolDiffContext"
+				},
+				"syntaxComment": {
+					"error": "Unknown theme color: syntaxComment"
+				},
+				"syntaxKeyword": {
+					"error": "Unknown theme color: syntaxKeyword"
+				},
+				"syntaxFunction": {
+					"error": "Unknown theme color: syntaxFunction"
+				},
+				"syntaxVariable": {
+					"error": "Unknown theme color: syntaxVariable"
+				},
+				"syntaxString": {
+					"error": "Unknown theme color: syntaxString"
+				},
+				"syntaxNumber": {
+					"error": "Unknown theme color: syntaxNumber"
+				},
+				"syntaxType": {
+					"error": "Unknown theme color: syntaxType"
+				},
+				"syntaxOperator": {
+					"error": "Unknown theme color: syntaxOperator"
+				},
+				"syntaxPunctuation": {
+					"error": "Unknown theme color: syntaxPunctuation"
+				},
+				"thinkingOff": {
+					"error": "Unknown theme color: thinkingOff"
+				},
+				"thinkingMinimal": {
+					"error": "Unknown theme color: thinkingMinimal"
+				},
+				"thinkingLow": {
+					"error": "Unknown theme color: thinkingLow"
+				},
+				"thinkingMedium": {
+					"error": "Unknown theme color: thinkingMedium"
+				},
+				"thinkingHigh": {
+					"error": "Unknown theme color: thinkingHigh"
+				},
+				"thinkingXhigh": "\u001b[38;2;208;208;208m",
+				"thinkingMax": "\u001b[38;2;208;208;208m",
+				"bashMode": {
+					"error": "Unknown theme color: bashMode"
+				}
+			},
+			"bg": {
+				"selectedBg": "\u001b[49m",
+				"searchMatchBg": "\u001b[49m",
+				"userMessageBg": "\u001b[48;2;32;32;32m",
+				"customMessageBg": "\u001b[48;2;48;48;48m",
+				"toolPendingBg": "\u001b[48;2;64;64;64m",
+				"toolSuccessBg": "\u001b[48;2;80;80;80m",
+				"toolErrorBg": "\u001b[48;2;96;96;96m"
+			},
+			"colorsHex": {
+				"accent": "#ff0000",
+				"borderAccent": "#488acb",
+				"borderMuted": "#005f87",
+				"success": "#69a074",
+				"error": "#00ff00",
+				"warning": "#0000ff",
+				"muted": "#808080",
+				"dim": "#a0a0a0",
+				"thinkingText": "#c0c0c0",
+				"userMessageText": "#ffffff",
+				"customMessageText": "#eeeeee",
+				"customMessageLabel": "#dddddd",
+				"toolTitle": "#f0f0f0",
+				"toolOutput": "#e0e0e0",
+				"thinkingXhigh": "#d0d0d0",
+				"scrollbarTrack": "#808080",
+				"thinkingMax": "#d0d0d0",
+				"userMessageBg": "#202020",
+				"customMessageBg": "#303030",
+				"toolPendingBg": "#404040",
+				"toolSuccessBg": "#505050",
+				"toolErrorBg": "#606060",
+				"border": "#e5e5e7",
+				"text": "#e5e5e7",
+				"scrollbarThumb": "#e5e5e7",
+				"searchMatchText": "#e5e5e7",
+				"selectedBg": "#000000",
+				"searchMatchBg": "#000000"
+			},
+			"stylers": {
+				"bold": "\u001b[1mx\u001b[22m",
+				"italic": "\u001b[3mx\u001b[23m",
+				"underline": "\u001b[4mx\u001b[24m",
+				"inverse": "\u001b[7mx\u001b[27m",
+				"strikethrough": "\u001b[9mx\u001b[29m"
+			},
+			"probes": {
+				"fg_accent": "\u001b[38;2;255;0;0mx\u001b[39m",
+				"bg_selectedBg": "\u001b[49mx\u001b[49m",
+				"style_fg_token": "\u001b[38;2;255;0;0mx\u001b[39m",
+				"style_fg_dim": "\u001b[38;2;160;160;160mx\u001b[39m",
+				"style_fg_bg_tokens": "\u001b[38;2;128;128;128m\u001b[48;2;64;64;64mx\u001b[49m\u001b[39m",
+				"style_attributes": "\u001b[39m\u001b[1m\u001b[4mx\u001b[24m\u001b[22m\u001b[39m",
+				"style_italic_dim": "\u001b[38;2;160;160;160m\u001b[3mx\u001b[23m\u001b[39m",
+				"unknown_fg": {
+					"error": "Unknown theme color: nope"
+				},
+				"unknown_bg": {
+					"error": "Unknown theme color: nope"
+				}
+			}
+		},
+		"defaults_probes": {
+			"border_fg": "\u001b[39mx\u001b[39m",
+			"text_fg": "\u001b[39mx\u001b[39m",
+			"selectedBg_as_fg": {
+				"error": "Unknown theme color: selectedBg"
+			},
+			"style_bg_token_as_fg": {
+				"error": "Unknown theme color: selectedBg"
+			},
+			"dim_getFgAnsi": "\u001b[38;2;160;160;160m",
+			"text_getFgAnsi": "\u001b[39m",
+			"style_raw_fg": "\u001b[38;2;255;136;0mx\u001b[39m",
+			"style_raw_fg_token_bg": "\u001b[38;2;0;255;0m\u001b[48;2;32;32;32mx\u001b[49m\u001b[39m",
+			"style_raw_both": "\u001b[38;2;0;255;0m\u001b[48;2;64;64;64mx\u001b[49m\u001b[39m"
+		},
+		"detected_dark": {
+			"appearance": "dark",
+			"fg_sample": "\u001b[38;2;255;255;255m",
+			"bg_sample": "\u001b[48;2;16;16;16m"
+		},
+		"detected_light": {
+			"appearance": "light",
+			"fg_sample": "\u001b[38;2;26;26;26m",
+			"bg_sample": "\u001b[48;2;224;224;224m"
+		},
+		"indexed_only": {
+			"appearance": "dark",
+			"fg": {
+				"accent": "\u001b[38;5;4m",
+				"border": "\u001b[38;5;8m",
+				"borderAccent": "\u001b[38;5;12m",
+				"borderMuted": "\u001b[38;5;0m",
+				"success": "\u001b[38;5;2m",
+				"error": "\u001b[38;5;1m",
+				"warning": "\u001b[38;5;3m",
+				"muted": "\u001b[38;5;7m",
+				"dim": "\u001b[38;5;8m",
+				"text": "\u001b[38;5;7m",
+				"thinkingText": "\u001b[38;5;15m",
+				"scrollbarTrack": "\u001b[38;5;7m",
+				"scrollbarThumb": "\u001b[38;5;7m",
+				"searchMatchText": "\u001b[38;5;7m",
+				"userMessageText": "\u001b[38;5;15m",
+				"customMessageText": "\u001b[38;5;15m",
+				"customMessageLabel": "\u001b[38;5;15m",
+				"toolTitle": "\u001b[38;5;15m",
+				"toolOutput": "\u001b[38;5;7m",
+				"mdHeading": {
+					"error": "Unknown theme color: mdHeading"
+				},
+				"mdLink": {
+					"error": "Unknown theme color: mdLink"
+				},
+				"mdLinkUrl": {
+					"error": "Unknown theme color: mdLinkUrl"
+				},
+				"mdCode": {
+					"error": "Unknown theme color: mdCode"
+				},
+				"mdCodeBlock": {
+					"error": "Unknown theme color: mdCodeBlock"
+				},
+				"mdCodeBlockBorder": {
+					"error": "Unknown theme color: mdCodeBlockBorder"
+				},
+				"mdQuote": {
+					"error": "Unknown theme color: mdQuote"
+				},
+				"mdQuoteBorder": {
+					"error": "Unknown theme color: mdQuoteBorder"
+				},
+				"mdHr": {
+					"error": "Unknown theme color: mdHr"
+				},
+				"mdListBullet": {
+					"error": "Unknown theme color: mdListBullet"
+				},
+				"toolDiffAdded": {
+					"error": "Unknown theme color: toolDiffAdded"
+				},
+				"toolDiffRemoved": {
+					"error": "Unknown theme color: toolDiffRemoved"
+				},
+				"toolDiffContext": {
+					"error": "Unknown theme color: toolDiffContext"
+				},
+				"syntaxComment": {
+					"error": "Unknown theme color: syntaxComment"
+				},
+				"syntaxKeyword": {
+					"error": "Unknown theme color: syntaxKeyword"
+				},
+				"syntaxFunction": {
+					"error": "Unknown theme color: syntaxFunction"
+				},
+				"syntaxVariable": {
+					"error": "Unknown theme color: syntaxVariable"
+				},
+				"syntaxString": {
+					"error": "Unknown theme color: syntaxString"
+				},
+				"syntaxNumber": {
+					"error": "Unknown theme color: syntaxNumber"
+				},
+				"syntaxType": {
+					"error": "Unknown theme color: syntaxType"
+				},
+				"syntaxOperator": {
+					"error": "Unknown theme color: syntaxOperator"
+				},
+				"syntaxPunctuation": {
+					"error": "Unknown theme color: syntaxPunctuation"
+				},
+				"thinkingOff": {
+					"error": "Unknown theme color: thinkingOff"
+				},
+				"thinkingMinimal": {
+					"error": "Unknown theme color: thinkingMinimal"
+				},
+				"thinkingLow": {
+					"error": "Unknown theme color: thinkingLow"
+				},
+				"thinkingMedium": {
+					"error": "Unknown theme color: thinkingMedium"
+				},
+				"thinkingHigh": {
+					"error": "Unknown theme color: thinkingHigh"
+				},
+				"thinkingXhigh": "\u001b[38;5;15m",
+				"thinkingMax": "\u001b[38;5;15m",
+				"bashMode": {
+					"error": "Unknown theme color: bashMode"
+				}
+			},
+			"bg": {
+				"selectedBg": "\u001b[48;5;0m",
+				"searchMatchBg": "\u001b[48;5;0m",
+				"userMessageBg": "\u001b[48;5;0m",
+				"customMessageBg": "\u001b[48;5;0m",
+				"toolPendingBg": "\u001b[48;5;0m",
+				"toolSuccessBg": "\u001b[48;5;0m",
+				"toolErrorBg": "\u001b[48;5;0m"
+			},
+			"colorsHex": {
+				"accent": "#000080",
+				"border": "#808080",
+				"borderAccent": "#0000ff",
+				"borderMuted": "#000000",
+				"success": "#008000",
+				"error": "#800000",
+				"warning": "#808000",
+				"muted": "#c0c0c0",
+				"dim": "#808080",
+				"text": "#c0c0c0",
+				"thinkingText": "#ffffff",
+				"userMessageText": "#ffffff",
+				"customMessageText": "#ffffff",
+				"customMessageLabel": "#ffffff",
+				"toolTitle": "#ffffff",
+				"toolOutput": "#c0c0c0",
+				"thinkingXhigh": "#ffffff",
+				"scrollbarTrack": "#c0c0c0",
+				"scrollbarThumb": "#c0c0c0",
+				"thinkingMax": "#ffffff",
+				"searchMatchText": "#c0c0c0",
+				"selectedBg": "#000000",
+				"userMessageBg": "#000000",
+				"customMessageBg": "#000000",
+				"toolPendingBg": "#000000",
+				"toolSuccessBg": "#000000",
+				"toolErrorBg": "#000000",
+				"searchMatchBg": "#000000"
+			}
+		}
+	},
+	"defaults_reported_dark": {
+		"defaults": {
+			"name": "defaults-dummy",
+			"appearance": "dark",
+			"colorMode": "truecolor",
+			"fg": {
+				"accent": "\u001b[38;2;255;0;0m",
+				"border": "\u001b[39m",
+				"borderAccent": "\u001b[38;2;72;138;203m",
+				"borderMuted": "\u001b[38;5;24m",
+				"success": "\u001b[38;2;105;160;116m",
+				"error": "\u001b[38;2;0;255;0m",
+				"warning": "\u001b[38;2;0;0;255m",
+				"muted": "\u001b[38;2;128;128;128m",
+				"dim": "\u001b[38;2;160;160;160m",
+				"text": "\u001b[39m",
+				"thinkingText": "\u001b[38;2;192;192;192m",
+				"scrollbarTrack": "\u001b[38;2;128;128;128m",
+				"scrollbarThumb": "\u001b[39m",
+				"searchMatchText": "\u001b[39m",
+				"userMessageText": "\u001b[38;2;255;255;255m",
+				"customMessageText": "\u001b[38;2;238;238;238m",
+				"customMessageLabel": "\u001b[38;2;221;221;221m",
+				"toolTitle": "\u001b[38;2;240;240;240m",
+				"toolOutput": "\u001b[38;2;224;224;224m",
+				"mdHeading": {
+					"error": "Unknown theme color: mdHeading"
+				},
+				"mdLink": {
+					"error": "Unknown theme color: mdLink"
+				},
+				"mdLinkUrl": {
+					"error": "Unknown theme color: mdLinkUrl"
+				},
+				"mdCode": {
+					"error": "Unknown theme color: mdCode"
+				},
+				"mdCodeBlock": {
+					"error": "Unknown theme color: mdCodeBlock"
+				},
+				"mdCodeBlockBorder": {
+					"error": "Unknown theme color: mdCodeBlockBorder"
+				},
+				"mdQuote": {
+					"error": "Unknown theme color: mdQuote"
+				},
+				"mdQuoteBorder": {
+					"error": "Unknown theme color: mdQuoteBorder"
+				},
+				"mdHr": {
+					"error": "Unknown theme color: mdHr"
+				},
+				"mdListBullet": {
+					"error": "Unknown theme color: mdListBullet"
+				},
+				"toolDiffAdded": {
+					"error": "Unknown theme color: toolDiffAdded"
+				},
+				"toolDiffRemoved": {
+					"error": "Unknown theme color: toolDiffRemoved"
+				},
+				"toolDiffContext": {
+					"error": "Unknown theme color: toolDiffContext"
+				},
+				"syntaxComment": {
+					"error": "Unknown theme color: syntaxComment"
+				},
+				"syntaxKeyword": {
+					"error": "Unknown theme color: syntaxKeyword"
+				},
+				"syntaxFunction": {
+					"error": "Unknown theme color: syntaxFunction"
+				},
+				"syntaxVariable": {
+					"error": "Unknown theme color: syntaxVariable"
+				},
+				"syntaxString": {
+					"error": "Unknown theme color: syntaxString"
+				},
+				"syntaxNumber": {
+					"error": "Unknown theme color: syntaxNumber"
+				},
+				"syntaxType": {
+					"error": "Unknown theme color: syntaxType"
+				},
+				"syntaxOperator": {
+					"error": "Unknown theme color: syntaxOperator"
+				},
+				"syntaxPunctuation": {
+					"error": "Unknown theme color: syntaxPunctuation"
+				},
+				"thinkingOff": {
+					"error": "Unknown theme color: thinkingOff"
+				},
+				"thinkingMinimal": {
+					"error": "Unknown theme color: thinkingMinimal"
+				},
+				"thinkingLow": {
+					"error": "Unknown theme color: thinkingLow"
+				},
+				"thinkingMedium": {
+					"error": "Unknown theme color: thinkingMedium"
+				},
+				"thinkingHigh": {
+					"error": "Unknown theme color: thinkingHigh"
+				},
+				"thinkingXhigh": "\u001b[38;2;208;208;208m",
+				"thinkingMax": "\u001b[38;2;208;208;208m",
+				"bashMode": {
+					"error": "Unknown theme color: bashMode"
+				}
+			},
+			"bg": {
+				"selectedBg": "\u001b[49m",
+				"searchMatchBg": "\u001b[49m",
+				"userMessageBg": "\u001b[48;2;32;32;32m",
+				"customMessageBg": "\u001b[48;2;48;48;48m",
+				"toolPendingBg": "\u001b[48;2;64;64;64m",
+				"toolSuccessBg": "\u001b[48;2;80;80;80m",
+				"toolErrorBg": "\u001b[48;2;96;96;96m"
+			},
+			"colorsHex": {
+				"accent": "#ff0000",
+				"borderAccent": "#488acb",
+				"borderMuted": "#005f87",
+				"success": "#69a074",
+				"error": "#00ff00",
+				"warning": "#0000ff",
+				"muted": "#808080",
+				"dim": "#a0a0a0",
+				"thinkingText": "#c0c0c0",
+				"userMessageText": "#ffffff",
+				"customMessageText": "#eeeeee",
+				"customMessageLabel": "#dddddd",
+				"toolTitle": "#f0f0f0",
+				"toolOutput": "#e0e0e0",
+				"thinkingXhigh": "#d0d0d0",
+				"scrollbarTrack": "#808080",
+				"thinkingMax": "#d0d0d0",
+				"userMessageBg": "#202020",
+				"customMessageBg": "#303030",
+				"toolPendingBg": "#404040",
+				"toolSuccessBg": "#505050",
+				"toolErrorBg": "#606060",
+				"border": "#c4c4d4",
+				"text": "#c4c4d4",
+				"scrollbarThumb": "#c4c4d4",
+				"searchMatchText": "#c4c4d4",
+				"selectedBg": "#1e1e2e",
+				"searchMatchBg": "#1e1e2e"
+			},
+			"stylers": {
+				"bold": "\u001b[1mx\u001b[22m",
+				"italic": "\u001b[3mx\u001b[23m",
+				"underline": "\u001b[4mx\u001b[24m",
+				"inverse": "\u001b[7mx\u001b[27m",
+				"strikethrough": "\u001b[9mx\u001b[29m"
+			},
+			"probes": {
+				"fg_accent": "\u001b[38;2;255;0;0mx\u001b[39m",
+				"bg_selectedBg": "\u001b[49mx\u001b[49m",
+				"style_fg_token": "\u001b[38;2;255;0;0mx\u001b[39m",
+				"style_fg_dim": "\u001b[38;2;160;160;160mx\u001b[39m",
+				"style_fg_bg_tokens": "\u001b[38;2;128;128;128m\u001b[48;2;64;64;64mx\u001b[49m\u001b[39m",
+				"style_attributes": "\u001b[39m\u001b[1m\u001b[4mx\u001b[24m\u001b[22m\u001b[39m",
+				"style_italic_dim": "\u001b[38;2;160;160;160m\u001b[3mx\u001b[23m\u001b[39m",
+				"unknown_fg": {
+					"error": "Unknown theme color: nope"
+				},
+				"unknown_bg": {
+					"error": "Unknown theme color: nope"
+				}
+			}
+		},
+		"defaults_probes": {
+			"border_fg": "\u001b[39mx\u001b[39m",
+			"text_fg": "\u001b[39mx\u001b[39m",
+			"selectedBg_as_fg": {
+				"error": "Unknown theme color: selectedBg"
+			},
+			"style_bg_token_as_fg": {
+				"error": "Unknown theme color: selectedBg"
+			},
+			"dim_getFgAnsi": "\u001b[38;2;160;160;160m",
+			"text_getFgAnsi": "\u001b[39m",
+			"style_raw_fg": "\u001b[38;2;255;136;0mx\u001b[39m",
+			"style_raw_fg_token_bg": "\u001b[38;2;0;255;0m\u001b[48;2;32;32;32mx\u001b[49m\u001b[39m",
+			"style_raw_both": "\u001b[38;2;0;255;0m\u001b[48;2;64;64;64mx\u001b[49m\u001b[39m"
+		},
+		"detected_dark": {
+			"appearance": "dark",
+			"fg_sample": "\u001b[38;2;255;255;255m",
+			"bg_sample": "\u001b[48;2;16;16;16m"
+		},
+		"detected_light": {
+			"appearance": "light",
+			"fg_sample": "\u001b[38;2;26;26;26m",
+			"bg_sample": "\u001b[48;2;224;224;224m"
+		},
+		"indexed_only": {
+			"appearance": "dark",
+			"fg": {
+				"accent": "\u001b[38;5;4m",
+				"border": "\u001b[38;5;8m",
+				"borderAccent": "\u001b[38;5;12m",
+				"borderMuted": "\u001b[38;5;0m",
+				"success": "\u001b[38;5;2m",
+				"error": "\u001b[38;5;1m",
+				"warning": "\u001b[38;5;3m",
+				"muted": "\u001b[38;5;7m",
+				"dim": "\u001b[38;5;8m",
+				"text": "\u001b[38;5;7m",
+				"thinkingText": "\u001b[38;5;15m",
+				"scrollbarTrack": "\u001b[38;5;7m",
+				"scrollbarThumb": "\u001b[38;5;7m",
+				"searchMatchText": "\u001b[38;5;7m",
+				"userMessageText": "\u001b[38;5;15m",
+				"customMessageText": "\u001b[38;5;15m",
+				"customMessageLabel": "\u001b[38;5;15m",
+				"toolTitle": "\u001b[38;5;15m",
+				"toolOutput": "\u001b[38;5;7m",
+				"mdHeading": {
+					"error": "Unknown theme color: mdHeading"
+				},
+				"mdLink": {
+					"error": "Unknown theme color: mdLink"
+				},
+				"mdLinkUrl": {
+					"error": "Unknown theme color: mdLinkUrl"
+				},
+				"mdCode": {
+					"error": "Unknown theme color: mdCode"
+				},
+				"mdCodeBlock": {
+					"error": "Unknown theme color: mdCodeBlock"
+				},
+				"mdCodeBlockBorder": {
+					"error": "Unknown theme color: mdCodeBlockBorder"
+				},
+				"mdQuote": {
+					"error": "Unknown theme color: mdQuote"
+				},
+				"mdQuoteBorder": {
+					"error": "Unknown theme color: mdQuoteBorder"
+				},
+				"mdHr": {
+					"error": "Unknown theme color: mdHr"
+				},
+				"mdListBullet": {
+					"error": "Unknown theme color: mdListBullet"
+				},
+				"toolDiffAdded": {
+					"error": "Unknown theme color: toolDiffAdded"
+				},
+				"toolDiffRemoved": {
+					"error": "Unknown theme color: toolDiffRemoved"
+				},
+				"toolDiffContext": {
+					"error": "Unknown theme color: toolDiffContext"
+				},
+				"syntaxComment": {
+					"error": "Unknown theme color: syntaxComment"
+				},
+				"syntaxKeyword": {
+					"error": "Unknown theme color: syntaxKeyword"
+				},
+				"syntaxFunction": {
+					"error": "Unknown theme color: syntaxFunction"
+				},
+				"syntaxVariable": {
+					"error": "Unknown theme color: syntaxVariable"
+				},
+				"syntaxString": {
+					"error": "Unknown theme color: syntaxString"
+				},
+				"syntaxNumber": {
+					"error": "Unknown theme color: syntaxNumber"
+				},
+				"syntaxType": {
+					"error": "Unknown theme color: syntaxType"
+				},
+				"syntaxOperator": {
+					"error": "Unknown theme color: syntaxOperator"
+				},
+				"syntaxPunctuation": {
+					"error": "Unknown theme color: syntaxPunctuation"
+				},
+				"thinkingOff": {
+					"error": "Unknown theme color: thinkingOff"
+				},
+				"thinkingMinimal": {
+					"error": "Unknown theme color: thinkingMinimal"
+				},
+				"thinkingLow": {
+					"error": "Unknown theme color: thinkingLow"
+				},
+				"thinkingMedium": {
+					"error": "Unknown theme color: thinkingMedium"
+				},
+				"thinkingHigh": {
+					"error": "Unknown theme color: thinkingHigh"
+				},
+				"thinkingXhigh": "\u001b[38;5;15m",
+				"thinkingMax": "\u001b[38;5;15m",
+				"bashMode": {
+					"error": "Unknown theme color: bashMode"
+				}
+			},
+			"bg": {
+				"selectedBg": "\u001b[48;5;0m",
+				"searchMatchBg": "\u001b[48;5;0m",
+				"userMessageBg": "\u001b[48;5;0m",
+				"customMessageBg": "\u001b[48;5;0m",
+				"toolPendingBg": "\u001b[48;5;0m",
+				"toolSuccessBg": "\u001b[48;5;0m",
+				"toolErrorBg": "\u001b[48;5;0m"
+			},
+			"colorsHex": {
+				"accent": "#000080",
+				"border": "#808080",
+				"borderAccent": "#0000ff",
+				"borderMuted": "#000000",
+				"success": "#008000",
+				"error": "#800000",
+				"warning": "#808000",
+				"muted": "#c0c0c0",
+				"dim": "#808080",
+				"text": "#c0c0c0",
+				"thinkingText": "#ffffff",
+				"userMessageText": "#ffffff",
+				"customMessageText": "#ffffff",
+				"customMessageLabel": "#ffffff",
+				"toolTitle": "#ffffff",
+				"toolOutput": "#c0c0c0",
+				"thinkingXhigh": "#ffffff",
+				"scrollbarTrack": "#c0c0c0",
+				"scrollbarThumb": "#c0c0c0",
+				"thinkingMax": "#ffffff",
+				"searchMatchText": "#c0c0c0",
+				"selectedBg": "#000000",
+				"userMessageBg": "#000000",
+				"customMessageBg": "#000000",
+				"toolPendingBg": "#000000",
+				"toolSuccessBg": "#000000",
+				"toolErrorBg": "#000000",
+				"searchMatchBg": "#000000"
+			}
+		}
+	},
+	"defaults_reported_light": {
+		"defaults": {
+			"name": "defaults-dummy",
+			"appearance": "dark",
+			"colorMode": "truecolor",
+			"fg": {
+				"accent": "\u001b[38;2;255;0;0m",
+				"border": "\u001b[39m",
+				"borderAccent": "\u001b[38;2;72;138;203m",
+				"borderMuted": "\u001b[38;5;24m",
+				"success": "\u001b[38;2;105;160;116m",
+				"error": "\u001b[38;2;0;255;0m",
+				"warning": "\u001b[38;2;0;0;255m",
+				"muted": "\u001b[38;2;128;128;128m",
+				"dim": "\u001b[38;2;160;160;160m",
+				"text": "\u001b[39m",
+				"thinkingText": "\u001b[38;2;192;192;192m",
+				"scrollbarTrack": "\u001b[38;2;128;128;128m",
+				"scrollbarThumb": "\u001b[39m",
+				"searchMatchText": "\u001b[39m",
+				"userMessageText": "\u001b[38;2;255;255;255m",
+				"customMessageText": "\u001b[38;2;238;238;238m",
+				"customMessageLabel": "\u001b[38;2;221;221;221m",
+				"toolTitle": "\u001b[38;2;240;240;240m",
+				"toolOutput": "\u001b[38;2;224;224;224m",
+				"mdHeading": {
+					"error": "Unknown theme color: mdHeading"
+				},
+				"mdLink": {
+					"error": "Unknown theme color: mdLink"
+				},
+				"mdLinkUrl": {
+					"error": "Unknown theme color: mdLinkUrl"
+				},
+				"mdCode": {
+					"error": "Unknown theme color: mdCode"
+				},
+				"mdCodeBlock": {
+					"error": "Unknown theme color: mdCodeBlock"
+				},
+				"mdCodeBlockBorder": {
+					"error": "Unknown theme color: mdCodeBlockBorder"
+				},
+				"mdQuote": {
+					"error": "Unknown theme color: mdQuote"
+				},
+				"mdQuoteBorder": {
+					"error": "Unknown theme color: mdQuoteBorder"
+				},
+				"mdHr": {
+					"error": "Unknown theme color: mdHr"
+				},
+				"mdListBullet": {
+					"error": "Unknown theme color: mdListBullet"
+				},
+				"toolDiffAdded": {
+					"error": "Unknown theme color: toolDiffAdded"
+				},
+				"toolDiffRemoved": {
+					"error": "Unknown theme color: toolDiffRemoved"
+				},
+				"toolDiffContext": {
+					"error": "Unknown theme color: toolDiffContext"
+				},
+				"syntaxComment": {
+					"error": "Unknown theme color: syntaxComment"
+				},
+				"syntaxKeyword": {
+					"error": "Unknown theme color: syntaxKeyword"
+				},
+				"syntaxFunction": {
+					"error": "Unknown theme color: syntaxFunction"
+				},
+				"syntaxVariable": {
+					"error": "Unknown theme color: syntaxVariable"
+				},
+				"syntaxString": {
+					"error": "Unknown theme color: syntaxString"
+				},
+				"syntaxNumber": {
+					"error": "Unknown theme color: syntaxNumber"
+				},
+				"syntaxType": {
+					"error": "Unknown theme color: syntaxType"
+				},
+				"syntaxOperator": {
+					"error": "Unknown theme color: syntaxOperator"
+				},
+				"syntaxPunctuation": {
+					"error": "Unknown theme color: syntaxPunctuation"
+				},
+				"thinkingOff": {
+					"error": "Unknown theme color: thinkingOff"
+				},
+				"thinkingMinimal": {
+					"error": "Unknown theme color: thinkingMinimal"
+				},
+				"thinkingLow": {
+					"error": "Unknown theme color: thinkingLow"
+				},
+				"thinkingMedium": {
+					"error": "Unknown theme color: thinkingMedium"
+				},
+				"thinkingHigh": {
+					"error": "Unknown theme color: thinkingHigh"
+				},
+				"thinkingXhigh": "\u001b[38;2;208;208;208m",
+				"thinkingMax": "\u001b[38;2;208;208;208m",
+				"bashMode": {
+					"error": "Unknown theme color: bashMode"
+				}
+			},
+			"bg": {
+				"selectedBg": "\u001b[49m",
+				"searchMatchBg": "\u001b[49m",
+				"userMessageBg": "\u001b[48;2;32;32;32m",
+				"customMessageBg": "\u001b[48;2;48;48;48m",
+				"toolPendingBg": "\u001b[48;2;64;64;64m",
+				"toolSuccessBg": "\u001b[48;2;80;80;80m",
+				"toolErrorBg": "\u001b[48;2;96;96;96m"
+			},
+			"colorsHex": {
+				"accent": "#ff0000",
+				"borderAccent": "#488acb",
+				"borderMuted": "#005f87",
+				"success": "#69a074",
+				"error": "#00ff00",
+				"warning": "#0000ff",
+				"muted": "#808080",
+				"dim": "#a0a0a0",
+				"thinkingText": "#c0c0c0",
+				"userMessageText": "#ffffff",
+				"customMessageText": "#eeeeee",
+				"customMessageLabel": "#dddddd",
+				"toolTitle": "#f0f0f0",
+				"toolOutput": "#e0e0e0",
+				"thinkingXhigh": "#d0d0d0",
+				"scrollbarTrack": "#808080",
+				"thinkingMax": "#d0d0d0",
+				"userMessageBg": "#202020",
+				"customMessageBg": "#303030",
+				"toolPendingBg": "#404040",
+				"toolSuccessBg": "#505050",
+				"toolErrorBg": "#606060",
+				"border": "#202028",
+				"text": "#202028",
+				"scrollbarThumb": "#202028",
+				"searchMatchText": "#202028",
+				"selectedBg": "#e8e8e8",
+				"searchMatchBg": "#e8e8e8"
+			},
+			"stylers": {
+				"bold": "\u001b[1mx\u001b[22m",
+				"italic": "\u001b[3mx\u001b[23m",
+				"underline": "\u001b[4mx\u001b[24m",
+				"inverse": "\u001b[7mx\u001b[27m",
+				"strikethrough": "\u001b[9mx\u001b[29m"
+			},
+			"probes": {
+				"fg_accent": "\u001b[38;2;255;0;0mx\u001b[39m",
+				"bg_selectedBg": "\u001b[49mx\u001b[49m",
+				"style_fg_token": "\u001b[38;2;255;0;0mx\u001b[39m",
+				"style_fg_dim": "\u001b[38;2;160;160;160mx\u001b[39m",
+				"style_fg_bg_tokens": "\u001b[38;2;128;128;128m\u001b[48;2;64;64;64mx\u001b[49m\u001b[39m",
+				"style_attributes": "\u001b[39m\u001b[1m\u001b[4mx\u001b[24m\u001b[22m\u001b[39m",
+				"style_italic_dim": "\u001b[38;2;160;160;160m\u001b[3mx\u001b[23m\u001b[39m",
+				"unknown_fg": {
+					"error": "Unknown theme color: nope"
+				},
+				"unknown_bg": {
+					"error": "Unknown theme color: nope"
+				}
+			}
+		},
+		"defaults_probes": {
+			"border_fg": "\u001b[39mx\u001b[39m",
+			"text_fg": "\u001b[39mx\u001b[39m",
+			"selectedBg_as_fg": {
+				"error": "Unknown theme color: selectedBg"
+			},
+			"style_bg_token_as_fg": {
+				"error": "Unknown theme color: selectedBg"
+			},
+			"dim_getFgAnsi": "\u001b[38;2;160;160;160m",
+			"text_getFgAnsi": "\u001b[39m",
+			"style_raw_fg": "\u001b[38;2;255;136;0mx\u001b[39m",
+			"style_raw_fg_token_bg": "\u001b[38;2;0;255;0m\u001b[48;2;32;32;32mx\u001b[49m\u001b[39m",
+			"style_raw_both": "\u001b[38;2;0;255;0m\u001b[48;2;64;64;64mx\u001b[49m\u001b[39m"
+		},
+		"detected_dark": {
+			"appearance": "dark",
+			"fg_sample": "\u001b[38;2;255;255;255m",
+			"bg_sample": "\u001b[48;2;16;16;16m"
+		},
+		"detected_light": {
+			"appearance": "light",
+			"fg_sample": "\u001b[38;2;26;26;26m",
+			"bg_sample": "\u001b[48;2;224;224;224m"
+		},
+		"indexed_only": {
+			"appearance": "light",
+			"fg": {
+				"accent": "\u001b[38;5;4m",
+				"border": "\u001b[38;5;8m",
+				"borderAccent": "\u001b[38;5;12m",
+				"borderMuted": "\u001b[38;5;0m",
+				"success": "\u001b[38;5;2m",
+				"error": "\u001b[38;5;1m",
+				"warning": "\u001b[38;5;3m",
+				"muted": "\u001b[38;5;7m",
+				"dim": "\u001b[38;5;8m",
+				"text": "\u001b[38;5;7m",
+				"thinkingText": "\u001b[38;5;15m",
+				"scrollbarTrack": "\u001b[38;5;7m",
+				"scrollbarThumb": "\u001b[38;5;7m",
+				"searchMatchText": "\u001b[38;5;7m",
+				"userMessageText": "\u001b[38;5;15m",
+				"customMessageText": "\u001b[38;5;15m",
+				"customMessageLabel": "\u001b[38;5;15m",
+				"toolTitle": "\u001b[38;5;15m",
+				"toolOutput": "\u001b[38;5;7m",
+				"mdHeading": {
+					"error": "Unknown theme color: mdHeading"
+				},
+				"mdLink": {
+					"error": "Unknown theme color: mdLink"
+				},
+				"mdLinkUrl": {
+					"error": "Unknown theme color: mdLinkUrl"
+				},
+				"mdCode": {
+					"error": "Unknown theme color: mdCode"
+				},
+				"mdCodeBlock": {
+					"error": "Unknown theme color: mdCodeBlock"
+				},
+				"mdCodeBlockBorder": {
+					"error": "Unknown theme color: mdCodeBlockBorder"
+				},
+				"mdQuote": {
+					"error": "Unknown theme color: mdQuote"
+				},
+				"mdQuoteBorder": {
+					"error": "Unknown theme color: mdQuoteBorder"
+				},
+				"mdHr": {
+					"error": "Unknown theme color: mdHr"
+				},
+				"mdListBullet": {
+					"error": "Unknown theme color: mdListBullet"
+				},
+				"toolDiffAdded": {
+					"error": "Unknown theme color: toolDiffAdded"
+				},
+				"toolDiffRemoved": {
+					"error": "Unknown theme color: toolDiffRemoved"
+				},
+				"toolDiffContext": {
+					"error": "Unknown theme color: toolDiffContext"
+				},
+				"syntaxComment": {
+					"error": "Unknown theme color: syntaxComment"
+				},
+				"syntaxKeyword": {
+					"error": "Unknown theme color: syntaxKeyword"
+				},
+				"syntaxFunction": {
+					"error": "Unknown theme color: syntaxFunction"
+				},
+				"syntaxVariable": {
+					"error": "Unknown theme color: syntaxVariable"
+				},
+				"syntaxString": {
+					"error": "Unknown theme color: syntaxString"
+				},
+				"syntaxNumber": {
+					"error": "Unknown theme color: syntaxNumber"
+				},
+				"syntaxType": {
+					"error": "Unknown theme color: syntaxType"
+				},
+				"syntaxOperator": {
+					"error": "Unknown theme color: syntaxOperator"
+				},
+				"syntaxPunctuation": {
+					"error": "Unknown theme color: syntaxPunctuation"
+				},
+				"thinkingOff": {
+					"error": "Unknown theme color: thinkingOff"
+				},
+				"thinkingMinimal": {
+					"error": "Unknown theme color: thinkingMinimal"
+				},
+				"thinkingLow": {
+					"error": "Unknown theme color: thinkingLow"
+				},
+				"thinkingMedium": {
+					"error": "Unknown theme color: thinkingMedium"
+				},
+				"thinkingHigh": {
+					"error": "Unknown theme color: thinkingHigh"
+				},
+				"thinkingXhigh": "\u001b[38;5;15m",
+				"thinkingMax": "\u001b[38;5;15m",
+				"bashMode": {
+					"error": "Unknown theme color: bashMode"
+				}
+			},
+			"bg": {
+				"selectedBg": "\u001b[48;5;0m",
+				"searchMatchBg": "\u001b[48;5;0m",
+				"userMessageBg": "\u001b[48;5;0m",
+				"customMessageBg": "\u001b[48;5;0m",
+				"toolPendingBg": "\u001b[48;5;0m",
+				"toolSuccessBg": "\u001b[48;5;0m",
+				"toolErrorBg": "\u001b[48;5;0m"
+			},
+			"colorsHex": {
+				"accent": "#000080",
+				"border": "#808080",
+				"borderAccent": "#0000ff",
+				"borderMuted": "#000000",
+				"success": "#008000",
+				"error": "#800000",
+				"warning": "#808000",
+				"muted": "#c0c0c0",
+				"dim": "#808080",
+				"text": "#c0c0c0",
+				"thinkingText": "#ffffff",
+				"userMessageText": "#ffffff",
+				"customMessageText": "#ffffff",
+				"customMessageLabel": "#ffffff",
+				"toolTitle": "#ffffff",
+				"toolOutput": "#c0c0c0",
+				"thinkingXhigh": "#ffffff",
+				"scrollbarTrack": "#c0c0c0",
+				"scrollbarThumb": "#c0c0c0",
+				"thinkingMax": "#ffffff",
+				"searchMatchText": "#c0c0c0",
+				"selectedBg": "#000000",
+				"userMessageBg": "#000000",
+				"customMessageBg": "#000000",
+				"toolPendingBg": "#000000",
+				"toolSuccessBg": "#000000",
+				"toolErrorBg": "#000000",
+				"searchMatchBg": "#000000"
+			}
+		}
+	},
+	"defaults_reported_bg_only": {
+		"defaults": {
+			"name": "defaults-dummy",
+			"appearance": "dark",
+			"colorMode": "truecolor",
+			"fg": {
+				"accent": "\u001b[38;2;255;0;0m",
+				"border": "\u001b[39m",
+				"borderAccent": "\u001b[38;2;72;138;203m",
+				"borderMuted": "\u001b[38;5;24m",
+				"success": "\u001b[38;2;105;160;116m",
+				"error": "\u001b[38;2;0;255;0m",
+				"warning": "\u001b[38;2;0;0;255m",
+				"muted": "\u001b[38;2;128;128;128m",
+				"dim": "\u001b[38;2;160;160;160m",
+				"text": "\u001b[39m",
+				"thinkingText": "\u001b[38;2;192;192;192m",
+				"scrollbarTrack": "\u001b[38;2;128;128;128m",
+				"scrollbarThumb": "\u001b[39m",
+				"searchMatchText": "\u001b[39m",
+				"userMessageText": "\u001b[38;2;255;255;255m",
+				"customMessageText": "\u001b[38;2;238;238;238m",
+				"customMessageLabel": "\u001b[38;2;221;221;221m",
+				"toolTitle": "\u001b[38;2;240;240;240m",
+				"toolOutput": "\u001b[38;2;224;224;224m",
+				"mdHeading": {
+					"error": "Unknown theme color: mdHeading"
+				},
+				"mdLink": {
+					"error": "Unknown theme color: mdLink"
+				},
+				"mdLinkUrl": {
+					"error": "Unknown theme color: mdLinkUrl"
+				},
+				"mdCode": {
+					"error": "Unknown theme color: mdCode"
+				},
+				"mdCodeBlock": {
+					"error": "Unknown theme color: mdCodeBlock"
+				},
+				"mdCodeBlockBorder": {
+					"error": "Unknown theme color: mdCodeBlockBorder"
+				},
+				"mdQuote": {
+					"error": "Unknown theme color: mdQuote"
+				},
+				"mdQuoteBorder": {
+					"error": "Unknown theme color: mdQuoteBorder"
+				},
+				"mdHr": {
+					"error": "Unknown theme color: mdHr"
+				},
+				"mdListBullet": {
+					"error": "Unknown theme color: mdListBullet"
+				},
+				"toolDiffAdded": {
+					"error": "Unknown theme color: toolDiffAdded"
+				},
+				"toolDiffRemoved": {
+					"error": "Unknown theme color: toolDiffRemoved"
+				},
+				"toolDiffContext": {
+					"error": "Unknown theme color: toolDiffContext"
+				},
+				"syntaxComment": {
+					"error": "Unknown theme color: syntaxComment"
+				},
+				"syntaxKeyword": {
+					"error": "Unknown theme color: syntaxKeyword"
+				},
+				"syntaxFunction": {
+					"error": "Unknown theme color: syntaxFunction"
+				},
+				"syntaxVariable": {
+					"error": "Unknown theme color: syntaxVariable"
+				},
+				"syntaxString": {
+					"error": "Unknown theme color: syntaxString"
+				},
+				"syntaxNumber": {
+					"error": "Unknown theme color: syntaxNumber"
+				},
+				"syntaxType": {
+					"error": "Unknown theme color: syntaxType"
+				},
+				"syntaxOperator": {
+					"error": "Unknown theme color: syntaxOperator"
+				},
+				"syntaxPunctuation": {
+					"error": "Unknown theme color: syntaxPunctuation"
+				},
+				"thinkingOff": {
+					"error": "Unknown theme color: thinkingOff"
+				},
+				"thinkingMinimal": {
+					"error": "Unknown theme color: thinkingMinimal"
+				},
+				"thinkingLow": {
+					"error": "Unknown theme color: thinkingLow"
+				},
+				"thinkingMedium": {
+					"error": "Unknown theme color: thinkingMedium"
+				},
+				"thinkingHigh": {
+					"error": "Unknown theme color: thinkingHigh"
+				},
+				"thinkingXhigh": "\u001b[38;2;208;208;208m",
+				"thinkingMax": "\u001b[38;2;208;208;208m",
+				"bashMode": {
+					"error": "Unknown theme color: bashMode"
+				}
+			},
+			"bg": {
+				"selectedBg": "\u001b[49m",
+				"searchMatchBg": "\u001b[49m",
+				"userMessageBg": "\u001b[48;2;32;32;32m",
+				"customMessageBg": "\u001b[48;2;48;48;48m",
+				"toolPendingBg": "\u001b[48;2;64;64;64m",
+				"toolSuccessBg": "\u001b[48;2;80;80;80m",
+				"toolErrorBg": "\u001b[48;2;96;96;96m"
+			},
+			"colorsHex": {
+				"accent": "#ff0000",
+				"borderAccent": "#488acb",
+				"borderMuted": "#005f87",
+				"success": "#69a074",
+				"error": "#00ff00",
+				"warning": "#0000ff",
+				"muted": "#808080",
+				"dim": "#a0a0a0",
+				"thinkingText": "#c0c0c0",
+				"userMessageText": "#ffffff",
+				"customMessageText": "#eeeeee",
+				"customMessageLabel": "#dddddd",
+				"toolTitle": "#f0f0f0",
+				"toolOutput": "#e0e0e0",
+				"thinkingXhigh": "#d0d0d0",
+				"scrollbarTrack": "#808080",
+				"thinkingMax": "#d0d0d0",
+				"userMessageBg": "#202020",
+				"customMessageBg": "#303030",
+				"toolPendingBg": "#404040",
+				"toolSuccessBg": "#505050",
+				"toolErrorBg": "#606060",
+				"border": "#e5e5e7",
+				"text": "#e5e5e7",
+				"scrollbarThumb": "#e5e5e7",
+				"searchMatchText": "#e5e5e7",
+				"selectedBg": "#808080",
+				"searchMatchBg": "#808080"
+			},
+			"stylers": {
+				"bold": "\u001b[1mx\u001b[22m",
+				"italic": "\u001b[3mx\u001b[23m",
+				"underline": "\u001b[4mx\u001b[24m",
+				"inverse": "\u001b[7mx\u001b[27m",
+				"strikethrough": "\u001b[9mx\u001b[29m"
+			},
+			"probes": {
+				"fg_accent": "\u001b[38;2;255;0;0mx\u001b[39m",
+				"bg_selectedBg": "\u001b[49mx\u001b[49m",
+				"style_fg_token": "\u001b[38;2;255;0;0mx\u001b[39m",
+				"style_fg_dim": "\u001b[38;2;160;160;160mx\u001b[39m",
+				"style_fg_bg_tokens": "\u001b[38;2;128;128;128m\u001b[48;2;64;64;64mx\u001b[49m\u001b[39m",
+				"style_attributes": "\u001b[39m\u001b[1m\u001b[4mx\u001b[24m\u001b[22m\u001b[39m",
+				"style_italic_dim": "\u001b[38;2;160;160;160m\u001b[3mx\u001b[23m\u001b[39m",
+				"unknown_fg": {
+					"error": "Unknown theme color: nope"
+				},
+				"unknown_bg": {
+					"error": "Unknown theme color: nope"
+				}
+			}
+		},
+		"defaults_probes": {
+			"border_fg": "\u001b[39mx\u001b[39m",
+			"text_fg": "\u001b[39mx\u001b[39m",
+			"selectedBg_as_fg": {
+				"error": "Unknown theme color: selectedBg"
+			},
+			"style_bg_token_as_fg": {
+				"error": "Unknown theme color: selectedBg"
+			},
+			"dim_getFgAnsi": "\u001b[38;2;160;160;160m",
+			"text_getFgAnsi": "\u001b[39m",
+			"style_raw_fg": "\u001b[38;2;255;136;0mx\u001b[39m",
+			"style_raw_fg_token_bg": "\u001b[38;2;0;255;0m\u001b[48;2;32;32;32mx\u001b[49m\u001b[39m",
+			"style_raw_both": "\u001b[38;2;0;255;0m\u001b[48;2;64;64;64mx\u001b[49m\u001b[39m"
+		},
+		"detected_dark": {
+			"appearance": "dark",
+			"fg_sample": "\u001b[38;2;255;255;255m",
+			"bg_sample": "\u001b[48;2;16;16;16m"
+		},
+		"detected_light": {
+			"appearance": "light",
+			"fg_sample": "\u001b[38;2;26;26;26m",
+			"bg_sample": "\u001b[48;2;224;224;224m"
+		},
+		"indexed_only": {
+			"appearance": "light",
+			"fg": {
+				"accent": "\u001b[38;5;4m",
+				"border": "\u001b[38;5;8m",
+				"borderAccent": "\u001b[38;5;12m",
+				"borderMuted": "\u001b[38;5;0m",
+				"success": "\u001b[38;5;2m",
+				"error": "\u001b[38;5;1m",
+				"warning": "\u001b[38;5;3m",
+				"muted": "\u001b[38;5;7m",
+				"dim": "\u001b[38;5;8m",
+				"text": "\u001b[38;5;7m",
+				"thinkingText": "\u001b[38;5;15m",
+				"scrollbarTrack": "\u001b[38;5;7m",
+				"scrollbarThumb": "\u001b[38;5;7m",
+				"searchMatchText": "\u001b[38;5;7m",
+				"userMessageText": "\u001b[38;5;15m",
+				"customMessageText": "\u001b[38;5;15m",
+				"customMessageLabel": "\u001b[38;5;15m",
+				"toolTitle": "\u001b[38;5;15m",
+				"toolOutput": "\u001b[38;5;7m",
+				"mdHeading": {
+					"error": "Unknown theme color: mdHeading"
+				},
+				"mdLink": {
+					"error": "Unknown theme color: mdLink"
+				},
+				"mdLinkUrl": {
+					"error": "Unknown theme color: mdLinkUrl"
+				},
+				"mdCode": {
+					"error": "Unknown theme color: mdCode"
+				},
+				"mdCodeBlock": {
+					"error": "Unknown theme color: mdCodeBlock"
+				},
+				"mdCodeBlockBorder": {
+					"error": "Unknown theme color: mdCodeBlockBorder"
+				},
+				"mdQuote": {
+					"error": "Unknown theme color: mdQuote"
+				},
+				"mdQuoteBorder": {
+					"error": "Unknown theme color: mdQuoteBorder"
+				},
+				"mdHr": {
+					"error": "Unknown theme color: mdHr"
+				},
+				"mdListBullet": {
+					"error": "Unknown theme color: mdListBullet"
+				},
+				"toolDiffAdded": {
+					"error": "Unknown theme color: toolDiffAdded"
+				},
+				"toolDiffRemoved": {
+					"error": "Unknown theme color: toolDiffRemoved"
+				},
+				"toolDiffContext": {
+					"error": "Unknown theme color: toolDiffContext"
+				},
+				"syntaxComment": {
+					"error": "Unknown theme color: syntaxComment"
+				},
+				"syntaxKeyword": {
+					"error": "Unknown theme color: syntaxKeyword"
+				},
+				"syntaxFunction": {
+					"error": "Unknown theme color: syntaxFunction"
+				},
+				"syntaxVariable": {
+					"error": "Unknown theme color: syntaxVariable"
+				},
+				"syntaxString": {
+					"error": "Unknown theme color: syntaxString"
+				},
+				"syntaxNumber": {
+					"error": "Unknown theme color: syntaxNumber"
+				},
+				"syntaxType": {
+					"error": "Unknown theme color: syntaxType"
+				},
+				"syntaxOperator": {
+					"error": "Unknown theme color: syntaxOperator"
+				},
+				"syntaxPunctuation": {
+					"error": "Unknown theme color: syntaxPunctuation"
+				},
+				"thinkingOff": {
+					"error": "Unknown theme color: thinkingOff"
+				},
+				"thinkingMinimal": {
+					"error": "Unknown theme color: thinkingMinimal"
+				},
+				"thinkingLow": {
+					"error": "Unknown theme color: thinkingLow"
+				},
+				"thinkingMedium": {
+					"error": "Unknown theme color: thinkingMedium"
+				},
+				"thinkingHigh": {
+					"error": "Unknown theme color: thinkingHigh"
+				},
+				"thinkingXhigh": "\u001b[38;5;15m",
+				"thinkingMax": "\u001b[38;5;15m",
+				"bashMode": {
+					"error": "Unknown theme color: bashMode"
+				}
+			},
+			"bg": {
+				"selectedBg": "\u001b[48;5;0m",
+				"searchMatchBg": "\u001b[48;5;0m",
+				"userMessageBg": "\u001b[48;5;0m",
+				"customMessageBg": "\u001b[48;5;0m",
+				"toolPendingBg": "\u001b[48;5;0m",
+				"toolSuccessBg": "\u001b[48;5;0m",
+				"toolErrorBg": "\u001b[48;5;0m"
+			},
+			"colorsHex": {
+				"accent": "#000080",
+				"border": "#808080",
+				"borderAccent": "#0000ff",
+				"borderMuted": "#000000",
+				"success": "#008000",
+				"error": "#800000",
+				"warning": "#808000",
+				"muted": "#c0c0c0",
+				"dim": "#808080",
+				"text": "#c0c0c0",
+				"thinkingText": "#ffffff",
+				"userMessageText": "#ffffff",
+				"customMessageText": "#ffffff",
+				"customMessageLabel": "#ffffff",
+				"toolTitle": "#ffffff",
+				"toolOutput": "#c0c0c0",
+				"thinkingXhigh": "#ffffff",
+				"scrollbarTrack": "#c0c0c0",
+				"scrollbarThumb": "#c0c0c0",
+				"thinkingMax": "#ffffff",
+				"searchMatchText": "#c0c0c0",
+				"selectedBg": "#000000",
+				"userMessageBg": "#000000",
+				"customMessageBg": "#000000",
+				"toolPendingBg": "#000000",
+				"toolSuccessBg": "#000000",
+				"toolErrorBg": "#000000",
+				"searchMatchBg": "#000000"
+			}
+		}
+	},
+	"cache_identity": {
+		"identitySame": true,
+		"identityAfterReset": false
+	},
+	"system_truecolor": {
+		"pending_empty": {
+			"name": "system",
+			"appearance": "dark",
+			"colorMode": "truecolor",
+			"fg": {
+				"accent": "\u001b[39m",
+				"border": "\u001b[39m",
+				"borderAccent": "\u001b[39m",
+				"borderMuted": "\u001b[39m\u001b[2m",
+				"success": "\u001b[39m",
+				"error": "\u001b[39m",
+				"warning": "\u001b[39m",
+				"muted": "\u001b[39m\u001b[2m",
+				"dim": "\u001b[39m\u001b[2m",
+				"text": "\u001b[39m",
+				"thinkingText": "\u001b[39m\u001b[2m",
+				"scrollbarTrack": "\u001b[39m\u001b[2m",
+				"scrollbarThumb": "\u001b[39m\u001b[2m",
+				"searchMatchText": "\u001b[39m\u001b[2m",
+				"userMessageText": "\u001b[39m",
+				"customMessageText": "\u001b[39m\u001b[2m",
+				"customMessageLabel": "\u001b[39m",
+				"toolTitle": "\u001b[39m",
+				"toolOutput": "\u001b[39m\u001b[2m",
+				"mdHeading": "\u001b[39m",
+				"mdLink": "\u001b[39m",
+				"mdLinkUrl": "\u001b[39m\u001b[2m",
+				"mdCode": "\u001b[39m",
+				"mdCodeBlock": "\u001b[39m",
+				"mdCodeBlockBorder": "\u001b[39m\u001b[2m",
+				"mdQuote": "\u001b[39m\u001b[2m",
+				"mdQuoteBorder": "\u001b[39m\u001b[2m",
+				"mdHr": "\u001b[39m\u001b[2m",
+				"mdListBullet": "\u001b[39m",
+				"toolDiffAdded": "\u001b[39m",
+				"toolDiffRemoved": "\u001b[39m",
+				"toolDiffContext": "\u001b[39m\u001b[2m",
+				"syntaxComment": "\u001b[39m\u001b[2m",
+				"syntaxKeyword": "\u001b[39m",
+				"syntaxFunction": "\u001b[39m",
+				"syntaxVariable": "\u001b[39m",
+				"syntaxString": "\u001b[39m",
+				"syntaxNumber": "\u001b[39m",
+				"syntaxType": "\u001b[39m",
+				"syntaxOperator": "\u001b[39m\u001b[2m",
+				"syntaxPunctuation": "\u001b[39m\u001b[2m",
+				"thinkingOff": "\u001b[39m\u001b[2m",
+				"thinkingMinimal": "\u001b[39m",
+				"thinkingLow": "\u001b[39m",
+				"thinkingMedium": "\u001b[39m",
+				"thinkingHigh": "\u001b[39m",
+				"thinkingXhigh": "\u001b[39m",
+				"thinkingMax": "\u001b[39m",
+				"bashMode": "\u001b[39m"
+			},
+			"bg": {
+				"selectedBg": "\u001b[49m",
+				"searchMatchBg": "\u001b[49m",
+				"userMessageBg": "\u001b[49m",
+				"customMessageBg": "\u001b[49m",
+				"toolPendingBg": "\u001b[49m",
+				"toolSuccessBg": "\u001b[49m",
+				"toolErrorBg": "\u001b[49m"
+			},
+			"colorsHex": {
+				"text": "#e5e5e7",
+				"userMessageText": "#e5e5e7",
+				"customMessageText": "#727273",
+				"toolTitle": "#e5e5e7",
+				"syntaxOperator": "#727273",
+				"syntaxPunctuation": "#727273",
+				"muted": "#727273",
+				"dim": "#727273",
+				"thinkingText": "#727273",
+				"toolOutput": "#727273",
+				"mdLinkUrl": "#727273",
+				"mdQuote": "#727273",
+				"mdQuoteBorder": "#727273",
+				"mdHr": "#727273",
+				"mdCodeBlockBorder": "#727273",
+				"toolDiffContext": "#727273",
+				"syntaxComment": "#727273",
+				"scrollbarTrack": "#727273",
+				"scrollbarThumb": "#727273",
+				"searchMatchText": "#727273",
+				"borderMuted": "#727273",
+				"accent": "#e5e5e7",
+				"borderAccent": "#e5e5e7",
+				"customMessageLabel": "#e5e5e7",
+				"mdCode": "#e5e5e7",
+				"mdListBullet": "#e5e5e7",
+				"syntaxType": "#e5e5e7",
+				"border": "#e5e5e7",
+				"mdLink": "#e5e5e7",
+				"syntaxKeyword": "#e5e5e7",
+				"syntaxVariable": "#e5e5e7",
+				"success": "#e5e5e7",
+				"mdCodeBlock": "#e5e5e7",
+				"toolDiffAdded": "#e5e5e7",
+				"bashMode": "#e5e5e7",
+				"syntaxNumber": "#e5e5e7",
+				"error": "#e5e5e7",
+				"toolDiffRemoved": "#e5e5e7",
+				"warning": "#e5e5e7",
+				"mdHeading": "#e5e5e7",
+				"syntaxFunction": "#e5e5e7",
+				"syntaxString": "#e5e5e7",
+				"thinkingOff": "#727273",
+				"thinkingMinimal": "#e5e5e7",
+				"thinkingLow": "#e5e5e7",
+				"thinkingMedium": "#e5e5e7",
+				"thinkingHigh": "#e5e5e7",
+				"thinkingXhigh": "#e5e5e7",
+				"thinkingMax": "#e5e5e7",
+				"selectedBg": "#000000",
+				"searchMatchBg": "#000000",
+				"userMessageBg": "#000000",
+				"customMessageBg": "#000000",
+				"toolPendingBg": "#000000",
+				"toolSuccessBg": "#000000",
+				"toolErrorBg": "#000000"
+			},
+			"stylers": {
+				"bold": "\u001b[1mx\u001b[22m",
+				"italic": "\u001b[3mx\u001b[23m",
+				"underline": "\u001b[4mx\u001b[24m",
+				"inverse": "\u001b[7mx\u001b[27m",
+				"strikethrough": "\u001b[9mx\u001b[29m"
+			},
+			"probes": {
+				"fg_accent": "\u001b[39mx\u001b[39m",
+				"bg_selectedBg": "\u001b[49mx\u001b[49m",
+				"style_fg_token": "\u001b[39mx\u001b[39m",
+				"style_fg_dim": "\u001b[39m\u001b[2mx\u001b[22m\u001b[39m",
+				"style_fg_bg_tokens": "\u001b[39m\u001b[49m\u001b[2mx\u001b[22m\u001b[49m\u001b[39m",
+				"style_attributes": "\u001b[39m\u001b[1m\u001b[4mx\u001b[24m\u001b[22m\u001b[39m",
+				"style_italic_dim": "\u001b[39m\u001b[2m\u001b[3mx\u001b[23m\u001b[22m\u001b[39m",
+				"unknown_fg": {
+					"error": "Unknown theme color: nope"
+				},
+				"unknown_bg": {
+					"error": "Unknown theme color: nope"
+				}
+			}
+		},
+		"pending_scheme_light": {
+			"name": "system",
+			"appearance": "light",
+			"colorMode": "truecolor",
+			"fg": {
+				"accent": "\u001b[38;5;5m",
+				"border": "\u001b[38;5;4m",
+				"borderAccent": "\u001b[38;5;5m",
+				"borderMuted": "\u001b[39m\u001b[2m",
+				"success": "\u001b[38;5;2m",
+				"error": "\u001b[38;5;1m",
+				"warning": "\u001b[38;5;3m",
+				"muted": "\u001b[39m\u001b[2m",
+				"dim": "\u001b[39m\u001b[2m",
+				"text": "\u001b[39m",
+				"thinkingText": "\u001b[39m\u001b[2m",
+				"scrollbarTrack": "\u001b[39m\u001b[2m",
+				"scrollbarThumb": "\u001b[39m\u001b[2m",
+				"searchMatchText": "\u001b[39m\u001b[2m",
+				"userMessageText": "\u001b[39m",
+				"customMessageText": "\u001b[39m\u001b[2m",
+				"customMessageLabel": "\u001b[38;5;5m",
+				"toolTitle": "\u001b[39m",
+				"toolOutput": "\u001b[39m\u001b[2m",
+				"mdHeading": "\u001b[38;5;3m",
+				"mdLink": "\u001b[38;5;4m",
+				"mdLinkUrl": "\u001b[39m\u001b[2m",
+				"mdCode": "\u001b[38;5;5m",
+				"mdCodeBlock": "\u001b[38;5;2m",
+				"mdCodeBlockBorder": "\u001b[39m\u001b[2m",
+				"mdQuote": "\u001b[39m\u001b[2m",
+				"mdQuoteBorder": "\u001b[39m\u001b[2m",
+				"mdHr": "\u001b[39m\u001b[2m",
+				"mdListBullet": "\u001b[38;5;5m",
+				"toolDiffAdded": "\u001b[38;5;2m",
+				"toolDiffRemoved": "\u001b[38;5;1m",
+				"toolDiffContext": "\u001b[39m\u001b[2m",
+				"syntaxComment": "\u001b[39m\u001b[2m",
+				"syntaxKeyword": "\u001b[38;5;4m",
+				"syntaxFunction": "\u001b[38;5;3m",
+				"syntaxVariable": "\u001b[38;5;6m",
+				"syntaxString": "\u001b[38;5;2m",
+				"syntaxNumber": "\u001b[38;5;5m",
+				"syntaxType": "\u001b[38;5;5m",
+				"syntaxOperator": "\u001b[39m\u001b[2m",
+				"syntaxPunctuation": "\u001b[39m\u001b[2m",
+				"thinkingOff": "\u001b[39m\u001b[2m",
+				"thinkingMinimal": "\u001b[38;5;4m",
+				"thinkingLow": "\u001b[38;5;4m",
+				"thinkingMedium": "\u001b[38;5;6m",
+				"thinkingHigh": "\u001b[38;5;5m",
+				"thinkingXhigh": "\u001b[38;5;13m",
+				"thinkingMax": "\u001b[38;5;1m",
+				"bashMode": "\u001b[38;5;2m"
+			},
+			"bg": {
+				"selectedBg": "\u001b[49m",
+				"searchMatchBg": "\u001b[49m",
+				"userMessageBg": "\u001b[49m",
+				"customMessageBg": "\u001b[49m",
+				"toolPendingBg": "\u001b[49m",
+				"toolSuccessBg": "\u001b[49m",
+				"toolErrorBg": "\u001b[49m"
+			},
+			"colorsHex": {
+				"accent": "#800080",
+				"borderAccent": "#800080",
+				"customMessageLabel": "#800080",
+				"mdCode": "#800080",
+				"mdListBullet": "#800080",
+				"syntaxType": "#800080",
+				"border": "#000080",
+				"mdLink": "#000080",
+				"syntaxKeyword": "#000080",
+				"syntaxVariable": "#008080",
+				"success": "#008000",
+				"mdCodeBlock": "#008000",
+				"toolDiffAdded": "#008000",
+				"bashMode": "#008000",
+				"syntaxNumber": "#800080",
+				"error": "#800000",
+				"toolDiffRemoved": "#800000",
+				"warning": "#808000",
+				"mdHeading": "#808000",
+				"syntaxFunction": "#808000",
+				"syntaxString": "#008000",
+				"thinkingMinimal": "#000080",
+				"thinkingLow": "#000080",
+				"thinkingMedium": "#008080",
+				"thinkingHigh": "#800080",
+				"thinkingXhigh": "#ff00ff",
+				"thinkingMax": "#800000",
+				"text": "#000000",
+				"userMessageText": "#000000",
+				"customMessageText": "#484848",
+				"toolTitle": "#000000",
+				"syntaxOperator": "#484848",
+				"syntaxPunctuation": "#484848",
+				"muted": "#484848",
+				"dim": "#484848",
+				"thinkingText": "#484848",
+				"toolOutput": "#484848",
+				"mdLinkUrl": "#484848",
+				"mdQuote": "#484848",
+				"mdQuoteBorder": "#484848",
+				"mdHr": "#484848",
+				"mdCodeBlockBorder": "#484848",
+				"toolDiffContext": "#484848",
+				"syntaxComment": "#484848",
+				"scrollbarTrack": "#484848",
+				"scrollbarThumb": "#484848",
+				"searchMatchText": "#484848",
+				"borderMuted": "#484848",
+				"thinkingOff": "#484848",
+				"selectedBg": "#ffffff",
+				"searchMatchBg": "#ffffff",
+				"userMessageBg": "#ffffff",
+				"customMessageBg": "#ffffff",
+				"toolPendingBg": "#ffffff",
+				"toolSuccessBg": "#ffffff",
+				"toolErrorBg": "#ffffff"
+			},
+			"stylers": {
+				"bold": "\u001b[1mx\u001b[22m",
+				"italic": "\u001b[3mx\u001b[23m",
+				"underline": "\u001b[4mx\u001b[24m",
+				"inverse": "\u001b[7mx\u001b[27m",
+				"strikethrough": "\u001b[9mx\u001b[29m"
+			},
+			"probes": {
+				"fg_accent": "\u001b[38;5;5mx\u001b[39m",
+				"bg_selectedBg": "\u001b[49mx\u001b[49m",
+				"style_fg_token": "\u001b[38;5;5mx\u001b[39m",
+				"style_fg_dim": "\u001b[39m\u001b[2mx\u001b[22m\u001b[39m",
+				"style_fg_bg_tokens": "\u001b[39m\u001b[49m\u001b[2mx\u001b[22m\u001b[49m\u001b[39m",
+				"style_attributes": "\u001b[39m\u001b[1m\u001b[4mx\u001b[24m\u001b[22m\u001b[39m",
+				"style_italic_dim": "\u001b[39m\u001b[2m\u001b[3mx\u001b[23m\u001b[22m\u001b[39m",
+				"unknown_fg": {
+					"error": "Unknown theme color: nope"
+				},
+				"unknown_bg": {
+					"error": "Unknown theme color: nope"
+				}
+			}
+		},
+		"full_dark": {
+			"name": "system",
+			"appearance": "dark",
+			"colorMode": "truecolor",
+			"fg": {
+				"accent": "\u001b[38;2;228;101;225m",
+				"border": "\u001b[38;2;99;148;255m",
+				"borderAccent": "\u001b[38;2;228;78;226m",
+				"borderMuted": "\u001b[38;2;123;123;123m",
+				"success": "\u001b[38;2;0;194;0m",
+				"error": "\u001b[38;2;239;119;103m",
+				"warning": "\u001b[38;2;167;167;0m",
+				"muted": "\u001b[38;2;160;160;160m",
+				"dim": "\u001b[38;2;130;130;130m",
+				"text": "\u001b[39m",
+				"thinkingText": "\u001b[38;2;153;153;153m",
+				"scrollbarTrack": "\u001b[38;2;73;73;73m",
+				"scrollbarThumb": "\u001b[38;2;154;154;154m",
+				"searchMatchText": "\u001b[38;2;160;160;160m",
+				"userMessageText": "\u001b[39m",
+				"customMessageText": "\u001b[38;2;160;160;160m",
+				"customMessageLabel": "\u001b[38;2;228;101;225m",
+				"toolTitle": "\u001b[39m",
+				"toolOutput": "\u001b[38;2;160;160;160m",
+				"mdHeading": "\u001b[38;2;167;167;0m",
+				"mdLink": "\u001b[38;2;110;156;255m",
+				"mdLinkUrl": "\u001b[38;2;160;160;160m",
+				"mdCode": "\u001b[38;2;228;101;225m",
+				"mdCodeBlock": "\u001b[38;2;0;194;0m",
+				"mdCodeBlockBorder": "\u001b[38;2;160;160;160m",
+				"mdQuote": "\u001b[38;2;160;160;160m",
+				"mdQuoteBorder": "\u001b[38;2;160;160;160m",
+				"mdHr": "\u001b[38;2;160;160;160m",
+				"mdListBullet": "\u001b[38;2;228;101;225m",
+				"toolDiffAdded": "\u001b[38;2;0;194;0m",
+				"toolDiffRemoved": "\u001b[38;2;239;119;103m",
+				"toolDiffContext": "\u001b[38;2;160;160;160m",
+				"syntaxComment": "\u001b[38;2;160;160;160m",
+				"syntaxKeyword": "\u001b[38;2;111;156;255m",
+				"syntaxFunction": "\u001b[38;2;167;167;0m",
+				"syntaxVariable": "\u001b[38;2;0;183;183m",
+				"syntaxString": "\u001b[38;2;0;194;0m",
+				"syntaxNumber": "\u001b[38;2;223;107;220m",
+				"syntaxType": "\u001b[38;2;228;101;225m",
+				"syntaxOperator": "\u001b[38;2;160;160;160m",
+				"syntaxPunctuation": "\u001b[38;2;160;160;160m",
+				"thinkingOff": "\u001b[38;2;112;112;112m",
+				"thinkingMinimal": "\u001b[38;2;41;100;255m",
+				"thinkingLow": "\u001b[38;2;52;110;255m",
+				"thinkingMedium": "\u001b[38;2;0;150;150m",
+				"thinkingHigh": "\u001b[38;2;220;19;219m",
+				"thinkingXhigh": "\u001b[38;2;231;0;231m",
+				"thinkingMax": "\u001b[38;2;254;77;61m",
+				"bashMode": "\u001b[38;2;0;186;0m"
+			},
+			"bg": {
+				"selectedBg": "\u001b[48;2;27;47;93m",
+				"searchMatchBg": "\u001b[48;2;53;53;0m",
+				"userMessageBg": "\u001b[48;2;27;47;93m",
+				"customMessageBg": "\u001b[48;2;75;28;74m",
+				"toolPendingBg": "\u001b[48;2;50;50;50m",
+				"toolSuccessBg": "\u001b[48;2;30;58;28m",
+				"toolErrorBg": "\u001b[48;2;77;37;31m"
+			},
+			"colorsHex": {
+				"customMessageText": "#a0a0a0",
+				"syntaxOperator": "#a0a0a0",
+				"syntaxPunctuation": "#a0a0a0",
+				"muted": "#a0a0a0",
+				"dim": "#828282",
+				"thinkingText": "#999999",
+				"toolOutput": "#a0a0a0",
+				"mdLinkUrl": "#a0a0a0",
+				"mdQuote": "#a0a0a0",
+				"mdQuoteBorder": "#a0a0a0",
+				"mdHr": "#a0a0a0",
+				"mdCodeBlockBorder": "#a0a0a0",
+				"toolDiffContext": "#a0a0a0",
+				"syntaxComment": "#a0a0a0",
+				"scrollbarTrack": "#494949",
+				"scrollbarThumb": "#9a9a9a",
+				"searchMatchText": "#a0a0a0",
+				"borderMuted": "#7b7b7b",
+				"accent": "#e465e1",
+				"borderAccent": "#e44ee2",
+				"customMessageLabel": "#e465e1",
+				"mdCode": "#e465e1",
+				"mdListBullet": "#e465e1",
+				"syntaxType": "#e465e1",
+				"border": "#6394ff",
+				"mdLink": "#6e9cff",
+				"syntaxKeyword": "#6f9cff",
+				"syntaxVariable": "#00b7b7",
+				"success": "#00c200",
+				"mdCodeBlock": "#00c200",
+				"toolDiffAdded": "#00c200",
+				"bashMode": "#00ba00",
+				"syntaxNumber": "#df6bdc",
+				"error": "#ef7767",
+				"toolDiffRemoved": "#ef7767",
+				"warning": "#a7a700",
+				"mdHeading": "#a7a700",
+				"syntaxFunction": "#a7a700",
+				"syntaxString": "#00c200",
+				"thinkingOff": "#707070",
+				"thinkingMinimal": "#2964ff",
+				"thinkingLow": "#346eff",
+				"thinkingMedium": "#009696",
+				"thinkingHigh": "#dc13db",
+				"thinkingXhigh": "#e700e7",
+				"thinkingMax": "#fe4d3d",
+				"selectedBg": "#1b2f5d",
+				"searchMatchBg": "#353500",
+				"userMessageBg": "#1b2f5d",
+				"customMessageBg": "#4b1c4a",
+				"toolPendingBg": "#323232",
+				"toolSuccessBg": "#1e3a1c",
+				"toolErrorBg": "#4d251f",
+				"text": "#c4c4d4",
+				"userMessageText": "#c4c4d4",
+				"toolTitle": "#c4c4d4"
+			},
+			"stylers": {
+				"bold": "\u001b[1mx\u001b[22m",
+				"italic": "\u001b[3mx\u001b[23m",
+				"underline": "\u001b[4mx\u001b[24m",
+				"inverse": "\u001b[7mx\u001b[27m",
+				"strikethrough": "\u001b[9mx\u001b[29m"
+			},
+			"probes": {
+				"fg_accent": "\u001b[38;2;228;101;225mx\u001b[39m",
+				"bg_selectedBg": "\u001b[48;2;27;47;93mx\u001b[49m",
+				"style_fg_token": "\u001b[38;2;228;101;225mx\u001b[39m",
+				"style_fg_dim": "\u001b[38;2;130;130;130mx\u001b[39m",
+				"style_fg_bg_tokens": "\u001b[38;2;160;160;160m\u001b[48;2;50;50;50mx\u001b[49m\u001b[39m",
+				"style_attributes": "\u001b[39m\u001b[1m\u001b[4mx\u001b[24m\u001b[22m\u001b[39m",
+				"style_italic_dim": "\u001b[38;2;130;130;130m\u001b[3mx\u001b[23m\u001b[39m",
+				"unknown_fg": {
+					"error": "Unknown theme color: nope"
+				},
+				"unknown_bg": {
+					"error": "Unknown theme color: nope"
+				}
+			}
+		},
+		"full_light": {
+			"name": "system",
+			"appearance": "light",
+			"colorMode": "truecolor",
+			"fg": {
+				"accent": "\u001b[38;2;146;10;146m",
+				"border": "\u001b[38;2;33;93;255m",
+				"borderAccent": "\u001b[38;2;185;0;185m",
+				"borderMuted": "\u001b[38;2;145;145;145m",
+				"success": "\u001b[38;2;0;110;0m",
+				"error": "\u001b[38;2;161;37;28m",
+				"warning": "\u001b[38;2;94;94;0m",
+				"muted": "\u001b[38;2;90;90;90m",
+				"dim": "\u001b[38;2;124;124;124m",
+				"text": "\u001b[39m",
+				"thinkingText": "\u001b[38;2;114;114;114m",
+				"scrollbarTrack": "\u001b[38;2;211;211;211m",
+				"scrollbarThumb": "\u001b[38;2;142;142;142m",
+				"searchMatchText": "\u001b[38;2;90;90;90m",
+				"userMessageText": "\u001b[39m",
+				"customMessageText": "\u001b[38;2;90;90;90m",
+				"customMessageLabel": "\u001b[38;2;146;10;146m",
+				"toolTitle": "\u001b[39m",
+				"toolOutput": "\u001b[38;2;90;90;90m",
+				"mdHeading": "\u001b[38;2;94;94;0m",
+				"mdLink": "\u001b[38;2;0;34;255m",
+				"mdLinkUrl": "\u001b[38;2;90;90;90m",
+				"mdCode": "\u001b[38;2;147;10;147m",
+				"mdCodeBlock": "\u001b[38;2;0;110;0m",
+				"mdCodeBlockBorder": "\u001b[38;2;90;90;90m",
+				"mdQuote": "\u001b[38;2;90;90;90m",
+				"mdQuoteBorder": "\u001b[38;2;90;90;90m",
+				"mdHr": "\u001b[38;2;90;90;90m",
+				"mdListBullet": "\u001b[38;2;147;10;147m",
+				"toolDiffAdded": "\u001b[38;2;0;110;0m",
+				"toolDiffRemoved": "\u001b[38;2;161;37;28m",
+				"toolDiffContext": "\u001b[38;2;90;90;90m",
+				"syntaxComment": "\u001b[38;2;90;90;90m",
+				"syntaxKeyword": "\u001b[38;2;0;33;255m",
+				"syntaxFunction": "\u001b[38;2;94;94;0m",
+				"syntaxVariable": "\u001b[38;2;0;104;104m",
+				"syntaxString": "\u001b[38;2;0;110;0m",
+				"syntaxNumber": "\u001b[38;2;146;14;146m",
+				"syntaxType": "\u001b[38;2;146;10;146m",
+				"syntaxOperator": "\u001b[38;2;90;90;90m",
+				"syntaxPunctuation": "\u001b[38;2;90;90;90m",
+				"thinkingOff": "\u001b[38;2;183;183;183m",
+				"thinkingMinimal": "\u001b[38;2;142;177;248m",
+				"thinkingLow": "\u001b[38;2;132;171;251m",
+				"thinkingMedium": "\u001b[38;2;0;190;190m",
+				"thinkingHigh": "\u001b[38;2;233;95;231m",
+				"thinkingXhigh": "\u001b[38;2;249;0;249m",
+				"thinkingMax": "\u001b[38;2;254;78;61m",
+				"bashMode": "\u001b[38;2;0;139;0m"
+			},
+			"bg": {
+				"selectedBg": "\u001b[48;2;204;215;237m",
+				"searchMatchBg": "\u001b[48;2;220;222;124m",
+				"userMessageBg": "\u001b[48;2;204;215;237m",
+				"customMessageBg": "\u001b[48;2;232;205;230m",
+				"toolPendingBg": "\u001b[48;2;215;215;215m",
+				"toolSuccessBg": "\u001b[48;2;191;227;187m",
+				"toolErrorBg": "\u001b[48;2;233;208;204m"
+			},
+			"colorsHex": {
+				"customMessageText": "#5a5a5a",
+				"syntaxOperator": "#5a5a5a",
+				"syntaxPunctuation": "#5a5a5a",
+				"muted": "#5a5a5a",
+				"dim": "#7c7c7c",
+				"thinkingText": "#727272",
+				"toolOutput": "#5a5a5a",
+				"mdLinkUrl": "#5a5a5a",
+				"mdQuote": "#5a5a5a",
+				"mdQuoteBorder": "#5a5a5a",
+				"mdHr": "#5a5a5a",
+				"mdCodeBlockBorder": "#5a5a5a",
+				"toolDiffContext": "#5a5a5a",
+				"syntaxComment": "#5a5a5a",
+				"scrollbarTrack": "#d3d3d3",
+				"scrollbarThumb": "#8e8e8e",
+				"searchMatchText": "#5a5a5a",
+				"borderMuted": "#919191",
+				"accent": "#920a92",
+				"borderAccent": "#b900b9",
+				"customMessageLabel": "#920a92",
+				"mdCode": "#930a93",
+				"mdListBullet": "#930a93",
+				"syntaxType": "#920a92",
+				"border": "#215dff",
+				"mdLink": "#0022ff",
+				"syntaxKeyword": "#0021ff",
+				"syntaxVariable": "#006868",
+				"success": "#006e00",
+				"mdCodeBlock": "#006e00",
+				"toolDiffAdded": "#006e00",
+				"bashMode": "#008b00",
+				"syntaxNumber": "#920e92",
+				"error": "#a1251c",
+				"toolDiffRemoved": "#a1251c",
+				"warning": "#5e5e00",
+				"mdHeading": "#5e5e00",
+				"syntaxFunction": "#5e5e00",
+				"syntaxString": "#006e00",
+				"thinkingOff": "#b7b7b7",
+				"thinkingMinimal": "#8eb1f8",
+				"thinkingLow": "#84abfb",
+				"thinkingMedium": "#00bebe",
+				"thinkingHigh": "#e95fe7",
+				"thinkingXhigh": "#f900f9",
+				"thinkingMax": "#fe4e3d",
+				"selectedBg": "#ccd7ed",
+				"searchMatchBg": "#dcde7c",
+				"userMessageBg": "#ccd7ed",
+				"customMessageBg": "#e8cde6",
+				"toolPendingBg": "#d7d7d7",
+				"toolSuccessBg": "#bfe3bb",
+				"toolErrorBg": "#e9d0cc",
+				"text": "#202028",
+				"userMessageText": "#202028",
+				"toolTitle": "#202028"
+			},
+			"stylers": {
+				"bold": "\u001b[1mx\u001b[22m",
+				"italic": "\u001b[3mx\u001b[23m",
+				"underline": "\u001b[4mx\u001b[24m",
+				"inverse": "\u001b[7mx\u001b[27m",
+				"strikethrough": "\u001b[9mx\u001b[29m"
+			},
+			"probes": {
+				"fg_accent": "\u001b[38;2;146;10;146mx\u001b[39m",
+				"bg_selectedBg": "\u001b[48;2;204;215;237mx\u001b[49m",
+				"style_fg_token": "\u001b[38;2;146;10;146mx\u001b[39m",
+				"style_fg_dim": "\u001b[38;2;124;124;124mx\u001b[39m",
+				"style_fg_bg_tokens": "\u001b[38;2;90;90;90m\u001b[48;2;215;215;215mx\u001b[49m\u001b[39m",
+				"style_attributes": "\u001b[39m\u001b[1m\u001b[4mx\u001b[24m\u001b[22m\u001b[39m",
+				"style_italic_dim": "\u001b[38;2;124;124;124m\u001b[3mx\u001b[23m\u001b[39m",
+				"unknown_fg": {
+					"error": "Unknown theme color: nope"
+				},
+				"unknown_bg": {
+					"error": "Unknown theme color: nope"
+				}
+			}
+		},
+		"palette_only": {
+			"name": "system",
+			"appearance": "dark",
+			"colorMode": "truecolor",
+			"fg": {
+				"accent": "\u001b[38;5;5m",
+				"border": "\u001b[38;5;4m",
+				"borderAccent": "\u001b[38;5;5m",
+				"borderMuted": "\u001b[39m\u001b[2m",
+				"success": "\u001b[38;5;2m",
+				"error": "\u001b[38;5;1m",
+				"warning": "\u001b[38;5;3m",
+				"muted": "\u001b[39m\u001b[2m",
+				"dim": "\u001b[39m\u001b[2m",
+				"text": "\u001b[39m",
+				"thinkingText": "\u001b[39m\u001b[2m",
+				"scrollbarTrack": "\u001b[39m\u001b[2m",
+				"scrollbarThumb": "\u001b[39m\u001b[2m",
+				"searchMatchText": "\u001b[39m\u001b[2m",
+				"userMessageText": "\u001b[39m",
+				"customMessageText": "\u001b[39m\u001b[2m",
+				"customMessageLabel": "\u001b[38;5;5m",
+				"toolTitle": "\u001b[39m",
+				"toolOutput": "\u001b[39m\u001b[2m",
+				"mdHeading": "\u001b[38;5;3m",
+				"mdLink": "\u001b[38;5;4m",
+				"mdLinkUrl": "\u001b[39m\u001b[2m",
+				"mdCode": "\u001b[38;5;5m",
+				"mdCodeBlock": "\u001b[38;5;2m",
+				"mdCodeBlockBorder": "\u001b[39m\u001b[2m",
+				"mdQuote": "\u001b[39m\u001b[2m",
+				"mdQuoteBorder": "\u001b[39m\u001b[2m",
+				"mdHr": "\u001b[39m\u001b[2m",
+				"mdListBullet": "\u001b[38;5;5m",
+				"toolDiffAdded": "\u001b[38;5;2m",
+				"toolDiffRemoved": "\u001b[38;5;1m",
+				"toolDiffContext": "\u001b[39m\u001b[2m",
+				"syntaxComment": "\u001b[39m\u001b[2m",
+				"syntaxKeyword": "\u001b[38;5;4m",
+				"syntaxFunction": "\u001b[38;5;3m",
+				"syntaxVariable": "\u001b[38;5;6m",
+				"syntaxString": "\u001b[38;5;2m",
+				"syntaxNumber": "\u001b[38;5;5m",
+				"syntaxType": "\u001b[38;5;5m",
+				"syntaxOperator": "\u001b[39m\u001b[2m",
+				"syntaxPunctuation": "\u001b[39m\u001b[2m",
+				"thinkingOff": "\u001b[39m\u001b[2m",
+				"thinkingMinimal": "\u001b[38;5;4m",
+				"thinkingLow": "\u001b[38;5;4m",
+				"thinkingMedium": "\u001b[38;5;6m",
+				"thinkingHigh": "\u001b[38;5;5m",
+				"thinkingXhigh": "\u001b[38;5;13m",
+				"thinkingMax": "\u001b[38;5;1m",
+				"bashMode": "\u001b[38;5;2m"
+			},
+			"bg": {
+				"selectedBg": "\u001b[49m",
+				"searchMatchBg": "\u001b[49m",
+				"userMessageBg": "\u001b[49m",
+				"customMessageBg": "\u001b[49m",
+				"toolPendingBg": "\u001b[49m",
+				"toolSuccessBg": "\u001b[49m",
+				"toolErrorBg": "\u001b[49m"
+			},
+			"colorsHex": {
+				"accent": "#800080",
+				"borderAccent": "#800080",
+				"customMessageLabel": "#800080",
+				"mdCode": "#800080",
+				"mdListBullet": "#800080",
+				"syntaxType": "#800080",
+				"border": "#000080",
+				"mdLink": "#000080",
+				"syntaxKeyword": "#000080",
+				"syntaxVariable": "#008080",
+				"success": "#008000",
+				"mdCodeBlock": "#008000",
+				"toolDiffAdded": "#008000",
+				"bashMode": "#008000",
+				"syntaxNumber": "#800080",
+				"error": "#800000",
+				"toolDiffRemoved": "#800000",
+				"warning": "#808000",
+				"mdHeading": "#808000",
+				"syntaxFunction": "#808000",
+				"syntaxString": "#008000",
+				"thinkingMinimal": "#000080",
+				"thinkingLow": "#000080",
+				"thinkingMedium": "#008080",
+				"thinkingHigh": "#800080",
+				"thinkingXhigh": "#ff00ff",
+				"thinkingMax": "#800000",
+				"text": "#e5e5e7",
+				"userMessageText": "#e5e5e7",
+				"customMessageText": "#727273",
+				"toolTitle": "#e5e5e7",
+				"syntaxOperator": "#727273",
+				"syntaxPunctuation": "#727273",
+				"muted": "#727273",
+				"dim": "#727273",
+				"thinkingText": "#727273",
+				"toolOutput": "#727273",
+				"mdLinkUrl": "#727273",
+				"mdQuote": "#727273",
+				"mdQuoteBorder": "#727273",
+				"mdHr": "#727273",
+				"mdCodeBlockBorder": "#727273",
+				"toolDiffContext": "#727273",
+				"syntaxComment": "#727273",
+				"scrollbarTrack": "#727273",
+				"scrollbarThumb": "#727273",
+				"searchMatchText": "#727273",
+				"borderMuted": "#727273",
+				"thinkingOff": "#727273",
+				"selectedBg": "#000000",
+				"searchMatchBg": "#000000",
+				"userMessageBg": "#000000",
+				"customMessageBg": "#000000",
+				"toolPendingBg": "#000000",
+				"toolSuccessBg": "#000000",
+				"toolErrorBg": "#000000"
+			},
+			"stylers": {
+				"bold": "\u001b[1mx\u001b[22m",
+				"italic": "\u001b[3mx\u001b[23m",
+				"underline": "\u001b[4mx\u001b[24m",
+				"inverse": "\u001b[7mx\u001b[27m",
+				"strikethrough": "\u001b[9mx\u001b[29m"
+			},
+			"probes": {
+				"fg_accent": "\u001b[38;5;5mx\u001b[39m",
+				"bg_selectedBg": "\u001b[49mx\u001b[49m",
+				"style_fg_token": "\u001b[38;5;5mx\u001b[39m",
+				"style_fg_dim": "\u001b[39m\u001b[2mx\u001b[22m\u001b[39m",
+				"style_fg_bg_tokens": "\u001b[39m\u001b[49m\u001b[2mx\u001b[22m\u001b[49m\u001b[39m",
+				"style_attributes": "\u001b[39m\u001b[1m\u001b[4mx\u001b[24m\u001b[22m\u001b[39m",
+				"style_italic_dim": "\u001b[39m\u001b[2m\u001b[3mx\u001b[23m\u001b[22m\u001b[39m",
+				"unknown_fg": {
+					"error": "Unknown theme color: nope"
+				},
+				"unknown_bg": {
+					"error": "Unknown theme color: nope"
+				}
+			}
+		}
+	},
+	"system_256color": {
+		"pending_empty": {
+			"name": "system",
+			"appearance": "dark",
+			"colorMode": "256color",
+			"fg": {
+				"accent": "\u001b[39m",
+				"border": "\u001b[39m",
+				"borderAccent": "\u001b[39m",
+				"borderMuted": "\u001b[39m\u001b[2m",
+				"success": "\u001b[39m",
+				"error": "\u001b[39m",
+				"warning": "\u001b[39m",
+				"muted": "\u001b[39m\u001b[2m",
+				"dim": "\u001b[39m\u001b[2m",
+				"text": "\u001b[39m",
+				"thinkingText": "\u001b[39m\u001b[2m",
+				"scrollbarTrack": "\u001b[39m\u001b[2m",
+				"scrollbarThumb": "\u001b[39m\u001b[2m",
+				"searchMatchText": "\u001b[39m\u001b[2m",
+				"userMessageText": "\u001b[39m",
+				"customMessageText": "\u001b[39m\u001b[2m",
+				"customMessageLabel": "\u001b[39m",
+				"toolTitle": "\u001b[39m",
+				"toolOutput": "\u001b[39m\u001b[2m",
+				"mdHeading": "\u001b[39m",
+				"mdLink": "\u001b[39m",
+				"mdLinkUrl": "\u001b[39m\u001b[2m",
+				"mdCode": "\u001b[39m",
+				"mdCodeBlock": "\u001b[39m",
+				"mdCodeBlockBorder": "\u001b[39m\u001b[2m",
+				"mdQuote": "\u001b[39m\u001b[2m",
+				"mdQuoteBorder": "\u001b[39m\u001b[2m",
+				"mdHr": "\u001b[39m\u001b[2m",
+				"mdListBullet": "\u001b[39m",
+				"toolDiffAdded": "\u001b[39m",
+				"toolDiffRemoved": "\u001b[39m",
+				"toolDiffContext": "\u001b[39m\u001b[2m",
+				"syntaxComment": "\u001b[39m\u001b[2m",
+				"syntaxKeyword": "\u001b[39m",
+				"syntaxFunction": "\u001b[39m",
+				"syntaxVariable": "\u001b[39m",
+				"syntaxString": "\u001b[39m",
+				"syntaxNumber": "\u001b[39m",
+				"syntaxType": "\u001b[39m",
+				"syntaxOperator": "\u001b[39m\u001b[2m",
+				"syntaxPunctuation": "\u001b[39m\u001b[2m",
+				"thinkingOff": "\u001b[39m\u001b[2m",
+				"thinkingMinimal": "\u001b[39m",
+				"thinkingLow": "\u001b[39m",
+				"thinkingMedium": "\u001b[39m",
+				"thinkingHigh": "\u001b[39m",
+				"thinkingXhigh": "\u001b[39m",
+				"thinkingMax": "\u001b[39m",
+				"bashMode": "\u001b[39m"
+			},
+			"bg": {
+				"selectedBg": "\u001b[49m",
+				"searchMatchBg": "\u001b[49m",
+				"userMessageBg": "\u001b[49m",
+				"customMessageBg": "\u001b[49m",
+				"toolPendingBg": "\u001b[49m",
+				"toolSuccessBg": "\u001b[49m",
+				"toolErrorBg": "\u001b[49m"
+			},
+			"colorsHex": {
+				"text": "#e5e5e7",
+				"userMessageText": "#e5e5e7",
+				"customMessageText": "#727273",
+				"toolTitle": "#e5e5e7",
+				"syntaxOperator": "#727273",
+				"syntaxPunctuation": "#727273",
+				"muted": "#727273",
+				"dim": "#727273",
+				"thinkingText": "#727273",
+				"toolOutput": "#727273",
+				"mdLinkUrl": "#727273",
+				"mdQuote": "#727273",
+				"mdQuoteBorder": "#727273",
+				"mdHr": "#727273",
+				"mdCodeBlockBorder": "#727273",
+				"toolDiffContext": "#727273",
+				"syntaxComment": "#727273",
+				"scrollbarTrack": "#727273",
+				"scrollbarThumb": "#727273",
+				"searchMatchText": "#727273",
+				"borderMuted": "#727273",
+				"accent": "#e5e5e7",
+				"borderAccent": "#e5e5e7",
+				"customMessageLabel": "#e5e5e7",
+				"mdCode": "#e5e5e7",
+				"mdListBullet": "#e5e5e7",
+				"syntaxType": "#e5e5e7",
+				"border": "#e5e5e7",
+				"mdLink": "#e5e5e7",
+				"syntaxKeyword": "#e5e5e7",
+				"syntaxVariable": "#e5e5e7",
+				"success": "#e5e5e7",
+				"mdCodeBlock": "#e5e5e7",
+				"toolDiffAdded": "#e5e5e7",
+				"bashMode": "#e5e5e7",
+				"syntaxNumber": "#e5e5e7",
+				"error": "#e5e5e7",
+				"toolDiffRemoved": "#e5e5e7",
+				"warning": "#e5e5e7",
+				"mdHeading": "#e5e5e7",
+				"syntaxFunction": "#e5e5e7",
+				"syntaxString": "#e5e5e7",
+				"thinkingOff": "#727273",
+				"thinkingMinimal": "#e5e5e7",
+				"thinkingLow": "#e5e5e7",
+				"thinkingMedium": "#e5e5e7",
+				"thinkingHigh": "#e5e5e7",
+				"thinkingXhigh": "#e5e5e7",
+				"thinkingMax": "#e5e5e7",
+				"selectedBg": "#000000",
+				"searchMatchBg": "#000000",
+				"userMessageBg": "#000000",
+				"customMessageBg": "#000000",
+				"toolPendingBg": "#000000",
+				"toolSuccessBg": "#000000",
+				"toolErrorBg": "#000000"
+			},
+			"stylers": {
+				"bold": "\u001b[1mx\u001b[22m",
+				"italic": "\u001b[3mx\u001b[23m",
+				"underline": "\u001b[4mx\u001b[24m",
+				"inverse": "\u001b[7mx\u001b[27m",
+				"strikethrough": "\u001b[9mx\u001b[29m"
+			},
+			"probes": {
+				"fg_accent": "\u001b[39mx\u001b[39m",
+				"bg_selectedBg": "\u001b[49mx\u001b[49m",
+				"style_fg_token": "\u001b[39mx\u001b[39m",
+				"style_fg_dim": "\u001b[39m\u001b[2mx\u001b[22m\u001b[39m",
+				"style_fg_bg_tokens": "\u001b[39m\u001b[49m\u001b[2mx\u001b[22m\u001b[49m\u001b[39m",
+				"style_attributes": "\u001b[39m\u001b[1m\u001b[4mx\u001b[24m\u001b[22m\u001b[39m",
+				"style_italic_dim": "\u001b[39m\u001b[2m\u001b[3mx\u001b[23m\u001b[22m\u001b[39m",
+				"unknown_fg": {
+					"error": "Unknown theme color: nope"
+				},
+				"unknown_bg": {
+					"error": "Unknown theme color: nope"
+				}
+			}
+		},
+		"pending_scheme_light": {
+			"name": "system",
+			"appearance": "light",
+			"colorMode": "256color",
+			"fg": {
+				"accent": "\u001b[38;5;5m",
+				"border": "\u001b[38;5;4m",
+				"borderAccent": "\u001b[38;5;5m",
+				"borderMuted": "\u001b[39m\u001b[2m",
+				"success": "\u001b[38;5;2m",
+				"error": "\u001b[38;5;1m",
+				"warning": "\u001b[38;5;3m",
+				"muted": "\u001b[39m\u001b[2m",
+				"dim": "\u001b[39m\u001b[2m",
+				"text": "\u001b[39m",
+				"thinkingText": "\u001b[39m\u001b[2m",
+				"scrollbarTrack": "\u001b[39m\u001b[2m",
+				"scrollbarThumb": "\u001b[39m\u001b[2m",
+				"searchMatchText": "\u001b[39m\u001b[2m",
+				"userMessageText": "\u001b[39m",
+				"customMessageText": "\u001b[39m\u001b[2m",
+				"customMessageLabel": "\u001b[38;5;5m",
+				"toolTitle": "\u001b[39m",
+				"toolOutput": "\u001b[39m\u001b[2m",
+				"mdHeading": "\u001b[38;5;3m",
+				"mdLink": "\u001b[38;5;4m",
+				"mdLinkUrl": "\u001b[39m\u001b[2m",
+				"mdCode": "\u001b[38;5;5m",
+				"mdCodeBlock": "\u001b[38;5;2m",
+				"mdCodeBlockBorder": "\u001b[39m\u001b[2m",
+				"mdQuote": "\u001b[39m\u001b[2m",
+				"mdQuoteBorder": "\u001b[39m\u001b[2m",
+				"mdHr": "\u001b[39m\u001b[2m",
+				"mdListBullet": "\u001b[38;5;5m",
+				"toolDiffAdded": "\u001b[38;5;2m",
+				"toolDiffRemoved": "\u001b[38;5;1m",
+				"toolDiffContext": "\u001b[39m\u001b[2m",
+				"syntaxComment": "\u001b[39m\u001b[2m",
+				"syntaxKeyword": "\u001b[38;5;4m",
+				"syntaxFunction": "\u001b[38;5;3m",
+				"syntaxVariable": "\u001b[38;5;6m",
+				"syntaxString": "\u001b[38;5;2m",
+				"syntaxNumber": "\u001b[38;5;5m",
+				"syntaxType": "\u001b[38;5;5m",
+				"syntaxOperator": "\u001b[39m\u001b[2m",
+				"syntaxPunctuation": "\u001b[39m\u001b[2m",
+				"thinkingOff": "\u001b[39m\u001b[2m",
+				"thinkingMinimal": "\u001b[38;5;4m",
+				"thinkingLow": "\u001b[38;5;4m",
+				"thinkingMedium": "\u001b[38;5;6m",
+				"thinkingHigh": "\u001b[38;5;5m",
+				"thinkingXhigh": "\u001b[38;5;13m",
+				"thinkingMax": "\u001b[38;5;1m",
+				"bashMode": "\u001b[38;5;2m"
+			},
+			"bg": {
+				"selectedBg": "\u001b[49m",
+				"searchMatchBg": "\u001b[49m",
+				"userMessageBg": "\u001b[49m",
+				"customMessageBg": "\u001b[49m",
+				"toolPendingBg": "\u001b[49m",
+				"toolSuccessBg": "\u001b[49m",
+				"toolErrorBg": "\u001b[49m"
+			},
+			"colorsHex": {
+				"accent": "#800080",
+				"borderAccent": "#800080",
+				"customMessageLabel": "#800080",
+				"mdCode": "#800080",
+				"mdListBullet": "#800080",
+				"syntaxType": "#800080",
+				"border": "#000080",
+				"mdLink": "#000080",
+				"syntaxKeyword": "#000080",
+				"syntaxVariable": "#008080",
+				"success": "#008000",
+				"mdCodeBlock": "#008000",
+				"toolDiffAdded": "#008000",
+				"bashMode": "#008000",
+				"syntaxNumber": "#800080",
+				"error": "#800000",
+				"toolDiffRemoved": "#800000",
+				"warning": "#808000",
+				"mdHeading": "#808000",
+				"syntaxFunction": "#808000",
+				"syntaxString": "#008000",
+				"thinkingMinimal": "#000080",
+				"thinkingLow": "#000080",
+				"thinkingMedium": "#008080",
+				"thinkingHigh": "#800080",
+				"thinkingXhigh": "#ff00ff",
+				"thinkingMax": "#800000",
+				"text": "#000000",
+				"userMessageText": "#000000",
+				"customMessageText": "#484848",
+				"toolTitle": "#000000",
+				"syntaxOperator": "#484848",
+				"syntaxPunctuation": "#484848",
+				"muted": "#484848",
+				"dim": "#484848",
+				"thinkingText": "#484848",
+				"toolOutput": "#484848",
+				"mdLinkUrl": "#484848",
+				"mdQuote": "#484848",
+				"mdQuoteBorder": "#484848",
+				"mdHr": "#484848",
+				"mdCodeBlockBorder": "#484848",
+				"toolDiffContext": "#484848",
+				"syntaxComment": "#484848",
+				"scrollbarTrack": "#484848",
+				"scrollbarThumb": "#484848",
+				"searchMatchText": "#484848",
+				"borderMuted": "#484848",
+				"thinkingOff": "#484848",
+				"selectedBg": "#ffffff",
+				"searchMatchBg": "#ffffff",
+				"userMessageBg": "#ffffff",
+				"customMessageBg": "#ffffff",
+				"toolPendingBg": "#ffffff",
+				"toolSuccessBg": "#ffffff",
+				"toolErrorBg": "#ffffff"
+			},
+			"stylers": {
+				"bold": "\u001b[1mx\u001b[22m",
+				"italic": "\u001b[3mx\u001b[23m",
+				"underline": "\u001b[4mx\u001b[24m",
+				"inverse": "\u001b[7mx\u001b[27m",
+				"strikethrough": "\u001b[9mx\u001b[29m"
+			},
+			"probes": {
+				"fg_accent": "\u001b[38;5;5mx\u001b[39m",
+				"bg_selectedBg": "\u001b[49mx\u001b[49m",
+				"style_fg_token": "\u001b[38;5;5mx\u001b[39m",
+				"style_fg_dim": "\u001b[39m\u001b[2mx\u001b[22m\u001b[39m",
+				"style_fg_bg_tokens": "\u001b[39m\u001b[49m\u001b[2mx\u001b[22m\u001b[49m\u001b[39m",
+				"style_attributes": "\u001b[39m\u001b[1m\u001b[4mx\u001b[24m\u001b[22m\u001b[39m",
+				"style_italic_dim": "\u001b[39m\u001b[2m\u001b[3mx\u001b[23m\u001b[22m\u001b[39m",
+				"unknown_fg": {
+					"error": "Unknown theme color: nope"
+				},
+				"unknown_bg": {
+					"error": "Unknown theme color: nope"
+				}
+			}
+		},
+		"full_dark": {
+			"name": "system",
+			"appearance": "dark",
+			"colorMode": "256color",
+			"fg": {
+				"accent": "\u001b[38;5;170m",
+				"border": "\u001b[38;5;69m",
+				"borderAccent": "\u001b[38;5;170m",
+				"borderMuted": "\u001b[38;5;243m",
+				"success": "\u001b[38;5;34m",
+				"error": "\u001b[38;5;209m",
+				"warning": "\u001b[38;5;142m",
+				"muted": "\u001b[38;5;247m",
+				"dim": "\u001b[38;5;244m",
+				"text": "\u001b[39m",
+				"thinkingText": "\u001b[38;5;246m",
+				"scrollbarTrack": "\u001b[38;5;238m",
+				"scrollbarThumb": "\u001b[38;5;247m",
+				"searchMatchText": "\u001b[38;5;247m",
+				"userMessageText": "\u001b[39m",
+				"customMessageText": "\u001b[38;5;247m",
+				"customMessageLabel": "\u001b[38;5;170m",
+				"toolTitle": "\u001b[39m",
+				"toolOutput": "\u001b[38;5;247m",
+				"mdHeading": "\u001b[38;5;142m",
+				"mdLink": "\u001b[38;5;75m",
+				"mdLinkUrl": "\u001b[38;5;247m",
+				"mdCode": "\u001b[38;5;170m",
+				"mdCodeBlock": "\u001b[38;5;34m",
+				"mdCodeBlockBorder": "\u001b[38;5;247m",
+				"mdQuote": "\u001b[38;5;247m",
+				"mdQuoteBorder": "\u001b[38;5;247m",
+				"mdHr": "\u001b[38;5;247m",
+				"mdListBullet": "\u001b[38;5;170m",
+				"toolDiffAdded": "\u001b[38;5;34m",
+				"toolDiffRemoved": "\u001b[38;5;209m",
+				"toolDiffContext": "\u001b[38;5;247m",
+				"syntaxComment": "\u001b[38;5;247m",
+				"syntaxKeyword": "\u001b[38;5;75m",
+				"syntaxFunction": "\u001b[38;5;142m",
+				"syntaxVariable": "\u001b[38;5;37m",
+				"syntaxString": "\u001b[38;5;34m",
+				"syntaxNumber": "\u001b[38;5;170m",
+				"syntaxType": "\u001b[38;5;170m",
+				"syntaxOperator": "\u001b[38;5;247m",
+				"syntaxPunctuation": "\u001b[38;5;247m",
+				"thinkingOff": "\u001b[38;5;242m",
+				"thinkingMinimal": "\u001b[38;5;27m",
+				"thinkingLow": "\u001b[38;5;63m",
+				"thinkingMedium": "\u001b[38;5;30m",
+				"thinkingHigh": "\u001b[38;5;164m",
+				"thinkingXhigh": "\u001b[38;5;164m",
+				"thinkingMax": "\u001b[38;5;203m",
+				"bashMode": "\u001b[38;5;34m"
+			},
+			"bg": {
+				"selectedBg": "\u001b[48;5;17m",
+				"searchMatchBg": "\u001b[48;5;58m",
+				"userMessageBg": "\u001b[48;5;17m",
+				"customMessageBg": "\u001b[48;5;53m",
+				"toolPendingBg": "\u001b[48;5;236m",
+				"toolSuccessBg": "\u001b[48;5;22m",
+				"toolErrorBg": "\u001b[48;5;52m"
+			},
+			"colorsHex": {
+				"customMessageText": "#a0a0a0",
+				"syntaxOperator": "#a0a0a0",
+				"syntaxPunctuation": "#a0a0a0",
+				"muted": "#a0a0a0",
+				"dim": "#828282",
+				"thinkingText": "#999999",
+				"toolOutput": "#a0a0a0",
+				"mdLinkUrl": "#a0a0a0",
+				"mdQuote": "#a0a0a0",
+				"mdQuoteBorder": "#a0a0a0",
+				"mdHr": "#a0a0a0",
+				"mdCodeBlockBorder": "#a0a0a0",
+				"toolDiffContext": "#a0a0a0",
+				"syntaxComment": "#a0a0a0",
+				"scrollbarTrack": "#494949",
+				"scrollbarThumb": "#9a9a9a",
+				"searchMatchText": "#a0a0a0",
+				"borderMuted": "#7b7b7b",
+				"accent": "#e465e1",
+				"borderAccent": "#e44ee2",
+				"customMessageLabel": "#e465e1",
+				"mdCode": "#e465e1",
+				"mdListBullet": "#e465e1",
+				"syntaxType": "#e465e1",
+				"border": "#6394ff",
+				"mdLink": "#6e9cff",
+				"syntaxKeyword": "#6f9cff",
+				"syntaxVariable": "#00b7b7",
+				"success": "#00c200",
+				"mdCodeBlock": "#00c200",
+				"toolDiffAdded": "#00c200",
+				"bashMode": "#00ba00",
+				"syntaxNumber": "#df6bdc",
+				"error": "#ef7767",
+				"toolDiffRemoved": "#ef7767",
+				"warning": "#a7a700",
+				"mdHeading": "#a7a700",
+				"syntaxFunction": "#a7a700",
+				"syntaxString": "#00c200",
+				"thinkingOff": "#707070",
+				"thinkingMinimal": "#2964ff",
+				"thinkingLow": "#346eff",
+				"thinkingMedium": "#009696",
+				"thinkingHigh": "#dc13db",
+				"thinkingXhigh": "#e700e7",
+				"thinkingMax": "#fe4d3d",
+				"selectedBg": "#1b2f5d",
+				"searchMatchBg": "#353500",
+				"userMessageBg": "#1b2f5d",
+				"customMessageBg": "#4b1c4a",
+				"toolPendingBg": "#323232",
+				"toolSuccessBg": "#1e3a1c",
+				"toolErrorBg": "#4d251f",
+				"text": "#c4c4d4",
+				"userMessageText": "#c4c4d4",
+				"toolTitle": "#c4c4d4"
+			},
+			"stylers": {
+				"bold": "\u001b[1mx\u001b[22m",
+				"italic": "\u001b[3mx\u001b[23m",
+				"underline": "\u001b[4mx\u001b[24m",
+				"inverse": "\u001b[7mx\u001b[27m",
+				"strikethrough": "\u001b[9mx\u001b[29m"
+			},
+			"probes": {
+				"fg_accent": "\u001b[38;5;170mx\u001b[39m",
+				"bg_selectedBg": "\u001b[48;5;17mx\u001b[49m",
+				"style_fg_token": "\u001b[38;5;170mx\u001b[39m",
+				"style_fg_dim": "\u001b[38;5;244mx\u001b[39m",
+				"style_fg_bg_tokens": "\u001b[38;5;247m\u001b[48;5;236mx\u001b[49m\u001b[39m",
+				"style_attributes": "\u001b[39m\u001b[1m\u001b[4mx\u001b[24m\u001b[22m\u001b[39m",
+				"style_italic_dim": "\u001b[38;5;244m\u001b[3mx\u001b[23m\u001b[39m",
+				"unknown_fg": {
+					"error": "Unknown theme color: nope"
+				},
+				"unknown_bg": {
+					"error": "Unknown theme color: nope"
+				}
+			}
+		},
+		"full_light": {
+			"name": "system",
+			"appearance": "light",
+			"colorMode": "256color",
+			"fg": {
+				"accent": "\u001b[38;5;90m",
+				"border": "\u001b[38;5;27m",
+				"borderAccent": "\u001b[38;5;127m",
+				"borderMuted": "\u001b[38;5;246m",
+				"success": "\u001b[38;5;22m",
+				"error": "\u001b[38;5;124m",
+				"warning": "\u001b[38;5;58m",
+				"muted": "\u001b[38;5;240m",
+				"dim": "\u001b[38;5;244m",
+				"text": "\u001b[39m",
+				"thinkingText": "\u001b[38;5;243m",
+				"scrollbarTrack": "\u001b[38;5;252m",
+				"scrollbarThumb": "\u001b[38;5;245m",
+				"searchMatchText": "\u001b[38;5;240m",
+				"userMessageText": "\u001b[39m",
+				"customMessageText": "\u001b[38;5;240m",
+				"customMessageLabel": "\u001b[38;5;90m",
+				"toolTitle": "\u001b[39m",
+				"toolOutput": "\u001b[38;5;240m",
+				"mdHeading": "\u001b[38;5;58m",
+				"mdLink": "\u001b[38;5;21m",
+				"mdLinkUrl": "\u001b[38;5;240m",
+				"mdCode": "\u001b[38;5;90m",
+				"mdCodeBlock": "\u001b[38;5;22m",
+				"mdCodeBlockBorder": "\u001b[38;5;240m",
+				"mdQuote": "\u001b[38;5;240m",
+				"mdQuoteBorder": "\u001b[38;5;240m",
+				"mdHr": "\u001b[38;5;240m",
+				"mdListBullet": "\u001b[38;5;90m",
+				"toolDiffAdded": "\u001b[38;5;22m",
+				"toolDiffRemoved": "\u001b[38;5;124m",
+				"toolDiffContext": "\u001b[38;5;240m",
+				"syntaxComment": "\u001b[38;5;240m",
+				"syntaxKeyword": "\u001b[38;5;21m",
+				"syntaxFunction": "\u001b[38;5;58m",
+				"syntaxVariable": "\u001b[38;5;23m",
+				"syntaxString": "\u001b[38;5;22m",
+				"syntaxNumber": "\u001b[38;5;90m",
+				"syntaxType": "\u001b[38;5;90m",
+				"syntaxOperator": "\u001b[38;5;240m",
+				"syntaxPunctuation": "\u001b[38;5;240m",
+				"thinkingOff": "\u001b[38;5;249m",
+				"thinkingMinimal": "\u001b[38;5;111m",
+				"thinkingLow": "\u001b[38;5;111m",
+				"thinkingMedium": "\u001b[38;5;37m",
+				"thinkingHigh": "\u001b[38;5;170m",
+				"thinkingXhigh": "\u001b[38;5;201m",
+				"thinkingMax": "\u001b[38;5;203m",
+				"bashMode": "\u001b[38;5;28m"
+			},
+			"bg": {
+				"selectedBg": "\u001b[48;5;189m",
+				"searchMatchBg": "\u001b[48;5;186m",
+				"userMessageBg": "\u001b[48;5;189m",
+				"customMessageBg": "\u001b[48;5;188m",
+				"toolPendingBg": "\u001b[48;5;188m",
+				"toolSuccessBg": "\u001b[48;5;151m",
+				"toolErrorBg": "\u001b[48;5;188m"
+			},
+			"colorsHex": {
+				"customMessageText": "#5a5a5a",
+				"syntaxOperator": "#5a5a5a",
+				"syntaxPunctuation": "#5a5a5a",
+				"muted": "#5a5a5a",
+				"dim": "#7c7c7c",
+				"thinkingText": "#727272",
+				"toolOutput": "#5a5a5a",
+				"mdLinkUrl": "#5a5a5a",
+				"mdQuote": "#5a5a5a",
+				"mdQuoteBorder": "#5a5a5a",
+				"mdHr": "#5a5a5a",
+				"mdCodeBlockBorder": "#5a5a5a",
+				"toolDiffContext": "#5a5a5a",
+				"syntaxComment": "#5a5a5a",
+				"scrollbarTrack": "#d3d3d3",
+				"scrollbarThumb": "#8e8e8e",
+				"searchMatchText": "#5a5a5a",
+				"borderMuted": "#919191",
+				"accent": "#920a92",
+				"borderAccent": "#b900b9",
+				"customMessageLabel": "#920a92",
+				"mdCode": "#930a93",
+				"mdListBullet": "#930a93",
+				"syntaxType": "#920a92",
+				"border": "#215dff",
+				"mdLink": "#0022ff",
+				"syntaxKeyword": "#0021ff",
+				"syntaxVariable": "#006868",
+				"success": "#006e00",
+				"mdCodeBlock": "#006e00",
+				"toolDiffAdded": "#006e00",
+				"bashMode": "#008b00",
+				"syntaxNumber": "#920e92",
+				"error": "#a1251c",
+				"toolDiffRemoved": "#a1251c",
+				"warning": "#5e5e00",
+				"mdHeading": "#5e5e00",
+				"syntaxFunction": "#5e5e00",
+				"syntaxString": "#006e00",
+				"thinkingOff": "#b7b7b7",
+				"thinkingMinimal": "#8eb1f8",
+				"thinkingLow": "#84abfb",
+				"thinkingMedium": "#00bebe",
+				"thinkingHigh": "#e95fe7",
+				"thinkingXhigh": "#f900f9",
+				"thinkingMax": "#fe4e3d",
+				"selectedBg": "#ccd7ed",
+				"searchMatchBg": "#dcde7c",
+				"userMessageBg": "#ccd7ed",
+				"customMessageBg": "#e8cde6",
+				"toolPendingBg": "#d7d7d7",
+				"toolSuccessBg": "#bfe3bb",
+				"toolErrorBg": "#e9d0cc",
+				"text": "#202028",
+				"userMessageText": "#202028",
+				"toolTitle": "#202028"
+			},
+			"stylers": {
+				"bold": "\u001b[1mx\u001b[22m",
+				"italic": "\u001b[3mx\u001b[23m",
+				"underline": "\u001b[4mx\u001b[24m",
+				"inverse": "\u001b[7mx\u001b[27m",
+				"strikethrough": "\u001b[9mx\u001b[29m"
+			},
+			"probes": {
+				"fg_accent": "\u001b[38;5;90mx\u001b[39m",
+				"bg_selectedBg": "\u001b[48;5;189mx\u001b[49m",
+				"style_fg_token": "\u001b[38;5;90mx\u001b[39m",
+				"style_fg_dim": "\u001b[38;5;244mx\u001b[39m",
+				"style_fg_bg_tokens": "\u001b[38;5;240m\u001b[48;5;188mx\u001b[49m\u001b[39m",
+				"style_attributes": "\u001b[39m\u001b[1m\u001b[4mx\u001b[24m\u001b[22m\u001b[39m",
+				"style_italic_dim": "\u001b[38;5;244m\u001b[3mx\u001b[23m\u001b[39m",
+				"unknown_fg": {
+					"error": "Unknown theme color: nope"
+				},
+				"unknown_bg": {
+					"error": "Unknown theme color: nope"
+				}
+			}
+		},
+		"palette_only": {
+			"name": "system",
+			"appearance": "dark",
+			"colorMode": "256color",
+			"fg": {
+				"accent": "\u001b[38;5;5m",
+				"border": "\u001b[38;5;4m",
+				"borderAccent": "\u001b[38;5;5m",
+				"borderMuted": "\u001b[39m\u001b[2m",
+				"success": "\u001b[38;5;2m",
+				"error": "\u001b[38;5;1m",
+				"warning": "\u001b[38;5;3m",
+				"muted": "\u001b[39m\u001b[2m",
+				"dim": "\u001b[39m\u001b[2m",
+				"text": "\u001b[39m",
+				"thinkingText": "\u001b[39m\u001b[2m",
+				"scrollbarTrack": "\u001b[39m\u001b[2m",
+				"scrollbarThumb": "\u001b[39m\u001b[2m",
+				"searchMatchText": "\u001b[39m\u001b[2m",
+				"userMessageText": "\u001b[39m",
+				"customMessageText": "\u001b[39m\u001b[2m",
+				"customMessageLabel": "\u001b[38;5;5m",
+				"toolTitle": "\u001b[39m",
+				"toolOutput": "\u001b[39m\u001b[2m",
+				"mdHeading": "\u001b[38;5;3m",
+				"mdLink": "\u001b[38;5;4m",
+				"mdLinkUrl": "\u001b[39m\u001b[2m",
+				"mdCode": "\u001b[38;5;5m",
+				"mdCodeBlock": "\u001b[38;5;2m",
+				"mdCodeBlockBorder": "\u001b[39m\u001b[2m",
+				"mdQuote": "\u001b[39m\u001b[2m",
+				"mdQuoteBorder": "\u001b[39m\u001b[2m",
+				"mdHr": "\u001b[39m\u001b[2m",
+				"mdListBullet": "\u001b[38;5;5m",
+				"toolDiffAdded": "\u001b[38;5;2m",
+				"toolDiffRemoved": "\u001b[38;5;1m",
+				"toolDiffContext": "\u001b[39m\u001b[2m",
+				"syntaxComment": "\u001b[39m\u001b[2m",
+				"syntaxKeyword": "\u001b[38;5;4m",
+				"syntaxFunction": "\u001b[38;5;3m",
+				"syntaxVariable": "\u001b[38;5;6m",
+				"syntaxString": "\u001b[38;5;2m",
+				"syntaxNumber": "\u001b[38;5;5m",
+				"syntaxType": "\u001b[38;5;5m",
+				"syntaxOperator": "\u001b[39m\u001b[2m",
+				"syntaxPunctuation": "\u001b[39m\u001b[2m",
+				"thinkingOff": "\u001b[39m\u001b[2m",
+				"thinkingMinimal": "\u001b[38;5;4m",
+				"thinkingLow": "\u001b[38;5;4m",
+				"thinkingMedium": "\u001b[38;5;6m",
+				"thinkingHigh": "\u001b[38;5;5m",
+				"thinkingXhigh": "\u001b[38;5;13m",
+				"thinkingMax": "\u001b[38;5;1m",
+				"bashMode": "\u001b[38;5;2m"
+			},
+			"bg": {
+				"selectedBg": "\u001b[49m",
+				"searchMatchBg": "\u001b[49m",
+				"userMessageBg": "\u001b[49m",
+				"customMessageBg": "\u001b[49m",
+				"toolPendingBg": "\u001b[49m",
+				"toolSuccessBg": "\u001b[49m",
+				"toolErrorBg": "\u001b[49m"
+			},
+			"colorsHex": {
+				"accent": "#800080",
+				"borderAccent": "#800080",
+				"customMessageLabel": "#800080",
+				"mdCode": "#800080",
+				"mdListBullet": "#800080",
+				"syntaxType": "#800080",
+				"border": "#000080",
+				"mdLink": "#000080",
+				"syntaxKeyword": "#000080",
+				"syntaxVariable": "#008080",
+				"success": "#008000",
+				"mdCodeBlock": "#008000",
+				"toolDiffAdded": "#008000",
+				"bashMode": "#008000",
+				"syntaxNumber": "#800080",
+				"error": "#800000",
+				"toolDiffRemoved": "#800000",
+				"warning": "#808000",
+				"mdHeading": "#808000",
+				"syntaxFunction": "#808000",
+				"syntaxString": "#008000",
+				"thinkingMinimal": "#000080",
+				"thinkingLow": "#000080",
+				"thinkingMedium": "#008080",
+				"thinkingHigh": "#800080",
+				"thinkingXhigh": "#ff00ff",
+				"thinkingMax": "#800000",
+				"text": "#e5e5e7",
+				"userMessageText": "#e5e5e7",
+				"customMessageText": "#727273",
+				"toolTitle": "#e5e5e7",
+				"syntaxOperator": "#727273",
+				"syntaxPunctuation": "#727273",
+				"muted": "#727273",
+				"dim": "#727273",
+				"thinkingText": "#727273",
+				"toolOutput": "#727273",
+				"mdLinkUrl": "#727273",
+				"mdQuote": "#727273",
+				"mdQuoteBorder": "#727273",
+				"mdHr": "#727273",
+				"mdCodeBlockBorder": "#727273",
+				"toolDiffContext": "#727273",
+				"syntaxComment": "#727273",
+				"scrollbarTrack": "#727273",
+				"scrollbarThumb": "#727273",
+				"searchMatchText": "#727273",
+				"borderMuted": "#727273",
+				"thinkingOff": "#727273",
+				"selectedBg": "#000000",
+				"searchMatchBg": "#000000",
+				"userMessageBg": "#000000",
+				"customMessageBg": "#000000",
+				"toolPendingBg": "#000000",
+				"toolSuccessBg": "#000000",
+				"toolErrorBg": "#000000"
+			},
+			"stylers": {
+				"bold": "\u001b[1mx\u001b[22m",
+				"italic": "\u001b[3mx\u001b[23m",
+				"underline": "\u001b[4mx\u001b[24m",
+				"inverse": "\u001b[7mx\u001b[27m",
+				"strikethrough": "\u001b[9mx\u001b[29m"
+			},
+			"probes": {
+				"fg_accent": "\u001b[38;5;5mx\u001b[39m",
+				"bg_selectedBg": "\u001b[49mx\u001b[49m",
+				"style_fg_token": "\u001b[38;5;5mx\u001b[39m",
+				"style_fg_dim": "\u001b[39m\u001b[2mx\u001b[22m\u001b[39m",
+				"style_fg_bg_tokens": "\u001b[39m\u001b[49m\u001b[2mx\u001b[22m\u001b[49m\u001b[39m",
+				"style_attributes": "\u001b[39m\u001b[1m\u001b[4mx\u001b[24m\u001b[22m\u001b[39m",
+				"style_italic_dim": "\u001b[39m\u001b[2m\u001b[3mx\u001b[23m\u001b[22m\u001b[39m",
+				"unknown_fg": {
+					"error": "Unknown theme color: nope"
+				},
+				"unknown_bg": {
+					"error": "Unknown theme color: nope"
+				}
+			}
+		}
+	},
+	"detect_colorfgbg": [
+		{
+			"colorfgbg": "0;15",
+			"theme": "light"
+		},
+		{
+			"colorfgbg": "15;0",
+			"theme": "dark"
+		},
+		{
+			"colorfgbg": "0;7;15",
+			"theme": "light"
+		},
+		{
+			"colorfgbg": null,
+			"theme": null
+		},
+		{
+			"colorfgbg": "",
+			"theme": null
+		},
+		{
+			"colorfgbg": "15;bad;300",
+			"theme": null
+		},
+		{
+			"colorfgbg": "15;bad",
+			"theme": null
+		},
+		{
+			"colorfgbg": "7",
+			"theme": "light"
+		},
+		{
+			"colorfgbg": "8",
+			"theme": "dark"
+		},
+		{
+			"colorfgbg": "6",
+			"theme": "dark"
+		},
+		{
+			"colorfgbg": "9",
+			"theme": "light"
+		},
+		{
+			"colorfgbg": "16",
+			"theme": null
+		},
+		{
+			"colorfgbg": "007",
+			"theme": null
+		},
+		{
+			"colorfgbg": "1",
+			"theme": "dark"
+		},
+		{
+			"colorfgbg": "0; 8 ",
+			"theme": "dark"
+		},
+		{
+			"colorfgbg": "a;9;",
+			"theme": null
+		},
+		{
+			"colorfgbg": "-1",
+			"theme": null
+		},
+		{
+			"colorfgbg": "08",
+			"theme": "dark"
+		}
+	],
+	"detect_terminal_theme": [
+		{
+			"background": null,
+			"foreground": null,
+			"scheme": null,
+			"colorfgbg": null,
+			"theme": "dark"
+		},
+		{
+			"background": null,
+			"foreground": null,
+			"scheme": null,
+			"colorfgbg": "15;0",
+			"theme": "dark"
+		},
+		{
+			"background": null,
+			"foreground": null,
+			"scheme": null,
+			"colorfgbg": "15;7",
+			"theme": "light"
+		},
+		{
+			"background": null,
+			"foreground": null,
+			"scheme": "dark",
+			"colorfgbg": null,
+			"theme": "dark"
+		},
+		{
+			"background": null,
+			"foreground": null,
+			"scheme": "dark",
+			"colorfgbg": "15;0",
+			"theme": "dark"
+		},
+		{
+			"background": null,
+			"foreground": null,
+			"scheme": "dark",
+			"colorfgbg": "15;7",
+			"theme": "dark"
+		},
+		{
+			"background": null,
+			"foreground": null,
+			"scheme": "light",
+			"colorfgbg": null,
+			"theme": "light"
+		},
+		{
+			"background": null,
+			"foreground": null,
+			"scheme": "light",
+			"colorfgbg": "15;0",
+			"theme": "light"
+		},
+		{
+			"background": null,
+			"foreground": null,
+			"scheme": "light",
+			"colorfgbg": "15;7",
+			"theme": "light"
+		},
+		{
+			"background": "#1e1e2e",
+			"foreground": "#c4c4d4",
+			"scheme": null,
+			"colorfgbg": null,
+			"theme": "dark"
+		},
+		{
+			"background": "#1e1e2e",
+			"foreground": "#c4c4d4",
+			"scheme": null,
+			"colorfgbg": "15;0",
+			"theme": "dark"
+		},
+		{
+			"background": "#1e1e2e",
+			"foreground": "#c4c4d4",
+			"scheme": null,
+			"colorfgbg": "15;7",
+			"theme": "dark"
+		},
+		{
+			"background": "#1e1e2e",
+			"foreground": "#c4c4d4",
+			"scheme": "dark",
+			"colorfgbg": null,
+			"theme": "dark"
+		},
+		{
+			"background": "#1e1e2e",
+			"foreground": "#c4c4d4",
+			"scheme": "dark",
+			"colorfgbg": "15;0",
+			"theme": "dark"
+		},
+		{
+			"background": "#1e1e2e",
+			"foreground": "#c4c4d4",
+			"scheme": "dark",
+			"colorfgbg": "15;7",
+			"theme": "dark"
+		},
+		{
+			"background": "#1e1e2e",
+			"foreground": "#c4c4d4",
+			"scheme": "light",
+			"colorfgbg": null,
+			"theme": "dark"
+		},
+		{
+			"background": "#1e1e2e",
+			"foreground": "#c4c4d4",
+			"scheme": "light",
+			"colorfgbg": "15;0",
+			"theme": "dark"
+		},
+		{
+			"background": "#1e1e2e",
+			"foreground": "#c4c4d4",
+			"scheme": "light",
+			"colorfgbg": "15;7",
+			"theme": "dark"
+		},
+		{
+			"background": "#e8e8e8",
+			"foreground": "#202028",
+			"scheme": null,
+			"colorfgbg": null,
+			"theme": "light"
+		},
+		{
+			"background": "#e8e8e8",
+			"foreground": "#202028",
+			"scheme": null,
+			"colorfgbg": "15;0",
+			"theme": "light"
+		},
+		{
+			"background": "#e8e8e8",
+			"foreground": "#202028",
+			"scheme": null,
+			"colorfgbg": "15;7",
+			"theme": "light"
+		},
+		{
+			"background": "#e8e8e8",
+			"foreground": "#202028",
+			"scheme": "dark",
+			"colorfgbg": null,
+			"theme": "light"
+		},
+		{
+			"background": "#e8e8e8",
+			"foreground": "#202028",
+			"scheme": "dark",
+			"colorfgbg": "15;0",
+			"theme": "light"
+		},
+		{
+			"background": "#e8e8e8",
+			"foreground": "#202028",
+			"scheme": "dark",
+			"colorfgbg": "15;7",
+			"theme": "light"
+		},
+		{
+			"background": "#e8e8e8",
+			"foreground": "#202028",
+			"scheme": "light",
+			"colorfgbg": null,
+			"theme": "light"
+		},
+		{
+			"background": "#e8e8e8",
+			"foreground": "#202028",
+			"scheme": "light",
+			"colorfgbg": "15;0",
+			"theme": "light"
+		},
+		{
+			"background": "#e8e8e8",
+			"foreground": "#202028",
+			"scheme": "light",
+			"colorfgbg": "15;7",
+			"theme": "light"
+		},
+		{
+			"background": "#808080",
+			"foreground": "#808080",
+			"scheme": null,
+			"colorfgbg": null,
+			"theme": "light"
+		},
+		{
+			"background": "#808080",
+			"foreground": "#808080",
+			"scheme": null,
+			"colorfgbg": "15;0",
+			"theme": "light"
+		},
+		{
+			"background": "#808080",
+			"foreground": "#808080",
+			"scheme": null,
+			"colorfgbg": "15;7",
+			"theme": "light"
+		},
+		{
+			"background": "#808080",
+			"foreground": "#808080",
+			"scheme": "dark",
+			"colorfgbg": null,
+			"theme": "light"
+		},
+		{
+			"background": "#808080",
+			"foreground": "#808080",
+			"scheme": "dark",
+			"colorfgbg": "15;0",
+			"theme": "light"
+		},
+		{
+			"background": "#808080",
+			"foreground": "#808080",
+			"scheme": "dark",
+			"colorfgbg": "15;7",
+			"theme": "light"
+		},
+		{
+			"background": "#808080",
+			"foreground": "#808080",
+			"scheme": "light",
+			"colorfgbg": null,
+			"theme": "light"
+		},
+		{
+			"background": "#808080",
+			"foreground": "#808080",
+			"scheme": "light",
+			"colorfgbg": "15;0",
+			"theme": "light"
+		},
+		{
+			"background": "#808080",
+			"foreground": "#808080",
+			"scheme": "light",
+			"colorfgbg": "15;7",
+			"theme": "light"
+		},
+		{
+			"background": "#000000",
+			"foreground": null,
+			"scheme": null,
+			"colorfgbg": null,
+			"theme": "dark"
+		},
+		{
+			"background": "#000000",
+			"foreground": null,
+			"scheme": null,
+			"colorfgbg": "15;0",
+			"theme": "dark"
+		},
+		{
+			"background": "#000000",
+			"foreground": null,
+			"scheme": null,
+			"colorfgbg": "15;7",
+			"theme": "dark"
+		},
+		{
+			"background": "#000000",
+			"foreground": null,
+			"scheme": "dark",
+			"colorfgbg": null,
+			"theme": "dark"
+		},
+		{
+			"background": "#000000",
+			"foreground": null,
+			"scheme": "dark",
+			"colorfgbg": "15;0",
+			"theme": "dark"
+		},
+		{
+			"background": "#000000",
+			"foreground": null,
+			"scheme": "dark",
+			"colorfgbg": "15;7",
+			"theme": "dark"
+		},
+		{
+			"background": "#000000",
+			"foreground": null,
+			"scheme": "light",
+			"colorfgbg": null,
+			"theme": "dark"
+		},
+		{
+			"background": "#000000",
+			"foreground": null,
+			"scheme": "light",
+			"colorfgbg": "15;0",
+			"theme": "dark"
+		},
+		{
+			"background": "#000000",
+			"foreground": null,
+			"scheme": "light",
+			"colorfgbg": "15;7",
+			"theme": "dark"
+		},
+		{
+			"background": "#ffffff",
+			"foreground": null,
+			"scheme": null,
+			"colorfgbg": null,
+			"theme": "light"
+		},
+		{
+			"background": "#ffffff",
+			"foreground": null,
+			"scheme": null,
+			"colorfgbg": "15;0",
+			"theme": "light"
+		},
+		{
+			"background": "#ffffff",
+			"foreground": null,
+			"scheme": null,
+			"colorfgbg": "15;7",
+			"theme": "light"
+		},
+		{
+			"background": "#ffffff",
+			"foreground": null,
+			"scheme": "dark",
+			"colorfgbg": null,
+			"theme": "light"
+		},
+		{
+			"background": "#ffffff",
+			"foreground": null,
+			"scheme": "dark",
+			"colorfgbg": "15;0",
+			"theme": "light"
+		},
+		{
+			"background": "#ffffff",
+			"foreground": null,
+			"scheme": "dark",
+			"colorfgbg": "15;7",
+			"theme": "light"
+		},
+		{
+			"background": "#ffffff",
+			"foreground": null,
+			"scheme": "light",
+			"colorfgbg": null,
+			"theme": "light"
+		},
+		{
+			"background": "#ffffff",
+			"foreground": null,
+			"scheme": "light",
+			"colorfgbg": "15;0",
+			"theme": "light"
+		},
+		{
+			"background": "#ffffff",
+			"foreground": null,
+			"scheme": "light",
+			"colorfgbg": "15;7",
+			"theme": "light"
+		},
+		{
+			"background": null,
+			"foreground": "#c4c4d4",
+			"scheme": null,
+			"colorfgbg": null,
+			"theme": "dark"
+		},
+		{
+			"background": null,
+			"foreground": "#c4c4d4",
+			"scheme": null,
+			"colorfgbg": "15;0",
+			"theme": "dark"
+		},
+		{
+			"background": null,
+			"foreground": "#c4c4d4",
+			"scheme": null,
+			"colorfgbg": "15;7",
+			"theme": "light"
+		},
+		{
+			"background": null,
+			"foreground": "#c4c4d4",
+			"scheme": "dark",
+			"colorfgbg": null,
+			"theme": "dark"
+		},
+		{
+			"background": null,
+			"foreground": "#c4c4d4",
+			"scheme": "dark",
+			"colorfgbg": "15;0",
+			"theme": "dark"
+		},
+		{
+			"background": null,
+			"foreground": "#c4c4d4",
+			"scheme": "dark",
+			"colorfgbg": "15;7",
+			"theme": "dark"
+		},
+		{
+			"background": null,
+			"foreground": "#c4c4d4",
+			"scheme": "light",
+			"colorfgbg": null,
+			"theme": "light"
+		},
+		{
+			"background": null,
+			"foreground": "#c4c4d4",
+			"scheme": "light",
+			"colorfgbg": "15;0",
+			"theme": "light"
+		},
+		{
+			"background": null,
+			"foreground": "#c4c4d4",
+			"scheme": "light",
+			"colorfgbg": "15;7",
+			"theme": "light"
+		}
+	],
+	"auto": [
+		{
+			"lightTheme": "light",
+			"darkTheme": "dark"
+		},
+		{
+			"lightTheme": "my-light",
+			"darkTheme": "my-dark"
+		},
+		null,
+		null,
+		null,
+		null,
+		null,
+		null,
+		null,
+		null,
+		null,
+		{
+			"lightTheme": "system",
+			"darkTheme": "light"
+		}
+	],
+	"resolve_setting": [
+		[
+			"dark",
+			"dark"
+		],
+		[
+			"light",
+			"dark"
+		],
+		[
+			null,
+			null
+		],
+		[
+			null,
+			null
+		],
+		[
+			"system",
+			"system"
+		],
+		[
+			"a",
+			"b"
+		]
+	],
+	"resolved_dark_hex": {
+		"accent": "#a798d7",
+		"border": "#5fa8cc",
+		"borderAccent": "#a08ed5",
+		"borderMuted": "#768186",
+		"success": "#68b78d",
+		"error": "#ea7f81",
+		"warning": "#cd9a22",
+		"muted": "#9da5a9",
+		"dim": "#7e888e",
+		"text": "#dee0e1",
+		"thinkingText": "#96a0a4",
+		"scrollbarTrack": "#484e52",
+		"scrollbarThumb": "#97a0a5",
+		"searchMatchText": "#9da5a9",
+		"userMessageText": "#dee0e1",
+		"customMessageText": "#9da5a9",
+		"customMessageLabel": "#a798d7",
+		"toolTitle": "#dee0e1",
+		"toolOutput": "#9da5a9",
+		"mdHeading": "#cd9a22",
+		"mdLink": "#69add0",
+		"mdLinkUrl": "#9da5a9",
+		"mdCode": "#a798d7",
+		"mdCodeBlock": "#68b78d",
+		"mdCodeBlockBorder": "#9da5a9",
+		"mdQuote": "#9da5a9",
+		"mdQuoteBorder": "#9da5a9",
+		"mdHr": "#9da5a9",
+		"mdListBullet": "#a798d7",
+		"toolDiffAdded": "#68b78d",
+		"toolDiffRemoved": "#ea7f81",
+		"toolDiffContext": "#9da5a9",
+		"syntaxComment": "#9da5a9",
+		"syntaxKeyword": "#69add0",
+		"syntaxFunction": "#cd9a22",
+		"syntaxVariable": "#5db3ba",
+		"syntaxString": "#de8d5a",
+		"syntaxNumber": "#68b78d",
+		"syntaxType": "#a798d7",
+		"syntaxOperator": "#9da5a9",
+		"syntaxPunctuation": "#9da5a9",
+		"thinkingOff": "#6c767b",
+		"thinkingMinimal": "#68808d",
+		"thinkingLow": "#5489a4",
+		"thinkingMedium": "#6185cc",
+		"thinkingHigh": "#9776e5",
+		"thinkingXhigh": "#de54c1",
+		"thinkingMax": "#fe5462",
+		"bashMode": "#5eb286",
+		"selectedBg": "#213b49",
+		"searchMatchBg": "#4e2f1b",
+		"userMessageBg": "#213b49",
+		"customMessageBg": "#3a3055",
+		"toolPendingBg": "#34383a",
+		"toolSuccessBg": "#254131",
+		"toolErrorBg": "#5b282a"
+	},
+	"export_dark": {
+		"pageBg": "#21252c",
+		"cardBg": "#282c34",
+		"infoBg": "#4e2f1b"
+	},
+	"export_system": {},
+	"export_missing": {},
+	"resolved_light_hex": {
+		"accent": "#7459b4",
+		"border": "#3d8eb3",
+		"borderAccent": "#8a72cb",
+		"borderMuted": "#9aa2a7",
+		"success": "#337e58",
+		"error": "#c8253d",
+		"warning": "#8f6802",
+		"muted": "#677176",
+		"dim": "#879095",
+		"text": "#3b3f41",
+		"thinkingText": "#7c868c",
+		"scrollbarTrack": "#e1e3e4",
+		"scrollbarThumb": "#96a0a4",
+		"searchMatchText": "#677176",
+		"userMessageText": "#3b3f41",
+		"customMessageText": "#677176",
+		"customMessageLabel": "#7459b4",
+		"toolTitle": "#3b3f41",
+		"toolOutput": "#677176",
+		"mdHeading": "#8f6802",
+		"mdLink": "#2f7899",
+		"mdLinkUrl": "#677176",
+		"mdCode": "#7459b4",
+		"mdCodeBlock": "#337e58",
+		"mdCodeBlockBorder": "#677176",
+		"mdQuote": "#677176",
+		"mdQuoteBorder": "#677176",
+		"mdHr": "#677176",
+		"mdListBullet": "#7459b4",
+		"toolDiffAdded": "#337e58",
+		"toolDiffRemoved": "#c8253d",
+		"toolDiffContext": "#677176",
+		"syntaxComment": "#677176",
+		"syntaxKeyword": "#2f7899",
+		"syntaxFunction": "#8f6802",
+		"syntaxVariable": "#287a81",
+		"syntaxString": "#a45417",
+		"syntaxNumber": "#337e58",
+		"syntaxType": "#7459b4",
+		"syntaxOperator": "#677176",
+		"syntaxPunctuation": "#677176",
+		"thinkingOff": "#c2c8ca",
+		"thinkingMinimal": "#b5c4cb",
+		"thinkingLow": "#9fc2d5",
+		"thinkingMedium": "#a2b7e0",
+		"thinkingHigh": "#b5a5e8",
+		"thinkingXhigh": "#e585cd",
+		"thinkingMax": "#fe7479",
+		"bashMode": "#40976c",
+		"selectedBg": "#dfe7ec",
+		"searchMatchBg": "#ede3dd",
+		"userMessageBg": "#dfe7ec",
+		"customMessageBg": "#e6e4ee",
+		"toolPendingBg": "#e4e5e6",
+		"toolSuccessBg": "#dee9e1",
+		"toolErrorBg": "#eee2e1"
+	},
+	"is_light": {
+		"light": true,
+		"dark": false,
+		"system": false
+	},
+	"available_themes": [
+		"system",
+		"dark",
+		"light"
+	],
+	"available_themes_with_paths": [
+		{
+			"name": "system",
+			"path": null
+		},
+		{
+			"name": "dark",
+			"path": "\\dark.json"
+		},
+		{
+			"name": "light",
+			"path": "\\light.json"
+		}
+	]
+}

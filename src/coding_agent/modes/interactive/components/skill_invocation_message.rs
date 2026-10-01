@@ -168,7 +168,7 @@ mod tests {
         );
         let collapsed = component.render(40).join("\n");
         // oracle skillCollapsed row bytes (fg reset between the label space and name)
-        assert!(collapsed.contains("\x1b[1m[skill]\x1b[22m \x1b[39m\x1b[38;2;212;212;212mmy-skill"));
+        assert!(collapsed.contains("\x1b[1m[skill]\x1b[22m \x1b[39m\x1b[38;2;157;165;169mmy-skill"));
         assert!(collapsed.contains(" (ctrl+o to expand)"));
 
         component.set_expanded(true);

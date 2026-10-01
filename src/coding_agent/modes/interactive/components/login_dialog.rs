@@ -511,26 +511,26 @@ mod tests {
         assert!(content.contains("line one"));
         assert!(
             content.contains(
-                "\x1b[38;2;138;190;183m\x1b]8;;https://docs.example.com\x07docs: https://docs.example.com\x1b]8;;\x07\x1b[39m"
+                "\x1b[38;2;167;152;215m\x1b]8;;https://docs.example.com\x07docs: https://docs.example.com\x1b]8;;\x07\x1b[39m"
             ),
             "accent OSC8 info link"
         );
         assert!(
             content.contains(
-                "\x1b[38;2;138;190;183m\x1b]8;;https://bare.example.com\x07https://bare.example.com\x1b]8;;\x07\x1b[39m"
+                "\x1b[38;2;167;152;215m\x1b]8;;https://bare.example.com\x07https://bare.example.com\x1b]8;;\x07\x1b[39m"
             ),
             "bare OSC8 info link"
         );
         assert!(
-            content.contains("(\x1b[38;2;102;102;102mescape/ctrl+c\x1b[39m\x1b[38;2;128;128;128m to close\x1b[39m)"),
+            content.contains("(\x1b[38;2;126;136;142mescape/ctrl+c\x1b[39m\x1b[38;2;157;165;169m to close\x1b[39m)"),
             "close hint"
         );
-        assert!(content.contains("\x1b[38;2;102;102;102mwaiting...\x1b[39m"));
+        assert!(content.contains("\x1b[38;2;126;136;142mwaiting...\x1b[39m"));
         assert!(
-            content.contains("(\x1b[38;2;102;102;102mescape/ctrl+c\x1b[39m\x1b[38;2;128;128;128m to cancel\x1b[39m)"),
+            content.contains("(\x1b[38;2;126;136;142mescape/ctrl+c\x1b[39m\x1b[38;2;157;165;169m to cancel\x1b[39m)"),
             "cancel hint"
         );
-        assert!(content.contains("\x1b[38;2;102;102;102mprogressing\x1b[39m"));
+        assert!(content.contains("\x1b[38;2;126;136;142mprogressing\x1b[39m"));
 
         // manual input resolves with the submitted value
         dialog.show_manual_input("enter code");

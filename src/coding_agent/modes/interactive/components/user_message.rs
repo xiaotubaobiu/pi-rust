@@ -162,7 +162,7 @@ mod tests {
         // (userMsgBg #343541 → 52;53;65)
         assert!(lines
             .iter()
-            .any(|line| line.contains("\x1b[48;2;52;53;65m")));
+            .any(|line| line.contains("\x1b[48;2;33;59;73m")));
     }
 
     #[test]

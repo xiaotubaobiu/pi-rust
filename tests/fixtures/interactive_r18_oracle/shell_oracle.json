@@ -121,7 +121,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;255;255;0mWarning: A bash command is already running. Press Esc to cancel it first.\u001b[39m",
+						"text": "\u001b[38;2;205;154;34mWarning: A bash command is already running. Press Esc to cancel it first.\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -207,7 +207,7 @@
 					"pendingMessages",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mSteering: hold this\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mSteering: hold this\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -217,7 +217,7 @@
 					"pendingMessages",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102m↳ Ctrl+C to edit all queued messages\u001b[39m",
+						"text": "\u001b[38;2;126;136;142m↳ Ctrl+C to edit all queued messages\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -234,7 +234,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mQueued message for after compaction\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mQueued message for after compaction\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -1305,7 +1305,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mStartup is still in progress\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mStartup is still in progress\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -1330,7 +1330,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mSuspend to background is not supported on Windows\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mSuspend to background is not supported on Windows\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -1826,7 +1826,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mNo queued messages to restore\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mNo queued messages to restore\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -1871,7 +1871,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mRestored 3 queued messages to editor\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mRestored 3 queued messages to editor\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -1912,7 +1912,7 @@
 					"pendingMessages",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mSteering: queued text\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mSteering: queued text\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -1922,7 +1922,7 @@
 					"pendingMessages",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102m↳ Ctrl+C to edit all queued messages\u001b[39m",
+						"text": "\u001b[38;2;126;136;142m↳ Ctrl+C to edit all queued messages\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -1939,7 +1939,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mQueued message for after compaction\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mQueued message for after compaction\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -2043,7 +2043,7 @@
 					"pendingMessages",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mFollow-up: wait for me\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mFollow-up: wait for me\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -2053,7 +2053,7 @@
 					"pendingMessages",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102m↳ Ctrl+C to edit all queued messages\u001b[39m",
+						"text": "\u001b[38;2;126;136;142m↳ Ctrl+C to edit all queued messages\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -2070,7 +2070,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mQueued message for after compaction\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mQueued message for after compaction\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -2238,7 +2238,7 @@
 					"pendingMessages",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mSteering: boom prompt\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mSteering: boom prompt\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -2248,7 +2248,7 @@
 					"pendingMessages",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mFollow-up: after\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mFollow-up: after\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -2258,7 +2258,7 @@
 					"pendingMessages",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102m↳ Ctrl+C to edit all queued messages\u001b[39m",
+						"text": "\u001b[38;2;126;136;142m↳ Ctrl+C to edit all queued messages\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -2275,7 +2275,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;204;102;102mError: Failed to send queued messages: prompt failed\u001b[39m",
+						"text": "\u001b[38;2;234;127;129mError: Failed to send queued messages: prompt failed\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -2299,7 +2299,7 @@
 					"pendingMessages",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mSteering: boom prompt\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mSteering: boom prompt\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -2309,7 +2309,7 @@
 					"pendingMessages",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mFollow-up: after\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mFollow-up: after\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -2319,7 +2319,7 @@
 					"pendingMessages",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102m↳ Ctrl+C to edit all queued messages\u001b[39m",
+						"text": "\u001b[38;2;126;136;142m↳ Ctrl+C to edit all queued messages\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -2406,7 +2406,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mfirst\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mfirst\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -2416,16 +2416,16 @@
 				],
 				[
 					"Text.setText",
-					"\u001b[38;2;102;102;102mfirst\u001b[39m",
-					"\u001b[38;2;102;102;102msecond\u001b[39m"
+					"\u001b[38;2;126;136;142mfirst\u001b[39m",
+					"\u001b[38;2;126;136;142msecond\u001b[39m"
 				],
 				[
 					"ui.requestRender"
 				],
 				[
 					"Text.setText",
-					"\u001b[38;2;102;102;102msecond\u001b[39m",
-					"\u001b[38;2;102;102;102mthird\u001b[39m"
+					"\u001b[38;2;126;136;142msecond\u001b[39m",
+					"\u001b[38;2;126;136;142mthird\u001b[39m"
 				],
 				[
 					"ui.requestRender"
@@ -2437,7 +2437,7 @@
 							"height": 1
 						},
 						{
-							"text": "\u001b[38;2;102;102;102mthird\u001b[39m",
+							"text": "\u001b[38;2;126;136;142mthird\u001b[39m",
 							"paddingX": 1,
 							"paddingY": 0
 						}
@@ -2460,7 +2460,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mfirst\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mfirst\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -2490,7 +2490,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102msecond\u001b[39m",
+						"text": "\u001b[38;2;126;136;142msecond\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -2505,7 +2505,7 @@
 							"height": 1
 						},
 						{
-							"text": "\u001b[38;2;102;102;102mfirst\u001b[39m",
+							"text": "\u001b[38;2;126;136;142mfirst\u001b[39m",
 							"paddingX": 1,
 							"paddingY": 0
 						},
@@ -2518,7 +2518,7 @@
 							"height": 1
 						},
 						{
-							"text": "\u001b[38;2;102;102;102msecond\u001b[39m",
+							"text": "\u001b[38;2;126;136;142msecond\u001b[39m",
 							"paddingX": 1,
 							"paddingY": 0
 						}
@@ -2541,7 +2541,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mdownloading fd\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mdownloading fd\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -2554,7 +2554,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;255;255;0mWarning: checksum mismatch\u001b[39m",
+						"text": "\u001b[38;2;205;154;34mWarning: checksum mismatch\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -2569,12 +2569,12 @@
 							"height": 1
 						},
 						{
-							"text": "\u001b[38;2;102;102;102mdownloading fd\u001b[39m",
+							"text": "\u001b[38;2;126;136;142mdownloading fd\u001b[39m",
 							"paddingX": 1,
 							"paddingY": 0
 						},
 						{
-							"text": "\u001b[38;2;255;255;0mWarning: checksum mismatch\u001b[39m",
+							"text": "\u001b[38;2;205;154;34mWarning: checksum mismatch\u001b[39m",
 							"paddingX": 1,
 							"paddingY": 0
 						}
@@ -2597,7 +2597,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;204;102;102mError: boom\u001b[39m",
+						"text": "\u001b[38;2;234;127;129mError: boom\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -2617,7 +2617,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;255;255;0mWarning: careful\u001b[39m",
+						"text": "\u001b[38;2;205;154;34mWarning: careful\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -2632,7 +2632,7 @@
 							"height": 1
 						},
 						{
-							"text": "\u001b[38;2;204;102;102mError: boom\u001b[39m",
+							"text": "\u001b[38;2;234;127;129mError: boom\u001b[39m",
 							"paddingX": 1,
 							"paddingY": 0
 						},
@@ -2640,7 +2640,7 @@
 							"height": 1
 						},
 						{
-							"text": "\u001b[38;2;255;255;0mWarning: careful\u001b[39m",
+							"text": "\u001b[38;2;205;154;34mWarning: careful\u001b[39m",
 							"paddingX": 1,
 							"paddingY": 0
 						}
@@ -2683,7 +2683,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[1m\u001b[38;2;255;255;0mUpdate Available\u001b[39m\u001b[22m\n\u001b[38;2;128;128;128mNew version 9.9.9 is available. Run \u001b[39m\u001b[38;2;138;190;183mpi update\u001b[39m",
+						"text": "\u001b[1m\u001b[38;2;205;154;34mUpdate Available\u001b[39m\u001b[22m\n\u001b[38;2;157;165;169mNew version 9.9.9 is available. Run \u001b[39m\u001b[38;2;167;152;215mpi update\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -2716,7 +2716,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;128;128;128mChangelog: \u001b[39m\u001b[38;2;138;190;183mhttps://pi.dev/changelog\u001b[39m",
+						"text": "\u001b[38;2;157;165;169mChangelog: \u001b[39m\u001b[38;2;167;152;215mhttps://pi.dev/changelog\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -2742,7 +2742,7 @@
 							"colorTag": "default"
 						},
 						{
-							"text": "\u001b[1m\u001b[38;2;255;255;0mUpdate Available\u001b[39m\u001b[22m\n\u001b[38;2;128;128;128mNew version 9.9.9 is available. Run \u001b[39m\u001b[38;2;138;190;183mpi update\u001b[39m",
+							"text": "\u001b[1m\u001b[38;2;205;154;34mUpdate Available\u001b[39m\u001b[22m\n\u001b[38;2;157;165;169mNew version 9.9.9 is available. Run \u001b[39m\u001b[38;2;167;152;215mpi update\u001b[39m",
 							"paddingX": 1,
 							"paddingY": 0
 						},
@@ -2757,7 +2757,7 @@
 							"height": 1
 						},
 						{
-							"text": "\u001b[38;2;128;128;128mChangelog: \u001b[39m\u001b[38;2;138;190;183mhttps://pi.dev/changelog\u001b[39m",
+							"text": "\u001b[38;2;157;165;169mChangelog: \u001b[39m\u001b[38;2;167;152;215mhttps://pi.dev/changelog\u001b[39m",
 							"paddingX": 1,
 							"paddingY": 0
 						},
@@ -2791,7 +2791,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[1m\u001b[38;2;255;255;0mPackage Updates Available\u001b[39m\u001b[22m\n\u001b[38;2;128;128;128mPackage updates are available. Run \u001b[39m\u001b[38;2;138;190;183mpi update --extensions\u001b[39m\n\u001b[38;2;128;128;128mPackages:\u001b[39m\n- ext-a\n- ext-b",
+						"text": "\u001b[1m\u001b[38;2;205;154;34mPackage Updates Available\u001b[39m\u001b[22m\n\u001b[38;2;157;165;169mPackage updates are available. Run \u001b[39m\u001b[38;2;167;152;215mpi update --extensions\u001b[39m\n\u001b[38;2;157;165;169mPackages:\u001b[39m\n- ext-a\n- ext-b",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -2817,7 +2817,7 @@
 							"colorTag": "default"
 						},
 						{
-							"text": "\u001b[1m\u001b[38;2;255;255;0mPackage Updates Available\u001b[39m\u001b[22m\n\u001b[38;2;128;128;128mPackage updates are available. Run \u001b[39m\u001b[38;2;138;190;183mpi update --extensions\u001b[39m\n\u001b[38;2;128;128;128mPackages:\u001b[39m\n- ext-a\n- ext-b",
+							"text": "\u001b[1m\u001b[38;2;205;154;34mPackage Updates Available\u001b[39m\u001b[22m\n\u001b[38;2;157;165;169mPackage updates are available. Run \u001b[39m\u001b[38;2;167;152;215mpi update --extensions\u001b[39m\n\u001b[38;2;157;165;169mPackages:\u001b[39m\n- ext-a\n- ext-b",
 							"paddingX": 1,
 							"paddingY": 0
 						},
@@ -3834,7 +3834,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;204;102;102mError: Compaction cancelled\u001b[39m",
+						"text": "\u001b[38;2;234;127;129mError: Compaction cancelled\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -3865,7 +3865,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mAuto-compaction cancelled\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mAuto-compaction cancelled\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -3896,7 +3896,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;204;102;102mError: compact failed\u001b[39m",
+						"text": "\u001b[38;2;234;127;129mError: compact failed\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -3927,7 +3927,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;204;102;102mcompact failed\u001b[39m",
+						"text": "\u001b[38;2;234;127;129mcompact failed\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -4076,7 +4076,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;204;102;102mError: Retry failed after 3 attempts: still failing\u001b[39m",
+						"text": "\u001b[38;2;234;127;129mError: Retry failed after 3 attempts: still failing\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -4107,7 +4107,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;204;102;102mError: sum failed\u001b[39m",
+						"text": "\u001b[38;2;234;127;129mError: sum failed\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -4298,7 +4298,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;255;255;0mCompaction: 100 tokens billed (~$0.13)\u001b[39m",
+						"text": "\u001b[38;2;205;154;34mCompaction: 100 tokens billed (~$0.13)\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -4346,7 +4346,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;255;255;0mCompaction: 10 tokens billed (~$0.01)\u001b[39m",
+						"text": "\u001b[38;2;205;154;34mCompaction: 10 tokens billed (~$0.01)\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -4367,7 +4367,7 @@
 							"height": 1
 						},
 						{
-							"text": "\u001b[38;2;255;255;0mCompaction: 100 tokens billed (~$0.13)\u001b[39m",
+							"text": "\u001b[38;2;205;154;34mCompaction: 100 tokens billed (~$0.13)\u001b[39m",
 							"paddingX": 1,
 							"paddingY": 0
 						},
@@ -4381,7 +4381,7 @@
 							"height": 1
 						},
 						{
-							"text": "\u001b[38;2;255;255;0mCompaction: 10 tokens billed (~$0.01)\u001b[39m",
+							"text": "\u001b[38;2;205;154;34mCompaction: 10 tokens billed (~$0.01)\u001b[39m",
 							"paddingX": 1,
 							"paddingY": 0
 						}
@@ -4404,7 +4404,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;255;255;0mCompaction: 100 tokens billed (~$0.13)\u001b[39m",
+						"text": "\u001b[38;2;205;154;34mCompaction: 100 tokens billed (~$0.13)\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -4421,7 +4421,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;255;255;0mBranch summary: 100 tokens billed (~$0.13)\u001b[39m",
+						"text": "\u001b[38;2;205;154;34mBranch summary: 100 tokens billed (~$0.13)\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -4433,7 +4433,7 @@
 							"height": 1
 						},
 						{
-							"text": "\u001b[38;2;255;255;0mCompaction: 100 tokens billed (~$0.13)\u001b[39m",
+							"text": "\u001b[38;2;205;154;34mCompaction: 100 tokens billed (~$0.13)\u001b[39m",
 							"paddingX": 1,
 							"paddingY": 0
 						},
@@ -4441,7 +4441,7 @@
 							"height": 1
 						},
 						{
-							"text": "\u001b[38;2;255;255;0mBranch summary: 100 tokens billed (~$0.13)\u001b[39m",
+							"text": "\u001b[38;2;205;154;34mBranch summary: 100 tokens billed (~$0.13)\u001b[39m",
 							"paddingX": 1,
 							"paddingY": 0
 						}
@@ -4861,7 +4861,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mSession compacted 1 time\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mSession compacted 1 time\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -4972,7 +4972,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[1m\u001b[38;2;138;190;183mWhat's New\u001b[39m\u001b[22m",
+						"text": "\u001b[1m\u001b[38;2;167;152;215mWhat's New\u001b[39m\u001b[22m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -5015,7 +5015,7 @@
 							"colorTag": "default"
 						},
 						{
-							"text": "\u001b[1m\u001b[38;2;138;190;183mWhat's New\u001b[39m\u001b[22m",
+							"text": "\u001b[1m\u001b[38;2;167;152;215mWhat's New\u001b[39m\u001b[22m",
 							"paddingX": 1,
 							"paddingY": 0
 						},
@@ -5600,7 +5600,7 @@
 					"loadedResources",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;240;198;116m[Context]\u001b[39m\n\u001b[38;2;102;102;102m  /work/project/AGENTS.md\u001b[39m",
+						"text": "\u001b[38;2;205;154;34m[Context]\u001b[39m\n\u001b[38;2;126;136;142m  /work/project/AGENTS.md\u001b[39m",
 						"paddingX": 0,
 						"paddingY": 0
 					}
@@ -5617,7 +5617,7 @@
 					"loadedResources",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;240;198;116m[Skills]\u001b[39m\n  \u001b[38;2;138;190;183mproject\u001b[39m\n\u001b[38;2;102;102;102m    /work/project/skills/review.md\u001b[39m\n    \u001b[38;2;129;162;190mnpm:p\u001b[39m\n\u001b[38;2;102;102;102m      skills/deploy.md\u001b[39m",
+						"text": "\u001b[38;2;205;154;34m[Skills]\u001b[39m\n  \u001b[38;2;167;152;215mproject\u001b[39m\n\u001b[38;2;126;136;142m    /work/project/skills/review.md\u001b[39m\n    \u001b[38;2;105;173;208mnpm:p\u001b[39m\n\u001b[38;2;126;136;142m      skills/deploy.md\u001b[39m",
 						"paddingX": 0,
 						"paddingY": 0
 					}
@@ -5634,7 +5634,7 @@
 					"loadedResources",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;240;198;116m[Extensions]\u001b[39m\n  \u001b[38;2;138;190;183mproject\u001b[39m\n\u001b[38;2;102;102;102m    /work/project/exts/one.ts\u001b[39m\n    \u001b[38;2;129;162;190mnpm:p\u001b[39m\n\u001b[38;2;102;102;102m      extensions\u001b[39m",
+						"text": "\u001b[38;2;205;154;34m[Extensions]\u001b[39m\n  \u001b[38;2;167;152;215mproject\u001b[39m\n\u001b[38;2;126;136;142m    /work/project/exts/one.ts\u001b[39m\n    \u001b[38;2;105;173;208mnpm:p\u001b[39m\n\u001b[38;2;126;136;142m      extensions\u001b[39m",
 						"paddingX": 0,
 						"paddingY": 0
 					}
@@ -5651,7 +5651,7 @@
 					"loadedResources",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;240;198;116m[Themes]\u001b[39m\n  \u001b[38;2;138;190;183mproject\u001b[39m\n\u001b[38;2;102;102;102m    /work/project/themes/solarized.json\u001b[39m",
+						"text": "\u001b[38;2;205;154;34m[Themes]\u001b[39m\n  \u001b[38;2;167;152;215mproject\u001b[39m\n\u001b[38;2;126;136;142m    /work/project/themes/solarized.json\u001b[39m",
 						"paddingX": 0,
 						"paddingY": 0
 					}
@@ -5668,7 +5668,7 @@
 					"loadedResources",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;255;255;0m[Skill conflicts]\u001b[39m\n\u001b[38;2;255;255;0m  \"review\" collision:\u001b[39m\n\u001b[38;2;102;102;102m    \u001b[38;2;181;189;104m✓\u001b[39m project /work/project/skills/review.md\u001b[39m\n\u001b[38;2;102;102;102m    \u001b[38;2;255;255;0m✗\u001b[39m project /work/project/skills/review.md (skipped)\u001b[39m",
+						"text": "\u001b[38;2;205;154;34m[Skill conflicts]\u001b[39m\n\u001b[38;2;205;154;34m  \"review\" collision:\u001b[39m\n\u001b[38;2;126;136;142m    \u001b[38;2;104;183;141m✓\u001b[39m project /work/project/skills/review.md\u001b[39m\n\u001b[38;2;126;136;142m    \u001b[38;2;205;154;34m✗\u001b[39m project /work/project/skills/review.md (skipped)\u001b[39m",
 						"paddingX": 0,
 						"paddingY": 0
 					}
@@ -5685,7 +5685,7 @@
 					"loadedResources",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;255;255;0m[Extension issues]\u001b[39m\n\u001b[38;2;204;102;102m  /work/project/exts/broken.ts\u001b[39m\n\u001b[38;2;204;102;102m    syntax error\u001b[39m\n\u001b[38;2;255;255;0m  /ext/x.ts\u001b[39m\n\u001b[38;2;255;255;0m    conflicting command\u001b[39m",
+						"text": "\u001b[38;2;205;154;34m[Extension issues]\u001b[39m\n\u001b[38;2;234;127;129m  /work/project/exts/broken.ts\u001b[39m\n\u001b[38;2;234;127;129m    syntax error\u001b[39m\n\u001b[38;2;205;154;34m  /ext/x.ts\u001b[39m\n\u001b[38;2;205;154;34m    conflicting command\u001b[39m",
 						"paddingX": 0,
 						"paddingY": 0
 					}
@@ -5704,7 +5704,7 @@
 							"height": 1
 						},
 						{
-							"text": "\u001b[38;2;240;198;116m[Context]\u001b[39m\n\u001b[38;2;102;102;102m  /work/project/AGENTS.md\u001b[39m",
+							"text": "\u001b[38;2;205;154;34m[Context]\u001b[39m\n\u001b[38;2;126;136;142m  /work/project/AGENTS.md\u001b[39m",
 							"paddingX": 0,
 							"paddingY": 0,
 							"getCollapsedText": "function",
@@ -5714,7 +5714,7 @@
 							"height": 1
 						},
 						{
-							"text": "\u001b[38;2;240;198;116m[Skills]\u001b[39m\n  \u001b[38;2;138;190;183mproject\u001b[39m\n\u001b[38;2;102;102;102m    /work/project/skills/review.md\u001b[39m\n    \u001b[38;2;129;162;190mnpm:p\u001b[39m\n\u001b[38;2;102;102;102m      skills/deploy.md\u001b[39m",
+							"text": "\u001b[38;2;205;154;34m[Skills]\u001b[39m\n  \u001b[38;2;167;152;215mproject\u001b[39m\n\u001b[38;2;126;136;142m    /work/project/skills/review.md\u001b[39m\n    \u001b[38;2;105;173;208mnpm:p\u001b[39m\n\u001b[38;2;126;136;142m      skills/deploy.md\u001b[39m",
 							"paddingX": 0,
 							"paddingY": 0,
 							"getCollapsedText": "function",
@@ -5724,7 +5724,7 @@
 							"height": 1
 						},
 						{
-							"text": "\u001b[38;2;240;198;116m[Extensions]\u001b[39m\n  \u001b[38;2;138;190;183mproject\u001b[39m\n\u001b[38;2;102;102;102m    /work/project/exts/one.ts\u001b[39m\n    \u001b[38;2;129;162;190mnpm:p\u001b[39m\n\u001b[38;2;102;102;102m      extensions\u001b[39m",
+							"text": "\u001b[38;2;205;154;34m[Extensions]\u001b[39m\n  \u001b[38;2;167;152;215mproject\u001b[39m\n\u001b[38;2;126;136;142m    /work/project/exts/one.ts\u001b[39m\n    \u001b[38;2;105;173;208mnpm:p\u001b[39m\n\u001b[38;2;126;136;142m      extensions\u001b[39m",
 							"paddingX": 0,
 							"paddingY": 0,
 							"getCollapsedText": "function",
@@ -5734,7 +5734,7 @@
 							"height": 1
 						},
 						{
-							"text": "\u001b[38;2;240;198;116m[Themes]\u001b[39m\n  \u001b[38;2;138;190;183mproject\u001b[39m\n\u001b[38;2;102;102;102m    /work/project/themes/solarized.json\u001b[39m",
+							"text": "\u001b[38;2;205;154;34m[Themes]\u001b[39m\n  \u001b[38;2;167;152;215mproject\u001b[39m\n\u001b[38;2;126;136;142m    /work/project/themes/solarized.json\u001b[39m",
 							"paddingX": 0,
 							"paddingY": 0,
 							"getCollapsedText": "function",
@@ -5744,7 +5744,7 @@
 							"height": 1
 						},
 						{
-							"text": "\u001b[38;2;255;255;0m[Skill conflicts]\u001b[39m\n\u001b[38;2;255;255;0m  \"review\" collision:\u001b[39m\n\u001b[38;2;102;102;102m    \u001b[38;2;181;189;104m✓\u001b[39m project /work/project/skills/review.md\u001b[39m\n\u001b[38;2;102;102;102m    \u001b[38;2;255;255;0m✗\u001b[39m project /work/project/skills/review.md (skipped)\u001b[39m",
+							"text": "\u001b[38;2;205;154;34m[Skill conflicts]\u001b[39m\n\u001b[38;2;205;154;34m  \"review\" collision:\u001b[39m\n\u001b[38;2;126;136;142m    \u001b[38;2;104;183;141m✓\u001b[39m project /work/project/skills/review.md\u001b[39m\n\u001b[38;2;126;136;142m    \u001b[38;2;205;154;34m✗\u001b[39m project /work/project/skills/review.md (skipped)\u001b[39m",
 							"paddingX": 0,
 							"paddingY": 0
 						},
@@ -5752,7 +5752,7 @@
 							"height": 1
 						},
 						{
-							"text": "\u001b[38;2;255;255;0m[Extension issues]\u001b[39m\n\u001b[38;2;204;102;102m  /work/project/exts/broken.ts\u001b[39m\n\u001b[38;2;204;102;102m    syntax error\u001b[39m\n\u001b[38;2;255;255;0m  /ext/x.ts\u001b[39m\n\u001b[38;2;255;255;0m    conflicting command\u001b[39m",
+							"text": "\u001b[38;2;205;154;34m[Extension issues]\u001b[39m\n\u001b[38;2;234;127;129m  /work/project/exts/broken.ts\u001b[39m\n\u001b[38;2;234;127;129m    syntax error\u001b[39m\n\u001b[38;2;205;154;34m  /ext/x.ts\u001b[39m\n\u001b[38;2;205;154;34m    conflicting command\u001b[39m",
 							"paddingX": 0,
 							"paddingY": 0
 						},
@@ -5788,7 +5788,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mThinking level: high\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mThinking level: high\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -5813,7 +5813,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mCurrent model does not support thinking\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mCurrent model does not support thinking\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -5848,7 +5848,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mSwitched to Claude\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mSwitched to Claude\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -5868,7 +5868,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;204;102;102mError: this.maybeWarnAboutAnthropicSubscriptionAuth is not a function\u001b[39m",
+						"text": "\u001b[38;2;234;127;129mError: this.maybeWarnAboutAnthropicSubscriptionAuth is not a function\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -5903,7 +5903,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mSwitched to m1\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mSwitched to m1\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -5923,7 +5923,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;204;102;102mError: this.maybeWarnAboutAnthropicSubscriptionAuth is not a function\u001b[39m",
+						"text": "\u001b[38;2;234;127;129mError: this.maybeWarnAboutAnthropicSubscriptionAuth is not a function\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -5948,7 +5948,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mOnly one model in scope\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mOnly one model in scope\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -5973,7 +5973,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mOnly one model available\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mOnly one model available\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -5998,7 +5998,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;204;102;102mError: no models\u001b[39m",
+						"text": "\u001b[38;2;234;127;129mError: no models\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -6023,7 +6023,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;204;102;102mError: string error\u001b[39m",
+						"text": "\u001b[38;2;234;127;129mError: string error\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -6061,7 +6061,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mTool output: expanded\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mTool output: expanded\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -6079,8 +6079,8 @@
 				],
 				[
 					"Text.setText",
-					"\u001b[38;2;102;102;102mTool output: expanded\u001b[39m",
-					"\u001b[38;2;102;102;102mTool output: collapsed\u001b[39m"
+					"\u001b[38;2;126;136;142mTool output: expanded\u001b[39m",
+					"\u001b[38;2;126;136;142mTool output: collapsed\u001b[39m"
 				],
 				[
 					"ui.requestRender"
@@ -6118,7 +6118,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mThinking blocks: hidden\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mThinking blocks: hidden\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -7193,7 +7193,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;204;102;102mError: Failed to fork session: boom\u001b[39m",
+						"text": "\u001b[38;2;234;127;129mError: Failed to fork session: boom\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -7700,7 +7700,7 @@
 					"container",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;128;128;128m... (widget truncated)\u001b[39m",
+						"text": "\u001b[38;2;157;165;169m... (widget truncated)\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -7790,7 +7790,7 @@
 										"paddingY": 0
 									},
 									{
-										"text": "\u001b[38;2;128;128;128m... (widget truncated)\u001b[39m",
+										"text": "\u001b[38;2;157;165;169m... (widget truncated)\u001b[39m",
 										"paddingX": 1,
 										"paddingY": 0
 									}
@@ -8261,7 +8261,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102minfo msg\u001b[39m",
+						"text": "\u001b[38;2;126;136;142minfo msg\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -8281,7 +8281,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;255;255;0mWarning: warn msg\u001b[39m",
+						"text": "\u001b[38;2;205;154;34mWarning: warn msg\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -8301,7 +8301,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;204;102;102mError: error msg\u001b[39m",
+						"text": "\u001b[38;2;234;127;129mError: error msg\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -8321,7 +8321,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102mdefault msg\u001b[39m",
+						"text": "\u001b[38;2;126;136;142mdefault msg\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -8336,7 +8336,7 @@
 							"height": 1
 						},
 						{
-							"text": "\u001b[38;2;102;102;102minfo msg\u001b[39m",
+							"text": "\u001b[38;2;126;136;142minfo msg\u001b[39m",
 							"paddingX": 1,
 							"paddingY": 0
 						},
@@ -8344,7 +8344,7 @@
 							"height": 1
 						},
 						{
-							"text": "\u001b[38;2;255;255;0mWarning: warn msg\u001b[39m",
+							"text": "\u001b[38;2;205;154;34mWarning: warn msg\u001b[39m",
 							"paddingX": 1,
 							"paddingY": 0
 						},
@@ -8352,7 +8352,7 @@
 							"height": 1
 						},
 						{
-							"text": "\u001b[38;2;204;102;102mError: error msg\u001b[39m",
+							"text": "\u001b[38;2;234;127;129mError: error msg\u001b[39m",
 							"paddingX": 1,
 							"paddingY": 0
 						},
@@ -8360,7 +8360,7 @@
 							"height": 1
 						},
 						{
-							"text": "\u001b[38;2;102;102;102mdefault msg\u001b[39m",
+							"text": "\u001b[38;2;126;136;142mdefault msg\u001b[39m",
 							"paddingX": 1,
 							"paddingY": 0
 						}
@@ -8376,7 +8376,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;204;102;102mExtension \"/ext/a.ts\" error: boom\u001b[39m",
+						"text": "\u001b[38;2;234;127;129mExtension \"/ext/a.ts\" error: boom\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -8386,7 +8386,7 @@
 					"chat",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;102;102;102m  at f (/ext/a.ts:1:1)\u001b[39m\n\u001b[38;2;102;102;102m  at g (/ext/b.ts:2:2)\u001b[39m",
+						"text": "\u001b[38;2;126;136;142m  at f (/ext/a.ts:1:1)\u001b[39m\n\u001b[38;2;126;136;142m  at g (/ext/b.ts:2:2)\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -8398,12 +8398,12 @@
 					"children",
 					[
 						{
-							"text": "\u001b[38;2;204;102;102mExtension \"/ext/a.ts\" error: boom\u001b[39m",
+							"text": "\u001b[38;2;234;127;129mExtension \"/ext/a.ts\" error: boom\u001b[39m",
 							"paddingX": 1,
 							"paddingY": 0
 						},
 						{
-							"text": "\u001b[38;2;102;102;102m  at f (/ext/a.ts:1:1)\u001b[39m\n\u001b[38;2;102;102;102m  at g (/ext/b.ts:2:2)\u001b[39m",
+							"text": "\u001b[38;2;126;136;142m  at f (/ext/a.ts:1:1)\u001b[39m\n\u001b[38;2;126;136;142m  at g (/ext/b.ts:2:2)\u001b[39m",
 							"paddingX": 1,
 							"paddingY": 0
 						}

@@ -1,0 +1,27 @@
+{
+	"generator": "capture.mjs",
+	"upstream": {
+		"repo": "pi",
+		"head": "2bbfcca43",
+		"version": "v0.99.1"
+	},
+	"run": "C:/Users/13063/anaconda3/node.exe --experimental-strip-types capture.mjs",
+	"node": "v25.8.2",
+	"output": "theme_delta_oracle.json",
+	"sources": {
+		"theme.ts": "082e9706529d468cfd3315f1d4c865a60ecd463e9fdd207b0b43607998a58ddc",
+		"system-theme.ts": "7234770316787805fa49595537c5f9e60bf9d5fe006a0fa2a8e596baff7c6adb",
+		"theme-json.ts": "48d2ba48735eafb24e4812cf7c0d9b5c7e26253e6731616432850154079b3545",
+		"dark.json": "c11a588b714d35300293079b425fb09a3693d4b2d453585d211b08163c648b75",
+		"light.json": "f590c51c2bc8b238891efd0e983473ed2e2a6487b6692cc1d4b2845165e703f7",
+		"colors.ts": "d4fe729c424d2c07bc64cf0c3edfdbf5642865cba395dfb37234c6c88d65f468",
+		"oklab.ts": "45b067e6e3605b385f595adecd7c0216f1c6b6686680d5c73f661286de736be6",
+		"terminal-colors.ts": "72d1ef298837bfe520bd8a060cb93ea27547dcbff04a167ace0f55b5183e550d"
+	},
+	"notes": [
+		"theme.ts and system-theme.ts execute verbatim; theme-json.ts is copied for provenance only (its typebox dependency is not installable offline, so the validator seam stays re-stated in Rust per D3).",
+		"@earendil-works/pi-tui resolves to pi-tui.ts: re-exports of the pinned colors.ts/oklab.ts/terminal-colors.ts plus a getTerminalColorMode seam pinned via globalThis.__piColorMode.",
+		"chalk, config.ts, fs-watch.ts, syntax-highlight.ts, and text.ts are harness seams (chalk pins level-3 ANSI; config pins the themes dir to this directory; COLORFGBG is deleted from the harness env).",
+		"Each scenario group imports theme.ts with a distinct query string, so theme.ts module state (terminalColors/terminalColorScheme/terminalColorsPending and the theme store) starts fresh per group — the Rust replay resets its mutex-guarded state per test."
+	]
+}

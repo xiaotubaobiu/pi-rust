@@ -540,7 +540,7 @@ mod tests {
             "
 ",
         );
-        assert!(rendered.contains("[3m[38;2;128;128;128mThinking...[39m[23m"));
+        assert!(rendered.contains("[3m[38;2;150;160;164mThinking...[39m[23m"));
 
         let mut tool_calls = AssistantMessageComponent::new(
             theme.clone(),
@@ -587,7 +587,7 @@ mod tests {
 ",
         );
         assert!(
-            rendered.contains("[38;2;204;102;102mResponse was truncated before completion.[39m")
+            rendered.contains("[38;2;234;127;129mResponse was truncated before completion.[39m")
         );
 
         let mut aborted = AssistantMessageComponent::new(

@@ -483,7 +483,7 @@ mod tests {
             Some("a"),
         );
         let login_rows = sel.list_lines().to_vec();
-        assert!(login_rows[0].starts_with("\x1b[38;2;138;190;183m→ \x1b[39m\x1b[38;2;138;190;183mAnthropic\x1b[39m\x1b[38;2;128;128;128m [subscription]\x1b[39m\x1b[38;2;181;189;104m ✓ configured\x1b[39m"));
+        assert!(login_rows[0].starts_with("\x1b[38;2;167;152;215m→ \x1b[39m\x1b[38;2;167;152;215mAnthropic\x1b[39m\x1b[38;2;157;165;169m [subscription]\x1b[39m\x1b[38;2;104;183;141m ✓ configured\x1b[39m"));
         assert!(login_rows
             .iter()
             .any(|l| l.contains("subscription configured")));
@@ -496,7 +496,7 @@ mod tests {
         // order for "na" is [OpenAI, Anthropic, Gemini] with the selection
         // clamped to index 1 (regenerated oracle filteredLines)
         assert!(filtered_rows.iter().any(|l| l.starts_with(
-            "\x1b[38;2;138;190;183m→ \x1b[39m\x1b[38;2;138;190;183mAnthropic\x1b[39m"
+            "\x1b[38;2;167;152;215m→ \x1b[39m\x1b[38;2;167;152;215mAnthropic\x1b[39m"
         )));
         assert!(filtered_rows
             .iter()

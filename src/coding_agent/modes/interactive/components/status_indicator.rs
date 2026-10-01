@@ -319,11 +319,11 @@ mod tests {
         assert_eq!(working.indicator().kind(), StatusIndicatorKind::Working);
         assert_eq!(
             working.indicator().render_in_border(30),
-            "\x1b[38;2;138;190;183m⠋\x1b[39m \x1b[38;2;128;128;128mRunning...\x1b[39m"
+            "\x1b[38;2;167;152;215m⠋\x1b[39m \x1b[38;2;157;165;169mRunning...\x1b[39m"
         );
         assert_eq!(
             working.indicator().render_spinner_in_border(30),
-            "\x1b[38;2;138;190;183m⠋\x1b[39m"
+            "\x1b[38;2;167;152;215m⠋\x1b[39m"
         );
         // three frame ticks later the render shows ⠸ (oracle workingRender)
         for _ in 0..3 {
@@ -332,7 +332,7 @@ mod tests {
         let render = working.indicator().render(30);
         assert_eq!(render[0], "");
         assert!(render[1].starts_with(
-            " \x1b[38;2;138;190;183m⠸\x1b[39m \x1b[38;2;128;128;128mRunning...\x1b[39m"
+            " \x1b[38;2;167;152;215m⠸\x1b[39m \x1b[38;2;157;165;169mRunning...\x1b[39m"
         ));
         assert_eq!(crate::tui::utils::visible_width(&render[1]), 30);
 

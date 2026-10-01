@@ -174,9 +174,9 @@ mod tests {
         assert!(!rendered.is_empty());
         let first = rendered.remove(0);
         // top pad row: full-width customMessageBg
-        assert!(first.contains("\x1b[48;2;45;40;56m"), "customMessageBg row");
+        assert!(first.contains("\x1b[48;2;58;48;85m"), "customMessageBg row");
         let content = rendered.join("\n");
-        assert!(content.contains("\x1b[38;2;149;117;205m\x1b[1m[branch]\x1b[22m\x1b[39m"));
+        assert!(content.contains("\x1b[38;2;167;152;215m\x1b[1m[branch]\x1b[22m\x1b[39m"));
         assert!(content.contains("Branch summary ("));
         assert!(content.contains("ctrl+o"));
         assert!(content.contains(" to expand)"));

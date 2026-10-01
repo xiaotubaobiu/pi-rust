@@ -21,16 +21,16 @@
 					"cycle": "Shift+Tab"
 				},
 				"hints": [
-					"\u001b[38;2;102;102;102mescape/ctrl+c\u001b[39m\u001b[38;2;128;128;128m cancel\u001b[39m",
-					"\u001b[38;2;102;102;102m↑↓\u001b[39m\u001b[38;2;128;128;128m navigate\u001b[39m",
-					"\u001b[38;2;102;102;102mctrl+o\u001b[39m\u001b[38;2;128;128;128m to expand\u001b[39m"
+					"\u001b[38;2;126;136;142mescape/ctrl+c\u001b[39m\u001b[38;2;157;165;169m cancel\u001b[39m",
+					"\u001b[38;2;126;136;142m↑↓\u001b[39m\u001b[38;2;157;165;169m navigate\u001b[39m",
+					"\u001b[38;2;126;136;142mctrl+o\u001b[39m\u001b[38;2;157;165;169m to expand\u001b[39m"
 				],
 				"border": [
 					[
-						"\u001b[38;2;95;135;255m──────────\u001b[39m"
+						"\u001b[38;2;95;168;204m──────────\u001b[39m"
 					],
 					[
-						"\u001b[38;2;138;190;183m────\u001b[39m"
+						"\u001b[38;2;167;152;215m────\u001b[39m"
 					]
 				]
 			}
@@ -118,17 +118,17 @@
 			"name": "diff_render_diff",
 			"log": [],
 			"result": [
-				"\u001b[38;2;128;128;128m\u001b[39m",
-				"\u001b[38;2;128;128;128mcontext line\u001b[39m\n\u001b[38;2;128;128;128manother ctx\u001b[39m",
-				"\u001b[38;2;181;189;104m+12 added line\u001b[39m\n\u001b[38;2;204;102;102m-3 removed line\u001b[39m",
-				"\u001b[38;2;204;102;102m-3 \u001b[7mold\u001b[27m value\u001b[39m\n\u001b[38;2;181;189;104m+3 \u001b[7mnew\u001b[27m value\u001b[39m",
-				"\u001b[38;2;204;102;102m-3 const a = \u001b[7malpha\u001b[27m;\u001b[39m\n\u001b[38;2;181;189;104m+3 const a = \u001b[7mbeta\u001b[27m;\u001b[39m",
-				"\u001b[38;2;204;102;102m-3 alpha beta \u001b[7mgamma\u001b[27m\u001b[39m\n\u001b[38;2;181;189;104m+3 alpha beta \u001b[7mdelta\u001b[27m\u001b[39m\n\u001b[38;2;204;102;102m-7 \u001b[7mx\u001b[27m\u001b[39m\n\u001b[38;2;181;189;104m+7 \u001b[7my\u001b[27m\u001b[39m",
-				"\u001b[38;2;128;128;128m 1 shared\u001b[39m\n\u001b[38;2;204;102;102m-2 \u001b[7mgone\u001b[27m\u001b[39m\n\u001b[38;2;181;189;104m+2 \u001b[7mhere\u001b[27m\u001b[39m\n\u001b[38;2;128;128;128m 3 tail\u001b[39m",
-				"\u001b[38;2;204;102;102m-1 tabbed   \u001b[39m\n\u001b[38;2;181;189;104m+1 tabbed   \u001b[7mtwo\u001b[27m\u001b[39m",
-				"\u001b[38;2;181;189;104m+5 only added\u001b[39m\n\u001b[38;2;181;189;104m+6 second\u001b[39m",
-				"\u001b[38;2;204;102;102m-1 only removed\u001b[39m\n\u001b[38;2;204;102;102m-2 second removed\u001b[39m",
-				"\u001b[38;2;204;102;102m-1 keep alpha, \u001b[7mdrop\u001b[27m beta\u001b[39m\n\u001b[38;2;181;189;104m+1 keep alpha, \u001b[7mkeep\u001b[27m beta\u001b[7m, add gamma\u001b[27m\u001b[39m"
+				"\u001b[38;2;157;165;169m\u001b[39m",
+				"\u001b[38;2;157;165;169mcontext line\u001b[39m\n\u001b[38;2;157;165;169manother ctx\u001b[39m",
+				"\u001b[38;2;104;183;141m+12 added line\u001b[39m\n\u001b[38;2;234;127;129m-3 removed line\u001b[39m",
+				"\u001b[38;2;234;127;129m-3 \u001b[7mold\u001b[27m value\u001b[39m\n\u001b[38;2;104;183;141m+3 \u001b[7mnew\u001b[27m value\u001b[39m",
+				"\u001b[38;2;234;127;129m-3 const a = \u001b[7malpha\u001b[27m;\u001b[39m\n\u001b[38;2;104;183;141m+3 const a = \u001b[7mbeta\u001b[27m;\u001b[39m",
+				"\u001b[38;2;234;127;129m-3 alpha beta \u001b[7mgamma\u001b[27m\u001b[39m\n\u001b[38;2;104;183;141m+3 alpha beta \u001b[7mdelta\u001b[27m\u001b[39m\n\u001b[38;2;234;127;129m-7 \u001b[7mx\u001b[27m\u001b[39m\n\u001b[38;2;104;183;141m+7 \u001b[7my\u001b[27m\u001b[39m",
+				"\u001b[38;2;157;165;169m 1 shared\u001b[39m\n\u001b[38;2;234;127;129m-2 \u001b[7mgone\u001b[27m\u001b[39m\n\u001b[38;2;104;183;141m+2 \u001b[7mhere\u001b[27m\u001b[39m\n\u001b[38;2;157;165;169m 3 tail\u001b[39m",
+				"\u001b[38;2;234;127;129m-1 tabbed   \u001b[39m\n\u001b[38;2;104;183;141m+1 tabbed   \u001b[7mtwo\u001b[27m\u001b[39m",
+				"\u001b[38;2;104;183;141m+5 only added\u001b[39m\n\u001b[38;2;104;183;141m+6 second\u001b[39m",
+				"\u001b[38;2;234;127;129m-1 only removed\u001b[39m\n\u001b[38;2;234;127;129m-2 second removed\u001b[39m",
+				"\u001b[38;2;234;127;129m-1 keep alpha, \u001b[7mdrop\u001b[27m beta\u001b[39m\n\u001b[38;2;104;183;141m+1 keep alpha, \u001b[7mkeep\u001b[27m beta\u001b[7m, add gamma\u001b[27m\u001b[39m"
 			]
 		},
 		{
@@ -379,7 +379,7 @@
 						"kind": "MouseRegion",
 						"child": {
 							"kind": "Text",
-							"text": "\u001b[3m\u001b[38;2;128;128;128mThinking...\u001b[39m\u001b[23m",
+							"text": "\u001b[3m\u001b[38;2;150;160;164mThinking...\u001b[39m\u001b[23m",
 							"paddingX": 1,
 							"paddingY": 0
 						}
@@ -892,7 +892,7 @@
 					"Spacer(1)",
 					{
 						"region": {
-							"text": "\u001b[3m\u001b[38;2;128;128;128mThinking...\u001b[39m\u001b[23m",
+							"text": "\u001b[3m\u001b[38;2;150;160;164mThinking...\u001b[39m\u001b[23m",
 							"paddingX": 1,
 							"paddingY": 0
 						}
@@ -919,7 +919,7 @@
 					},
 					"Spacer(1)",
 					{
-						"text": "\u001b[38;2;204;102;102mResponse was truncated before completion.\u001b[39m",
+						"text": "\u001b[38;2;234;127;129mResponse was truncated before completion.\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -932,7 +932,7 @@
 					},
 					"Spacer(1)",
 					{
-						"text": "\u001b[38;2;204;102;102mOperation aborted\u001b[39m",
+						"text": "\u001b[38;2;234;127;129mOperation aborted\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -945,7 +945,7 @@
 					},
 					"Spacer(1)",
 					{
-						"text": "\u001b[38;2;204;102;102muser hit the button\u001b[39m",
+						"text": "\u001b[38;2;234;127;129muser hit the button\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -958,7 +958,7 @@
 					},
 					"Spacer(1)",
 					{
-						"text": "\u001b[38;2;204;102;102mError: boom\u001b[39m",
+						"text": "\u001b[38;2;234;127;129mError: boom\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -1293,69 +1293,69 @@
 				"renders": 3,
 				"loaderMessage": "Running... (escape/ctrl+c to cancel)",
 				"collapsed": [
-					" \u001b[38;2;181;189;104m\u001b[1m$ echo hi\u001b[22m\u001b[39m                              "
+					" \u001b[38;2;94;178;134m\u001b[1m$ echo hi\u001b[22m\u001b[39m                              "
 				],
 				"expanded": [
 					{
-						"text": "\u001b[38;2;181;189;104m\u001b[1m$ echo hi\u001b[22m\u001b[39m",
+						"text": "\u001b[38;2;94;178;134m\u001b[1m$ echo hi\u001b[22m\u001b[39m",
 						"paddingX": 1
 					},
 					{
-						"text": "\n\u001b[38;2;128;128;128mfirst\u001b[39m\n\u001b[38;2;128;128;128msecond\u001b[39m\n\u001b[38;2;128;128;128mthird\u001b[39m\n\u001b[38;2;128;128;128mfourth\u001b[39m\n\u001b[38;2;128;128;128mfifth\u001b[39m",
+						"text": "\n\u001b[38;2;157;165;169mfirst\u001b[39m\n\u001b[38;2;157;165;169msecond\u001b[39m\n\u001b[38;2;157;165;169mthird\u001b[39m\n\u001b[38;2;157;165;169mfourth\u001b[39m\n\u001b[38;2;157;165;169mfifth\u001b[39m",
 						"paddingX": 1
 					},
 					{
-						"text": "\u001b[38;2;181;189;104m⠋\u001b[39m \u001b[38;2;128;128;128mRunning... (escape/ctrl+c to cancel)\u001b[39m",
+						"text": "\u001b[38;2;94;178;134m⠋\u001b[39m \u001b[38;2;157;165;169mRunning... (escape/ctrl+c to cancel)\u001b[39m",
 						"paddingX": 1
 					}
 				],
 				"completeLines": [
 					{
-						"text": "\u001b[38;2;181;189;104m\u001b[1m$ echo hi\u001b[22m\u001b[39m",
+						"text": "\u001b[38;2;94;178;134m\u001b[1m$ echo hi\u001b[22m\u001b[39m",
 						"paddingX": 1
 					},
 					{
-						"text": "\n\u001b[38;2;128;128;128mfirst\u001b[39m\n\u001b[38;2;128;128;128msecond\u001b[39m\n\u001b[38;2;128;128;128mthird\u001b[39m\n\u001b[38;2;128;128;128mfourth\u001b[39m\n\u001b[38;2;128;128;128mfifth\u001b[39m",
+						"text": "\n\u001b[38;2;157;165;169mfirst\u001b[39m\n\u001b[38;2;157;165;169msecond\u001b[39m\n\u001b[38;2;157;165;169mthird\u001b[39m\n\u001b[38;2;157;165;169mfourth\u001b[39m\n\u001b[38;2;157;165;169mfifth\u001b[39m",
 						"paddingX": 1
 					}
 				],
 				"errorLines": [
 					{
-						"text": "\u001b[38;2;181;189;104m\u001b[1m$ echo hi\u001b[22m\u001b[39m",
+						"text": "\u001b[38;2;94;178;134m\u001b[1m$ echo hi\u001b[22m\u001b[39m",
 						"paddingX": 1
 					},
 					{
-						"text": "\n\u001b[38;2;128;128;128mfirst\u001b[39m\n\u001b[38;2;128;128;128msecond\u001b[39m\n\u001b[38;2;128;128;128mthird\u001b[39m\n\u001b[38;2;128;128;128mfourth\u001b[39m\n\u001b[38;2;128;128;128mfifth\u001b[39m",
+						"text": "\n\u001b[38;2;157;165;169mfirst\u001b[39m\n\u001b[38;2;157;165;169msecond\u001b[39m\n\u001b[38;2;157;165;169mthird\u001b[39m\n\u001b[38;2;157;165;169mfourth\u001b[39m\n\u001b[38;2;157;165;169mfifth\u001b[39m",
 						"paddingX": 1
 					},
 					{
-						"text": "\n\u001b[38;2;204;102;102m(exit 3)\u001b[39m",
+						"text": "\n\u001b[38;2;234;127;129m(exit 3)\u001b[39m",
 						"paddingX": 1
 					}
 				],
 				"cancelledLines": [
 					{
-						"text": "\u001b[38;2;181;189;104m\u001b[1m$ echo hi\u001b[22m\u001b[39m",
+						"text": "\u001b[38;2;94;178;134m\u001b[1m$ echo hi\u001b[22m\u001b[39m",
 						"paddingX": 1
 					},
 					{
-						"text": "\n\u001b[38;2;128;128;128mfirst\u001b[39m\n\u001b[38;2;128;128;128msecond\u001b[39m\n\u001b[38;2;128;128;128mthird\u001b[39m\n\u001b[38;2;128;128;128mfourth\u001b[39m\n\u001b[38;2;128;128;128mfifth\u001b[39m",
+						"text": "\n\u001b[38;2;157;165;169mfirst\u001b[39m\n\u001b[38;2;157;165;169msecond\u001b[39m\n\u001b[38;2;157;165;169mthird\u001b[39m\n\u001b[38;2;157;165;169mfourth\u001b[39m\n\u001b[38;2;157;165;169mfifth\u001b[39m",
 						"paddingX": 1
 					},
 					{
-						"text": "\n\u001b[38;2;255;255;0m(cancelled)\u001b[39m\n\u001b[38;2;255;255;0mOutput truncated. Full output: /tmp/full2.out\u001b[39m",
+						"text": "\n\u001b[38;2;205;154;34m(cancelled)\u001b[39m\n\u001b[38;2;205;154;34mOutput truncated. Full output: /tmp/full2.out\u001b[39m",
 						"paddingX": 1
 					}
 				],
 				"output": "first\nsecond\nthird\nfourth\nfifth",
 				"command": "echo hi",
-				"excludedHeader": "\u001b[38;2;181;189;104m\u001b[1m$ !! ls\u001b[22m\u001b[39m",
+				"excludedHeader": "\u001b[38;2;94;178;134m\u001b[1m$ !! ls\u001b[22m\u001b[39m",
 				"excludedStatus": [
-					"\u001b[38;2;181;189;104m\u001b[1m$ big\u001b[22m\u001b[39m",
-					"\n\u001b[38;2;128;128;128m... 1980 more lines (\u001b[39m\u001b[38;2;102;102;102mctrl+o\u001b[39m\u001b[38;2;128;128;128m to expand\u001b[39m\u001b[38;2;128;128;128m)\u001b[39m\n\u001b[38;2;255;255;0mOutput truncated. Full output: /tmp/big.out\u001b[39m"
+					"\u001b[38;2;94;178;134m\u001b[1m$ big\u001b[22m\u001b[39m",
+					"\n\u001b[38;2;157;165;169m... 1980 more lines (\u001b[39m\u001b[38;2;126;136;142mctrl+o\u001b[39m\u001b[38;2;157;165;169m to expand\u001b[39m\u001b[38;2;157;165;169m)\u001b[39m\n\u001b[38;2;205;154;34mOutput truncated. Full output: /tmp/big.out\u001b[39m"
 				],
 				"bigPreviewLines": 1,
-				"bigPreviewFirst": " \u001b[38;2;181;189;104m\u001b[1m$ big\u001b[22m\u001b[39m                                  ",
+				"bigPreviewFirst": " \u001b[38;2;94;178;134m\u001b[1m$ big\u001b[22m\u001b[39m                                  ",
 				"bigOutputLines": 2010,
 				"defaults": {
 					"DEFAULT_MAX_LINES": 2000,
@@ -1485,7 +1485,7 @@
 					},
 					"spacer",
 					{
-						"text": "\u001b[38;2;102;102;102mescape/ctrl+c\u001b[39m\u001b[38;2;128;128;128m cancel\u001b[39m"
+						"text": "\u001b[38;2;126;136;142mescape/ctrl+c\u001b[39m\u001b[38;2;157;165;169m cancel\u001b[39m"
 					},
 					"spacer",
 					"border"
@@ -1505,7 +1505,7 @@
 					},
 					"spacer",
 					{
-						"text": "\u001b[38;2;102;102;102mescape/ctrl+c\u001b[39m\u001b[38;2;128;128;128m cancel\u001b[39m"
+						"text": "\u001b[38;2;126;136;142mescape/ctrl+c\u001b[39m\u001b[38;2;157;165;169m cancel\u001b[39m"
 					},
 					"spacer",
 					"border"
@@ -1638,13 +1638,13 @@
 					"render"
 				],
 				"render": [
-					"\u001b[38;2;95;135;255m──────────────────────────────\u001b[39m",
+					"\u001b[38;2;95;168;204m──────────────────────────────\u001b[39m",
 					"",
-					" \u001b[38;2;138;190;183m⠋\u001b[39m \u001b[38;2;128;128;128mWorking...\u001b[39m                 ",
+					" \u001b[38;2;167;152;215m⠋\u001b[39m \u001b[38;2;157;165;169mWorking...\u001b[39m                 ",
 					"",
-					" \u001b[38;2;102;102;102mescape/ctrl+c\u001b[39m\u001b[38;2;128;128;128m cancel\u001b[39m         ",
+					" \u001b[38;2;126;136;142mescape/ctrl+c\u001b[39m\u001b[38;2;157;165;169m cancel\u001b[39m         ",
 					"",
-					"\u001b[38;2;95;135;255m──────────────────────────────\u001b[39m"
+					"\u001b[38;2;95;168;204m──────────────────────────────\u001b[39m"
 				]
 			}
 		},
@@ -2032,33 +2032,33 @@
 					{
 						"region": [
 							{
-								"text": "\u001b[38;2;149;117;205m\u001b[1m[branch]\u001b[22m\u001b[39m"
+								"text": "\u001b[38;2;167;152;215m\u001b[1m[branch]\u001b[22m\u001b[39m"
 							},
 							"spacer",
 							{
-								"text": "\u001b[38;2;212;212;212mBranch summary (\u001b[39m\u001b[38;2;102;102;102mctrl+o\u001b[39m\u001b[38;2;212;212;212m to expand)\u001b[39m"
+								"text": "\u001b[38;2;157;165;169mBranch summary (\u001b[39m\u001b[38;2;126;136;142mctrl+o\u001b[39m\u001b[38;2;157;165;169m to expand)\u001b[39m"
 							}
 						]
 					}
 				],
 				"branchExpanded": [
-					"\u001b[38;2;45;40;56m                                        \u001b[49m",
-					"\u001b[38;2;45;40;56m \u001b[38;2;149;117;205m\u001b[1m[branch]\u001b[22m\u001b[39m                               \u001b[49m",
-					"\u001b[38;2;45;40;56m                                        \u001b[49m",
-					"\u001b[38;2;45;40;56m **Branch Summary**                     \u001b[49m",
-					"\u001b[38;2;45;40;56m                                        \u001b[49m",
-					"\u001b[38;2;45;40;56m Did **stuff**                          \u001b[49m",
-					"\u001b[38;2;45;40;56m                                        \u001b[49m"
+					"\u001b[38;2;58;48;85m                                        \u001b[49m",
+					"\u001b[38;2;58;48;85m \u001b[38;2;167;152;215m\u001b[1m[branch]\u001b[22m\u001b[39m                               \u001b[49m",
+					"\u001b[38;2;58;48;85m                                        \u001b[49m",
+					"\u001b[38;2;58;48;85m **Branch Summary**                     \u001b[49m",
+					"\u001b[38;2;58;48;85m                                        \u001b[49m",
+					"\u001b[38;2;58;48;85m Did **stuff**                          \u001b[49m",
+					"\u001b[38;2;58;48;85m                                        \u001b[49m"
 				],
 				"branchToggled": [
 					{
 						"region": [
 							{
-								"text": "\u001b[38;2;149;117;205m\u001b[1m[branch]\u001b[22m\u001b[39m"
+								"text": "\u001b[38;2;167;152;215m\u001b[1m[branch]\u001b[22m\u001b[39m"
 							},
 							"spacer",
 							{
-								"text": "\u001b[38;2;212;212;212mBranch summary (\u001b[39m\u001b[38;2;102;102;102mctrl+o\u001b[39m\u001b[38;2;212;212;212m to expand)\u001b[39m"
+								"text": "\u001b[38;2;157;165;169mBranch summary (\u001b[39m\u001b[38;2;126;136;142mctrl+o\u001b[39m\u001b[38;2;157;165;169m to expand)\u001b[39m"
 							}
 						]
 					}
@@ -2067,11 +2067,11 @@
 					{
 						"region": [
 							{
-								"text": "\u001b[38;2;149;117;205m\u001b[1m[compaction]\u001b[22m\u001b[39m"
+								"text": "\u001b[38;2;167;152;215m\u001b[1m[compaction]\u001b[22m\u001b[39m"
 							},
 							"spacer",
 							{
-								"text": "\u001b[38;2;212;212;212mCompacted from 1,234,567 tokens (\u001b[39m\u001b[38;2;102;102;102mctrl+o\u001b[39m\u001b[38;2;212;212;212m to expand)\u001b[39m"
+								"text": "\u001b[38;2;157;165;169mCompacted from 1,234,567 tokens (\u001b[39m\u001b[38;2;126;136;142mctrl+o\u001b[39m\u001b[38;2;157;165;169m to expand)\u001b[39m"
 							}
 						]
 					}
@@ -2080,7 +2080,7 @@
 					{
 						"region": [
 							{
-								"text": "\u001b[38;2;149;117;205m\u001b[1m[compaction]\u001b[22m\u001b[39m"
+								"text": "\u001b[38;2;167;152;215m\u001b[1m[compaction]\u001b[22m\u001b[39m"
 							},
 							"spacer",
 							{
@@ -2094,7 +2094,7 @@
 					{
 						"region": [
 							{
-								"text": "\u001b[38;2;149;117;205m\u001b[1m[skill]\u001b[22m \u001b[39m\u001b[38;2;212;212;212mmy-skill\u001b[39m\u001b[38;2;102;102;102m (ctrl+o to expand)\u001b[39m"
+								"text": "\u001b[38;2;167;152;215m\u001b[1m[skill]\u001b[22m \u001b[39m\u001b[38;2;157;165;169mmy-skill\u001b[39m\u001b[38;2;126;136;142m (ctrl+o to expand)\u001b[39m"
 							}
 						]
 					}
@@ -2103,7 +2103,7 @@
 					{
 						"region": [
 							{
-								"text": "\u001b[38;2;149;117;205m\u001b[1m[skill]\u001b[22m\u001b[39m"
+								"text": "\u001b[38;2;167;152;215m\u001b[1m[skill]\u001b[22m\u001b[39m"
 							},
 							{
 								"md": "**my-skill**\n\nskill body",
@@ -2137,7 +2137,7 @@
 					{
 						"box": [
 							{
-								"text": "\u001b[38;2;149;117;205m\u001b[1m[plan]\u001b[22m\u001b[39m"
+								"text": "\u001b[38;2;167;152;215m\u001b[1m[plan]\u001b[22m\u001b[39m"
 							},
 							"spacer",
 							{
@@ -2174,7 +2174,7 @@
 					{
 						"box": [
 							{
-								"text": "\u001b[38;2;149;117;205m\u001b[1m[n]\u001b[22m\u001b[39m"
+								"text": "\u001b[38;2;167;152;215m\u001b[1m[n]\u001b[22m\u001b[39m"
 							},
 							"[object Object]",
 							"[object Object]"
@@ -2197,7 +2197,7 @@
 					{
 						"box": [
 							{
-								"text": "\u001b[38;2;204;102;102m[bad] renderer failed: entry failed\u001b[39m"
+								"text": "\u001b[38;2;234;127;129m[bad] renderer failed: entry failed\u001b[39m"
 							}
 						]
 					}
@@ -2311,12 +2311,12 @@
 					"              \u001b[38;2;72;119;161m\u001b[48;2;61;108;152m▄\u001b[38;2;76;122;164m\u001b[48;2;67;114;157m▄\u001b[38;2;78;123;163m\u001b[48;2;68;113;156m▄\u001b[38;2;69;113;154m\u001b[48;2;66;110;152m▄\u001b[38;2;58;93;128m\u001b[48;2;65;95;128m▄\u001b[38;2;88;107;127m\u001b[48;2;90;100;113m▄\u001b[38;2;118;116;117m\u001b[48;2;111;106;105m▄\u001b[38;2;146;123;110m\u001b[48;2;157;134;119m▄\u001b[38;2;177;146;127m\u001b[48;2;177;146;126m▄\u001b[38;2;175;142;121m\u001b[48;2;179;148;127m▄\u001b[38;2;176;142;120m\u001b[48;2;170;137;116m▄\u001b[38;2;167;129;105m\u001b[48;2;157;122;100m▄\u001b[38;2;160;120;97m\u001b[48;2;159;127;107m▄\u001b[38;2;161;127;106m\u001b[48;2;164;135;116m▄\u001b[38;2;165;133;112m\u001b[48;2;158;131;113m▄\u001b[38;2;166;136;116m\u001b[48;2;134;113;100m▄\u001b[38;2;155;131;115m\u001b[48;2;84;70;63m▄\u001b[38;2;130;112;102m\u001b[48;2;44;37;35m▄\u001b[38;2;111;102;97m\u001b[48;2;30;24;24m▄\u001b[38;2;138;132;128m\u001b[48;2;55;48;46m▄\u001b[38;2;164;158;153m\u001b[48;2;58;51;49m▄\u001b[38;2;183;178;174m\u001b[48;2;122;116;113m▄\u001b[38;2;186;182;178m\u001b[48;2;190;185;182m▄\u001b[38;2;188;184;180m\u001b[48;2;188;184;180m▄\u001b[38;2;185;181;177m\u001b[48;2;187;182;178m▄\u001b[38;2;183;178;174m\u001b[48;2;182;178;174m▄\u001b[38;2;186;181;177m\u001b[48;2;186;181;177m▄\u001b[38;2;185;180;176m\u001b[48;2;185;181;177m▄\u001b[38;2;182;177;174m\u001b[48;2;184;179;175m▄\u001b[38;2;182;177;173m\u001b[48;2;186;182;178m▄\u001b[38;2;178;172;168m\u001b[48;2;182;177;173m▄\u001b[38;2;178;172;168m\u001b[48;2;181;174;170m▄\u001b[0m",
 					"              \u001b[38;2;72;120;161m\u001b[48;2;72;118;160m▄\u001b[38;2;75;122;163m\u001b[48;2;74;120;162m▄\u001b[38;2;76;123;164m\u001b[48;2;81;127;167m▄\u001b[38;2;74;117;155m\u001b[48;2;71;113;151m▄\u001b[38;2;61;99;135m\u001b[48;2;58;93;128m▄\u001b[38;2;59;95;130m\u001b[48;2;64;92;122m▄\u001b[38;2;91;103;118m\u001b[48;2;97;97;103m▄\u001b[38;2;111;95;86m\u001b[48;2;124;105;95m▄\u001b[38;2;156;126;108m\u001b[48;2;172;138;117m▄\u001b[38;2;175;140;119m\u001b[48;2;176;141;119m▄\u001b[38;2;177;143;121m\u001b[48;2;180;145;122m▄\u001b[38;2;178;143;120m\u001b[48;2;175;137;113m▄\u001b[38;2;181;146;124m\u001b[48;2;173;135;111m▄\u001b[38;2;175;142;120m\u001b[48;2;165;129;106m▄\u001b[38;2;169;136;114m\u001b[48;2;166;132;110m▄\u001b[38;2;170;138;118m\u001b[48;2;167;134;112m▄\u001b[38;2;169;138;118m\u001b[48;2;169;138;118m▄\u001b[38;2;172;145;127m\u001b[48;2;172;148;132m▄\u001b[38;2;173;161;153m\u001b[48;2;171;159;150m▄\u001b[38;2;183;176;172m\u001b[48;2;178;172;168m▄\u001b[38;2;185;179;175m\u001b[48;2;189;184;180m▄\u001b[38;2;191;185;181m\u001b[48;2;188;183;179m▄\u001b[38;2;193;186;182m\u001b[48;2;188;184;180m▄\u001b[38;2;189;182;178m\u001b[48;2;188;184;180m▄\u001b[38;2;184;179;175m\u001b[48;2;184;179;175m▄\u001b[38;2;186;181;177m\u001b[48;2;183;178;174m▄\u001b[38;2;185;180;176m\u001b[48;2;185;180;176m▄\u001b[38;2;182;175;171m\u001b[48;2;184;179;175m▄\u001b[38;2;183;177;173m\u001b[48;2;184;178;174m▄\u001b[38;2;179;173;169m\u001b[48;2;182;175;171m▄\u001b[38;2;179;174;170m\u001b[48;2;179;174;170m▄\u001b[38;2;176;171;168m\u001b[48;2;178;174;170m▄\u001b[0m",
 					"",
-					"              \u001b[38;2;138;190;183mFree Kimi K2.5 via OpenCode Zen\u001b[39m",
-					"                    \u001b[38;2;181;189;104m\"Powered by daxnuts\"\u001b[39m",
-					"                          \u001b[38;2;128;128;128m— @thdxr\u001b[39m",
+					"              \u001b[38;2;167;152;215mFree Kimi K2.5 via OpenCode Zen\u001b[39m",
+					"                    \u001b[38;2;104;183;141m\"Powered by daxnuts\"\u001b[39m",
+					"                          \u001b[38;2;157;165;169m— @thdxr\u001b[39m",
 					"",
-					"                        \u001b[38;2;102;102;102mTry OpenCode\u001b[39m",
-					"          \u001b[38;2;129;162;190mhttps://mistral.ai/news/mistral-vibe-2-0\u001b[39m",
+					"                        \u001b[38;2;126;136;142mTry OpenCode\u001b[39m",
+					"          \u001b[38;2;105;173;208mhttps://mistral.ai/news/mistral-vibe-2-0\u001b[39m",
 					""
 				],
 				"tick30": [
@@ -2338,12 +2338,12 @@
 					"              \u001b[38;2;72;119;161m\u001b[48;2;61;108;152m▄\u001b[38;2;76;122;164m\u001b[48;2;67;114;157m▄\u001b[38;2;78;123;163m\u001b[48;2;68;113;156m▄\u001b[38;2;69;113;154m\u001b[48;2;66;110;152m▄\u001b[38;2;58;93;128m\u001b[48;2;65;95;128m▄\u001b[38;2;88;107;127m\u001b[48;2;90;100;113m▄\u001b[38;2;118;116;117m\u001b[48;2;111;106;105m▄\u001b[38;2;146;123;110m\u001b[48;2;157;134;119m▄\u001b[38;2;177;146;127m\u001b[48;2;177;146;126m▄\u001b[38;2;175;142;121m\u001b[48;2;179;148;127m▄\u001b[38;2;176;142;120m\u001b[48;2;170;137;116m▄\u001b[38;2;167;129;105m\u001b[48;2;157;122;100m▄\u001b[38;2;160;120;97m\u001b[48;2;159;127;107m▄\u001b[38;2;161;127;106m\u001b[48;2;164;135;116m▄\u001b[38;2;165;133;112m\u001b[48;2;158;131;113m▄\u001b[38;2;166;136;116m\u001b[48;2;134;113;100m▄\u001b[38;2;155;131;115m\u001b[48;2;84;70;63m▄\u001b[38;2;130;112;102m\u001b[48;2;44;37;35m▄\u001b[38;2;111;102;97m\u001b[48;2;30;24;24m▄\u001b[38;2;138;132;128m\u001b[48;2;55;48;46m▄\u001b[38;2;164;158;153m\u001b[48;2;58;51;49m▄\u001b[38;2;183;178;174m\u001b[48;2;122;116;113m▄\u001b[38;2;186;182;178m\u001b[48;2;190;185;182m▄\u001b[38;2;188;184;180m\u001b[48;2;188;184;180m▄\u001b[38;2;185;181;177m\u001b[48;2;187;182;178m▄\u001b[38;2;183;178;174m\u001b[48;2;182;178;174m▄\u001b[38;2;186;181;177m\u001b[48;2;186;181;177m▄\u001b[38;2;185;180;176m\u001b[48;2;185;181;177m▄\u001b[38;2;182;177;174m\u001b[48;2;184;179;175m▄\u001b[38;2;182;177;173m\u001b[48;2;186;182;178m▄\u001b[38;2;178;172;168m\u001b[48;2;182;177;173m▄\u001b[38;2;178;172;168m\u001b[48;2;181;174;170m▄\u001b[0m",
 					"              \u001b[38;2;72;120;161m\u001b[48;2;72;118;160m▄\u001b[38;2;75;122;163m\u001b[48;2;74;120;162m▄\u001b[38;2;76;123;164m\u001b[48;2;81;127;167m▄\u001b[38;2;74;117;155m\u001b[48;2;71;113;151m▄\u001b[38;2;61;99;135m\u001b[48;2;58;93;128m▄\u001b[38;2;59;95;130m\u001b[48;2;64;92;122m▄\u001b[38;2;91;103;118m\u001b[48;2;97;97;103m▄\u001b[38;2;111;95;86m\u001b[48;2;124;105;95m▄\u001b[38;2;156;126;108m\u001b[48;2;172;138;117m▄\u001b[38;2;175;140;119m\u001b[48;2;176;141;119m▄\u001b[38;2;177;143;121m\u001b[48;2;180;145;122m▄\u001b[38;2;178;143;120m\u001b[48;2;175;137;113m▄\u001b[38;2;181;146;124m\u001b[48;2;173;135;111m▄\u001b[38;2;175;142;120m\u001b[48;2;165;129;106m▄\u001b[38;2;169;136;114m\u001b[48;2;166;132;110m▄\u001b[38;2;170;138;118m\u001b[48;2;167;134;112m▄\u001b[38;2;169;138;118m\u001b[48;2;169;138;118m▄\u001b[38;2;172;145;127m\u001b[48;2;172;148;132m▄\u001b[38;2;173;161;153m\u001b[48;2;171;159;150m▄\u001b[38;2;183;176;172m\u001b[48;2;178;172;168m▄\u001b[38;2;185;179;175m\u001b[48;2;189;184;180m▄\u001b[38;2;191;185;181m\u001b[48;2;188;183;179m▄\u001b[38;2;193;186;182m\u001b[48;2;188;184;180m▄\u001b[38;2;189;182;178m\u001b[48;2;188;184;180m▄\u001b[38;2;184;179;175m\u001b[48;2;184;179;175m▄\u001b[38;2;186;181;177m\u001b[48;2;183;178;174m▄\u001b[38;2;185;180;176m\u001b[48;2;185;180;176m▄\u001b[38;2;182;175;171m\u001b[48;2;184;179;175m▄\u001b[38;2;183;177;173m\u001b[48;2;184;178;174m▄\u001b[38;2;179;173;169m\u001b[48;2;182;175;171m▄\u001b[38;2;179;174;170m\u001b[48;2;179;174;170m▄\u001b[38;2;176;171;168m\u001b[48;2;178;174;170m▄\u001b[0m",
 					"",
-					"              \u001b[38;2;138;190;183mFree Kimi K2.5 via OpenCode Zen\u001b[39m",
-					"                    \u001b[38;2;181;189;104m\"Powered by daxnuts\"\u001b[39m",
-					"                          \u001b[38;2;128;128;128m— @thdxr\u001b[39m",
+					"              \u001b[38;2;167;152;215mFree Kimi K2.5 via OpenCode Zen\u001b[39m",
+					"                    \u001b[38;2;104;183;141m\"Powered by daxnuts\"\u001b[39m",
+					"                          \u001b[38;2;157;165;169m— @thdxr\u001b[39m",
 					"",
-					"                        \u001b[38;2;102;102;102mTry OpenCode\u001b[39m",
-					"          \u001b[38;2;129;162;190mhttps://mistral.ai/news/mistral-vibe-2-0\u001b[39m",
+					"                        \u001b[38;2;126;136;142mTry OpenCode\u001b[39m",
+					"          \u001b[38;2;105;173;208mhttps://mistral.ai/news/mistral-vibe-2-0\u001b[39m",
 					""
 				],
 				"rendersAfterDispose": 0
@@ -2403,16 +2403,16 @@
 					"border": "fn"
 				},
 				{
-					"text": "\u001b[1m\u001b[38;2;138;190;183mpi has joined Earendil\u001b[39m\u001b[22m",
+					"text": "\u001b[1m\u001b[38;2;167;152;215mpi has joined Earendil\u001b[39m\u001b[22m",
 					"paddingX": 1
 				},
 				"spacer",
 				{
-					"text": "\u001b[38;2;128;128;128mRead the blog post:\u001b[39m",
+					"text": "\u001b[38;2;157;165;169mRead the blog post:\u001b[39m",
 					"paddingX": 1
 				},
 				{
-					"text": "\u001b[38;2;129;162;190mhttps://mariozechner.at/posts/2026-04-08-ive-sold-out/\u001b[39m",
+					"text": "\u001b[38;2;105;173;208mhttps://mariozechner.at/posts/2026-04-08-ive-sold-out/\u001b[39m",
 					"paddingX": 1
 				},
 				"spacer",
@@ -2453,57 +2453,57 @@
 					"cost": 0.75
 				},
 				"noModel": [
-					"\u001b[38;2;102;102;102mC:\\Users\\n\\proj\u001b[39m",
-					"\u001b[38;2;102;102;102m0.0%/0 (auto)\u001b[39m\u001b[38;2;102;102;102m                                       no-model\u001b[39m"
+					"\u001b[38;2;126;136;142mC:\\Users\\n\\proj\u001b[39m",
+					"\u001b[38;2;126;136;142m0.0%/0 (auto)\u001b[39m\u001b[38;2;126;136;142m                                       no-model\u001b[39m"
 				],
 				"full": [
-					"\u001b[38;2;102;102;102mC:\\Users\\n\\proj (main) • my-session\u001b[39m",
-					"\u001b[38;2;102;102;102m↑1.6k ↓265 R100 W50 CH6.1% $0.560 (sub) 42.5%/200k (auto)\u001b[39m\u001b[38;2;102;102;102m         kimi-k2 • high\u001b[39m",
+					"\u001b[38;2;126;136;142mC:\\Users\\n\\proj (main) • my-session\u001b[39m",
+					"\u001b[38;2;126;136;142m↑1.6k ↓265 R100 W50 CH6.1% $0.560 (sub) 42.5%/200k (auto)\u001b[39m\u001b[38;2;126;136;142m         kimi-k2 • high\u001b[39m",
 					"first status second status"
 				],
 				"xp": [
-					"\u001b[38;2;102;102;102mC:\\Users\\n\\proj (main) • my-session\u001b[39m",
-					"\u001b[38;2;102;102;102m↑1.6k ↓265 R100 W50 CH6.1% $0.560 (sub) 42.5%/200k (auto) \u001b[38;2;102;102;102m•\u001b[39m \u001b[1m\u001b[38;2;255;255;0mxp\u001b[39m\u001b[22m\u001b[39m\u001b[38;2;102;102;102m    kimi-k2 • high\u001b[39m",
+					"\u001b[38;2;126;136;142mC:\\Users\\n\\proj (main) • my-session\u001b[39m",
+					"\u001b[38;2;126;136;142m↑1.6k ↓265 R100 W50 CH6.1% $0.560 (sub) 42.5%/200k (auto) \u001b[38;2;126;136;142m•\u001b[39m \u001b[1m\u001b[38;2;205;154;34mxp\u001b[39m\u001b[22m\u001b[39m\u001b[38;2;126;136;142m    kimi-k2 • high\u001b[39m",
 					"first status second status"
 				],
 				"autoOff": [
-					"\u001b[38;2;102;102;102mC:\\Users\\n\\proj (main) • my-session\u001b[39m",
-					"\u001b[38;2;102;102;102m↑1.6k ↓265 R100 W50 CH6.1% $0.560 (sub) 42.5%/200k\u001b[39m\u001b[38;2;102;102;102m        kimi-k2 • thinking off\u001b[39m",
+					"\u001b[38;2;126;136;142mC:\\Users\\n\\proj (main) • my-session\u001b[39m",
+					"\u001b[38;2;126;136;142m↑1.6k ↓265 R100 W50 CH6.1% $0.560 (sub) 42.5%/200k\u001b[39m\u001b[38;2;126;136;142m        kimi-k2 • thinking off\u001b[39m",
 					"first status second status"
 				],
 				"unknownPct": [
-					"\u001b[38;2;102;102;102mC:\\Users\\n\\proj (main)\u001b[39m",
-					"\u001b[38;2;102;102;102m↑1.6k ↓265 R100 W50 CH6.1% $0.560 (sub) ?/200k (auto)\u001b[39m\u001b[38;2;102;102;102m     kimi-k2 • thinking off\u001b[39m",
+					"\u001b[38;2;126;136;142mC:\\Users\\n\\proj (main)\u001b[39m",
+					"\u001b[38;2;126;136;142m↑1.6k ↓265 R100 W50 CH6.1% $0.560 (sub) ?/200k (auto)\u001b[39m\u001b[38;2;126;136;142m     kimi-k2 • thinking off\u001b[39m",
 					"first status second status"
 				],
 				"narrow": [
-					"\u001b[38;2;102;102;102mC:\\Users\\n\\proj (main) • my\u001b[0m\u001b[38;2;102;102;102m...\u001b[39m\u001b[0m",
-					"\u001b[38;2;102;102;102m↑1.6k ↓265 R100 W50 CH6.1% \u001b[0m...\u001b[0m\u001b[39m\u001b[38;2;102;102;102m\u001b[39m",
+					"\u001b[38;2;126;136;142mC:\\Users\\n\\proj (main) • my\u001b[0m\u001b[38;2;126;136;142m...\u001b[39m\u001b[0m",
+					"\u001b[38;2;126;136;142m↑1.6k ↓265 R100 W50 CH6.1% \u001b[0m...\u001b[0m\u001b[39m\u001b[38;2;126;136;142m\u001b[39m",
 					"first status second status"
 				],
 				"narrower": [
-					"\u001b[38;2;102;102;102mC:\\Users\\\u001b[0m\u001b[38;2;102;102;102m...\u001b[39m\u001b[0m",
-					"\u001b[38;2;102;102;102m↑1.6k ↓26\u001b[0m...\u001b[0m\u001b[39m\u001b[38;2;102;102;102m\u001b[39m",
-					"first sta\u001b[0m\u001b[38;2;102;102;102m...\u001b[39m\u001b[0m"
+					"\u001b[38;2;126;136;142mC:\\Users\\\u001b[0m\u001b[38;2;126;136;142m...\u001b[39m\u001b[0m",
+					"\u001b[38;2;126;136;142m↑1.6k ↓26\u001b[0m...\u001b[0m\u001b[39m\u001b[38;2;126;136;142m\u001b[39m",
+					"first sta\u001b[0m\u001b[38;2;126;136;142m...\u001b[39m\u001b[0m"
 				],
 				"over90": [
-					"\u001b[38;2;102;102;102mC:\\Users\\n\\proj (main)\u001b[39m",
-					"\u001b[38;2;102;102;102m↑1.6k ↓265 R100 W50 CH6.1% $0.560 (sub) \u001b[38;2;204;102;102m91.1%/200k (auto)\u001b[39m\u001b[39m\u001b[38;2;102;102;102m  kimi-k2 • thinking of\u001b[0m\u001b[39m",
+					"\u001b[38;2;126;136;142mC:\\Users\\n\\proj (main)\u001b[39m",
+					"\u001b[38;2;126;136;142m↑1.6k ↓265 R100 W50 CH6.1% $0.560 (sub) \u001b[38;2;234;127;129m91.1%/200k (auto)\u001b[39m\u001b[39m\u001b[38;2;126;136;142m  kimi-k2 • thinking of\u001b[0m\u001b[39m",
 					"first status second status"
 				],
 				"over70": [
-					"\u001b[38;2;102;102;102mC:\\Users\\n\\proj (main)\u001b[39m",
-					"\u001b[38;2;102;102;102m↑1.6k ↓265 R100 W50 CH6.1% $0.560 (sub) \u001b[38;2;255;255;0m70.1%/200k (auto)\u001b[39m\u001b[39m\u001b[38;2;102;102;102m  kimi-k2 • thinking of\u001b[0m\u001b[39m",
+					"\u001b[38;2;126;136;142mC:\\Users\\n\\proj (main)\u001b[39m",
+					"\u001b[38;2;126;136;142m↑1.6k ↓265 R100 W50 CH6.1% $0.560 (sub) \u001b[38;2;205;154;34m70.1%/200k (auto)\u001b[39m\u001b[39m\u001b[38;2;126;136;142m  kimi-k2 • thinking of\u001b[0m\u001b[39m",
 					"first status second status"
 				],
 				"subscription": [
-					"\u001b[38;2;102;102;102mC:\\Users\\n\\proj (main)\u001b[39m",
-					"\u001b[38;2;102;102;102m↑1.6k ↓265 R100 W50 CH6.1% $0.560 (sub) 5.0%/1.0k (auto)\u001b[39m\u001b[38;2;102;102;102m        (sub-provider) m\u001b[39m",
+					"\u001b[38;2;126;136;142mC:\\Users\\n\\proj (main)\u001b[39m",
+					"\u001b[38;2;126;136;142m↑1.6k ↓265 R100 W50 CH6.1% $0.560 (sub) 5.0%/1.0k (auto)\u001b[39m\u001b[38;2;126;136;142m        (sub-provider) m\u001b[39m",
 					"first status second status"
 				],
 				"noBranchNoStatuses": [
-					"\u001b[38;2;102;102;102mC:\\Users\\n\\proj • my-session\u001b[39m",
-					"\u001b[38;2;102;102;102m↑1.6k ↓265 R100 W50 CH6.1% $0.560 (sub) 42.5%/200k (auto)\u001b[39m\u001b[38;2;102;102;102m         kimi-k2 • high\u001b[39m"
+					"\u001b[38;2;126;136;142mC:\\Users\\n\\proj • my-session\u001b[39m",
+					"\u001b[38;2;126;136;142m↑1.6k ↓265 R100 W50 CH6.1% $0.560 (sub) 42.5%/200k (auto)\u001b[39m\u001b[38;2;126;136;142m         kimi-k2 • high\u001b[39m"
 				]
 			}
 		},
@@ -2802,43 +2802,43 @@
 					"line one",
 					"line two",
 					"spacer",
-					"\u001b[38;2;212;212;212minfo message\u001b[39m",
-					"\u001b[38;2;138;190;183m\u001b]8;;https://docs.example.com\u0007docs: https://docs.example.com\u001b]8;;\u0007\u001b[39m",
-					"\u001b[38;2;138;190;183m\u001b]8;;https://bare.example.com\u0007https://bare.example.com\u001b]8;;\u0007\u001b[39m",
+					"\u001b[38;2;222;224;225minfo message\u001b[39m",
+					"\u001b[38;2;167;152;215m\u001b]8;;https://docs.example.com\u0007docs: https://docs.example.com\u001b]8;;\u0007\u001b[39m",
+					"\u001b[38;2;167;152;215m\u001b]8;;https://bare.example.com\u0007https://bare.example.com\u001b]8;;\u0007\u001b[39m",
 					"spacer",
-					"(\u001b[38;2;102;102;102mescape/ctrl+c\u001b[39m\u001b[38;2;128;128;128m to close\u001b[39m)",
+					"(\u001b[38;2;126;136;142mescape/ctrl+c\u001b[39m\u001b[38;2;157;165;169m to close\u001b[39m)",
 					"spacer",
-					"\u001b[38;2;102;102;102mwaiting...\u001b[39m",
-					"(\u001b[38;2;102;102;102mescape/ctrl+c\u001b[39m\u001b[38;2;128;128;128m to cancel\u001b[39m)",
-					"\u001b[38;2;102;102;102mprogressing\u001b[39m"
+					"\u001b[38;2;126;136;142mwaiting...\u001b[39m",
+					"(\u001b[38;2;126;136;142mescape/ctrl+c\u001b[39m\u001b[38;2;157;165;169m to cancel\u001b[39m)",
+					"\u001b[38;2;126;136;142mprogressing\u001b[39m"
 				],
 				"manualContent": [
 					"spacer",
 					"line one",
 					"line two",
 					"spacer",
-					"\u001b[38;2;212;212;212minfo message\u001b[39m",
-					"\u001b[38;2;138;190;183m\u001b]8;;https://docs.example.com\u0007docs: https://docs.example.com\u001b]8;;\u0007\u001b[39m",
-					"\u001b[38;2;138;190;183m\u001b]8;;https://bare.example.com\u0007https://bare.example.com\u001b]8;;\u0007\u001b[39m",
+					"\u001b[38;2;222;224;225minfo message\u001b[39m",
+					"\u001b[38;2;167;152;215m\u001b]8;;https://docs.example.com\u0007docs: https://docs.example.com\u001b]8;;\u0007\u001b[39m",
+					"\u001b[38;2;167;152;215m\u001b]8;;https://bare.example.com\u0007https://bare.example.com\u001b]8;;\u0007\u001b[39m",
 					"spacer",
-					"(\u001b[38;2;102;102;102mescape/ctrl+c\u001b[39m\u001b[38;2;128;128;128m to close\u001b[39m)",
+					"(\u001b[38;2;126;136;142mescape/ctrl+c\u001b[39m\u001b[38;2;157;165;169m to close\u001b[39m)",
 					"spacer",
-					"\u001b[38;2;102;102;102mwaiting...\u001b[39m",
-					"(\u001b[38;2;102;102;102mescape/ctrl+c\u001b[39m\u001b[38;2;128;128;128m to cancel\u001b[39m)",
-					"\u001b[38;2;102;102;102mprogressing\u001b[39m",
+					"\u001b[38;2;126;136;142mwaiting...\u001b[39m",
+					"(\u001b[38;2;126;136;142mescape/ctrl+c\u001b[39m\u001b[38;2;157;165;169m to cancel\u001b[39m)",
+					"\u001b[38;2;126;136;142mprogressing\u001b[39m",
 					"spacer",
-					"\u001b[38;2;102;102;102menter code\u001b[39m",
+					"\u001b[38;2;126;136;142menter code\u001b[39m",
 					"> the-code",
-					"(\u001b[38;2;102;102;102mescape/ctrl+c\u001b[39m\u001b[38;2;128;128;128m to cancel\u001b[39m)",
+					"(\u001b[38;2;126;136;142mescape/ctrl+c\u001b[39m\u001b[38;2;157;165;169m to cancel\u001b[39m)",
 					"spacer",
-					"\u001b[38;2;212;212;212mWho are you?\u001b[39m",
-					"\u001b[38;2;102;102;102me.g., your name\u001b[39m",
+					"\u001b[38;2;222;224;225mWho are you?\u001b[39m",
+					"\u001b[38;2;126;136;142me.g., your name\u001b[39m",
 					"> my name",
-					"(\u001b[38;2;102;102;102mescape/ctrl+c\u001b[39m\u001b[38;2;128;128;128m to cancel,\u001b[39m \u001b[38;2;102;102;102menter\u001b[39m\u001b[38;2;128;128;128m to submit\u001b[39m)",
+					"(\u001b[38;2;126;136;142mescape/ctrl+c\u001b[39m\u001b[38;2;157;165;169m to cancel,\u001b[39m \u001b[38;2;126;136;142menter\u001b[39m\u001b[38;2;157;165;169m to submit\u001b[39m)",
 					"spacer",
-					"\u001b[38;2;212;212;212magain\u001b[39m",
+					"\u001b[38;2;222;224;225magain\u001b[39m",
 					"input",
-					"(\u001b[38;2;102;102;102mescape/ctrl+c\u001b[39m\u001b[38;2;128;128;128m to cancel,\u001b[39m \u001b[38;2;102;102;102menter\u001b[39m\u001b[38;2;128;128;128m to submit\u001b[39m)"
+					"(\u001b[38;2;126;136;142mescape/ctrl+c\u001b[39m\u001b[38;2;157;165;169m to cancel,\u001b[39m \u001b[38;2;126;136;142menter\u001b[39m\u001b[38;2;157;165;169m to submit\u001b[39m)"
 				],
 				"manualValue": [
 					"resolved",
@@ -2849,24 +2849,24 @@
 					"line one",
 					"line two",
 					"spacer",
-					"\u001b[38;2;212;212;212minfo message\u001b[39m",
-					"\u001b[38;2;138;190;183m\u001b]8;;https://docs.example.com\u0007docs: https://docs.example.com\u001b]8;;\u0007\u001b[39m",
-					"\u001b[38;2;138;190;183m\u001b]8;;https://bare.example.com\u0007https://bare.example.com\u001b]8;;\u0007\u001b[39m",
+					"\u001b[38;2;222;224;225minfo message\u001b[39m",
+					"\u001b[38;2;167;152;215m\u001b]8;;https://docs.example.com\u0007docs: https://docs.example.com\u001b]8;;\u0007\u001b[39m",
+					"\u001b[38;2;167;152;215m\u001b]8;;https://bare.example.com\u0007https://bare.example.com\u001b]8;;\u0007\u001b[39m",
 					"spacer",
-					"(\u001b[38;2;102;102;102mescape/ctrl+c\u001b[39m\u001b[38;2;128;128;128m to close\u001b[39m)",
+					"(\u001b[38;2;126;136;142mescape/ctrl+c\u001b[39m\u001b[38;2;157;165;169m to close\u001b[39m)",
 					"spacer",
-					"\u001b[38;2;102;102;102mwaiting...\u001b[39m",
-					"(\u001b[38;2;102;102;102mescape/ctrl+c\u001b[39m\u001b[38;2;128;128;128m to cancel\u001b[39m)",
-					"\u001b[38;2;102;102;102mprogressing\u001b[39m",
+					"\u001b[38;2;126;136;142mwaiting...\u001b[39m",
+					"(\u001b[38;2;126;136;142mescape/ctrl+c\u001b[39m\u001b[38;2;157;165;169m to cancel\u001b[39m)",
+					"\u001b[38;2;126;136;142mprogressing\u001b[39m",
 					"spacer",
-					"\u001b[38;2;102;102;102menter code\u001b[39m",
+					"\u001b[38;2;126;136;142menter code\u001b[39m",
 					"> the-code",
-					"(\u001b[38;2;102;102;102mescape/ctrl+c\u001b[39m\u001b[38;2;128;128;128m to cancel\u001b[39m)",
+					"(\u001b[38;2;126;136;142mescape/ctrl+c\u001b[39m\u001b[38;2;157;165;169m to cancel\u001b[39m)",
 					"spacer",
-					"\u001b[38;2;212;212;212mWho are you?\u001b[39m",
-					"\u001b[38;2;102;102;102me.g., your name\u001b[39m",
+					"\u001b[38;2;222;224;225mWho are you?\u001b[39m",
+					"\u001b[38;2;126;136;142me.g., your name\u001b[39m",
 					"input",
-					"(\u001b[38;2;102;102;102mescape/ctrl+c\u001b[39m\u001b[38;2;128;128;128m to cancel,\u001b[39m \u001b[38;2;102;102;102menter\u001b[39m\u001b[38;2;128;128;128m to submit\u001b[39m)"
+					"(\u001b[38;2;126;136;142mescape/ctrl+c\u001b[39m\u001b[38;2;157;165;169m to cancel,\u001b[39m \u001b[38;2;126;136;142menter\u001b[39m\u001b[38;2;157;165;169m to submit\u001b[39m)"
 				],
 				"promptValue": [
 					"resolved",
@@ -2908,7 +2908,7 @@
 					"container",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;138;190;183m\u001b[1mSelect provider to configure:\u001b[22m\u001b[39m",
+						"text": "\u001b[38;2;167;152;215m\u001b[1mSelect provider to configure:\u001b[22m\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -2964,7 +2964,7 @@
 					"container",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;138;190;183m→ \u001b[39m\u001b[38;2;138;190;183mAnthropic\u001b[39m\u001b[38;2;128;128;128m [subscription]\u001b[39m\u001b[38;2;181;189;104m ✓ configured\u001b[39m",
+						"text": "\u001b[38;2;167;152;215m→ \u001b[39m\u001b[38;2;167;152;215mAnthropic\u001b[39m\u001b[38;2;157;165;169m [subscription]\u001b[39m\u001b[38;2;104;183;141m ✓ configured\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -2974,7 +2974,7 @@
 					"container",
 					{
 						"kind": "Text",
-						"text": "  \u001b[38;2;212;212;212mGemini\u001b[39m\u001b[38;2;128;128;128m [API key]\u001b[39m\u001b[38;2;128;128;128m • \u001b[39m\u001b[38;2;255;255;0msubscription configured\u001b[39m",
+						"text": "  \u001b[38;2;222;224;225mGemini\u001b[39m\u001b[38;2;157;165;169m [API key]\u001b[39m\u001b[38;2;157;165;169m • \u001b[39m\u001b[38;2;205;154;34msubscription configured\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -2984,7 +2984,7 @@
 					"container",
 					{
 						"kind": "Text",
-						"text": "  \u001b[38;2;212;212;212mBare\u001b[39m\u001b[38;2;128;128;128m [API key]\u001b[39m\u001b[38;2;128;128;128m • unconfigured\u001b[39m",
+						"text": "  \u001b[38;2;222;224;225mBare\u001b[39m\u001b[38;2;157;165;169m [API key]\u001b[39m\u001b[38;2;157;165;169m • unconfigured\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -2994,7 +2994,7 @@
 					"container",
 					{
 						"kind": "Text",
-						"text": "  \u001b[38;2;212;212;212mLocal\u001b[39m\u001b[38;2;128;128;128m [API key]\u001b[39m\u001b[38;2;181;189;104m ✓ config file\u001b[39m",
+						"text": "  \u001b[38;2;222;224;225mLocal\u001b[39m\u001b[38;2;157;165;169m [API key]\u001b[39m\u001b[38;2;104;183;141m ✓ config file\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -3004,7 +3004,7 @@
 					"container",
 					{
 						"kind": "Text",
-						"text": "  \u001b[38;2;212;212;212mOpenAI\u001b[39m\u001b[38;2;128;128;128m [API key]\u001b[39m\u001b[38;2;181;189;104m ✓ ENV_VAR,OTHER_ENV\u001b[39m",
+						"text": "  \u001b[38;2;222;224;225mOpenAI\u001b[39m\u001b[38;2;157;165;169m [API key]\u001b[39m\u001b[38;2;104;183;141m ✓ ENV_VAR,OTHER_ENV\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -3014,71 +3014,7 @@
 					"container",
 					{
 						"kind": "Text",
-						"text": "  \u001b[38;2;212;212;212mKimi\u001b[39m\u001b[38;2;128;128;128m [subscription]\u001b[39m\u001b[38;2;181;189;104m ✓ configured\u001b[39m",
-						"paddingX": 1,
-						"paddingY": 0
-					}
-				],
-				[
-					"Container.clear",
-					"container"
-				],
-				[
-					"Container.addChild",
-					"container",
-					{
-						"kind": "Text",
-						"text": "  \u001b[38;2;212;212;212mAnthropic\u001b[39m\u001b[38;2;128;128;128m [subscription]\u001b[39m\u001b[38;2;181;189;104m ✓ configured\u001b[39m",
-						"paddingX": 1,
-						"paddingY": 0
-					}
-				],
-				[
-					"Container.addChild",
-					"container",
-					{
-						"kind": "Text",
-						"text": "\u001b[38;2;138;190;183m→ \u001b[39m\u001b[38;2;138;190;183mGemini\u001b[39m\u001b[38;2;128;128;128m [API key]\u001b[39m\u001b[38;2;128;128;128m • \u001b[39m\u001b[38;2;255;255;0msubscription configured\u001b[39m",
-						"paddingX": 1,
-						"paddingY": 0
-					}
-				],
-				[
-					"Container.addChild",
-					"container",
-					{
-						"kind": "Text",
-						"text": "  \u001b[38;2;212;212;212mBare\u001b[39m\u001b[38;2;128;128;128m [API key]\u001b[39m\u001b[38;2;128;128;128m • unconfigured\u001b[39m",
-						"paddingX": 1,
-						"paddingY": 0
-					}
-				],
-				[
-					"Container.addChild",
-					"container",
-					{
-						"kind": "Text",
-						"text": "  \u001b[38;2;212;212;212mLocal\u001b[39m\u001b[38;2;128;128;128m [API key]\u001b[39m\u001b[38;2;181;189;104m ✓ config file\u001b[39m",
-						"paddingX": 1,
-						"paddingY": 0
-					}
-				],
-				[
-					"Container.addChild",
-					"container",
-					{
-						"kind": "Text",
-						"text": "  \u001b[38;2;212;212;212mOpenAI\u001b[39m\u001b[38;2;128;128;128m [API key]\u001b[39m\u001b[38;2;181;189;104m ✓ ENV_VAR,OTHER_ENV\u001b[39m",
-						"paddingX": 1,
-						"paddingY": 0
-					}
-				],
-				[
-					"Container.addChild",
-					"container",
-					{
-						"kind": "Text",
-						"text": "  \u001b[38;2;212;212;212mKimi\u001b[39m\u001b[38;2;128;128;128m [subscription]\u001b[39m\u001b[38;2;181;189;104m ✓ configured\u001b[39m",
+						"text": "  \u001b[38;2;222;224;225mKimi\u001b[39m\u001b[38;2;157;165;169m [subscription]\u001b[39m\u001b[38;2;104;183;141m ✓ configured\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -3092,7 +3028,7 @@
 					"container",
 					{
 						"kind": "Text",
-						"text": "  \u001b[38;2;212;212;212mOpenAI\u001b[39m\u001b[38;2;128;128;128m [API key]\u001b[39m\u001b[38;2;181;189;104m ✓ ENV_VAR,OTHER_ENV\u001b[39m",
+						"text": "  \u001b[38;2;222;224;225mAnthropic\u001b[39m\u001b[38;2;157;165;169m [subscription]\u001b[39m\u001b[38;2;104;183;141m ✓ configured\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -3102,7 +3038,7 @@
 					"container",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;138;190;183m→ \u001b[39m\u001b[38;2;138;190;183mAnthropic\u001b[39m\u001b[38;2;128;128;128m [subscription]\u001b[39m\u001b[38;2;181;189;104m ✓ configured\u001b[39m",
+						"text": "\u001b[38;2;167;152;215m→ \u001b[39m\u001b[38;2;167;152;215mGemini\u001b[39m\u001b[38;2;157;165;169m [API key]\u001b[39m\u001b[38;2;157;165;169m • \u001b[39m\u001b[38;2;205;154;34msubscription configured\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -3112,7 +3048,71 @@
 					"container",
 					{
 						"kind": "Text",
-						"text": "  \u001b[38;2;212;212;212mGemini\u001b[39m\u001b[38;2;128;128;128m [API key]\u001b[39m\u001b[38;2;128;128;128m • \u001b[39m\u001b[38;2;255;255;0msubscription configured\u001b[39m",
+						"text": "  \u001b[38;2;222;224;225mBare\u001b[39m\u001b[38;2;157;165;169m [API key]\u001b[39m\u001b[38;2;157;165;169m • unconfigured\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Text",
+						"text": "  \u001b[38;2;222;224;225mLocal\u001b[39m\u001b[38;2;157;165;169m [API key]\u001b[39m\u001b[38;2;104;183;141m ✓ config file\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Text",
+						"text": "  \u001b[38;2;222;224;225mOpenAI\u001b[39m\u001b[38;2;157;165;169m [API key]\u001b[39m\u001b[38;2;104;183;141m ✓ ENV_VAR,OTHER_ENV\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Text",
+						"text": "  \u001b[38;2;222;224;225mKimi\u001b[39m\u001b[38;2;157;165;169m [subscription]\u001b[39m\u001b[38;2;104;183;141m ✓ configured\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.clear",
+					"container"
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Text",
+						"text": "  \u001b[38;2;222;224;225mOpenAI\u001b[39m\u001b[38;2;157;165;169m [API key]\u001b[39m\u001b[38;2;104;183;141m ✓ ENV_VAR,OTHER_ENV\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Text",
+						"text": "\u001b[38;2;167;152;215m→ \u001b[39m\u001b[38;2;167;152;215mAnthropic\u001b[39m\u001b[38;2;157;165;169m [subscription]\u001b[39m\u001b[38;2;104;183;141m ✓ configured\u001b[39m",
+						"paddingX": 1,
+						"paddingY": 0
+					}
+				],
+				[
+					"Container.addChild",
+					"container",
+					{
+						"kind": "Text",
+						"text": "  \u001b[38;2;222;224;225mGemini\u001b[39m\u001b[38;2;157;165;169m [API key]\u001b[39m\u001b[38;2;157;165;169m • \u001b[39m\u001b[38;2;205;154;34msubscription configured\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -3137,7 +3137,7 @@
 					"container",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;138;190;183m\u001b[1mSelect provider to logout:\u001b[22m\u001b[39m",
+						"text": "\u001b[38;2;167;152;215m\u001b[1mSelect provider to logout:\u001b[22m\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -3193,7 +3193,7 @@
 					"container",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;138;190;183m→ \u001b[39m\u001b[38;2;138;190;183mAnthropic\u001b[39m\u001b[38;2;128;128;128m [subscription]\u001b[39m\u001b[38;2;181;189;104m ✓ configured\u001b[39m",
+						"text": "\u001b[38;2;167;152;215m→ \u001b[39m\u001b[38;2;167;152;215mAnthropic\u001b[39m\u001b[38;2;157;165;169m [subscription]\u001b[39m\u001b[38;2;104;183;141m ✓ configured\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -3203,7 +3203,7 @@
 					"container",
 					{
 						"kind": "Text",
-						"text": "  \u001b[38;2;212;212;212mOpenAI\u001b[39m\u001b[38;2;128;128;128m [API key]\u001b[39m\u001b[38;2;181;189;104m ✓ ENV_VAR,OTHER_ENV\u001b[39m",
+						"text": "  \u001b[38;2;222;224;225mOpenAI\u001b[39m\u001b[38;2;157;165;169m [API key]\u001b[39m\u001b[38;2;104;183;141m ✓ ENV_VAR,OTHER_ENV\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -3217,7 +3217,7 @@
 					"container",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;138;190;183m→ \u001b[39m\u001b[38;2;138;190;183mAnthropic\u001b[39m\u001b[38;2;128;128;128m [subscription]\u001b[39m\u001b[38;2;181;189;104m ✓ configured\u001b[39m",
+						"text": "\u001b[38;2;167;152;215m→ \u001b[39m\u001b[38;2;167;152;215mAnthropic\u001b[39m\u001b[38;2;157;165;169m [subscription]\u001b[39m\u001b[38;2;104;183;141m ✓ configured\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -3227,7 +3227,7 @@
 					"container",
 					{
 						"kind": "Text",
-						"text": "  \u001b[38;2;212;212;212mOpenAI\u001b[39m\u001b[38;2;128;128;128m [API key]\u001b[39m\u001b[38;2;181;189;104m ✓ ENV_VAR,OTHER_ENV\u001b[39m",
+						"text": "  \u001b[38;2;222;224;225mOpenAI\u001b[39m\u001b[38;2;157;165;169m [API key]\u001b[39m\u001b[38;2;104;183;141m ✓ ENV_VAR,OTHER_ENV\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -3252,7 +3252,7 @@
 					"container",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;138;190;183m\u001b[1mSelect provider to configure:\u001b[22m\u001b[39m",
+						"text": "\u001b[38;2;167;152;215m\u001b[1mSelect provider to configure:\u001b[22m\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -3308,7 +3308,7 @@
 					"container",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;128;128;128m  No providers available\u001b[39m",
+						"text": "\u001b[38;2;157;165;169m  No providers available\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -3333,7 +3333,7 @@
 					"container",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;138;190;183m\u001b[1mSelect provider to logout:\u001b[22m\u001b[39m",
+						"text": "\u001b[38;2;167;152;215m\u001b[1mSelect provider to logout:\u001b[22m\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -3389,7 +3389,7 @@
 					"container",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;138;190;183m→ \u001b[39m\u001b[38;2;138;190;183mAnthropic\u001b[39m\u001b[38;2;128;128;128m [subscription]\u001b[39m\u001b[38;2;181;189;104m ✓ configured\u001b[39m",
+						"text": "\u001b[38;2;167;152;215m→ \u001b[39m\u001b[38;2;167;152;215mAnthropic\u001b[39m\u001b[38;2;157;165;169m [subscription]\u001b[39m\u001b[38;2;104;183;141m ✓ configured\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -3399,7 +3399,7 @@
 					"container",
 					{
 						"kind": "Text",
-						"text": "  \u001b[38;2;212;212;212mOpenAI\u001b[39m\u001b[38;2;128;128;128m [API key]\u001b[39m\u001b[38;2;181;189;104m ✓ ENV_VAR,OTHER_ENV\u001b[39m",
+						"text": "  \u001b[38;2;222;224;225mOpenAI\u001b[39m\u001b[38;2;157;165;169m [API key]\u001b[39m\u001b[38;2;104;183;141m ✓ ENV_VAR,OTHER_ENV\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -3409,7 +3409,7 @@
 					"container",
 					{
 						"kind": "Text",
-						"text": "  \u001b[38;2;212;212;212mKimi\u001b[39m\u001b[38;2;128;128;128m [subscription]\u001b[39m\u001b[38;2;181;189;104m ✓ configured\u001b[39m",
+						"text": "  \u001b[38;2;222;224;225mKimi\u001b[39m\u001b[38;2;157;165;169m [subscription]\u001b[39m\u001b[38;2;104;183;141m ✓ configured\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -3419,7 +3419,7 @@
 					"container",
 					{
 						"kind": "Text",
-						"text": "  \u001b[38;2;212;212;212mGemini\u001b[39m\u001b[38;2;128;128;128m [API key]\u001b[39m\u001b[38;2;128;128;128m • \u001b[39m\u001b[38;2;255;255;0msubscription configured\u001b[39m",
+						"text": "  \u001b[38;2;222;224;225mGemini\u001b[39m\u001b[38;2;157;165;169m [API key]\u001b[39m\u001b[38;2;157;165;169m • \u001b[39m\u001b[38;2;205;154;34msubscription configured\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -3429,7 +3429,7 @@
 					"container",
 					{
 						"kind": "Text",
-						"text": "  \u001b[38;2;212;212;212mBare\u001b[39m\u001b[38;2;128;128;128m [API key]\u001b[39m\u001b[38;2;128;128;128m • unconfigured\u001b[39m",
+						"text": "  \u001b[38;2;222;224;225mBare\u001b[39m\u001b[38;2;157;165;169m [API key]\u001b[39m\u001b[38;2;157;165;169m • unconfigured\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -3439,7 +3439,7 @@
 					"container",
 					{
 						"kind": "Text",
-						"text": "  \u001b[38;2;212;212;212mLocal\u001b[39m\u001b[38;2;128;128;128m [API key]\u001b[39m\u001b[38;2;181;189;104m ✓ config file\u001b[39m",
+						"text": "  \u001b[38;2;222;224;225mLocal\u001b[39m\u001b[38;2;157;165;169m [API key]\u001b[39m\u001b[38;2;104;183;141m ✓ config file\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -3453,7 +3453,7 @@
 					"container",
 					{
 						"kind": "Text",
-						"text": "\u001b[38;2;128;128;128m  No matching providers\u001b[39m",
+						"text": "\u001b[38;2;157;165;169m  No matching providers\u001b[39m",
 						"paddingX": 1,
 						"paddingY": 0
 					}
@@ -3465,17 +3465,17 @@
 					"API key"
 				],
 				"loginLines": [
-					"\u001b[38;2;138;190;183m→ \u001b[39m\u001b[38;2;138;190;183mAnthropic\u001b[39m\u001b[38;2;128;128;128m [subscription]\u001b[39m\u001b[38;2;181;189;104m ✓ configured\u001b[39m",
-					"  \u001b[38;2;212;212;212mGemini\u001b[39m\u001b[38;2;128;128;128m [API key]\u001b[39m\u001b[38;2;128;128;128m • \u001b[39m\u001b[38;2;255;255;0msubscription configured\u001b[39m",
-					"  \u001b[38;2;212;212;212mBare\u001b[39m\u001b[38;2;128;128;128m [API key]\u001b[39m\u001b[38;2;128;128;128m • unconfigured\u001b[39m",
-					"  \u001b[38;2;212;212;212mLocal\u001b[39m\u001b[38;2;128;128;128m [API key]\u001b[39m\u001b[38;2;181;189;104m ✓ config file\u001b[39m",
-					"  \u001b[38;2;212;212;212mOpenAI\u001b[39m\u001b[38;2;128;128;128m [API key]\u001b[39m\u001b[38;2;181;189;104m ✓ ENV_VAR,OTHER_ENV\u001b[39m",
-					"  \u001b[38;2;212;212;212mKimi\u001b[39m\u001b[38;2;128;128;128m [subscription]\u001b[39m\u001b[38;2;181;189;104m ✓ configured\u001b[39m"
+					"\u001b[38;2;167;152;215m→ \u001b[39m\u001b[38;2;167;152;215mAnthropic\u001b[39m\u001b[38;2;157;165;169m [subscription]\u001b[39m\u001b[38;2;104;183;141m ✓ configured\u001b[39m",
+					"  \u001b[38;2;222;224;225mGemini\u001b[39m\u001b[38;2;157;165;169m [API key]\u001b[39m\u001b[38;2;157;165;169m • \u001b[39m\u001b[38;2;205;154;34msubscription configured\u001b[39m",
+					"  \u001b[38;2;222;224;225mBare\u001b[39m\u001b[38;2;157;165;169m [API key]\u001b[39m\u001b[38;2;157;165;169m • unconfigured\u001b[39m",
+					"  \u001b[38;2;222;224;225mLocal\u001b[39m\u001b[38;2;157;165;169m [API key]\u001b[39m\u001b[38;2;104;183;141m ✓ config file\u001b[39m",
+					"  \u001b[38;2;222;224;225mOpenAI\u001b[39m\u001b[38;2;157;165;169m [API key]\u001b[39m\u001b[38;2;104;183;141m ✓ ENV_VAR,OTHER_ENV\u001b[39m",
+					"  \u001b[38;2;222;224;225mKimi\u001b[39m\u001b[38;2;157;165;169m [subscription]\u001b[39m\u001b[38;2;104;183;141m ✓ configured\u001b[39m"
 				],
 				"filteredLines": [
-					"  \u001b[38;2;212;212;212mOpenAI\u001b[39m\u001b[38;2;128;128;128m [API key]\u001b[39m\u001b[38;2;181;189;104m ✓ ENV_VAR,OTHER_ENV\u001b[39m",
-					"\u001b[38;2;138;190;183m→ \u001b[39m\u001b[38;2;138;190;183mAnthropic\u001b[39m\u001b[38;2;128;128;128m [subscription]\u001b[39m\u001b[38;2;181;189;104m ✓ configured\u001b[39m",
-					"  \u001b[38;2;212;212;212mGemini\u001b[39m\u001b[38;2;128;128;128m [API key]\u001b[39m\u001b[38;2;128;128;128m • \u001b[39m\u001b[38;2;255;255;0msubscription configured\u001b[39m"
+					"  \u001b[38;2;222;224;225mOpenAI\u001b[39m\u001b[38;2;157;165;169m [API key]\u001b[39m\u001b[38;2;104;183;141m ✓ ENV_VAR,OTHER_ENV\u001b[39m",
+					"\u001b[38;2;167;152;215m→ \u001b[39m\u001b[38;2;167;152;215mAnthropic\u001b[39m\u001b[38;2;157;165;169m [subscription]\u001b[39m\u001b[38;2;104;183;141m ✓ configured\u001b[39m",
+					"  \u001b[38;2;222;224;225mGemini\u001b[39m\u001b[38;2;157;165;169m [API key]\u001b[39m\u001b[38;2;157;165;169m • \u001b[39m\u001b[38;2;205;154;34msubscription configured\u001b[39m"
 				],
 				"selections": [
 					[
@@ -3489,14 +3489,14 @@
 				],
 				"cancels": 0,
 				"logoutLines": [
-					"\u001b[38;2;138;190;183m→ \u001b[39m\u001b[38;2;138;190;183mAnthropic\u001b[39m\u001b[38;2;128;128;128m [subscription]\u001b[39m\u001b[38;2;181;189;104m ✓ configured\u001b[39m",
-					"  \u001b[38;2;212;212;212mOpenAI\u001b[39m\u001b[38;2;128;128;128m [API key]\u001b[39m\u001b[38;2;181;189;104m ✓ ENV_VAR,OTHER_ENV\u001b[39m"
+					"\u001b[38;2;167;152;215m→ \u001b[39m\u001b[38;2;167;152;215mAnthropic\u001b[39m\u001b[38;2;157;165;169m [subscription]\u001b[39m\u001b[38;2;104;183;141m ✓ configured\u001b[39m",
+					"  \u001b[38;2;222;224;225mOpenAI\u001b[39m\u001b[38;2;157;165;169m [API key]\u001b[39m\u001b[38;2;104;183;141m ✓ ENV_VAR,OTHER_ENV\u001b[39m"
 				],
 				"emptyLines": [
-					"\u001b[38;2;128;128;128m  No providers available\u001b[39m"
+					"\u001b[38;2;157;165;169m  No providers available\u001b[39m"
 				],
 				"noMatchLines": [
-					"\u001b[38;2;128;128;128m  No matching providers\u001b[39m"
+					"\u001b[38;2;157;165;169m  No matching providers\u001b[39m"
 				],
 				"fuzzyProbe": [
 					-59.4,
@@ -3811,13 +3811,13 @@
 					"selector"
 				],
 				"toggles": [],
-				"inputTitle": "\u001b[38;2;138;190;183mPick one (0s)\u001b[39m",
-				"selectorTitle": "\u001b[38;2;138;190;183m\u001b[1mChoose (1s)\u001b[22m\u001b[39m",
+				"inputTitle": "\u001b[38;2;167;152;215mPick one (0s)\u001b[39m",
+				"selectorTitle": "\u001b[38;2;167;152;215m\u001b[1mChoose (1s)\u001b[22m\u001b[39m",
 				"selectorLines": [
-					"\u001b[38;2;138;190;183m→ \u001b[39m\u001b[38;2;138;190;183malpha\u001b[39m",
-					"  \u001b[38;2;212;212;212mbeta\u001b[39m"
+					"\u001b[38;2;167;152;215m→ \u001b[39m\u001b[38;2;167;152;215malpha\u001b[39m",
+					"  \u001b[38;2;222;224;225mbeta\u001b[39m"
 				],
-				"hintsLine": "\u001b[38;2;138;190;183m\u001b[1mChoose (1s)\u001b[22m\u001b[39m||\u001b[38;2;102;102;102m↑↓\u001b[39m\u001b[38;2;128;128;128m navigate\u001b[39m  \u001b[38;2;102;102;102menter\u001b[39m\u001b[38;2;128;128;128m select\u001b[39m  \u001b[38;2;102;102;102mescape/ctrl+c\u001b[39m\u001b[38;2;128;128;128m cancel\u001b[39m",
+				"hintsLine": "\u001b[38;2;167;152;215m\u001b[1mChoose (1s)\u001b[22m\u001b[39m||\u001b[38;2;126;136;142m↑↓\u001b[39m\u001b[38;2;157;165;169m navigate\u001b[39m  \u001b[38;2;126;136;142menter\u001b[39m\u001b[38;2;157;165;169m select\u001b[39m  \u001b[38;2;126;136;142mescape/ctrl+c\u001b[39m\u001b[38;2;157;165;169m cancel\u001b[39m",
 				"editorText": "EDITED(prefill)",
 				"editorKbExternal": true
 			}
@@ -4412,34 +4412,34 @@
 				"initial": [
 					"border",
 					"spacer",
-					"\u001b[38;2;138;190;183m██████\n██  ██\n████  ██\n██    ██\u001b[39m",
+					"\u001b[38;2;167;152;215m██████\n██  ██\n████  ██\n██    ██\u001b[39m",
 					"spacer",
-					"\u001b[38;2;138;190;183m\u001b[1mWelcome to pi, the minimal coding agent.\u001b[22m\u001b[39m",
+					"\u001b[38;2;167;152;215m\u001b[1mWelcome to pi, the minimal coding agent.\u001b[22m\u001b[39m",
 					"spacer",
-					"\u001b[38;2;212;212;212mPick a theme.\u001b[39m",
-					"\u001b[38;2;128;128;128mDetected system appearance: light\u001b[39m",
+					"\u001b[38;2;222;224;225mPick a theme.\u001b[39m",
+					"\u001b[38;2;157;165;169mDetected system appearance: light\u001b[39m",
 					"spacer",
-					"  \u001b[38;2;212;212;212mDark\u001b[39m",
-					"\u001b[38;2;138;190;183m→ \u001b[39m\u001b[38;2;138;190;183mLight\u001b[39m",
+					"  \u001b[38;2;222;224;225mDark\u001b[39m",
+					"\u001b[38;2;167;152;215m→ \u001b[39m\u001b[38;2;167;152;215mLight\u001b[39m",
 					"spacer",
-					"\u001b[38;2;102;102;102m↑↓\u001b[39m\u001b[38;2;128;128;128m navigate\u001b[39m  \u001b[38;2;102;102;102menter\u001b[39m\u001b[38;2;128;128;128m continue\u001b[39m  \u001b[38;2;102;102;102mescape/ctrl+c\u001b[39m\u001b[38;2;128;128;128m skip setup\u001b[39m",
+					"\u001b[38;2;126;136;142m↑↓\u001b[39m\u001b[38;2;157;165;169m navigate\u001b[39m  \u001b[38;2;126;136;142menter\u001b[39m\u001b[38;2;157;165;169m continue\u001b[39m  \u001b[38;2;126;136;142mescape/ctrl+c\u001b[39m\u001b[38;2;157;165;169m skip setup\u001b[39m",
 					"spacer",
 					"border"
 				],
 				"analytics": [
 					"border",
 					"spacer",
-					"\u001b[38;2;138;190;183m██████\n██  ██\n████  ██\n██    ██\u001b[39m",
+					"\u001b[38;2;167;152;215m██████\n██  ██\n████  ██\n██    ██\u001b[39m",
 					"spacer",
-					"\u001b[38;2;138;190;183m\u001b[1mWelcome to pi, the minimal coding agent.\u001b[22m\u001b[39m",
+					"\u001b[38;2;167;152;215m\u001b[1mWelcome to pi, the minimal coding agent.\u001b[22m\u001b[39m",
 					"spacer",
-					"\u001b[38;2;212;212;212mOpt-in to anonymous usage data sharing?\u001b[39m",
-					"\u001b[38;2;128;128;128mOpting in stores a tracking identifier in settings.json and enables anonymous\nusage analytics. This helps us to better debug, reproduce, and resolve issues\nand bugs within Pi. You can observe what is shared using /privacy and make\nchanges anytime in settings.json.\u001b[39m",
+					"\u001b[38;2;222;224;225mOpt-in to anonymous usage data sharing?\u001b[39m",
+					"\u001b[38;2;157;165;169mOpting in stores a tracking identifier in settings.json and enables anonymous\nusage analytics. This helps us to better debug, reproduce, and resolve issues\nand bugs within Pi. You can observe what is shared using /privacy and make\nchanges anytime in settings.json.\u001b[39m",
 					"spacer",
-					"\u001b[38;2;138;190;183m→ \u001b[39m\u001b[38;2;138;190;183mShare anonymous usage data\u001b[39m",
-					"  \u001b[38;2;212;212;212mDon't share\u001b[39m",
+					"\u001b[38;2;167;152;215m→ \u001b[39m\u001b[38;2;167;152;215mShare anonymous usage data\u001b[39m",
+					"  \u001b[38;2;222;224;225mDon't share\u001b[39m",
 					"spacer",
-					"\u001b[38;2;102;102;102m↑↓\u001b[39m\u001b[38;2;128;128;128m navigate\u001b[39m  \u001b[38;2;102;102;102menter\u001b[39m\u001b[38;2;128;128;128m finish\u001b[39m  \u001b[38;2;102;102;102mescape/ctrl+c\u001b[39m\u001b[38;2;128;128;128m skip setup\u001b[39m",
+					"\u001b[38;2;126;136;142m↑↓\u001b[39m\u001b[38;2;157;165;169m navigate\u001b[39m  \u001b[38;2;126;136;142menter\u001b[39m\u001b[38;2;157;165;169m finish\u001b[39m  \u001b[38;2;126;136;142mescape/ctrl+c\u001b[39m\u001b[38;2;157;165;169m skip setup\u001b[39m",
 					"spacer",
 					"border"
 				],
@@ -4806,8 +4806,8 @@
 			],
 			"result": {
 				"kind": "working",
-				"workingInBorder": "\u001b[38;2;138;190;183m⠋\u001b[39m \u001b[38;2;128;128;128mRunning...\u001b[39m",
-				"workingSpinner": "\u001b[38;2;138;190;183m⠋\u001b[39m",
+				"workingInBorder": "\u001b[38;2;167;152;215m⠋\u001b[39m \u001b[38;2;157;165;169mRunning...\u001b[39m",
+				"workingSpinner": "\u001b[38;2;167;152;215m⠋\u001b[39m",
 				"retryKind": "retry",
 				"retryInitial": "Retrying (2/5) in 3s... (escape to cancel)",
 				"retryAfterTicks": "Retrying (2/5) in 0s... (escape to cancel)",
@@ -4822,7 +4822,7 @@
 				],
 				"workingRender": [
 					"",
-					" \u001b[38;2;138;190;183m⠸\u001b[39m \u001b[38;2;128;128;128mRunning...\u001b[39m                 "
+					" \u001b[38;2;167;152;215m⠸\u001b[39m \u001b[38;2;157;165;169mRunning...\u001b[39m                 "
 				]
 			}
 		},
@@ -5113,9 +5113,9 @@
 				]
 			],
 			"result": {
-				"plainContent": "\u001b[38;2;212;212;212m\u001b[1mread\u001b[22m\u001b[39m\n\n{\n  \"path\": \"a.txt\",\n  \"n\": 2\n}",
-				"plainAfter": "\u001b[38;2;212;212;212m\u001b[1mread\u001b[22m\u001b[39m\n\n{\n  \"path\": \"a.txt\",\n  \"n\": 2\n}\nfile contents\n[Image: [image/png]]",
-				"plainExpanded": "\u001b[38;2;212;212;212m\u001b[1mread\u001b[22m\u001b[39m\n\n{\n  \"path\": \"a.txt\",\n  \"n\": 2\n}\nfile contents\n[Image: [image/png]]",
+				"plainContent": "\u001b[38;2;222;224;225m\u001b[1mread\u001b[22m\u001b[39m\n\n{\n  \"path\": \"a.txt\",\n  \"n\": 2\n}",
+				"plainAfter": "\u001b[38;2;222;224;225m\u001b[1mread\u001b[22m\u001b[39m\n\n{\n  \"path\": \"a.txt\",\n  \"n\": 2\n}\nfile contents\n[Image: [image/png]]",
+				"plainExpanded": "\u001b[38;2;222;224;225m\u001b[1mread\u001b[22m\u001b[39m\n\n{\n  \"path\": \"a.txt\",\n  \"n\": 2\n}\nfile contents\n[Image: [image/png]]",
 				"partialBox": [
 					"[object Object]",
 					"[object Object]"
@@ -5165,7 +5165,7 @@
 				"hideRender": [
 					""
 				],
-				"textOutputProbe": "\u001b[38;2;212;212;212m\u001b[1mp\u001b[22m\u001b[39m\n\n{}\none\ntwo\n[Image: [image/jpeg]]"
+				"textOutputProbe": "\u001b[38;2;222;224;225m\u001b[1mp\u001b[22m\u001b[39m\n\n{}\none\ntwo\n[Image: [image/jpeg]]"
 			}
 		},
 		{
@@ -5493,9 +5493,9 @@
 			],
 			"result": {
 				"initial": [
-					"\u001b[38;2;138;190;183m→ \u001b[39m\u001b[38;2;138;190;183m✓ \u001b[39m\u001b[38;2;138;190;183mTrust this project\u001b[39m",
-					"    \u001b[38;2;212;212;212mTrust without updates\u001b[39m",
-					"    \u001b[38;2;212;212;212mNever trust\u001b[39m"
+					"\u001b[38;2;167;152;215m→ \u001b[39m\u001b[38;2;167;152;215m✓ \u001b[39m\u001b[38;2;167;152;215mTrust this project\u001b[39m",
+					"    \u001b[38;2;222;224;225mTrust without updates\u001b[39m",
+					"    \u001b[38;2;222;224;225mNever trust\u001b[39m"
 				],
 				"selections": [
 					{
@@ -5505,23 +5505,23 @@
 				],
 				"cancels": 0,
 				"header": [
-					"\u001b[38;2;138;190;183m\u001b[1mProject trust\u001b[22m\u001b[39m",
-					"\u001b[38;2;128;128;128mC:\\w\u001b[39m",
-					"\u001b[38;2;128;128;128mSaved decision: trusted (C:\\w)\u001b[39m",
-					"\u001b[38;2;128;128;128mCurrent session: trusted\u001b[39m",
-					"\u001b[38;2;102;102;102m↑↓\u001b[39m\u001b[38;2;128;128;128m navigate\u001b[39m  \u001b[38;2;102;102;102menter\u001b[39m\u001b[38;2;128;128;128m save\u001b[39m  \u001b[38;2;102;102;102mescape/ctrl+c\u001b[39m\u001b[38;2;128;128;128m cancel\u001b[39m"
+					"\u001b[38;2;167;152;215m\u001b[1mProject trust\u001b[22m\u001b[39m",
+					"\u001b[38;2;157;165;169mC:\\w\u001b[39m",
+					"\u001b[38;2;157;165;169mSaved decision: trusted (C:\\w)\u001b[39m",
+					"\u001b[38;2;157;165;169mCurrent session: trusted\u001b[39m",
+					"\u001b[38;2;126;136;142m↑↓\u001b[39m\u001b[38;2;157;165;169m navigate\u001b[39m  \u001b[38;2;126;136;142menter\u001b[39m\u001b[38;2;157;165;169m save\u001b[39m  \u001b[38;2;126;136;142mescape/ctrl+c\u001b[39m\u001b[38;2;157;165;169m cancel\u001b[39m"
 				],
 				"noneSavedHeader": [
-					"\u001b[38;2;138;190;183m\u001b[1mProject trust\u001b[22m\u001b[39m",
-					"\u001b[38;2;128;128;128mC:\\w\u001b[39m",
-					"\u001b[38;2;128;128;128mSaved decision: none\u001b[39m",
-					"\u001b[38;2;128;128;128mCurrent session: untrusted\u001b[39m",
-					"\u001b[38;2;102;102;102m↑↓\u001b[39m\u001b[38;2;128;128;128m navigate\u001b[39m  \u001b[38;2;102;102;102menter\u001b[39m\u001b[38;2;128;128;128m save\u001b[39m  \u001b[38;2;102;102;102mescape/ctrl+c\u001b[39m\u001b[38;2;128;128;128m cancel\u001b[39m"
+					"\u001b[38;2;167;152;215m\u001b[1mProject trust\u001b[22m\u001b[39m",
+					"\u001b[38;2;157;165;169mC:\\w\u001b[39m",
+					"\u001b[38;2;157;165;169mSaved decision: none\u001b[39m",
+					"\u001b[38;2;157;165;169mCurrent session: untrusted\u001b[39m",
+					"\u001b[38;2;126;136;142m↑↓\u001b[39m\u001b[38;2;157;165;169m navigate\u001b[39m  \u001b[38;2;126;136;142menter\u001b[39m\u001b[38;2;157;165;169m save\u001b[39m  \u001b[38;2;126;136;142mescape/ctrl+c\u001b[39m\u001b[38;2;157;165;169m cancel\u001b[39m"
 				],
 				"inheritedLines": [
-					"\u001b[38;2;138;190;183m→ \u001b[39m  \u001b[38;2;138;190;183mTrust this project\u001b[39m",
-					"    \u001b[38;2;212;212;212mTrust without updates\u001b[39m",
-					"    \u001b[38;2;212;212;212mNever trust\u001b[39m"
+					"\u001b[38;2;167;152;215m→ \u001b[39m  \u001b[38;2;167;152;215mTrust this project\u001b[39m",
+					"    \u001b[38;2;222;224;225mTrust without updates\u001b[39m",
+					"    \u001b[38;2;222;224;225mNever trust\u001b[39m"
 				]
 			}
 		},
@@ -5650,24 +5650,24 @@
 			"result": {
 				"initial": [
 					"  first message",
-					"\u001b[38;2;128;128;128m  Message 1 of 3\u001b[39m",
+					"\u001b[38;2;157;165;169m  Message 1 of 3\u001b[39m",
 					"",
 					"  second multiline message",
-					"\u001b[38;2;128;128;128m  Message 2 of 3\u001b[39m",
+					"\u001b[38;2;157;165;169m  Message 2 of 3\u001b[39m",
 					"",
-					"\u001b[38;2;138;190;183m› \u001b[39m\u001b[1mthird\u001b[22m",
-					"\u001b[38;2;128;128;128m  Message 3 of 3\u001b[39m",
+					"\u001b[38;2;167;152;215m› \u001b[39m\u001b[1mthird\u001b[22m",
+					"\u001b[38;2;157;165;169m  Message 3 of 3\u001b[39m",
 					""
 				],
 				"wrapped": [
-					"\u001b[38;2;138;190;183m› \u001b[39m\u001b[1mfirst message\u001b[22m",
-					"\u001b[38;2;128;128;128m  Message 1 of 3\u001b[39m",
+					"\u001b[38;2;167;152;215m› \u001b[39m\u001b[1mfirst message\u001b[22m",
+					"\u001b[38;2;157;165;169m  Message 1 of 3\u001b[39m",
 					"",
 					"  second multiline message",
-					"\u001b[38;2;128;128;128m  Message 2 of 3\u001b[39m",
+					"\u001b[38;2;157;165;169m  Message 2 of 3\u001b[39m",
 					"",
 					"  third",
-					"\u001b[38;2;128;128;128m  Message 3 of 3\u001b[39m",
+					"\u001b[38;2;157;165;169m  Message 3 of 3\u001b[39m",
 					""
 				],
 				"selected": [
@@ -5676,7 +5676,7 @@
 				],
 				"cancels": 0,
 				"emptyRender": [
-					"\u001b[38;2;128;128;128m  No user messages found\u001b[39m"
+					"\u001b[38;2;157;165;169m  No user messages found\u001b[39m"
 				]
 			}
 		},

@@ -139,12 +139,12 @@ mod tests {
         // Text padding + width pad (trim_end) — render wide enough (the URL is
         // 54 columns padded) that nothing truncates.
         let expected = [
-            format!("\x1b[38;2;138;190;183m{}\x1b[39m", "─".repeat(60)),
-            " \x1b[1m\x1b[38;2;138;190;183mpi has joined Earendil\x1b[39m\x1b[22m".to_string(),
-            " \x1b[38;2;128;128;128mRead the blog post:\x1b[39m".to_string(),
-            " \x1b[38;2;129;162;190mhttps://mariozechner.at/posts/2026-04-08-ive-sold-out/\x1b[39m"
+            format!("\x1b[38;2;167;152;215m{}\x1b[39m", "─".repeat(60)),
+            " \x1b[1m\x1b[38;2;167;152;215mpi has joined Earendil\x1b[39m\x1b[22m".to_string(),
+            " \x1b[38;2;157;165;169mRead the blog post:\x1b[39m".to_string(),
+            " \x1b[38;2;105;173;208mhttps://mariozechner.at/posts/2026-04-08-ive-sold-out/\x1b[39m"
                 .to_string(),
-            format!("\x1b[38;2;138;190;183m{}\x1b[39m", "─".repeat(60)),
+            format!("\x1b[38;2;167;152;215m{}\x1b[39m", "─".repeat(60)),
         ];
         let mut index = 0;
         for line in &rendered {

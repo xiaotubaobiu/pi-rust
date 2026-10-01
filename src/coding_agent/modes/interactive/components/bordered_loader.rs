@@ -133,13 +133,13 @@ mod tests {
         let theme = dark();
         let mut cancellable = BorderedLoader::new(&theme, "Working...", true);
         let rendered = cancellable.render(30);
-        let border = "\x1b[38;2;95;135;255m──────────────────────────────\x1b[39m".to_string();
+        let border = "\x1b[38;2;95;168;204m──────────────────────────────\x1b[39m".to_string();
         let expected = [
             border.clone(),
             String::new(),
-            " \x1b[38;2;138;190;183m⠋\x1b[39m \x1b[38;2;128;128;128mWorking...\x1b[39m             ".to_string(),
+            " \x1b[38;2;167;152;215m⠋\x1b[39m \x1b[38;2;157;165;169mWorking...\x1b[39m             ".to_string(),
             String::new(),
-            " \x1b[38;2;102;102;102mescape/ctrl+c\x1b[39m\x1b[38;2;128;128;128m cancel\x1b[39m         ".to_string(),
+            " \x1b[38;2;126;136;142mescape/ctrl+c\x1b[39m\x1b[38;2;157;165;169m cancel\x1b[39m         ".to_string(),
             String::new(),
             border,
         ];

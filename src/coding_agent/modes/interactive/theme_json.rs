@@ -2,8 +2,10 @@
 //! inherently wide; factoring each into an alias adds no information.
 #![allow(clippy::type_complexity)]
 //! Port of upstream `coding-agent/src/modes/interactive/theme/theme-json.ts`
-//! (146 lines, sha256 `144a2c1e6b9a92c5f31ecc8cd37d979e473309716439aca57c7e6a542ad20f73`)
-//! — theme JSON validation and the parsed [`ThemeJson`] document shape.
+//! (148 lines at v0.99.1 HEAD `2bbfcca43`, sha256
+//! `48d2ba48735eafb24e4812cf7c0d9b5c7e26253e6731616432850154079b3545`)
+//! — theme JSON validation and the parsed [`ThemeJson`] document shape
+//! (including the delta's optional `appearance` key).
 //!
 //! SEAM (D3 in `interactive/mod.rs`): upstream delegates the structural check
 //! to typebox (`Compile(ThemeJsonSchema)`); typebox is not installable in this
@@ -87,9 +89,24 @@ const OPTIONAL_COLORS: [&str; 5] = [
 #[derive(Debug, Clone)]
 pub struct ThemeJson {
     pub name: String,
+    /// Upstream `appearance`: the background the theme is designed for
+    /// ("dark" | "light"). Detected from the theme colors when omitted.
+    pub appearance: Option<String>,
     pub vars: Option<BTreeMap<String, ColorValue>>,
     pub colors: BTreeMap<String, ColorValue>,
     pub export: Option<ThemeExportSection>,
+}
+
+impl ThemeJson {
+    /// The declared appearance as the upstream `"dark" | "light"` union;
+    /// absent or undeclared values detect from the theme colors instead.
+    pub fn appearance(&self) -> Option<&'static str> {
+        match self.appearance.as_deref() {
+            Some("dark") => Some("dark"),
+            Some("light") => Some("light"),
+            _ => None,
+        }
+    }
 }
 
 /// Upstream `export` section (`pageBg`/`cardBg`/`infoBg`, all optional).
@@ -144,6 +161,11 @@ fn parse_theme_json(json: &str) -> Result<ThemeJson, String> {
         .and_then(Value::as_str)
         .ok_or("expected name")?
         .to_string();
+    let appearance = match object.get("appearance") {
+        None | Some(Value::Null) => None,
+        Some(Value::String(s)) => Some(s.clone()),
+        Some(_) => return Err("invalid appearance".to_string()),
+    };
     let vars = match object.get("vars") {
         None | Some(Value::Null) => None,
         Some(map) => Some(parse_color_map(map).ok_or("invalid vars")?),
@@ -171,6 +193,7 @@ fn parse_theme_json(json: &str) -> Result<ThemeJson, String> {
     };
     Ok(ThemeJson {
         name,
+        appearance,
         vars,
         colors,
         export,
@@ -209,7 +232,24 @@ fn schema_errors(value: &Value) -> Vec<SchemaError> {
             required_properties: missing_colors,
         });
     }
+    // `appearance: Type.Optional(Type.Union([Type.Literal("dark"), Type.Literal("light")]))`.
+    if !appearance_ok(object.get("appearance")) {
+        errors.push(SchemaError {
+            keyword: "union",
+            instance_path: "/appearance",
+            required_properties: Vec::new(),
+        });
+    }
     errors
+}
+
+/// Mirrors the optional `appearance` union check used by the schema.
+fn appearance_ok(value: Option<&Value>) -> bool {
+    match value {
+        None | Some(Value::Null) => true,
+        Some(Value::String(s)) => s == "dark" || s == "light",
+        Some(_) => false,
+    }
 }
 
 /// Mirrors the ColorValue union check used by the schema.
@@ -232,6 +272,7 @@ pub fn validate_theme_json(label: &str, json: &Value) -> Result<ThemeJson, Strin
         None => true,
         Some(object) => {
             let name_ok = object.get("name").and_then(Value::as_str).is_some();
+            let appearance_ok = appearance_ok(object.get("appearance"));
             let vars_ok = match object.get("vars") {
                 None | Some(Value::Null) => true,
                 Some(map) => color_map_values_ok(Some(map)),
@@ -241,7 +282,7 @@ pub fn validate_theme_json(label: &str, json: &Value) -> Result<ThemeJson, Strin
                 None | Some(Value::Null) => true,
                 Some(section) => color_map_values_ok(Some(section)),
             };
-            !(name_ok && vars_ok && colors_ok && export_ok)
+            !(name_ok && appearance_ok && vars_ok && colors_ok && export_ok)
         }
     };
 
