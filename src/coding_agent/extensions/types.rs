@@ -147,6 +147,11 @@ pub type GetSessionNameHandler = Arc<dyn Fn() -> Option<String> + Send + Sync>;
 pub type SetLabelHandler = Arc<dyn Fn(&str, Option<&str>) + Send + Sync>;
 pub type GetActiveToolsHandler = Arc<dyn Fn() -> Vec<String> + Send + Sync>;
 pub type GetAllToolsHandler = Arc<dyn Fn() -> Vec<ToolInfo> + Send + Sync>;
+/// Upstream `GetSettingsHandler = () => Settings`: a copy of the effective
+/// settings (global and project settings merged, with overrides). The
+/// `Settings` shape travels as JSON at the seam (the settings-manager slice
+/// exposes typed getters).
+pub type GetSettingsHandler = Arc<dyn Fn() -> Value + Send + Sync>;
 pub type SetActiveToolsHandler = Arc<dyn Fn(&[String]) + Send + Sync>;
 pub type RefreshToolsHandler = Arc<dyn Fn() + Send + Sync>;
 pub type GetCommandsHandler = Arc<dyn Fn() -> Vec<Value> + Send + Sync>;
@@ -635,6 +640,34 @@ pub fn create_synthetic_source_info(
     }
 }
 
+/// Upstream `BUILTIN_PATH_PREFIX` (source-info.ts): prefix of built-in tool and
+/// extension paths, such as `builtin:read` or `builtin:mcp`.
+pub const BUILTIN_PATH_PREFIX: &str = "builtin:";
+
+/// Upstream `getSyntheticPathSource(path)` (source-info.ts): `builtin` for
+/// `builtin:<name>`, or the prefix of an angle-bracket path such as `inline`
+/// for `<inline:name>`. `None` for file paths.
+pub fn get_synthetic_path_source(path: &str) -> Option<String> {
+    if path.starts_with(BUILTIN_PATH_PREFIX) {
+        return Some("builtin".to_string());
+    }
+    if path.starts_with('<') && path.ends_with('>') {
+        let inner = &path[1..path.len() - 1];
+        let first = inner.split(':').next().unwrap_or("");
+        return Some(if first.is_empty() {
+            "temporary".to_string()
+        } else {
+            first.to_string()
+        });
+    }
+    None
+}
+
+/// Upstream `isSyntheticPath(path)`.
+pub fn is_synthetic_path(path: &str) -> bool {
+    path.starts_with(BUILTIN_PATH_PREFIX) || path.starts_with('<')
+}
+
 // ============================================================================
 // Context
 // ============================================================================
@@ -702,6 +735,16 @@ pub trait ProviderRegistryHandle: Send + Sync {
     fn unregister_provider(&self, _name: &str) -> Result<(), HandlerError> {
         Ok(())
     }
+    /// Upstream `modelRegistry.registerVirtualModel(definition)` fallback for
+    /// virtual models registered without provider actions. The catalog
+    /// definition (minus `route`) travels as JSON; the route function stays
+    /// on the [`VirtualModelDefinitionHandle`] at the runtime seam.
+    fn register_virtual_model(&self, _definition: &Value) -> Result<(), HandlerError> {
+        Ok(())
+    }
+    fn unregister_virtual_model(&self, _provider: &str, _id: &str) -> Result<(), HandlerError> {
+        Ok(())
+    }
 }
 
 /// Registry-less stand-in (no-op defaults).
@@ -717,6 +760,11 @@ pub type ScopedModelValue = Value;
 /// from the runner (upstream lazy getters), and every access asserts the
 /// context is not stale (`Result::Err` carries the stale message, the
 /// upstream thrown `Error`).
+///
+/// Upstream `ExtensionToolContext` is the same context object with two extra
+/// members (`tools`, `executeTool`) defined on it by
+/// [`super::runner::ExtensionRunner::create_tool_context`]; the port carries
+/// them as the [`ToolContextState`] payload below.
 #[derive(Clone)]
 pub struct ExtensionContext {
     pub(crate) inner: Arc<super::runner::RunnerInner>,
@@ -724,6 +772,128 @@ pub struct ExtensionContext {
     /// `emitBeforeAgentStart` (upstream rebinds the method on the context
     /// object to keep it in sync with chained handler updates).
     pub(crate) system_prompt_override: Option<Arc<dyn Fn() -> String + Send + Sync>>,
+    /// `ExtensionToolContext` members, present only on contexts created by
+    /// `createToolContext` (upstream defines the properties on the object).
+    pub(crate) tool: Option<ToolContextState>,
+}
+
+/// Backing state of the `ExtensionToolContext` members (upstream
+/// `Object.defineProperties` in `createToolContext`).
+#[derive(Clone)]
+pub(crate) struct ToolContextState {
+    /// The calling tool's id; nested calls get `<calling id>/<n>`.
+    pub tool_call_id: String,
+    /// Default signal of nested calls (the calling tool's signal).
+    pub default_signal: Option<Arc<AbortSignal>>,
+    /// Backs `ExtensionToolContext.tools` (upstream `getCallableToolsFn`).
+    pub callable_tools: Option<CallableToolsFn>,
+    /// Backs `ExtensionToolContext.executeTool` (upstream `executeToolFn`).
+    pub execute_tool: Option<ExecuteToolFn>,
+}
+
+/// Upstream `ExtensionContextActions.getCallableTools`: the tools
+/// `executeTool` can call.
+pub type CallableToolsFn = Arc<dyn Fn() -> Vec<crate::agent_core::types::AgentTool> + Send + Sync>;
+
+/// Upstream `ExtensionContextActions.executeTool(callerId, name, args,
+/// options)`: runs another tool through the same validation, hooks, and
+/// permission checks as model-issued calls. The outcome travels as JSON at
+/// the seam ([`AgentToolCallOutcome`]); `Err` is an unexpected throw (tool
+/// failures upstream never reject — they return `isError: true`).
+pub type ExecuteToolFn = Arc<
+    dyn Fn(
+            String,
+            String,
+            Value,
+            ExecuteToolOptions,
+        ) -> futures::future::BoxFuture<'static, Result<Value, String>>
+        + Send
+        + Sync,
+>;
+
+/// Upstream `AgentToolCallOutcome` (pi-agent-core) at the JSON seam.
+pub type AgentToolCallOutcome = Value;
+
+/// Options for `ExtensionToolContext.executeTool` (upstream
+/// `ExecuteToolOptions`).
+#[derive(Default, Clone)]
+pub struct ExecuteToolOptions {
+    /// Defaults to the calling tool's signal.
+    pub signal: Option<Arc<AbortSignal>>,
+    /// Receives partial results of the nested tool, in addition to
+    /// `tool_execution_update` events.
+    pub on_update: Option<AgentToolUpdateCallbackValue>,
+}
+
+/// The upstream `createToolContext` fallback outcome for nested calls when no
+/// `executeTool` action is bound (verbatim text).
+pub fn nested_tool_calls_unavailable_outcome(tool_call_id: &str, name: &str) -> Value {
+    serde_json::json!({
+        "toolCall": {
+            "type": "toolCall",
+            "id": format!("{tool_call_id}/0"),
+            "name": name,
+            "arguments": {},
+        },
+        "result": {
+            "content": [{ "type": "text", "text": "Nested tool calls are not available in this context" }],
+            "details": {},
+        },
+        "isError": true,
+    })
+}
+
+impl ExtensionContext {
+    /// Whether this context carries the `ExtensionToolContext` members.
+    pub fn is_tool_context(&self) -> bool {
+        self.tool.is_some()
+    }
+
+    /// Upstream `ExtensionToolContext.tools`: the tools `executeTool` can
+    /// call. Empty without a bound `getCallableTools` action.
+    pub fn callable_tools(&self) -> Vec<crate::agent_core::types::AgentTool> {
+        match &self.tool {
+            Some(state) => state
+                .callable_tools
+                .as_ref()
+                .map(|get| get())
+                .unwrap_or_default(),
+            None => Vec::new(),
+        }
+    }
+
+    /// Upstream `ExtensionToolContext.executeTool(name, args, options)`.
+    /// Without a bound `executeTool` action the upstream fallback outcome is
+    /// returned (`isError: true`, "Nested tool calls are not available in
+    /// this context"); on a plain (non-tool) context this is an `Err` — the
+    /// upstream object simply has no such method.
+    pub async fn execute_tool(
+        &self,
+        name: &str,
+        args: &Value,
+        options: ExecuteToolOptions,
+    ) -> Result<Value, String> {
+        let Some(state) = &self.tool else {
+            return Err("Nested tool calls are not available in this context".to_string());
+        };
+        let Some(execute_tool) = &state.execute_tool else {
+            return Ok(nested_tool_calls_unavailable_outcome(
+                &state.tool_call_id,
+                name,
+            ));
+        };
+        let mut options = options;
+        if options.signal.is_none() {
+            options.signal = state.default_signal.clone();
+        }
+        execute_tool(
+            state.tool_call_id.clone(),
+            name.to_string(),
+            args.clone(),
+            options,
+        )
+        .await
+    }
 }
 
 /// Upstream `ReplacedSessionContext` — the command context handed to
@@ -829,6 +999,22 @@ pub struct ToolDefinition {
     pub prepare_arguments: Option<PrepareArgumentsShim>,
     /// `"sequential" | "parallel"` per-tool override.
     pub execution_mode: Option<String>,
+    /// JSON Schema of `structuredContent` in successful results (TypeBox
+    /// JSON). Tools that declare it should always set `structuredContent`.
+    pub output_schema: Option<Value>,
+    /// How the model reaches the tool. Default [`ToolExposure::Direct`].
+    pub exposure: ToolExposure,
+    /// Group the tool belongs to, for example its MCP server.
+    pub namespace: Option<ToolNamespace>,
+    /// Hints about what the tool does, for example from an MCP server.
+    pub annotations: Option<ToolAnnotations>,
+    /// Whether registering the tool activates it. `None` is the upstream
+    /// default: `true` for `direct` and `model-only` tools, never for the
+    /// other exposures.
+    pub default_active: Option<bool>,
+    /// Adjust how the loadout is presented to the model while this tool is
+    /// active (upstream `prepareLoadout(loadout)`).
+    pub prepare_loadout: Option<PrepareLoadoutHandler>,
     /// Upstream `execute(toolCallId, params, signal, onUpdate, ctx)`.
     pub execute: Option<ToolExecuteHandler>,
     /// Awaitable native implementation. Preferred over the legacy sync callback.
@@ -848,11 +1034,161 @@ impl ToolDefinition {
             render_shell: None,
             prepare_arguments: None,
             execution_mode: None,
+            output_schema: None,
+            exposure: ToolExposure::Direct,
+            namespace: None,
+            annotations: None,
+            default_active: None,
+            prepare_loadout: None,
             execute: None,
             execute_async: None,
         }
     }
+
+    /// Upstream `defaultActive` normalization: registering activates the tool
+    /// only for `direct`/`model-only` exposures unless overridden.
+    pub fn activates_on_registration(&self) -> bool {
+        match self.default_active {
+            Some(default_active) => default_active,
+            None => matches!(
+                self.exposure,
+                ToolExposure::Direct | ToolExposure::ModelOnly
+            ),
+        }
+    }
 }
+
+/// Upstream `ToolExposure`: how the model reaches a tool.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum ToolExposure {
+    /// Declared to the model while active, and callable while active.
+    #[default]
+    Direct,
+    /// Declared to the model while active, never callable.
+    ModelOnly,
+    /// Callable whenever registered; declared only when explicitly activated.
+    /// Codemode tools list it in their description.
+    Codemode,
+    /// Like [`ToolExposure::Codemode`], but codemode tools do not list it;
+    /// tool search can find it.
+    Deferred,
+    /// Registered but unreachable. Activating it has no effect.
+    Hidden,
+}
+
+impl ToolExposure {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Direct => "direct",
+            Self::ModelOnly => "model-only",
+            Self::Codemode => "codemode",
+            Self::Deferred => "deferred",
+            Self::Hidden => "hidden",
+        }
+    }
+
+    pub fn parse(value: &str) -> Option<Self> {
+        match value {
+            "direct" => Some(Self::Direct),
+            "model-only" => Some(Self::ModelOnly),
+            "codemode" => Some(Self::Codemode),
+            "deferred" => Some(Self::Deferred),
+            "hidden" => Some(Self::Hidden),
+            _ => None,
+        }
+    }
+}
+
+/// Upstream `ToolAnnotations`: MCP-style, author-supplied, unverified hints.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ToolAnnotations {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub read_only_hint: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub destructive_hint: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub idempotent_hint: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub open_world_hint: Option<bool>,
+}
+
+/// Upstream `ToolNamespace`: a group of related tools, such as the tools of
+/// one MCP server. Codemode tools list them together.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ToolNamespace {
+    /// For example `mcp__docs`.
+    pub name: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub instructions: Option<String>,
+}
+
+/// Upstream `ToolLoadout`: the tools of a session as
+/// `ToolDefinition.prepareLoadout` sees them.
+#[derive(Clone)]
+pub struct ToolLoadout {
+    /// Tools declared to the model (the active tools), in order, with their
+    /// original descriptions (upstream `AgentTool[]`).
+    pub declared: Vec<crate::agent_core::types::AgentTool>,
+    /// Tools callable through `ctx.executeTool()`.
+    pub callable: Vec<crate::agent_core::types::AgentTool>,
+    /// Every registered tool.
+    pub registered: Vec<crate::agent_core::types::AgentTool>,
+    exposures: OrderedMap<ToolExposure>,
+    namespaces: OrderedMap<ToolNamespace>,
+}
+
+impl ToolLoadout {
+    pub fn new(
+        declared: Vec<crate::agent_core::types::AgentTool>,
+        callable: Vec<crate::agent_core::types::AgentTool>,
+        registered: Vec<crate::agent_core::types::AgentTool>,
+        exposures: OrderedMap<ToolExposure>,
+        namespaces: OrderedMap<ToolNamespace>,
+    ) -> Self {
+        Self {
+            declared,
+            callable,
+            registered,
+            exposures,
+            namespaces,
+        }
+    }
+
+    /// Upstream `loadout.getExposure(name)`.
+    pub fn get_exposure(&self, name: &str) -> ToolExposure {
+        self.exposures
+            .get(name)
+            .copied()
+            .unwrap_or(ToolExposure::Direct)
+    }
+
+    /// Upstream `loadout.getNamespace(name)`.
+    pub fn get_namespace(&self, name: &str) -> Option<ToolNamespace> {
+        self.namespaces.get(name).cloned()
+    }
+}
+
+/// Upstream `ToolLoadoutChanges`: changes `prepareLoadout` makes to what the
+/// model sees.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ToolLoadoutChanges {
+    /// Model-facing descriptions of declared tools, by tool name.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub descriptions: Option<std::collections::BTreeMap<String, String>>,
+    /// Declared tools whose declarations requests leave out. They stay active
+    /// and callable, and the transcript still declares them.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hidden_declarations: Option<Vec<String>>,
+}
+
+/// Upstream `prepareLoadout(loadout)`; `None` is upstream `undefined`.
+pub type PrepareLoadoutHandler =
+    Arc<dyn Fn(&ToolLoadout) -> Option<ToolLoadoutChanges> + Send + Sync>;
 
 /// Upstream `defineTool` is a TypeScript inference helper (identity at
 /// runtime); the port exposes the identity for source parity.
@@ -928,6 +1264,20 @@ pub struct ResourcesDiscoverResult {
     pub prompt_paths: Option<Vec<String>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub theme_paths: Option<Vec<String>>,
+}
+
+/// Upstream `McpServersChangeEvent`: fired when an extension registers or
+/// unregisters an MCP server after the extensions are bound. Servers
+/// registered while extensions load are read with `pi.getMcpServers()` on
+/// `session_start`. Handling this event marks an extension as the one that
+/// connects registered servers. `servers` holds every registered server after
+/// the change (upstream `RegisteredMcpServer[]`, JSON at the seam).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct McpServersChangeEvent {
+    #[serde(rename = "type")]
+    pub event_type: String, // "mcp_servers_change"
+    pub servers: Vec<Value>,
 }
 
 // ============================================================================
@@ -1135,6 +1485,31 @@ pub struct ContextEvent {
     pub messages: Vec<Value>,
 }
 
+/// Upstream `ContextWithSystemEvent`: fired before each LLM call, after every
+/// `context` handler has run and Pi has restored the prompt and tool state.
+/// `messages` is the full transcript including system messages, and the
+/// result is sent as returned.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ContextWithSystemEvent {
+    #[serde(rename = "type")]
+    pub event_type: String, // "context_with_system"
+    pub messages: Vec<Value>,
+}
+
+/// Upstream `ProviderStreamEvent`: fired for a parsed provider stream event
+/// before Pi normalizes it.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProviderStreamEvent {
+    #[serde(rename = "type")]
+    pub event_type: String, // "provider_stream_event"
+    pub provider: String,
+    pub api: String,
+    pub model: String,
+    pub data: Value,
+}
+
 /// Upstream `BeforeProviderRequestEvent`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -1162,6 +1537,57 @@ pub struct AfterProviderResponseEvent {
     pub event_type: String, // "after_provider_response"
     pub status: i64,
     pub headers: Value,
+}
+
+/// Upstream `CacheWarmingAction` (cache-warmer.ts): `"warm" | "stop"`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum CacheWarmingAction {
+    #[serde(rename = "warm")]
+    Warm,
+    #[serde(rename = "stop")]
+    Stop,
+}
+
+impl CacheWarmingAction {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Warm => "warm",
+            Self::Stop => "stop",
+        }
+    }
+    pub fn parse(value: &str) -> Option<Self> {
+        match value {
+            "warm" => Some(Self::Warm),
+            "stop" => Some(Self::Stop),
+            _ => None,
+        }
+    }
+}
+
+/// Upstream `CacheWarmingDecisionEvent` (cache-warmer.ts): fired before each
+/// refresh with pi's decision filled in.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CacheWarmingDecisionEvent {
+    #[serde(rename = "type")]
+    pub event_type: String, // "cache_warming_decision"
+    /// Price of this refresh: a cache read of the prompt plus one output token.
+    pub warm_cost: f64,
+    /// Extra price of the next real request if the cache entry is lost.
+    pub miss_cost: f64,
+    /// Estimated chance that a real request arrives before the entry expires.
+    pub continuation_probability: f64,
+    /// Pi's decision: "warm" when `expectedSavings` is at least $0.05.
+    pub action: CacheWarmingAction,
+}
+
+/// Upstream `CacheWarmingDecisionEventResult`: override whether this refresh
+/// is sent. "stop" ends warming until the next real request.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CacheWarmingDecisionEventResult {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub action: Option<CacheWarmingAction>,
 }
 
 /// Upstream `ImageContent` at the JSON seam.
@@ -1209,6 +1635,53 @@ pub struct AgentSettledEvent {
     #[serde(rename = "type")]
     pub event_type: String, // "agent_settled"
 }
+
+/// Upstream `AgentActivityOutcome`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum AgentActivityOutcome {
+    #[serde(rename = "completed")]
+    Completed,
+    #[serde(rename = "aborted")]
+    Aborted,
+    #[serde(rename = "error")]
+    Error,
+}
+
+impl AgentActivityOutcome {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Completed => "completed",
+            Self::Aborted => "aborted",
+            Self::Error => "error",
+        }
+    }
+}
+
+/// Upstream `SessionBoundaryDraft` at the JSON seam: one of
+/// `CustomEntryDraft` (`type: "custom"`), `CustomMessageEntryDraft`
+/// (`type: "custom_message"`), `ContextEditEntryDraft`
+/// (`type: "context_edit"`), or `CompactionEntryDraft` (`type:
+/// "compaction"`). The entry shapes are session-manager slice types.
+pub type SessionBoundaryDraft = Value;
+
+/// Upstream `BoundaryContextPreview` at the JSON seam: `{ contextEntries:
+/// ProjectedSessionEntry[], contextMessages, llmMessages, pendingMessages,
+/// canContinue }`.
+pub type BoundaryContextPreview = Value;
+
+/// Upstream `BoundaryResult`: changes a boundary handler makes. Omitted
+/// fields stay as they are.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BoundaryResult {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub entries: Option<Vec<SessionBoundaryDraft>>,
+    #[serde(rename = "continue", default, skip_serializing_if = "Option::is_none")]
+    pub r#continue: Option<bool>,
+}
+
+/// Upstream `TurnEndEventResult` / `AgentBeforeSettleEventResult`.
+pub type BoundaryEventResult = BoundaryResult;
 
 /// Upstream `UIPromptKind`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1266,7 +1739,9 @@ pub struct TurnStartEvent {
     pub timestamp: i64,
 }
 
-/// Upstream `TurnEndEvent`.
+/// Upstream `TurnEndEvent` (`BoundaryState` flattened: `entries`,
+/// `continue`, `context`, `outcome` plus the turn fields). The preview and
+/// drafts travel as JSON at the seam.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TurnEndEvent {
@@ -1275,6 +1750,38 @@ pub struct TurnEndEvent {
     pub turn_index: i64,
     pub message: AgentMessageValue,
     pub tool_results: Vec<Value>,
+    pub message_entry_id: String,
+    pub tool_result_entry_ids: Vec<String>,
+    #[serde(default)]
+    pub entries: Vec<SessionBoundaryDraft>,
+    #[serde(rename = "continue", default)]
+    pub r#continue: bool,
+    #[serde(default)]
+    pub context: BoundaryContextPreview,
+    #[serde(default = "default_outcome")]
+    pub outcome: String, // "completed" | "aborted" | "error"
+}
+
+fn default_outcome() -> String {
+    "completed".to_string()
+}
+
+/// Upstream `AgentBeforeSettleEvent` (`BoundaryState` flattened): fired
+/// before final settlement. May append entries and ensure one next provider
+/// request.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentBeforeSettleEvent {
+    #[serde(rename = "type")]
+    pub event_type: String, // "agent_before_settle"
+    #[serde(default)]
+    pub entries: Vec<SessionBoundaryDraft>,
+    #[serde(rename = "continue", default)]
+    pub r#continue: bool,
+    #[serde(default)]
+    pub context: BoundaryContextPreview,
+    #[serde(default = "default_outcome")]
+    pub outcome: String,
 }
 
 /// Upstream `MessageStartEvent`.
@@ -1314,6 +1821,9 @@ pub struct ToolExecutionStartEvent {
     pub tool_call_id: String,
     pub tool_name: String,
     pub args: Value,
+    /// Set when another tool (for example a codemode script) made this call.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub parent_tool_call_id: Option<String>,
 }
 
 /// Upstream `ToolExecutionUpdateEvent`.
@@ -1326,6 +1836,9 @@ pub struct ToolExecutionUpdateEvent {
     pub tool_name: String,
     pub args: Value,
     pub partial_result: Value,
+    /// Set when another tool (for example a codemode script) made this call.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub parent_tool_call_id: Option<String>,
 }
 
 /// Upstream `ToolExecutionEndEvent`.
@@ -1338,6 +1851,9 @@ pub struct ToolExecutionEndEvent {
     pub tool_name: String,
     pub result: Value,
     pub is_error: bool,
+    /// Set when another tool (for example a codemode script) made this call.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub parent_tool_call_id: Option<String>,
 }
 
 // ============================================================================
@@ -1505,9 +2021,15 @@ impl InputEventResult {
 pub struct ToolCallEvent {
     #[serde(rename = "type")]
     pub event_type: String, // "tool_call"
+    /// The call's id. For calls another tool made (with `parentToolCallId`
+    /// set), pi assigns `<parent id>/<n>`; such ids never appear as tool
+    /// calls or tool results in the transcript.
     pub tool_call_id: String,
     pub tool_name: String,
     pub input: Value,
+    /// Set when another tool (for example a codemode script) issued this call.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub parent_tool_call_id: Option<String>,
 }
 
 /// Upstream built-in tool names that narrow `ToolCallEvent`.
@@ -1528,10 +2050,17 @@ pub const TOOL_CALL_EVENT_BUILTINS: [&str; 8] = [
 pub struct ToolResultEvent {
     #[serde(rename = "type")]
     pub event_type: String, // "tool_result"
+    /// `<parent id>/<n>` for nested calls, see `ToolCallEvent`.
     pub tool_call_id: String,
     pub tool_name: String,
     pub input: Value,
     pub content: Vec<Value>,
+    /// Set when another tool (for example a codemode script) issued this call.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub parent_tool_call_id: Option<String>,
+    /// Machine-readable result for tools that declare an `outputSchema`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub structured_content: Option<Value>,
     pub is_error: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub usage: Option<Value>,
@@ -1606,11 +2135,14 @@ pub enum UserBashEventResult {
     Result(BashResult),
 }
 
-/// Upstream `ToolResultEventResult`.
+/// Upstream `ToolResultEventResult`. Omitted fields stay as they are, except
+/// that replacing `content` without returning `structuredContent` drops the
+/// structured content, because it may no longer match.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct ToolResultEventResult {
     pub content: Option<Vec<Value>>,
     pub details: Option<Value>,
+    pub structured_content: Option<Value>,
     pub is_error: Option<bool>,
     pub usage: Option<Value>,
 }
@@ -1865,6 +2397,12 @@ pub struct ToolInfo {
     pub description: String,
     pub parameters: Value,
     pub prompt_guidelines: Option<Vec<String>>,
+    /// How the model reaches the tool (upstream `exposure`).
+    pub exposure: ToolExposure,
+    /// Group the tool belongs to, for example its MCP server.
+    pub namespace: Option<ToolNamespace>,
+    /// Hints about what the tool does, for example from an MCP server.
+    pub annotations: Option<ToolAnnotations>,
     pub source_info: SourceInfo,
 }
 
@@ -1880,6 +2418,7 @@ pub struct ExtensionActions {
     pub set_label: SetLabelHandler,
     pub get_active_tools: GetActiveToolsHandler,
     pub get_all_tools: GetAllToolsHandler,
+    pub get_settings: GetSettingsHandler,
     pub set_active_tools: SetActiveToolsHandler,
     pub refresh_tools: RefreshToolsHandler,
     pub get_commands: GetCommandsHandler,
@@ -1890,6 +2429,7 @@ pub struct ExtensionActions {
 
 /// Upstream `ExtensionContextActions` (required by all modes).
 #[allow(clippy::type_complexity)]
+#[derive(Clone)]
 pub struct ExtensionContextActions {
     pub get_model: GetModelHandler,
     pub get_scoped_models: GetScopedModelsHandler,
@@ -1903,6 +2443,11 @@ pub struct ExtensionContextActions {
     pub compact: CompactHandler,
     pub get_system_prompt: GetSystemPromptHandler,
     pub get_system_prompt_options: Option<GetSystemPromptOptionsHandler>,
+    /// Backs `ExtensionToolContext.executeTool()`. Without it, nested calls
+    /// fail with the upstream fallback outcome.
+    pub execute_tool: Option<ExecuteToolFn>,
+    /// Backs `ExtensionToolContext.tools`.
+    pub get_callable_tools: Option<CallableToolsFn>,
 }
 
 /// Upstream `ExtensionCommandContextActions` (bound by interactive, print and RPC modes).
@@ -1931,6 +2476,52 @@ pub struct PendingNativeProviderRegistration {
     pub extension_path: String,
 }
 
+/// Upstream `ExtensionVirtualModel.route(request, ctx)` at the seam: the
+/// request travels as JSON and the route result (`{ model, thinkingLevel,
+/// state? }`) comes back as JSON; `Err` is the route's rejection.
+pub type ExtensionVirtualModelRouteFn = Arc<
+    dyn Fn(Value, ExtensionContext) -> futures::future::BoxFuture<'static, Result<Value, String>>
+        + Send
+        + Sync,
+>;
+
+/// The wrapped route (upstream `route: (request) =>
+/// model.route(request, runtime.createContext())`): the extension context is
+/// bound at registration time, resolved lazily per request.
+pub type WrappedVirtualModelRouteFn =
+    Arc<dyn Fn(Value) -> futures::future::BoxFuture<'static, Result<Value, String>> + Send + Sync>;
+
+/// Post-bind virtual-model registration handler (provider action or the
+/// model-registry fallback).
+pub type RegisterVirtualModelHandler =
+    Arc<dyn Fn(&VirtualModelDefinitionHandle) -> Result<(), String> + Send + Sync>;
+
+/// Post-bind virtual-model unregistration handler.
+pub type UnregisterVirtualModelHandler =
+    Arc<dyn Fn(&str, &str) -> Result<(), String> + Send + Sync>;
+
+/// Upstream `VirtualModelDefinition` as the runtime carries it: the catalog
+/// fields (`{ provider, id, name, thinkingLevels?, contextWindow?,
+/// maxTokens?, input? }`) as JSON plus the wrapped route. Registered via
+/// `pi.registerVirtualModel()`; a selectable catalog entry that routes each
+/// request to a physical model.
+#[derive(Clone)]
+pub struct VirtualModelDefinitionHandle {
+    /// Catalog fields minus `route`.
+    pub definition: Value,
+    /// The wrapped route (request JSON → route result JSON).
+    pub route: WrappedVirtualModelRouteFn,
+    /// Path of the registering extension (upstream `extensionPath` on the
+    /// pending entry / flush error).
+    pub extension_path: String,
+}
+
+/// Queued virtual model registration (`pendingVirtualModelRegistrations`).
+#[derive(Clone)]
+pub struct PendingVirtualModelRegistration {
+    pub definition: VirtualModelDefinitionHandle,
+}
+
 /// Shared flag value cell access for the runtime (`flagValues`).
 #[derive(Debug, Clone, Default)]
 pub struct FlagValues(pub HashMap<String, FlagValue>);
@@ -1952,6 +2543,14 @@ pub type ExtensionErrorListener = Arc<dyn Fn(&ExtensionError) + Send + Sync>;
 pub struct ExtensionLoadError {
     pub path: String,
     pub error: String,
+}
+
+/// Upstream `{ path: string; warning: string }` loader warnings
+/// (`LoadExtensionsResult.warnings`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ExtensionLoadWarning {
+    pub path: String,
+    pub warning: String,
 }
 
 // ============================================================================
@@ -2158,6 +2757,10 @@ pub struct Extension {
     pub path: String,
     pub resolved_path: String,
     pub hidden: bool,
+    /// Upstream `replaceable`: leave this extension out when another
+    /// extension registers a tool, command, or flag with a name it registers
+    /// during loading, instead of reporting a conflict.
+    pub replaceable: bool,
     pub source_info: SourceInfo,
     /// Shared so `on()` unsubscribe handles (which outlive the factory) keep
     /// mutating the same registration list the runner dispatches from —
@@ -2224,6 +2827,7 @@ impl SharedHandlerMap {
 pub struct LoadExtensionsResult {
     pub extensions: Vec<Extension>,
     pub errors: Vec<ExtensionLoadError>,
+    pub warnings: Vec<ExtensionLoadWarning>,
     /// Shared runtime — actions are throwing stubs until `bindCore`.
     pub runtime: super::loader::ExtensionRuntime,
 }

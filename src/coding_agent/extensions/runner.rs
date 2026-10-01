@@ -167,6 +167,17 @@ pub struct BeforeAgentStartCombinedResult {
     pub system_prompt_options: NormalizedBuildSystemPromptOptions,
 }
 
+/// Upstream `BoundaryDispatchResult`: the settled boundary state after all
+/// handlers ran (`continue` is a Rust keyword, hence `r#continue`; the JSON
+/// key stays `"continue"`).
+#[derive(Debug, Clone)]
+pub struct BoundaryDispatchResult {
+    pub entries: Vec<Value>,
+    pub r#continue: bool,
+    pub context: Value,
+    pub valid: bool,
+}
+
 /// Resources discovered from `resources_discover` handlers, attributed to the
 /// extension that provided them.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -182,6 +193,9 @@ pub struct ProviderActions {
     pub register_provider: Option<super::types::RegisterProviderHandler>,
     pub register_native_provider: Option<super::types::RegisterNativeProviderHandler>,
     pub unregister_provider: Option<super::types::UnregisterProviderHandler>,
+    /// Upstream `providerActions?.registerVirtualModel` fallback split.
+    pub register_virtual_model: Option<super::types::RegisterVirtualModelHandler>,
+    pub unregister_virtual_model: Option<super::types::UnregisterVirtualModelHandler>,
 }
 
 pub(crate) struct CoreActions {
@@ -203,6 +217,10 @@ pub(crate) struct CoreActions {
     pub navigate_tree: super::types::NavigateTreeHandler,
     pub switch_session: super::types::SwitchSessionHandler,
     pub reload: super::types::ReloadHandler,
+    /// Backs `ExtensionToolContext.executeTool()` (upstream `executeToolFn`).
+    pub execute_tool: Option<super::types::ExecuteToolFn>,
+    /// Backs `ExtensionToolContext.tools` (upstream `getCallableToolsFn`).
+    pub get_callable_tools: Option<super::types::CallableToolsFn>,
 }
 
 pub(crate) struct RunnerInner {
@@ -224,6 +242,9 @@ pub(crate) struct RunnerInner {
     pub stale: Mutex<Option<String>>,
     pub ui_prompt_depth: Mutex<u32>,
     pub active_ui_prompt: Mutex<Option<(super::types::UIPromptKind, Option<String>)>>,
+    /// Registered MCP servers already reported as unhandled (upstream
+    /// `private readonly reportedMcpServers`).
+    pub reported_mcp_servers: Mutex<std::collections::HashSet<String>>,
 }
 
 pub(crate) struct ErrorListeners {
@@ -317,12 +338,15 @@ impl ExtensionRunner {
                         }))
                     }),
                     reload: Arc::new(|| Ok(CommandFuture::resolved(()))),
+                    execute_tool: None,
+                    get_callable_tools: None,
                 }),
                 shortcut_diagnostics: Mutex::new(Vec::new()),
                 command_diagnostics: Mutex::new(Vec::new()),
                 stale: Mutex::new(None),
                 ui_prompt_depth: Mutex::new(0),
                 active_ui_prompt: Mutex::new(None),
+                reported_mcp_servers: Mutex::new(std::collections::HashSet::new()),
             }),
         }
     }
@@ -365,6 +389,29 @@ impl ExtensionRunner {
                     move || BuildSystemPromptOptions::with_cwd(&cwd)
                 }),
             };
+            core.execute_tool = context_actions.execute_tool.clone();
+            core.get_callable_tools = context_actions.get_callable_tools.clone();
+        }
+
+        // `runtime.createContext` becomes live (upstream: `() =>
+        // this.createContext()`); before this it throws `notInitialized`.
+        {
+            let runner = self.clone();
+            self.inner.runtime.with_state(|state| {
+                state.create_context = Some(Arc::new(move || Ok(runner.create_context())));
+            });
+        }
+
+        // Servers registered from now on reach the extension that connects
+        // them right away. Servers registered during loading are read on
+        // session_start (upstream `setChangeListener` at bind time).
+        {
+            let sink = Arc::new(super::loader::McpChangeSink {
+                runner: self.clone(),
+            });
+            self.inner
+                .runtime
+                .with_state(|state| state.mcp_change_sink = Some(sink));
         }
 
         // Flush provider registrations queued during extension loading.
@@ -411,6 +458,34 @@ impl ExtensionRunner {
                 }
             });
 
+        // Flush virtual-model registrations queued during extension loading
+        // (upstream `registerVirtualModel` closure: provider actions when
+        // provided, else the model registry).
+        let register_virtual_model = {
+            let provider_register = provider_actions
+                .as_ref()
+                .and_then(|actions| actions.register_virtual_model.clone());
+            let registry = Arc::clone(&self.inner.model_registry);
+            move |definition: &super::types::VirtualModelDefinitionHandle| -> Result<(), String> {
+                match &provider_register {
+                    Some(register) => register(definition),
+                    None => registry.register_virtual_model(&definition.definition),
+                }
+            }
+        };
+        self.inner
+            .runtime
+            .flush_pending_virtual_models(|registration| {
+                if let Err(error) = register_virtual_model(&registration.definition) {
+                    self.emit_error(ExtensionError {
+                        extension_path: registration.definition.extension_path.clone(),
+                        event: "register_virtual_model".to_string(),
+                        error,
+                        stack: None,
+                    });
+                }
+            });
+
         // From this point on, provider registration/unregistration takes
         // effect immediately without requiring a /reload.
         let registry = Arc::clone(&self.inner.model_registry);
@@ -436,6 +511,26 @@ impl ExtensionRunner {
                     .as_ref()
                     .and_then(|actions| actions.unregister_provider.clone())
                     .unwrap_or(fallback_unregister),
+            });
+        });
+
+        // Virtual-model registration/unregistration takes effect immediately.
+        let provider_register = provider_actions
+            .as_ref()
+            .and_then(|actions| actions.register_virtual_model.clone());
+        let provider_unregister = provider_actions
+            .as_ref()
+            .and_then(|actions| actions.unregister_virtual_model.clone());
+        let registry = Arc::clone(&self.inner.model_registry);
+        let fallback_register_vm: super::types::RegisterVirtualModelHandler =
+            Arc::new(move |definition| registry.register_virtual_model(&definition.definition));
+        let registry = Arc::clone(&self.inner.model_registry);
+        let fallback_unregister_vm: super::types::UnregisterVirtualModelHandler =
+            Arc::new(move |provider, id| registry.unregister_virtual_model(provider, id));
+        self.inner.runtime.with_state(|state| {
+            state.virtual_model_routing = Some(super::loader::VirtualModelRouting {
+                register: provider_register.unwrap_or(fallback_register_vm),
+                unregister: provider_unregister.unwrap_or(fallback_unregister_vm),
             });
         });
     }
@@ -727,6 +822,38 @@ impl ExtensionRunner {
         false
     }
 
+    /// Upstream `reportUnhandledMcpServers()`: report registered MCP servers
+    /// when no extension handles `mcp_servers_change`, which means nothing
+    /// connects them (for example when another MCP extension replaced the
+    /// built-in one). Each server name is reported once per runner.
+    pub fn report_unhandled_mcp_servers(&self) {
+        if self.has_handlers("mcp_servers_change") {
+            return;
+        }
+        let servers = self.inner.runtime.mcp_servers_list();
+        for server in servers {
+            {
+                let mut reported = self
+                    .inner
+                    .reported_mcp_servers
+                    .lock()
+                    .unwrap_or_else(std::sync::PoisonError::into_inner);
+                if !reported.insert(server.name.clone()) {
+                    continue;
+                }
+            }
+            self.emit_error(ExtensionError {
+                extension_path: server.extension_path.clone(),
+                event: "register_mcp_server".to_string(),
+                error: format!(
+                    "MCP server \"{}\" is registered, but no loaded extension connects MCP servers; another extension may have replaced the built-in MCP support",
+                    server.name
+                ),
+                stack: None,
+            });
+        }
+    }
+
     /// Upstream `getMessageRenderer(customType)`.
     pub fn get_message_renderer(&self, custom_type: &str) -> Option<MessageRenderer> {
         for extension in &self.inner.extensions {
@@ -861,6 +988,42 @@ impl ExtensionRunner {
         ExtensionContext {
             inner: Arc::clone(&self.inner),
             system_prompt_override: None,
+            tool: None,
+        }
+    }
+
+    /// Upstream `createToolContext(toolCallId, signal)`: the context for
+    /// executing the tool call `toolCallId` — the extension context plus
+    /// `tools` and `executeTool()`. `signal` is the default signal of nested
+    /// calls.
+    pub fn create_tool_context(
+        &self,
+        tool_call_id: &str,
+        signal: Option<Arc<super::types::AbortSignal>>,
+    ) -> ExtensionContext {
+        let execute_tool = self
+            .inner
+            .actions
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .execute_tool
+            .clone();
+        let get_callable_tools = self
+            .inner
+            .actions
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .get_callable_tools
+            .clone();
+        ExtensionContext {
+            inner: Arc::clone(&self.inner),
+            system_prompt_override: None,
+            tool: Some(super::types::ToolContextState {
+                tool_call_id: tool_call_id.to_string(),
+                default_signal: signal,
+                callable_tools: get_callable_tools,
+                execute_tool,
+            }),
         }
     }
 
@@ -1017,10 +1180,21 @@ impl ExtensionRunner {
                         let object = result.as_object()?;
                         if let Some(content) = object.get("content") {
                             current_event["content"] = content.clone();
+                            // Structured content that is not replaced along
+                            // with the content may no longer match it.
+                            if !object.contains_key("structuredContent") {
+                                if let Some(event_object) = current_event.as_object_mut() {
+                                    event_object.shift_remove("structuredContent");
+                                }
+                            }
                             modified = true;
                         }
                         if let Some(details) = object.get("details") {
                             current_event["details"] = details.clone();
+                            modified = true;
+                        }
+                        if let Some(structured_content) = object.get("structuredContent") {
+                            current_event["structuredContent"] = structured_content.clone();
                             modified = true;
                         }
                         if let Some(is_error) = object.get("isError") {
@@ -1053,6 +1227,9 @@ impl ExtensionRunner {
         );
         if let Some(details) = current_event.get("details") {
             combined.insert("details".to_string(), details.clone());
+        }
+        if let Some(structured_content) = current_event.get("structuredContent") {
+            combined.insert("structuredContent".to_string(), structured_content.clone());
         }
         if let Some(is_error) = current_event.get("isError") {
             combined.insert("isError".to_string(), is_error.clone());
@@ -1144,15 +1321,74 @@ impl ExtensionRunner {
         Ok(None)
     }
 
-    /// Upstream `emitContext(messages)`.
+    /// Upstream `emitContext(messages)`: the request-time transforms run in
+    /// two phases. `context` handlers see the conversation only (system
+    /// messages filtered out) and Pi restores the prompt and tool state after
+    /// each; `context_with_system` handlers then see the full transcript and
+    /// their output is used as returned.
     pub async fn emit_context(&self, messages: &[Value]) -> Vec<Value> {
         let ctx = self.create_context();
         let mut current_messages = messages.to_vec();
-        let event_type = "context";
 
-        for (extension_path, handlers) in self.snapshot_event_handlers(event_type) {
+        for (extension_path, handlers) in self.snapshot_event_handlers("context") {
             for handler in handlers {
-                let mut event = json!({ "type": "context", "messages": current_messages });
+                // Handlers only see the non-system conversation.
+                let visible_messages: Vec<Value> = current_messages
+                    .iter()
+                    .filter(|message| message.get("role").and_then(Value::as_str) != Some("system"))
+                    .cloned()
+                    .collect();
+                let visible_snapshot = visible_messages.clone();
+                let mut event = json!({ "type": "context", "messages": visible_messages });
+                match handler(&mut event, &ctx).await {
+                    Ok(handler_result) => {
+                        // Handlers may return a new list or edit
+                        // event.messages in place. The JSON seam cannot see
+                        // JS element identity: an in-place value change is
+                        // treated like upstream's replaced element (it
+                        // triggers the restore, which reattaches the folded
+                        // system head), and a same-value write is a no-op.
+                        let returned = handler_result
+                            .as_ref()
+                            .and_then(HandlerResult::as_json)
+                            .and_then(|result| result.get("messages"))
+                            .and_then(Value::as_array)
+                            .cloned()
+                            .or_else(|| {
+                                let after = event
+                                    .get("messages")
+                                    .and_then(Value::as_array)
+                                    .cloned()
+                                    .unwrap_or_default();
+                                (after != visible_snapshot).then_some(after)
+                            });
+                        let Some(returned) = returned else {
+                            continue;
+                        };
+                        current_messages = restore_system_messages(
+                            &current_messages,
+                            &visible_snapshot,
+                            &returned,
+                        );
+                    }
+                    Err(error) => self.emit_error(ExtensionError {
+                        extension_path: extension_path.clone(),
+                        event: "context".to_string(),
+                        error,
+                        stack: None,
+                    }),
+                }
+            }
+        }
+
+        for (extension_path, handlers) in self.snapshot_event_handlers("context_with_system") {
+            for handler in handlers {
+                let had_leading_system_message = current_messages
+                    .first()
+                    .and_then(|message| message.get("role").and_then(Value::as_str))
+                    == Some("system");
+                let mut event =
+                    json!({ "type": "context_with_system", "messages": current_messages });
                 match handler(&mut event, &ctx).await {
                     Ok(handler_result) => {
                         if let Some(messages) = handler_result
@@ -1162,6 +1398,147 @@ impl ExtensionRunner {
                             .and_then(Value::as_array)
                         {
                             current_messages = messages.clone();
+                        }
+                        // Providers read the prompt and initial tools from
+                        // the leading system message. Losing it is never
+                        // intended; report it but honor the handler's output.
+                        if had_leading_system_message
+                            && current_messages
+                                .first()
+                                .and_then(|message| message.get("role").and_then(Value::as_str))
+                                != Some("system")
+                        {
+                            self.emit_error(ExtensionError {
+                                extension_path: extension_path.clone(),
+                                event: "context_with_system".to_string(),
+                                error: "Handler removed the leading system message; the request has no prompt or initial tool declarations. Keep it at index 0 or replace a dropped prefix with getCurrentSystemMessage().".to_string(),
+                                stack: None,
+                            });
+                        }
+                    }
+                    Err(error) => self.emit_error(ExtensionError {
+                        extension_path: extension_path.clone(),
+                        event: "context_with_system".to_string(),
+                        error,
+                        stack: None,
+                    }),
+                }
+            }
+        }
+
+        current_messages
+    }
+
+    /// Upstream `emitBoundary(baseEvent, buildContext)`: shared dispatch for
+    /// the boundary events (`turn_end`, `agent_before_settle`). Each handler
+    /// sees `{ ...baseEvent, entries, continue, context }`; handler results
+    /// may replace the draft entries and the continue flag, and the context
+    /// preview is rebuilt after every handler. A rebuild failure marks the
+    /// dispatch invalid and zeroes the entries/continue decision. The first
+    /// `buildContext` failure propagates (upstream the promise rejects).
+    pub async fn emit_boundary(
+        &self,
+        base_event: Value,
+        build_context: &(dyn Fn(&[Value]) -> Result<Value, String> + Send + Sync),
+    ) -> Result<BoundaryDispatchResult, String> {
+        let ctx = self.create_context();
+        let event_type = base_event
+            .get("type")
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .to_string();
+        let mut entries: Vec<Value> = Vec::new();
+        let mut should_continue = false;
+        let mut context = build_context(&entries)?;
+        let mut valid = true;
+
+        for (extension_path, handlers) in self.snapshot_event_handlers(&event_type) {
+            for handler in handlers {
+                let mut event = base_event.clone();
+                if let Some(object) = event.as_object_mut() {
+                    object.insert("entries".to_string(), Value::Array(entries.clone()));
+                    object.insert("continue".to_string(), json!(should_continue));
+                    object.insert("context".to_string(), context.clone());
+                }
+                match handler(&mut event, &ctx).await {
+                    Ok(handler_result) => {
+                        if let Some(result) = handler_result.and_then(|r| r.as_json().cloned()) {
+                            if let Some(result_entries) =
+                                result.get("entries").and_then(Value::as_array)
+                            {
+                                entries = result_entries.clone();
+                            }
+                            if let Some(result_continue) =
+                                result.get("continue").and_then(Value::as_bool)
+                            {
+                                should_continue = result_continue;
+                            }
+                        }
+                    }
+                    Err(error) => self.emit_error(ExtensionError {
+                        extension_path: extension_path.clone(),
+                        event: event_type.clone(),
+                        error,
+                        stack: None,
+                    }),
+                }
+
+                context = match build_context(&entries) {
+                    Ok(context) => {
+                        valid = true;
+                        context
+                    }
+                    Err(error) => {
+                        valid = false;
+                        self.emit_error(ExtensionError {
+                            extension_path: extension_path.clone(),
+                            event: event_type.clone(),
+                            error: format!("Invalid boundary entries: {error}"),
+                            stack: None,
+                        });
+                        context
+                    }
+                };
+            }
+        }
+
+        Ok(if valid {
+            BoundaryDispatchResult {
+                entries,
+                r#continue: should_continue,
+                context,
+                valid: true,
+            }
+        } else {
+            BoundaryDispatchResult {
+                entries: Vec::new(),
+                r#continue: false,
+                context,
+                valid: false,
+            }
+        })
+    }
+
+    /// Upstream `emitCacheWarmingDecision(event)`: returns the event's own
+    /// action unless a handler overrides it; the last override wins.
+    pub async fn emit_cache_warming_decision(&self, event: &Value) -> Value {
+        let ctx = self.create_context();
+        let event_type = "cache_warming_decision";
+        let mut action = event.get("action").cloned().unwrap_or(Value::Null);
+
+        for (extension_path, handlers) in self.snapshot_event_handlers(event_type) {
+            for handler in handlers {
+                let mut current_event = event.clone();
+                match handler(&mut current_event, &ctx).await {
+                    Ok(handler_result) => {
+                        if let Some(result_action) = handler_result
+                            .and_then(|r| r.as_json().cloned())
+                            .and_then(|result| result.get("action").cloned())
+                        {
+                            // Upstream `result?.action !== undefined`; the
+                            // JSON seam cannot see undefined, so key presence
+                            // decides.
+                            action = result_action;
                         }
                     }
                     Err(error) => self.emit_error(ExtensionError {
@@ -1174,7 +1551,7 @@ impl ExtensionRunner {
             }
         }
 
-        current_messages
+        action
     }
 
     /// Upstream `emitBeforeProviderRequest(payload)`.
@@ -1261,6 +1638,7 @@ impl ExtensionRunner {
                     renderer.build(&current)
                 })
             }),
+            tool: None,
         };
         let mut current_options = current_options;
         let sync_live =
@@ -1691,16 +2069,20 @@ fn trust_context_shim(ctx: &ProjectTrustContext) -> ExtensionContext {
                 }))
             }),
             reload: Arc::new(|| Ok(CommandFuture::resolved(()))),
+            execute_tool: None,
+            get_callable_tools: None,
         }),
         shortcut_diagnostics: Mutex::new(Vec::new()),
         command_diagnostics: Mutex::new(Vec::new()),
         stale: Mutex::new(None),
         ui_prompt_depth: Mutex::new(0),
         active_ui_prompt: Mutex::new(None),
+        reported_mcp_servers: Mutex::new(std::collections::HashSet::new()),
     };
     ExtensionContext {
         inner: Arc::new(inner),
         system_prompt_override: None,
+        tool: None,
     }
 }
 
@@ -2125,4 +2507,144 @@ fn js_truthy(value: &Value) -> bool {
         Value::String(value) => !value.is_empty(),
         Value::Array(_) | Value::Object(_) => true,
     }
+}
+
+// ============================================================================
+// emitContext helpers (upstream runner.ts + pi-ai transcript.ts)
+// ============================================================================
+
+/// Upstream `sameMessages(left, right)`: length + per-element JS object
+/// identity. The JSON seam compares values (see the emitContext disclosure).
+fn same_messages_value(left: &[Value], right: &[Value]) -> bool {
+    left == right
+}
+
+/// Upstream `restoreSystemMessages(current, visible, returned)`: re-attach
+/// the prompt and tool state after a `context` handler. An unchanged
+/// conversation keeps every system message in place; a changed one gets the
+/// replayed prompt sections and tool declarations as one leading system
+/// message.
+fn restore_system_messages(current: &[Value], visible: &[Value], returned: &[Value]) -> Vec<Value> {
+    if same_messages_value(returned, visible) {
+        return current.to_vec();
+    }
+    match get_current_system_message_value(current) {
+        Some(head) => [vec![head], returned.to_vec()].concat(),
+        None => returned.to_vec(),
+    }
+}
+
+fn message_role(message: &Value) -> Option<&str> {
+    message.get("role").and_then(Value::as_str)
+}
+
+/// `contentText(content)` for a JSON message: text blocks joined with "\n".
+fn content_text_value(content: &Value) -> String {
+    match content {
+        Value::String(text) => text.clone(),
+        Value::Array(blocks) => blocks
+            .iter()
+            .filter(|block| block.get("type").and_then(Value::as_str) == Some("text"))
+            .filter_map(|block| block.get("text").and_then(Value::as_str))
+            .collect::<Vec<_>>()
+            .join("\n"),
+        _ => String::new(),
+    }
+}
+
+/// Upstream `getCurrentSystemMessage(messages)` (pi-ai transcript.ts) at the
+/// JSON seam: replay every system message into one leading system message
+/// holding the current prompt and tools. Later `content` is appended to the
+/// base prompt, `sections` are patched by name (`null` removes), tools fold
+/// through `toolsRemoved`/`toolsAdded`, and the timestamp is the first system
+/// message's (falling back to 0). Returns `None` when the transcript has no
+/// system messages and no resolvable tools.
+fn get_current_system_message_value(messages: &[Value]) -> Option<Value> {
+    let mut content: Vec<String> = Vec::new();
+    // JS `Map<string, string>`: null section values delete the name; set
+    // keeps the first-appearance position.
+    let mut sections: Vec<(String, Value)> = Vec::new();
+    let mut timestamp: Option<Value> = None;
+    for message in messages {
+        if message_role(message) != Some("system") {
+            continue;
+        }
+        if timestamp.is_none() {
+            timestamp = message.get("timestamp").cloned();
+        }
+        let text = content_text_value(message.get("content").unwrap_or(&Value::Null));
+        if !text.is_empty() {
+            content.push(text);
+        }
+        if let Some(entries) = message.get("sections").and_then(Value::as_object) {
+            for (name, value) in entries {
+                if value.is_null() {
+                    sections.retain(|(existing, _)| existing != name);
+                } else if let Some(slot) =
+                    sections.iter_mut().find(|(existing, _)| existing == name)
+                {
+                    slot.1 = value.clone();
+                } else {
+                    sections.push((name.clone(), value.clone()));
+                }
+            }
+        }
+    }
+    // getCurrentTools: per system message, removals before additions; JS Map
+    // order (re-adding moves to the end).
+    let mut tools: Vec<(String, Value)> = Vec::new();
+    for message in messages {
+        if message_role(message) != Some("system") {
+            continue;
+        }
+        for reference in message
+            .get("toolsRemoved")
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+        {
+            let name = reference
+                .get("name")
+                .and_then(Value::as_str)
+                .unwrap_or_default();
+            tools.retain(|(existing, _)| existing != name);
+        }
+        for tool in message
+            .get("toolsAdded")
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+        {
+            let name = tool.get("name").and_then(Value::as_str).unwrap_or_default();
+            if let Some(slot) = tools.iter_mut().find(|(existing, _)| existing == name) {
+                slot.1 = tool.clone();
+            } else {
+                tools.push((name.to_string(), tool.clone()));
+            }
+        }
+    }
+    if timestamp.is_none() && tools.is_empty() {
+        return None;
+    }
+    let mut replayed = serde_json::Map::new();
+    replayed.insert("role".to_string(), json!("system"));
+    replayed.insert("content".to_string(), json!(content.join("\n\n")));
+    if !sections.is_empty() {
+        let mut object = serde_json::Map::new();
+        for (name, value) in sections {
+            object.insert(name, value);
+        }
+        replayed.insert("sections".to_string(), Value::Object(object));
+    }
+    if !tools.is_empty() {
+        replayed.insert(
+            "toolsAdded".to_string(),
+            Value::Array(tools.into_iter().map(|(_, tool)| tool).collect()),
+        );
+    }
+    replayed.insert(
+        "timestamp".to_string(),
+        timestamp.unwrap_or_else(|| json!(0)),
+    );
+    Some(Value::Object(replayed))
 }

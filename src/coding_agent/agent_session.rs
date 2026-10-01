@@ -1723,6 +1723,9 @@ impl AgentSession {
                 description: entry.definition.description.clone(),
                 parameters: entry.definition.parameters.clone(),
                 prompt_guidelines: entry.definition.prompt_guidelines.clone(),
+                exposure: entry.definition.exposure,
+                namespace: entry.definition.namespace.clone(),
+                annotations: entry.definition.annotations.clone(),
                 source_info: entry.source_info.clone(),
             })
             .collect()
@@ -3672,6 +3675,22 @@ impl AgentSession {
                 session.set_thinking_level(level, None);
             }
         });
+        let settings_session = self.self_weak();
+        let get_settings: crate::coding_agent::extensions::types::GetSettingsHandler =
+            Arc::new(move || {
+                let Some(session) = settings_session.upgrade() else {
+                    return Value::Object(serde_json::Map::new());
+                };
+                // Upstream `getSettings()`: a copy of the effective settings
+                // (global and project merged, project wins). The settings
+                // slice exposes no merged-document getter yet, so the object
+                // merge is restated here (disclosed seam).
+                let global = serde_json::to_value(session.settings_manager.get_global_settings())
+                    .unwrap_or(Value::Object(serde_json::Map::new()));
+                let project = serde_json::to_value(session.settings_manager.get_project_settings())
+                    .unwrap_or(Value::Object(serde_json::Map::new()));
+                merge_settings_documents(&global, &project)
+            });
 
         runner.bind_core(
             Arc::new(ExtensionActions {
@@ -3683,6 +3702,7 @@ impl AgentSession {
                 set_label,
                 get_active_tools,
                 get_all_tools,
+                get_settings,
                 set_active_tools,
                 refresh_tools,
                 get_commands,
@@ -3910,6 +3930,8 @@ impl AgentSession {
             compact,
             get_system_prompt,
             get_system_prompt_options: Some(get_system_prompt_options),
+            execute_tool: None,
+            get_callable_tools: None,
         }
     }
 
@@ -6811,6 +6833,31 @@ fn flatten_headers(headers: &std::collections::BTreeMap<String, String>) -> Prov
         .iter()
         .map(|(name, value)| (name.clone(), Some(value.clone())))
         .collect()
+}
+
+/// Effective settings for `pi.getSettings()`: the global document with the
+/// project document merged over it (objects merge recursively, every other
+/// value replaces — the settings slice's `deep_merge_objects` semantics,
+/// restated here until that slice exposes a merged-document getter;
+/// disclosed seam, see the `get_settings` action binding).
+fn merge_settings_documents(global: &Value, project: &Value) -> Value {
+    fn merge(base: &Value, overrides: &Value) -> Value {
+        match (base, overrides) {
+            (Value::Object(base), Value::Object(overrides)) => {
+                let mut merged = base.clone();
+                for (key, value) in overrides {
+                    let merged_value = match merged.get(key) {
+                        Some(existing) => merge(existing, value),
+                        None => value.clone(),
+                    };
+                    merged.insert(key.clone(), merged_value);
+                }
+                Value::Object(merged)
+            }
+            (_, overrides) => overrides.clone(),
+        }
+    }
+    merge(global, project)
 }
 
 /// The `"manual" | "threshold" | "overflow"` wire literal.

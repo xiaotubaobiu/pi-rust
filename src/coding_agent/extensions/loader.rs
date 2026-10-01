@@ -33,16 +33,74 @@ use serde_json::Value;
 use super::types::{
     CommandHandler, Extension, ExtensionFlag, ExtensionLoadError, FlagType, FlagValue, HandlerFn,
     LoadExtensionsResult, OrderedMap, PendingNativeProviderRegistration,
-    PendingProviderRegistration, RegisterNativeProviderHandler, RegisterProviderHandler,
-    RegisteredCommand, RegisteredTool, SendMessageOptions, SendUserMessageOptions, SourceInfo,
-    ThinkingLevel, ToolDefinition, UnregisterProviderHandler,
+    PendingProviderRegistration, PendingVirtualModelRegistration, RegisterNativeProviderHandler,
+    RegisterProviderHandler, RegisteredCommand, RegisteredTool, SendMessageOptions,
+    SendUserMessageOptions, SourceInfo, ThinkingLevel, ToolDefinition, UnregisterProviderHandler,
 };
 use crate::coding_agent::core::event_bus::{EventBus, EventBusController, EventBusUnsubscribe};
+use crate::coding_agent::core::mcp_servers::{
+    validate_mcp_server_config, McpExposure, McpServerConfig, RegisteredMcpServer,
+};
 use crate::coding_agent::core::CONFIG_DIR_NAME;
 use crate::coding_agent::utils::node_path;
 use crate::coding_agent::utils::paths::{
     resolve_path_auto_base, resolve_path_with, PathInputOptions,
 };
+
+/// `McpExposure::as_str` (the core slice keeps its method private; the JSON
+/// strings are pinned by the core slice's own tests).
+fn mcp_exposure_as_str(exposure: McpExposure) -> &'static str {
+    match exposure {
+        McpExposure::Codemode => "codemode",
+        McpExposure::Deferred => "deferred",
+        McpExposure::Direct => "direct",
+        McpExposure::Hidden => "hidden",
+    }
+}
+
+/// A string field of a virtual-model definition JSON (absent → empty string,
+/// which never matches a real provider/id in the unregister filter).
+fn json_definition_field(definition: &Value, field: &str) -> String {
+    definition
+        .get(field)
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+        .to_string()
+}
+
+/// The JSON-at-the-seam view of one validated server entry: the raw object
+/// with exposure aliases resolved (upstream `validateMcpServerConfig`
+/// returns exactly that object; `McpServerConfig` keeps it private, so the
+/// two resolved slots are re-applied from the validated config's getters).
+pub(crate) fn resolved_mcp_config_value(
+    raw: &crate::ai::types::ordered_map::OrderedMap<Value>,
+    validated: &McpServerConfig,
+) -> Value {
+    let mut resolved = raw.clone();
+    if resolved.get("exposure").is_some() {
+        resolved.insert(
+            "exposure",
+            Value::String(mcp_exposure_as_str(validated.exposure()).to_string()),
+        );
+    }
+    if resolved.get("toolExposure").is_some() {
+        let tool_exposure = validated.tool_exposure();
+        let mut object = serde_json::Map::new();
+        for (tool, exposure) in tool_exposure.iter() {
+            object.insert(
+                tool.clone(),
+                Value::String(mcp_exposure_as_str(*exposure).to_string()),
+            );
+        }
+        resolved.insert("toolExposure", Value::Object(object));
+    }
+    Value::Object(
+        resolved
+            .iter()
+            .map(|(key, value)| (key.clone(), value.clone()))
+            .collect(),
+    )
+}
 
 // ============================================================================
 // Factory cache (upstream module-scope cache, ported verbatim)
@@ -181,6 +239,67 @@ pub(crate) struct ProviderRouting {
     pub unregister_provider: UnregisterProviderHandler,
 }
 
+/// Post-bind virtual-model routing installed by `bind_core` (upstream
+/// `runtime.registerVirtualModel` / `runtime.unregisterVirtualModel`):
+/// provider actions when provided, else the model registry.
+#[derive(Clone)]
+pub(crate) struct VirtualModelRouting {
+    pub register: super::types::RegisterVirtualModelHandler,
+    pub unregister: super::types::UnregisterVirtualModelHandler,
+}
+
+/// The runner-side reaction to MCP registry changes, installed by `bind_core`
+/// (upstream `runtime.mcpServers.setChangeListener(() => { void
+/// this.emit(...); this.reportUnhandledMcpServers(); })`). The ported
+/// registry's own listener hook cannot re-enter the locked runtime state, so
+/// mutations run through [`ExtensionRuntime`] helpers that fire this sink
+/// after the state lock is released — same observable behavior, different
+/// mechanism (disclosed seam).
+pub(crate) struct McpChangeSink {
+    pub runner: super::runner::ExtensionRunner,
+}
+
+impl McpChangeSink {
+    /// Upstream listener body: fire-and-forget `mcp_servers_change` emission
+    /// with the full post-change server list, then the unhandled report.
+    pub fn fire(&self) {
+        let mut event = {
+            let runtime = self.runner.runtime();
+            let servers = runtime.mcp_servers_list();
+            let payloads = runtime.mcp_server_payloads();
+            serde_json::json!({
+                "type": "mcp_servers_change",
+                "servers": registered_mcp_servers_value(&servers, &payloads),
+            })
+        };
+        self.runner.emit_detached(event);
+        event = Value::Null;
+        let _ = event;
+        self.runner.report_unhandled_mcp_servers();
+    }
+}
+
+/// `RegisteredMcpServer[]` as JSON at the seam (`{ name, config,
+/// extensionPath }`); `config` is the validated entry with exposure aliases
+/// resolved, snapshotted at registration time.
+pub(crate) fn registered_mcp_servers_value(
+    servers: &[RegisteredMcpServer],
+    payloads: &OrderedMap<Value>,
+) -> Value {
+    Value::Array(
+        servers
+            .iter()
+            .map(|server| {
+                serde_json::json!({
+                    "name": server.name,
+                    "config": payloads.get(&server.name).cloned().unwrap_or(Value::Null),
+                    "extensionPath": server.extension_path,
+                })
+            })
+            .collect(),
+    )
+}
+
 /// The JS pending array has reference identity: an active for-of observes
 /// appended entries, but keeps the old array when unregister assigns a filter.
 /// No callback runs while either this array or the runtime state is locked.
@@ -231,10 +350,34 @@ pub(crate) struct RuntimeState {
     pub pending_provider_registrations: PendingRegistrations<PendingProviderRegistration>,
     pub pending_native_provider_registrations:
         PendingRegistrations<PendingNativeProviderRegistration>,
+    /// Upstream `ExtensionRuntimeState.mcpServers`: servers registered with
+    /// `pi.registerMcpServer()`.
+    pub mcp_servers: RegisteredMcpServers,
+    /// Upstream `pendingVirtualModelRegistrations`.
+    pub pending_virtual_model_registrations: PendingRegistrations<PendingVirtualModelRegistration>,
     /// `None` until `bindCore` (upstream throwing stubs).
     pub actions: Option<Arc<super::types::ExtensionActions>>,
     /// Post-bind provider routing (upstream replaced closures).
     pub provider_routing: Option<ProviderRouting>,
+    /// Post-bind virtual-model routing (upstream replaced closures).
+    pub virtual_model_routing: Option<VirtualModelRouting>,
+    /// Upstream `runtime.createContext` (a throwing stub until `bindCore`).
+    pub create_context:
+        Option<Arc<dyn Fn() -> Result<super::types::ExtensionContext, String> + Send + Sync>>,
+    /// Upstream MCP change listener (`setChangeListener` at bind time); fires
+    /// after the state lock is released (see [`McpChangeSink`]).
+    pub mcp_change_sink: Option<Arc<McpChangeSink>>,
+}
+
+/// The runtime's MCP server registrations plus their JSON-at-the-seam
+/// snapshots for event payloads. `McpServerConfig` keeps its validated form
+/// private (core slice), so the payload serialization (the raw entry with
+/// exposure aliases resolved) is captured at registration time — the two
+/// maps are only ever mutated together under the state lock.
+#[derive(Default)]
+pub(crate) struct RegisteredMcpServers {
+    pub registry: crate::coding_agent::core::mcp_servers::McpServerRegistry,
+    pub payloads: OrderedMap<Value>,
 }
 
 struct TrackedEntry {
@@ -285,8 +428,13 @@ impl ExtensionRuntime {
                     flag_values: OrderedMap::new(),
                     pending_provider_registrations: PendingRegistrations::default(),
                     pending_native_provider_registrations: PendingRegistrations::default(),
+                    mcp_servers: RegisteredMcpServers::default(),
+                    pending_virtual_model_registrations: PendingRegistrations::default(),
                     actions: None,
                     provider_routing: None,
+                    virtual_model_routing: None,
+                    create_context: None,
+                    mcp_change_sink: None,
                 }),
                 stale: Mutex::new(None),
                 event_bus_unsubscribers: Mutex::new(Vec::new()),
@@ -337,6 +485,16 @@ impl ExtensionRuntime {
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
             .pending_native_provider_registrations
+            .snapshot()
+    }
+
+    /// Upstream `runtime.pendingVirtualModelRegistrations` snapshot.
+    pub fn pending_virtual_model_registrations(&self) -> Vec<PendingVirtualModelRegistration> {
+        self.inner
+            .state
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .pending_virtual_model_registrations
             .snapshot()
     }
 
@@ -622,6 +780,140 @@ impl ExtensionRuntime {
         self.with_state(|state| state.pending_native_provider_registrations = filtered);
         Ok(())
     }
+
+    /// Upstream `runtime.getSettings()`.
+    pub fn get_settings(&self) -> Result<Value, String> {
+        let actions = self.actions()?;
+        Ok((actions.get_settings)())
+    }
+
+    /// Upstream `runtime.createContext()`: a throwing stub until `bindCore`.
+    pub fn create_context(&self) -> Result<super::types::ExtensionContext, String> {
+        let create = self
+            .with_state(|state| state.create_context.clone())
+            .ok_or_else(|| RUNTIME_NOT_INITIALIZED.to_string())?;
+        create()
+    }
+
+    /// Every MCP server registered by extensions
+    /// (`runtime.mcpServers.list()`).
+    pub fn mcp_servers_list(&self) -> Vec<RegisteredMcpServer> {
+        self.with_state(|state| state.mcp_servers.registry.list())
+    }
+
+    /// The JSON-at-the-seam snapshots of the registered server configs (see
+    /// [`RegisteredMcpServers`]).
+    pub fn mcp_server_payloads(&self) -> OrderedMap<Value> {
+        self.with_state(|state| state.mcp_servers.payloads.clone())
+    }
+
+    /// One registered MCP server (`runtime.mcpServers.get(name)`).
+    pub fn mcp_server(&self, name: &str) -> Option<RegisteredMcpServer> {
+        self.with_state(|state| state.mcp_servers.registry.get(name).cloned())
+    }
+
+    /// Upstream `runtime.mcpServers.register(server)` plus the payload
+    /// snapshot; returns whether a change sink is installed (fire it after
+    /// the lock is released).
+    pub(crate) fn apply_mcp_registration(
+        &self,
+        name: &str,
+        config: McpServerConfig,
+        payload: Value,
+        extension_path: &str,
+    ) -> bool {
+        self.with_state(|state| {
+            state.mcp_servers.registry.register(RegisteredMcpServer {
+                name: name.to_string(),
+                config,
+                extension_path: extension_path.to_string(),
+            });
+            state.mcp_servers.payloads.set(name.to_string(), payload);
+            state.mcp_change_sink.is_some()
+        })
+    }
+
+    /// Upstream `runtime.mcpServers.unregister(name, extensionPath)` (a
+    /// no-op for servers of other extensions).
+    pub(crate) fn apply_mcp_removal(&self, name: &str, extension_path: &str) -> bool {
+        self.with_state(|state| {
+            let owned = state
+                .mcp_servers
+                .registry
+                .get(name)
+                .map(|server| server.extension_path == extension_path)
+                .unwrap_or(false);
+            if owned {
+                state.mcp_servers.registry.unregister(name, extension_path);
+                state.mcp_servers.payloads.delete(name);
+            }
+            owned && state.mcp_change_sink.is_some()
+        })
+    }
+
+    /// Fire the installed MCP change sink, if any (must be called after the
+    /// state lock is released; see [`McpChangeSink`]).
+    pub(crate) fn fire_mcp_change(&self) {
+        let sink = self.with_state(|state| state.mcp_change_sink.clone());
+        if let Some(sink) = sink {
+            sink.fire();
+        }
+    }
+
+    /// Upstream runtime `registerVirtualModel`: pre-bind queues; post-bind
+    /// routes to the virtual-model actions / model registry.
+    pub fn register_virtual_model(
+        &self,
+        definition: super::types::VirtualModelDefinitionHandle,
+    ) -> Result<(), String> {
+        self.assert_active()?;
+        let routing = self.with_state(|state| state.virtual_model_routing.clone());
+        match routing {
+            Some(routing) => (routing.register)(&definition),
+            None => {
+                self.with_state(|state| {
+                    state
+                        .pending_virtual_model_registrations
+                        .push(super::types::PendingVirtualModelRegistration { definition })
+                });
+                Ok(())
+            }
+        }
+    }
+
+    /// Upstream runtime `unregisterVirtualModel(provider, id)`: pre-bind
+    /// drops matching pending registrations; post-bind routes.
+    pub fn unregister_virtual_model(&self, provider: &str, id: &str) -> Result<(), String> {
+        self.assert_active()?;
+        let routing = self.with_state(|state| state.virtual_model_routing.clone());
+        if let Some(routing) = routing {
+            return (routing.unregister)(provider, id);
+        }
+        let pending = self.with_state(|state| state.pending_virtual_model_registrations.clone());
+        let filtered = pending.filtered(|registration| {
+            json_definition_field(&registration.definition.definition, "provider") != provider
+                || json_definition_field(&registration.definition.definition, "id") != id
+        });
+        self.with_state(|state| state.pending_virtual_model_registrations = filtered);
+        Ok(())
+    }
+
+    /// Upstream bind-time flush of `pendingVirtualModelRegistrations` (for-of
+    /// over the live array, then replacement).
+    pub(crate) fn flush_pending_virtual_models(
+        &self,
+        mut register: impl FnMut(super::types::PendingVirtualModelRegistration),
+    ) {
+        let pending = self.with_state(|state| state.pending_virtual_model_registrations.clone());
+        let mut index = 0;
+        while let Some(registration) = pending.get(index) {
+            index += 1;
+            register(registration);
+        }
+        self.with_state(|state| {
+            state.pending_virtual_model_registrations = PendingRegistrations::default()
+        });
+    }
 }
 
 impl Default for ExtensionRuntime {
@@ -826,6 +1118,16 @@ impl ExtensionApi {
         handler: CommandHandler,
     ) -> Result<(), String> {
         self.assert_active()?;
+        // Upstream validates before storing: a non-string/empty name throws
+        // (the port's `&str` can only be empty), and a missing handler
+        // throws — unrepresentable here because `CommandHandler` is not
+        // optional in this signature.
+        if name.is_empty() {
+            let extension_path = self.extension_path();
+            return Err(format!(
+                "Command registered by extension \"{extension_path}\" must have a non-empty string name. Use pi.registerCommand(\"name\", {{ description, handler }})."
+            ));
+        }
         let source_info = self.source_info();
         self.extension
             .lock()
@@ -1063,6 +1365,13 @@ impl ExtensionApi {
         self.runtime.get_all_tools()
     }
 
+    /// Upstream `getSettings()`: a copy of the effective settings (global and
+    /// project settings merged, with overrides), JSON at the seam.
+    pub fn get_settings(&self) -> Result<Value, String> {
+        self.assert_active()?;
+        self.runtime.get_settings()
+    }
+
     pub fn set_active_tools(&self, tool_names: &[String]) -> Result<(), String> {
         self.assert_active()?;
         self.runtime.set_active_tools(tool_names)
@@ -1117,6 +1426,122 @@ impl ExtensionApi {
         let runtime = self.runtime.clone();
         let name = name.to_string();
         self.apply_runtime_change(move || runtime.unregister_provider(&name))
+    }
+
+    /// Upstream `registerMcpServer(name, config)`: validate, then register
+    /// for this session. The registration is not saved; a server of the same
+    /// name in `mcp.json` takes precedence upstream. Throws for invalid
+    /// configs and for names another extension registered.
+    pub fn register_mcp_server(
+        &self,
+        name: &str,
+        config: &crate::ai::types::ordered_map::OrderedMap<Value>,
+    ) -> Result<(), String> {
+        self.assert_active()?;
+        let extension_path = self.extension_path();
+        let validated = match validate_mcp_server_config(name, config) {
+            Ok(validated) => validated,
+            Err(message) => {
+                return Err(format!(
+                    "Invalid MCP server registered by extension \"{extension_path}\": {message}"
+                ));
+            }
+        };
+        // Ownership: registering a name again replaces THIS extension's
+        // earlier registration; another extension's is an error.
+        if let Some(owner) = self.runtime.mcp_server(name) {
+            if owner.extension_path != extension_path {
+                return Err(format!(
+                    "MCP server \"{name}\" is already registered by extension \"{}\"",
+                    owner.extension_path
+                ));
+            }
+        }
+        let payload = resolved_mcp_config_value(config, &validated);
+        let runtime = self.runtime.clone();
+        let name_owned = name.to_string();
+        let validated_clone = validated.clone();
+        let extension_path_clone = extension_path.clone();
+        // The registration may be deferred to commit (during loading); the
+        // change listener fires whenever the mutation actually runs, exactly
+        // like the upstream registry's listener.
+        self.apply_runtime_change(move || {
+            let fire = runtime.apply_mcp_registration(
+                &name_owned,
+                validated_clone.clone(),
+                payload.clone(),
+                &extension_path_clone,
+            );
+            if fire {
+                runtime.fire_mcp_change();
+            }
+            Ok(())
+        })
+    }
+
+    /// Upstream `unregisterMcpServer(name)`: remove an MCP server this
+    /// extension registered (a no-op for servers of other extensions).
+    pub fn unregister_mcp_server(&self, name: &str) -> Result<(), String> {
+        self.assert_active()?;
+        let extension_path = self.extension_path();
+        let runtime = self.runtime.clone();
+        let name_owned = name.to_string();
+        self.apply_runtime_change(move || {
+            let fire = runtime.apply_mcp_removal(&name_owned, &extension_path);
+            if fire {
+                runtime.fire_mcp_change();
+            }
+            Ok(())
+        })
+    }
+
+    /// Upstream `getMcpServers()`: every MCP server registered by extensions.
+    pub fn get_mcp_servers(&self) -> Result<Vec<RegisteredMcpServer>, String> {
+        self.assert_active()?;
+        Ok(self.runtime.mcp_servers_list())
+    }
+
+    /// Upstream `registerVirtualModel(model)`: register a virtual model — a
+    /// selectable catalog entry that routes each request to a physical model.
+    /// `definition` carries the catalog fields (provider/id/name/…); `route`
+    /// is the extension's routing function, wrapped here to bind
+    /// `runtime.createContext()` per request (upstream closes over
+    /// `runtime.createContext` at registration).
+    pub fn register_virtual_model(
+        &self,
+        definition: Value,
+        route: super::types::ExtensionVirtualModelRouteFn,
+    ) -> Result<(), String> {
+        self.assert_active()?;
+        let runtime = self.runtime.clone();
+        let route: super::types::WrappedVirtualModelRouteFn = Arc::new(move |request| {
+            let runtime = runtime.clone();
+            let route = Arc::clone(&route);
+            Box::pin(async move {
+                let ctx = runtime.create_context()?;
+                route(request, ctx).await
+            })
+        });
+        let extension_path = self.extension_path();
+        let handle = Arc::new(super::types::VirtualModelDefinitionHandle {
+            definition,
+            route,
+            extension_path,
+        });
+        let runtime = self.runtime.clone();
+        let handle_for_change = Arc::clone(&handle);
+        self.apply_runtime_change(move || {
+            runtime.register_virtual_model((*handle_for_change).clone())
+        })
+    }
+
+    /// Upstream `unregisterVirtualModel(provider, id)`.
+    pub fn unregister_virtual_model(&self, provider: &str, id: &str) -> Result<(), String> {
+        self.assert_active()?;
+        let runtime = self.runtime.clone();
+        let provider = provider.to_string();
+        let id = id.to_string();
+        self.apply_runtime_change(move || runtime.unregister_virtual_model(&provider, &id))
     }
 
     // -- Event bus -----------------------------------------------------------
@@ -1387,21 +1812,23 @@ fn path_exists(path: &str) -> bool {
 
 /// Upstream `createExtension(extensionPath, resolvedPath)`.
 fn create_extension(extension_path: &str, resolved_path: &str) -> Extension {
-    let (source, base_dir) = if extension_path.starts_with('<') && extension_path.ends_with('>') {
-        let inner = &extension_path[1..extension_path.len() - 1];
-        let first = inner.split(':').next().unwrap_or("");
-        let source = if first.is_empty() { "temporary" } else { first };
-        (source, None)
+    // Upstream: `getSyntheticPathSource(extensionPath) ?? "local"`; file
+    // paths carry a baseDir, synthetic ones do not.
+    let source = super::types::get_synthetic_path_source(extension_path)
+        .unwrap_or_else(|| "local".to_string());
+    let base_dir = if super::types::is_synthetic_path(extension_path) {
+        None
     } else {
-        ("local", Some(path_dirname(resolved_path)))
+        Some(path_dirname(resolved_path))
     };
     Extension {
         path: extension_path.to_string(),
         resolved_path: resolved_path.to_string(),
         hidden: false,
+        replaceable: false,
         source_info: super::types::create_synthetic_source_info(
             extension_path,
-            source,
+            &source,
             Some(super::types::SourceScope::Temporary),
             Some(super::types::SourceOrigin::TopLevel),
             base_dir,
@@ -1525,6 +1952,9 @@ fn load_extensions_internal(
 ) -> LoadExtensionsResult {
     let mut extensions = Vec::new();
     let mut errors: Vec<ExtensionLoadError> = Vec::new();
+    // Nothing in this slice pushes loader warnings yet; the field mirrors the
+    // upstream shape (`loadExtensionsInternal` declares and returns it).
+    let warnings: Vec<super::types::ExtensionLoadWarning> = Vec::new();
     let cache_token = if use_cache {
         Some(use_extension_cache_cwd(cwd))
     } else {
@@ -1564,6 +1994,7 @@ fn load_extensions_internal(
     LoadExtensionsResult {
         extensions,
         errors,
+        warnings,
         runtime: resolved_runtime,
     }
 }

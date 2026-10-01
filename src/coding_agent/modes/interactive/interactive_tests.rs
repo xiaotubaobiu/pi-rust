@@ -140,6 +140,9 @@ fn fixture_presentations() -> Vec<ShareToolPresentation> {
             "required": ["value"],
         }),
         prompt_guidelines: None,
+        exposure: crate::coding_agent::extensions::types::ToolExposure::Direct,
+        namespace: None,
+        annotations: None,
         source_info: create_synthetic_source_info("builtin", "builtin", None, None, None),
     };
     share_tool_presentations(&[tool])

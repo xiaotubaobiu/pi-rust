@@ -12,7 +12,7 @@ use std::sync::Arc;
 use crate::agent_core::types::{AgentTool, AgentToolResult, AgentToolUpdateCallback};
 use crate::coding_agent::extensions::types::{
     AbortSignal, AgentToolResultValue, AgentToolUpdateCallbackValue, PrepareArgumentsShim,
-    ToolDefinition,
+    ToolDefinition, ToolExposure,
 };
 
 /// Upstream `ToolName` (`tools/index.ts:180`): the eight built-in tool names
@@ -54,6 +54,12 @@ pub fn create_tool_definition_from_agent_tool(tool: &Arc<AgentTool>) -> Arc<Tool
             crate::agent_core::types::ToolExecutionMode::Sequential => "sequential".to_string(),
             crate::agent_core::types::ToolExecutionMode::Parallel => "parallel".to_string(),
         }),
+        output_schema: None,
+        exposure: ToolExposure::Direct,
+        namespace: None,
+        annotations: None,
+        default_active: None,
+        prepare_loadout: None,
         execute: None,
         execute_async: Some(Arc::new(move |id, params, signal, on_update, _ctx| {
             let tool = tool.clone();

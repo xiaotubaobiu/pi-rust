@@ -83,6 +83,7 @@ fn extensions(cwd: &str, spec: &Value, trace: &Trace) -> LoadExtensionsResult {
     LoadExtensionsResult {
         extensions: vec![extension],
         errors: vec![],
+        warnings: vec![],
         runtime,
     }
 }

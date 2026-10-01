@@ -59,6 +59,7 @@ fn test_actions() -> Arc<ExtensionActions> {
         set_label: Arc::new(|_, _| {}),
         get_active_tools: Arc::new(Vec::new),
         get_all_tools: Arc::new(Vec::new),
+        get_settings: Arc::new(|| serde_json::Value::Object(serde_json::Map::new())),
         set_active_tools: Arc::new(|_| {}),
         refresh_tools: Arc::new(|| {}),
         get_commands: Arc::new(Vec::new),
@@ -82,6 +83,8 @@ fn baseline_context_actions() -> ExtensionContextActions {
         compact: Arc::new(|_| {}),
         get_system_prompt: Arc::new(String::new),
         get_system_prompt_options: None,
+        execute_tool: None,
+        get_callable_tools: None,
     }
 }
 
@@ -2112,6 +2115,8 @@ fn bind_core_flushes_pending_registrations_and_routes_post_bind() {
                     .push(format!("unregister:{name}"));
                 Ok(())
             })),
+            register_virtual_model: None,
+            unregister_virtual_model: None,
         }),
     );
     runtime

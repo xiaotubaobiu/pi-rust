@@ -9,6 +9,8 @@ pub mod coding_agent;
 pub mod config;
 // M6 evals slice: port of `pi/packages/evals`.
 pub mod evals;
+// MCP client slice: port of `pi/packages/mcp`.
+pub mod mcp;
 // M6 first slice: port of `pi/packages/protocol` (server/client/evals leaf).
 pub mod protocol;
 // M6 server slice: port of `pi/packages/server`.

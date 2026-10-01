@@ -77,6 +77,51 @@
 //!   missing runtime is explicitly reported, not blocked on or silently dropped.
 //!   Nesting/outer-only semantics are retained; Tokio scheduling does not emulate
 //!   JS `queueMicrotask` or the eager prefix of an async JavaScript handler.
+//!
+//! Extensions-delta additions (upstream `590144609..2bbfcca43`), oracle-pinned
+//! from the verbatim HEAD sources under node into
+//! `tests/fixtures/extensions_delta_oracle/` (see
+//! [`extensions_delta_tests`]):
+//!
+//! - **Tool context** (`ExtensionToolContext`): the runner's
+//!   [`runner::ExtensionRunner::create_tool_context`] attaches `tools` and
+//!   `executeTool` to a fresh extension context (upstream
+//!   `Object.defineProperties`); [`types::ExtensionContext::execute_tool`]
+//!   defaults the nested-call signal and falls back to the exact upstream
+//!   "Nested tool calls are not available in this context" outcome. Tool
+//!   wrappers (this module's `wrapper`) hand the tool context to `execute`.
+//! - **Boundary events** (`turn_end` / `agent_before_settle`):
+//!   [`runner::ExtensionRunner::emit_boundary`] chains draft entries and the
+//!   continue flag through handlers, rebuilding the context preview after
+//!   each; a failed rebuild zeroes the decision (`valid: false`).
+//! - **Cache warming**: [`runner::ExtensionRunner::emit_cache_warming_decision`]
+//!   returns the event's action unless a handler overrides it (last override
+//!   wins).
+//! - **Two-phase context**: `context` handlers see the conversation without
+//!   system messages and the folded leading system message is restored after
+//!   each (`restoreSystemMessages` + pi-ai `getCurrentSystemMessage`, ported
+//!   at the JSON seam in the runner); `context_with_system` handlers see the
+//!   full transcript and their output is used as returned, with the
+//!   leading-system-removal error pinned verbatim.
+//! - **MCP servers**: `pi.registerMcpServer`/`unregisterMcpServer`/
+//!   `getMcpServers` over the ported [`crate::coding_agent::core::mcp_servers`]
+//!   registry; the runner's change sink fires `mcp_servers_change`
+//!   (fire-and-forget) and reports unhandled servers once each. The upstream
+//!   registry `setChangeListener` hook cannot re-enter the port's locked
+//!   runtime state, so mutations fire the runner-installed sink after the
+//!   state lock releases — same observable behavior (disclosed).
+//! - **Virtual models**: `pi.registerVirtualModel`/`unregisterVirtualModel`
+//!   queue pre-bind and route post-bind (provider actions, else the
+//!   [`types::ProviderRegistryHandle`] fallback); the wrapped route binds
+//!   `runtime.createContext()` per request and pre-bind calls reject with the
+//!   exact `notInitialized` message.
+//! - **tool_search**: the [`tool_search`] module ports
+//!   `extensions/tool-search/` (BM25 ranker, document text, description,
+//!   schema JSON, execute semantics, prepareLoadout); the built-in extension
+//!   table ([`built_in_extensions`]) mirrors `src/extensions/index.ts` with
+//!   the tool-search factory (llama.cpp stays cropped; codemode/mcp belong to
+//!   their own slices). `isToolSearchTool` compares parameter values
+//!   structurally where upstream compares object identity (disclosed).
 
 pub mod command_future;
 
@@ -86,10 +131,15 @@ mod async_event_tests;
 #[cfg(test)]
 mod command_context_tests;
 
+#[cfg(test)]
+mod extensions_delta_tests;
+
 #[path = "loader.rs"]
 pub mod loader;
 #[path = "runner.rs"]
 pub mod runner;
+#[path = "tool_search.rs"]
+pub mod tool_search;
 #[path = "types.rs"]
 pub mod types;
 
@@ -104,11 +154,50 @@ pub use loader::{
     ExtensionFactory, ExtensionModuleLoader, ExtensionRuntime, NullModuleLoader, PiManifest,
     TrackedEventBusUnsubscribe,
 };
-pub use runner::{emit_project_trust_event, emit_session_shutdown_event, ExtensionRunner};
+pub use runner::{
+    emit_project_trust_event, emit_session_shutdown_event, BoundaryDispatchResult, ExtensionRunner,
+};
+pub use tool_search::{
+    create_tool_search_description, create_tool_search_extension,
+    create_tool_search_tool_definition, tokenize, Bm25Ranker, ToolRanker, ToolSearchDocument,
+    ToolSearchMatch, ToolSearchTools,
+};
 pub use types::{
     Extension, ExtensionCommandContext, ExtensionContext, ExtensionError, ExtensionLoadError,
-    HandlerFn, LoadExtensionsResult,
+    ExtensionLoadWarning, HandlerFn, LoadExtensionsResult, ToolAnnotations, ToolExposure, ToolInfo,
+    ToolLoadout, ToolLoadoutChanges, ToolNamespace,
 };
+
+// ============================================================================
+// Built-in extensions (upstream `src/extensions/index.ts`)
+// ============================================================================
+
+/// Upstream `InlineExtension` object form: `{ name, factory, hidden?,
+/// replaceable?, builtin? }` for the CLI's built-in extensions. `builtin`
+/// marks the extension as a `builtin:<name>` extension resource (loads by
+/// default, disabled by `-builtin:<name>`/`--no-extensions`, loads after
+/// project trust); `replaceable` leaves registration conflicts to a
+/// third-party extension registering the same tool/command/flag name.
+#[derive(Clone)]
+pub struct BuiltInExtension {
+    pub name: &'static str,
+    pub factory: ExtensionFactory,
+    pub replaceable: bool,
+    pub builtin: bool,
+}
+
+/// Upstream `builtInExtensions`. The port carries the `tool-search` factory;
+/// `llama.cpp` stays cropped (see the module docs: it needs the llama bridge,
+/// pi-ai provider/stream surface, and the TUI), and the `codemode` / `mcp`
+/// factories belong to their own slices.
+pub fn built_in_extensions() -> Vec<BuiltInExtension> {
+    vec![BuiltInExtension {
+        name: "tool-search",
+        factory: tool_search::create_tool_search_extension(),
+        replaceable: true,
+        builtin: true,
+    }]
+}
 
 /// Port of upstream `wrapper.ts`: tool wrappers for extension-registered
 /// tools. The wrappers adapt tool execution so extension tools receive the
@@ -140,24 +229,33 @@ pub mod wrapper {
     }
 
     /// Upstream `wrapRegisteredTool(registeredTool, runner)` — uses the
-    /// runner's `createContext()` for consistent context across tools and
-    /// event handlers.
+    /// runner's `createToolContext()` for consistent context across tools and
+    /// event handlers: the context handed to `execute` is the
+    /// `ExtensionToolContext` (extension context plus `tools` and
+    /// `executeTool`), keyed by the call's id with the call's signal as the
+    /// nested-call default.
     pub fn wrap_registered_tool(
         registered_tool: &RegisteredTool,
         runner: &ExtensionRunner,
     ) -> AgentTool {
         let definition = registered_tool.definition.clone();
-        let context_provider = {
-            let runner = runner.clone();
-            move || runner.create_context()
-        };
+        let runner = runner.clone();
+        // Upstream `wrapToolDefinition(definition, (toolCallId, signal) =>
+        // runner.createToolContext(toolCallId, signal))`.
+        let context_provider = Arc::new(
+            move |tool_call_id: &str,
+                  signal: Option<Arc<AbortSignal>>|
+                  -> super::types::ExtensionContext {
+                runner.create_tool_context(tool_call_id, signal)
+            },
+        );
 
         let execute: Arc<ExecuteFn> = {
             let definition = Arc::clone(&definition);
-            let context_provider = context_provider.clone();
+            let context_provider = Arc::clone(&context_provider);
             Arc::new(move |tool_call_id, params, signal, on_update| {
                 let definition = Arc::clone(&definition);
-                let ctx = context_provider();
+                let context_provider = Arc::clone(&context_provider);
                 type ValueUpdateCallback = Arc<dyn Fn(&serde_json::Value) + Send + Sync>;
                 let on_update: Option<ValueUpdateCallback> = on_update.map(|callback| {
                     let forward: ValueUpdateCallback =
@@ -187,6 +285,9 @@ pub mod wrapper {
                         }
                         aborted
                     });
+                    // The tool context is created per execution with this
+                    // call's id and (forwarded) signal.
+                    let ctx = context_provider(&tool_call_id, signal.clone());
                     let result = if let Some(execute) = &definition.execute_async {
                         execute(tool_call_id, params, signal, on_update, ctx).await
                     } else if let Some(execute) = &definition.execute {

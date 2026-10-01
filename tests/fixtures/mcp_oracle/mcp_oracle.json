@@ -1,0 +1,1843 @@
+{
+	"jsonrpc": {
+		"errorCodes": {
+			"parseError": -32700,
+			"invalidRequest": -32600,
+			"methodNotFound": -32601,
+			"invalidParams": -32602,
+			"internalError": -32603
+		},
+		"parse": [
+			{
+				"input": {
+					"jsonrpc": "2.0",
+					"id": 1,
+					"method": "tools/list"
+				},
+				"ok": {
+					"jsonrpc": "2.0",
+					"id": 1,
+					"method": "tools/list"
+				}
+			},
+			{
+				"input": {
+					"jsonrpc": "2.0",
+					"id": "abc",
+					"method": "m",
+					"params": {
+						"a": 1
+					}
+				},
+				"ok": {
+					"jsonrpc": "2.0",
+					"id": "abc",
+					"method": "m",
+					"params": {
+						"a": 1
+					}
+				}
+			},
+			{
+				"input": {
+					"jsonrpc": "2.0",
+					"method": "notifications/initialized"
+				},
+				"ok": {
+					"jsonrpc": "2.0",
+					"method": "notifications/initialized"
+				}
+			},
+			{
+				"input": {
+					"jsonrpc": "2.0",
+					"method": "n",
+					"params": [
+						1,
+						2
+					]
+				},
+				"ok": {
+					"jsonrpc": "2.0",
+					"method": "n",
+					"params": [
+						1,
+						2
+					]
+				}
+			},
+			{
+				"input": {
+					"jsonrpc": "2.0",
+					"id": 2,
+					"result": {
+						"ok": true
+					}
+				},
+				"ok": {
+					"jsonrpc": "2.0",
+					"id": 2,
+					"result": {
+						"ok": true
+					}
+				}
+			},
+			{
+				"input": {
+					"jsonrpc": "2.0",
+					"id": 2,
+					"error": {
+						"code": -32601,
+						"message": "no"
+					}
+				},
+				"ok": {
+					"jsonrpc": "2.0",
+					"id": 2,
+					"error": {
+						"code": -32601,
+						"message": "no"
+					}
+				}
+			},
+			{
+				"input": {
+					"jsonrpc": "2.0",
+					"id": 2,
+					"error": {
+						"code": -1,
+						"message": "d",
+						"data": {
+							"x": 1
+						}
+					}
+				},
+				"ok": {
+					"jsonrpc": "2.0",
+					"id": 2,
+					"error": {
+						"code": -1,
+						"message": "d",
+						"data": {
+							"x": 1
+						}
+					}
+				}
+			},
+			{
+				"input": {
+					"jsonrpc": "2.0",
+					"id": 2,
+					"result": {},
+					"error": {
+						"code": 1,
+						"message": "both"
+					}
+				},
+				"errorName": "McpError",
+				"errorCode": -32600,
+				"errorMessage": "Invalid JSON-RPC message"
+			},
+			{
+				"input": {
+					"jsonrpc": "2.0",
+					"id": 2,
+					"error": {
+						"code": "x",
+						"message": "bad code"
+					}
+				},
+				"errorName": "McpError",
+				"errorCode": -32600,
+				"errorMessage": "Invalid JSON-RPC message"
+			},
+			{
+				"input": {
+					"jsonrpc": "2.0",
+					"id": 2,
+					"error": {
+						"message": "no code"
+					}
+				},
+				"errorName": "McpError",
+				"errorCode": -32600,
+				"errorMessage": "Invalid JSON-RPC message"
+			},
+			{
+				"input": {
+					"jsonrpc": "2.0",
+					"id": 2,
+					"error": "string error"
+				},
+				"errorName": "McpError",
+				"errorCode": -32600,
+				"errorMessage": "Invalid JSON-RPC message"
+			},
+			{
+				"input": {
+					"jsonrpc": "2.0",
+					"id": 2
+				},
+				"errorName": "McpError",
+				"errorCode": -32600,
+				"errorMessage": "Invalid JSON-RPC message"
+			},
+			{
+				"input": {
+					"jsonrpc": "2.0",
+					"id": 1.5,
+					"method": "m"
+				},
+				"ok": {
+					"jsonrpc": "2.0",
+					"id": 1.5,
+					"method": "m"
+				}
+			},
+			{
+				"input": {
+					"jsonrpc": "2.0",
+					"id": 1,
+					"method": "m",
+					"result": {}
+				},
+				"ok": {
+					"jsonrpc": "2.0",
+					"id": 1,
+					"method": "m",
+					"result": {}
+				}
+			},
+			{
+				"input": {
+					"jsonrpc": "1.0",
+					"id": 1,
+					"method": "m"
+				},
+				"errorName": "McpError",
+				"errorCode": -32600,
+				"errorMessage": "Invalid JSON-RPC message"
+			},
+			{
+				"input": {
+					"jsonrpc": "2.0",
+					"id": true,
+					"method": "m"
+				},
+				"errorName": "McpError",
+				"errorCode": -32600,
+				"errorMessage": "Invalid JSON-RPC message"
+			},
+			{
+				"input": {
+					"jsonrpc": "2.0",
+					"method": "m"
+				},
+				"errorName": "McpError",
+				"errorCode": -32600,
+				"errorMessage": "Invalid JSON-RPC message"
+			},
+			{
+				"input": {
+					"jsonrpc": "2.0"
+				},
+				"errorName": "McpError",
+				"errorCode": -32600,
+				"errorMessage": "Invalid JSON-RPC message"
+			},
+			{
+				"input": [
+					1,
+					2
+				],
+				"errorName": "McpError",
+				"errorCode": -32600,
+				"errorMessage": "Invalid JSON-RPC message"
+			},
+			{
+				"input": "text",
+				"errorName": "McpError",
+				"errorCode": -32600,
+				"errorMessage": "Invalid JSON-RPC message"
+			},
+			{
+				"input": null,
+				"errorName": "McpError",
+				"errorCode": -32600,
+				"errorMessage": "Invalid JSON-RPC message"
+			},
+			{
+				"input": 42,
+				"errorName": "McpError",
+				"errorCode": -32600,
+				"errorMessage": "Invalid JSON-RPC message"
+			},
+			{
+				"input": {
+					"jsonrpc": "2.0",
+					"id": 2000,
+					"method": "m"
+				},
+				"ok": {
+					"jsonrpc": "2.0",
+					"id": 2000,
+					"method": "m"
+				}
+			}
+		],
+		"errors": {
+			"mcp": {
+				"name": "McpError",
+				"code": -32000,
+				"message": "custom failure",
+				"data": {
+					"detail": 1
+				}
+			},
+			"mcpNoData": {
+				"name": "McpError",
+				"code": -32001,
+				"message": "no data"
+			},
+			"connectionClosed": {
+				"name": "McpConnectionClosedError",
+				"message": "MCP connection closed"
+			},
+			"connectionClosedCustom": {
+				"name": "McpConnectionClosedError",
+				"message": "MCP client is idle"
+			},
+			"timeout": {
+				"name": "McpTimeoutError",
+				"message": "MCP request timed out after 30000ms",
+				"timeoutMs": 30000
+			},
+			"abort": {
+				"name": "AbortError",
+				"message": "MCP request aborted"
+			}
+		},
+		"errorObjectStringify": "{\"jsonrpc\":\"2.0\",\"id\":7,\"error\":{\"code\":-32603,\"message\":\"boom\"}}"
+	},
+	"client_handshake": {
+		"initializeSent": "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2025-11-25\",\"capabilities\":{\"sampling\":{},\"roots\":{}},\"clientInfo\":{\"name\":\"pi\",\"version\":\"1.2.3\",\"title\":\"Pi\"}}}",
+		"initializedSent": "{\"jsonrpc\":\"2.0\",\"method\":\"notifications/initialized\"}",
+		"protocolVersion": "2025-06-18",
+		"serverInfo": {
+			"name": "test-server",
+			"version": "1.0.0"
+		},
+		"serverCapabilities": {
+			"tools": {
+				"listChanged": true
+			}
+		},
+		"instructions": "Use test tools.",
+		"connectionState": "connected",
+		"result": {
+			"protocolVersion": "2025-06-18",
+			"capabilities": {
+				"tools": {
+					"listChanged": true
+				}
+			},
+			"serverInfo": {
+				"name": "test-server",
+				"version": "1.0.0"
+			},
+			"instructions": "Use test tools."
+		},
+		"afterHandshake": [
+			"{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"ping\"}"
+		],
+		"stateAfterClose": "closed",
+		"reconnectError": "Cannot connect MCP client in closed state"
+	},
+	"client_state_errors": {
+		"requestIdle": {
+			"name": "McpConnectionClosedError",
+			"message": "MCP client is idle"
+		},
+		"notifyIdle": {
+			"name": "McpConnectionClosedError",
+			"message": "MCP client is idle"
+		},
+		"connectTwice": "Cannot connect MCP client in connected state",
+		"unsupportedVersion": "MCP server selected unsupported protocol version 1999-01-01",
+		"invalidInitialize": {
+			"name": "McpError",
+			"code": -32600,
+			"message": "Invalid MCP initialize result"
+		}
+	},
+	"client_request_shapes": {
+		"requests": {
+			"toolsList": "{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/list\"}",
+			"toolsCallWithArgs": "{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"tools/call\",\"params\":{\"name\":\"echo\",\"arguments\":{\"text\":\"hello\"}}}",
+			"toolsCallBare": "{\"jsonrpc\":\"2.0\",\"id\":4,\"method\":\"tools/call\",\"params\":{\"name\":\"noargs\"}}",
+			"resourcesRead": "{\"jsonrpc\":\"2.0\",\"id\":5,\"method\":\"resources/read\",\"params\":{\"uri\":\"file:///x\"}}",
+			"resourcesListPage1": "{\"jsonrpc\":\"2.0\",\"id\":6,\"method\":\"resources/list\"}",
+			"resourcesTemplates": "{\"jsonrpc\":\"2.0\",\"id\":7,\"method\":\"resources/templates/list\"}"
+		},
+		"callToolEcho": {
+			"content": [
+				{
+					"type": "text",
+					"text": "hi"
+				}
+			],
+			"structuredContent": {
+				"v": 1
+			}
+		},
+		"callToolBare": {
+			"structuredContent": {
+				"only": "structured"
+			},
+			"content": []
+		},
+		"readResource": {
+			"contents": [
+				{
+					"uri": "file:///x",
+					"text": "data"
+				}
+			]
+		},
+		"resources": [
+			{
+				"uri": "file:///a",
+				"name": "a"
+			},
+			{
+				"uri": "file:///b",
+				"name": "file:///b"
+			}
+		],
+		"templates": [
+			{
+				"uriTemplate": "t://{x}",
+				"name": "t://{x}"
+			}
+		],
+		"custom": {
+			"saw": {
+				"z": 1,
+				"a": 2
+			}
+		},
+		"allRequestIds": [
+			1,
+			2,
+			3,
+			4,
+			5,
+			6,
+			7,
+			8
+		]
+	},
+	"client_pagination": {
+		"duplicateCursor": "MCP tools/list returned duplicate cursor: c1",
+		"multiPage": [
+			{
+				"name": "0",
+				"inputSchema": {}
+			},
+			{
+				"name": "1",
+				"inputSchema": {}
+			},
+			{
+				"name": "2",
+				"inputSchema": {}
+			}
+		],
+		"resourcesPages": [
+			{
+				"resources": [
+					{
+						"uri": "file:///1",
+						"name": "one"
+					}
+				],
+				"nextCursor": "z"
+			},
+			{
+				"resources": [
+					{
+						"uri": "file:///2",
+						"name": "two"
+					}
+				]
+			}
+		],
+		"pageRequests": [
+			"{\"jsonrpc\":\"2.0\",\"id\":7,\"method\":\"resources/list\"}",
+			"{\"jsonrpc\":\"2.0\",\"id\":8,\"method\":\"resources/list\",\"params\":{\"cursor\":\"z\"}}"
+		],
+		"invalidList": {
+			"name": "McpError",
+			"code": -32600,
+			"message": "Invalid MCP tools/list result"
+		},
+		"invalidEntry": {
+			"code": -32600,
+			"message": "Invalid entry in MCP tools/list result"
+		},
+		"invalidCursor": {
+			"code": -32600,
+			"message": "Invalid MCP tools/list cursor"
+		},
+		"invalidContents": {
+			"code": -32600,
+			"message": "Invalid contents in MCP resources/read result"
+		},
+		"invalidCallResult": {
+			"code": -32600,
+			"message": "Invalid MCP tools/call result"
+		},
+		"invalidStructured": {
+			"code": -32600,
+			"message": "Invalid MCP tools/call structured content"
+		}
+	},
+	"client_progress": {
+		"longOpRequest": "{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"long/op\",\"params\":{\"q\":1,\"_meta\":{\"progressToken\":2}}}",
+		"result": {
+			"done": true
+		},
+		"progressEvents": [
+			{
+				"progressToken": 2,
+				"progress": 1,
+				"total": 2,
+				"message": "half"
+			},
+			{
+				"progressToken": 2,
+				"progress": 2
+			}
+		]
+	},
+	"client_abort_and_timeout": {
+		"abortError": {
+			"name": "AbortError",
+			"message": "MCP request aborted"
+		},
+		"cancelNotifications": [
+			"{\"jsonrpc\":\"2.0\",\"method\":\"notifications/cancelled\",\"params\":{\"requestId\":2,\"reason\":\"user cancelled\"}}"
+		],
+		"timeoutError": {
+			"name": "McpTimeoutError",
+			"message": "MCP request timed out after 10ms",
+			"timeoutMs": 10
+		},
+		"afterTimeoutCancels": [
+			"{\"jsonrpc\":\"2.0\",\"method\":\"notifications/cancelled\",\"params\":{\"requestId\":2,\"reason\":\"user cancelled\"}}",
+			"{\"jsonrpc\":\"2.0\",\"method\":\"notifications/cancelled\",\"params\":{\"requestId\":3,\"reason\":\"Request timed out\"}}"
+		],
+		"zeroTimeout": {
+			"late": true
+		},
+		"preAborted": {
+			"name": "AbortError",
+			"message": "MCP request aborted"
+		}
+	},
+	"client_server_requests": {
+		"pingResponse": "{\"jsonrpc\":\"2.0\",\"id\":100,\"result\":{}}",
+		"rootsResponse": "{\"jsonrpc\":\"2.0\",\"id\":101,\"result\":{\"roots\":[{\"uri\":\"file:///w\",\"name\":\"w\"},{\"uri\":\"file:///x\"}]}}",
+		"nullHandlerResponse": "{\"jsonrpc\":\"2.0\",\"id\":102,\"result\":{}}",
+		"mcpErrorResponse": "{\"jsonrpc\":\"2.0\",\"id\":103,\"error\":{\"code\":-32000,\"message\":\"no can do\",\"data\":{\"hint\":\"try again\"}}}",
+		"plainErrorResponse": "{\"jsonrpc\":\"2.0\",\"id\":104,\"error\":{\"code\":-32603,\"message\":\"plain boom\"}}",
+		"notFoundResponse": "{\"jsonrpc\":\"2.0\",\"id\":105,\"error\":{\"code\":-32601,\"message\":\"Method not found: no/such/method\"}}",
+		"noRootsResponse": "{\"jsonrpc\":\"2.0\",\"id\":500,\"error\":{\"code\":-32601,\"message\":\"Method not found: roots/list\"}}",
+		"notifications": [
+			{
+				"v": 1
+			}
+		],
+		"listenerErrors": [
+			"listener boom",
+			"Received response for unknown MCP request 424242",
+			"Received invalid JSON-RPC message"
+		],
+		"afterUnsubscribe": [
+			{
+				"v": 1
+			}
+		],
+		"errorListener": [
+			"listener boom",
+			"Received response for unknown MCP request 424242",
+			"Received invalid JSON-RPC message"
+		]
+	},
+	"client_transport_close": {
+		"rejected": {
+			"name": "McpConnectionClosedError",
+			"message": "MCP connection closed"
+		},
+		"closeEvents": [
+			"closed"
+		],
+		"state": "closed",
+		"pingAfterClose": {
+			"name": "McpConnectionClosedError",
+			"message": "MCP client is closed"
+		},
+		"closeEventsAfterDoubleClose": [
+			"closed"
+		]
+	},
+	"content": {
+		"blocks": [
+			[
+				{
+					"type": "text",
+					"text": "plain"
+				}
+			],
+			[
+				{
+					"type": "image",
+					"data": "AAAA",
+					"mimeType": "image/png"
+				}
+			],
+			[
+				{
+					"type": "text",
+					"text": "[audio audio/wav omitted]"
+				}
+			],
+			[
+				{
+					"type": "text",
+					"text": "x: file:///x"
+				}
+			],
+			[
+				{
+					"type": "text",
+					"text": "inner"
+				}
+			],
+			[
+				{
+					"type": "image",
+					"data": "AAAA",
+					"mimeType": "image/jpeg"
+				}
+			],
+			[
+				{
+					"type": "text",
+					"text": "[binary resource file:///b (unknown type) omitted]"
+				}
+			],
+			[
+				{
+					"type": "text",
+					"text": "[binary resource file:///b (application/pdf) omitted]"
+				}
+			],
+			[
+				{
+					"type": "text",
+					"text": "[unsupported MCP content weird]"
+				}
+			],
+			[
+				{
+					"type": "text",
+					"text": "{\n  \"answer\": 42,\n  \"nested\": {\n    \"a\": [\n      1,\n      2\n    ]\n  }\n}"
+				}
+			],
+			[
+				{
+					"type": "text",
+					"text": "keep"
+				}
+			],
+			[
+				{
+					"type": "text",
+					"text": "{\n  \"only\": true\n}"
+				}
+			]
+		]
+	},
+	"stdio_serve": {
+		"pidIsNumber": true,
+		"tools": [
+			{
+				"name": "echo",
+				"inputSchema": {
+					"type": "object"
+				}
+			}
+		],
+		"called": {
+			"content": [
+				{
+					"type": "text",
+					"text": "hello"
+				}
+			]
+		},
+		"stderrContainsReady": true,
+		"stderrBufferContainsReady": true,
+		"stateAfterClose": "closed",
+		"clientToServerText": "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2025-11-25\",\"capabilities\":{},\"clientInfo\":{\"name\":\"stdio-test\",\"version\":\"1.0.0\"}}}\n{\"jsonrpc\":\"2.0\",\"method\":\"notifications/initialized\"}\n{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/list\"}\n{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"tools/call\",\"params\":{\"name\":\"echo\",\"arguments\":{\"text\":\"hello\"}}}\n{\"jsonrpc\":\"2.0\",\"id\":4,\"method\":\"ping\"}\n",
+		"clientToServerHex": "7b226a736f6e727063223a22322e30222c226964223a312c226d6574686f64223a22696e697469616c697a65222c22706172616d73223a7b2270726f746f636f6c56657273696f6e223a22323032352d31312d3235222c226361706162696c6974696573223a7b7d2c22636c69656e74496e666f223a7b226e616d65223a22737464696f2d74657374222c2276657273696f6e223a22312e302e30227d7d7d0a7b226a736f6e727063223a22322e30222c226d6574686f64223a226e6f74696669636174696f6e732f696e697469616c697a6564227d0a7b226a736f6e727063223a22322e30222c226964223a322c226d6574686f64223a22746f6f6c732f6c697374227d0a7b226a736f6e727063223a22322e30222c226964223a332c226d6574686f64223a22746f6f6c732f63616c6c222c22706172616d73223a7b226e616d65223a226563686f222c22617267756d656e7473223a7b2274657874223a2268656c6c6f227d7d7d0a7b226a736f6e727063223a22322e30222c226964223a342c226d6574686f64223a2270696e67227d0a"
+	},
+	"stdio_chaos": {
+		"errors": [
+			{
+				"name": "SyntaxError",
+				"message": "\"undefined\" is not valid JSON"
+			},
+			{
+				"name": "SyntaxError",
+				"message": "Expected property name or '}' in JSON at position 1 (line 1 column 2)"
+			},
+			{
+				"name": "McpError",
+				"message": "Invalid JSON-RPC message"
+			},
+			{
+				"name": "McpError",
+				"message": "Invalid JSON-RPC message"
+			},
+			{
+				"name": "Error",
+				"message": "Received response for unknown MCP request 777"
+			},
+			{
+				"name": "Error",
+				"message": "MCP stdio server closed with an incomplete JSON-RPC message"
+			}
+		],
+		"notifications": []
+	},
+	"stdio_oversize": {
+		"errors": [
+			"MCP stdio message exceeds 100 bytes",
+			"MCP stdio message exceeds 100 bytes"
+		],
+		"messages": [
+			{
+				"jsonrpc": "2.0",
+				"method": "after/reset"
+			}
+		]
+	},
+	"stdio_stderr_cap": {
+		"chunks": [
+			"short|",
+			"LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL|tail"
+		],
+		"stderrBuffer": "LLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL|tail",
+		"stderrBufferLength": 100
+	},
+	"stdio_spawn_failure": {
+		"started": false,
+		"errorKind": "ENOENT",
+		"startedFlag": true
+	},
+	"http_json_roundtrip": {
+		"connectResult": {
+			"protocolVersion": "2025-06-18",
+			"capabilities": {
+				"tools": {}
+			},
+			"serverInfo": {
+				"name": "http-fixture",
+				"version": "2.0"
+			}
+		},
+		"tools": [
+			{
+				"name": "echo",
+				"inputSchema": {
+					"type": "object"
+				}
+			}
+		],
+		"called": {
+			"content": [
+				{
+					"type": "text",
+					"text": "hello"
+				}
+			]
+		},
+		"sessionId": "session-1",
+		"requests": [
+			{
+				"url": "http://mcp.test/mcp",
+				"method": "POST",
+				"headers": {
+					"accept": "application/json, text/event-stream",
+					"content-type": "application/json"
+				},
+				"body": "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2025-11-25\",\"capabilities\":{},\"clientInfo\":{\"name\":\"http-test\",\"version\":\"1.0.0\"}}}"
+			},
+			{
+				"url": "http://mcp.test/mcp",
+				"method": "POST",
+				"headers": {
+					"accept": "application/json, text/event-stream",
+					"content-type": "application/json",
+					"mcp-protocol-version": "2025-06-18",
+					"mcp-session-id": "session-1"
+				},
+				"body": "{\"jsonrpc\":\"2.0\",\"method\":\"notifications/initialized\"}"
+			},
+			{
+				"url": "http://mcp.test/mcp",
+				"method": "POST",
+				"headers": {
+					"accept": "application/json, text/event-stream",
+					"content-type": "application/json",
+					"mcp-protocol-version": "2025-06-18",
+					"mcp-session-id": "session-1"
+				},
+				"body": "{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/list\"}"
+			},
+			{
+				"url": "http://mcp.test/mcp",
+				"method": "POST",
+				"headers": {
+					"accept": "application/json, text/event-stream",
+					"content-type": "application/json",
+					"mcp-protocol-version": "2025-06-18",
+					"mcp-session-id": "session-1"
+				},
+				"body": "{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"tools/call\",\"params\":{\"name\":\"echo\",\"arguments\":{\"text\":\"hello\"}}}"
+			},
+			{
+				"url": "http://mcp.test/mcp",
+				"method": "POST",
+				"headers": {
+					"accept": "application/json, text/event-stream",
+					"content-type": "application/json",
+					"mcp-protocol-version": "2025-06-18",
+					"mcp-session-id": "session-1"
+				},
+				"body": "{\"jsonrpc\":\"2.0\",\"method\":\"status/update\",\"params\":{\"s\":1}}"
+			},
+			{
+				"url": "http://mcp.test/mcp",
+				"method": "DELETE",
+				"headers": {
+					"mcp-protocol-version": "2025-06-18",
+					"mcp-session-id": "session-1"
+				}
+			}
+		]
+	},
+	"http_sse_response": {
+		"called": {
+			"content": [
+				{
+					"type": "text",
+					"text": "sse"
+				}
+			]
+		},
+		"errors": [
+			"Unexpected token 'o', \"not json\" is not valid JSON"
+		],
+		"requests": [
+			{
+				"method": "POST",
+				"body": "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2025-11-25\",\"capabilities\":{},\"clientInfo\":{\"name\":\"http-test\",\"version\":\"1.0.0\"}}}"
+			},
+			{
+				"method": "POST",
+				"body": "{\"jsonrpc\":\"2.0\",\"method\":\"notifications/initialized\"}"
+			},
+			{
+				"method": "POST",
+				"body": "{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/call\",\"params\":{\"name\":\"echo\"}}"
+			},
+			{
+				"method": "DELETE"
+			}
+		]
+	},
+	"http_status_classification": {
+		"authRequired": {
+			"name": "McpAuthRequiredError",
+			"status": 401,
+			"body": "login required",
+			"wwwAuthenticate": "Bearer resource_metadata=\"https://example.com/meta\"",
+			"message": "MCP server requires authentication"
+		},
+		"notFound": {
+			"name": "McpHttpError",
+			"status": 404,
+			"message": "MCP HTTP request failed with status 404: gone"
+		},
+		"sessionExpired": {
+			"name": "McpSessionExpiredError",
+			"status": 404,
+			"message": "MCP session expired"
+		},
+		"serverError": {
+			"status": 500,
+			"message": "MCP HTTP request failed with status 500: zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz...",
+			"messageLength": 541,
+			"bodyLength": 900
+		},
+		"acceptedWithoutResponse": {
+			"name": "McpHttpError",
+			"status": 202,
+			"message": "MCP server accepted request ping without a response"
+		},
+		"unsupportedType": {
+			"status": 200,
+			"message": "Unsupported MCP response content type: text/plain"
+		},
+		"arrayBodyNotifications": [
+			"n1",
+			"n2"
+		]
+	},
+	"http_stream_failures": {
+		"badSse": {
+			"name": "McpError",
+			"code": -32603,
+			"message": "MCP response stream failed: stream ended without a response"
+		},
+		"errorListenerDuringBadSse": [
+			"Unexpected token 'o', \"not json\" is not valid JSON",
+			"Unexpected token 'a', \"also not\" is not valid JSON"
+		],
+		"emptyStream": {
+			"code": -32603,
+			"message": "MCP response stream failed: stream ended without a response"
+		},
+		"resume": {
+			"called": {
+				"content": [
+					{
+						"type": "text",
+						"text": "resumed"
+					}
+				]
+			},
+			"resumeHeaders": [
+				"1"
+			]
+		},
+		"resumeRequestLog": [
+			{
+				"accept": "text/event-stream",
+				"last-event-id": "1",
+				"mcp-protocol-version": "2025-06-18"
+			}
+		]
+	},
+	"http_get_stream": {
+		"pushes": [],
+		"getSessionHeaders": [
+			{
+				"accept": "text/event-stream",
+				"mcp-protocol-version": "2025-06-18",
+				"mcp-session-id": "gs"
+			}
+		],
+		"deleteRequests": [
+			{
+				"headers": {
+					"mcp-protocol-version": "2025-06-18",
+					"mcp-session-id": "gs"
+				}
+			}
+		],
+		"noGetStreamErrors": [],
+		"getAttempts": 1
+	},
+	"http_auth_provider": {
+		"firstContext": {
+			"serverUrl": "http://mcp.test/m",
+			"token": "stale-token"
+		},
+		"unauthorizedCalls": 1,
+		"requestAuthHeaders": [
+			"Bearer stale-token",
+			"Bearer fresh-token",
+			"Bearer fresh-token",
+			"Bearer fresh-token"
+		]
+	},
+	"sse_parser": {
+		"cases": [
+			{
+				"name": "basic",
+				"events": [
+					{
+						"data": "hello"
+					}
+				],
+				"ids": [],
+				"retries": []
+			},
+			{
+				"name": "crlf",
+				"events": [
+					{
+						"data": "a"
+					},
+					{
+						"event": "tick",
+						"data": "b"
+					}
+				],
+				"ids": [],
+				"retries": []
+			},
+			{
+				"name": "multiline_data",
+				"events": [
+					{
+						"data": "one\ntwo\nthree"
+					}
+				],
+				"ids": [],
+				"retries": []
+			},
+			{
+				"name": "comment_and_bom",
+				"events": [
+					{
+						"data": "after bom"
+					}
+				],
+				"ids": [],
+				"retries": []
+			},
+			{
+				"name": "space_stripping",
+				"events": [
+					{
+						"data": "   padded   "
+					}
+				],
+				"ids": [],
+				"retries": []
+			},
+			{
+				"name": "no_colon_line",
+				"events": [
+					{
+						"data": ""
+					},
+					{
+						"data": "x"
+					}
+				],
+				"ids": [],
+				"retries": []
+			},
+			{
+				"name": "id_and_retry",
+				"events": [
+					{
+						"data": "x",
+						"id": "42"
+					},
+					{
+						"data": "y"
+					},
+					{
+						"data": "z"
+					},
+					{
+						"data": "w"
+					}
+				],
+				"ids": [
+					"42"
+				],
+				"retries": [
+					2500
+				]
+			},
+			{
+				"name": "id_without_data",
+				"events": [
+					{
+						"data": "real"
+					}
+				],
+				"ids": [
+					"prime"
+				],
+				"retries": []
+			},
+			{
+				"name": "event_type_filtered_later",
+				"events": [
+					{
+						"event": "custom",
+						"data": "{}"
+					}
+				],
+				"ids": [],
+				"retries": []
+			},
+			{
+				"name": "fragmented",
+				"events": [
+					{
+						"data": "fragmented"
+					}
+				],
+				"ids": [],
+				"retries": []
+			},
+			{
+				"name": "no_trailing_newline",
+				"events": [
+					{
+						"data": "tail"
+					}
+				],
+				"ids": [],
+				"retries": []
+			},
+			{
+				"name": "crlf_split_across_chunks",
+				"events": [
+					{
+						"data": "x"
+					}
+				],
+				"ids": [],
+				"retries": []
+			},
+			{
+				"name": "max_event_bytes",
+				"events": [],
+				"ids": [],
+				"retries": [],
+				"error": "MCP SSE event exceeds 10 bytes"
+			},
+			{
+				"name": "max_buffer_bytes",
+				"events": [],
+				"ids": [],
+				"retries": [],
+				"error": "MCP SSE event exceeds 10 bytes"
+			},
+			{
+				"name": "many_short_data_lines",
+				"events": [],
+				"ids": [],
+				"retries": [],
+				"error": "MCP SSE event exceeds 20 bytes"
+			}
+		]
+	},
+	"oauth_parsing": {
+		"wwwAuthenticate": [
+			{
+				"header": null
+			},
+			{
+				"header": "Bearer"
+			},
+			{
+				"header": "Bearer resource_metadata=\"https://rs.example/meta\", scope=\"a b\", error=\"insufficient_scope\", error_description=\"need more\"",
+				"resourceMetadataUrl": "https://rs.example/meta",
+				"scope": "a b",
+				"error": "insufficient_scope",
+				"errorDescription": "need more"
+			},
+			{
+				"header": "Bearer resource_metadata=not-a-url scope=a",
+				"scope": "a"
+			},
+			{
+				"header": "DPoP error=test",
+				"error": "test"
+			},
+			{
+				"header": "Basic realm=x"
+			},
+			{
+				"header": "bearer scope=one",
+				"scope": "one"
+			}
+		],
+		"protectedResource": {
+			"resource": "https://rs.example/mcp",
+			"authorization_servers": [
+				"https://as.example"
+			],
+			"scopes_supported": [
+				"read",
+				"write"
+			],
+			"custom_future_field": {
+				"v": 1
+			}
+		},
+		"protectedResourceInvalid": "Invalid OAuth protected resource metadata resource",
+		"authorizationServer": {
+			"issuer": "https://as.example/",
+			"authorization_endpoint": "https://as.example/authorize",
+			"token_endpoint": "https://as.example/token",
+			"registration_endpoint": "https://as.example/register",
+			"response_types_supported": [
+				"code"
+			],
+			"grant_types_supported": [
+				"authorization_code"
+			],
+			"token_endpoint_auth_methods_supported": [
+				"none",
+				"client_secret_basic"
+			],
+			"code_challenge_methods_supported": [
+				"S256"
+			],
+			"client_id_metadata_document_supported": true,
+			"extra": "kept"
+		},
+		"authorizationServerInvalid": "Invalid response_types_supported",
+		"authorizationServerUnsafe": "Invalid authorization endpoint",
+		"tokens": {
+			"access_token": "at",
+			"token_type": "Bearer",
+			"expires_in": 3600,
+			"scope": "a b",
+			"refresh_token": "rt",
+			"id_token": "it"
+		},
+		"tokensInvalid": "Invalid token_type",
+		"tokensBadExpires": "Invalid expires_in",
+		"clientInformation": {
+			"client_id": "cid",
+			"client_secret": "sec",
+			"client_id_issued_at": 5,
+			"client_secret_expires_at": 10,
+			"redirect_uris": [
+				"https://cb"
+			],
+			"client_name": "pi",
+			"application_type": "web"
+		},
+		"clientInformationNoSecret": {
+			"client_id": "cid",
+			"redirect_uris": []
+		},
+		"discoveryUrls": [
+			[
+				{
+					"url": "https://as.example/.well-known/oauth-authorization-server",
+					"type": "oauth"
+				},
+				{
+					"url": "https://as.example/.well-known/openid-configuration",
+					"type": "oidc"
+				}
+			],
+			[
+				{
+					"url": "https://as.example/.well-known/oauth-authorization-server",
+					"type": "oauth"
+				},
+				{
+					"url": "https://as.example/.well-known/openid-configuration",
+					"type": "oidc"
+				}
+			],
+			[
+				{
+					"url": "https://as.example/.well-known/oauth-authorization-server/tenant1",
+					"type": "oauth"
+				},
+				{
+					"url": "https://as.example/.well-known/openid-configuration/tenant1",
+					"type": "oidc"
+				},
+				{
+					"url": "https://as.example/tenant1/.well-known/openid-configuration",
+					"type": "oidc"
+				}
+			],
+			[
+				{
+					"url": "https://as.example/.well-known/oauth-authorization-server/tenant1",
+					"type": "oauth"
+				},
+				{
+					"url": "https://as.example/.well-known/openid-configuration/tenant1",
+					"type": "oidc"
+				},
+				{
+					"url": "https://as.example/tenant1/.well-known/openid-configuration",
+					"type": "oidc"
+				}
+			]
+		]
+	},
+	"oauth_discovery": {
+		"protectedResourceFallback": {
+			"meta": {
+				"resource": "https://rs.example/mcp",
+				"authorization_servers": [
+					"https://as.example"
+				]
+			},
+			"requestUrls": [
+				"https://rs.example/.well-known/oauth-protected-resource/mcp",
+				"https://rs.example/.well-known/oauth-protected-resource"
+			],
+			"requestHeaders": [
+				{
+					"Accept": "application/json",
+					"MCP-Protocol-Version": "2025-11-25"
+				},
+				{
+					"Accept": "application/json",
+					"MCP-Protocol-Version": "2025-11-25"
+				}
+			]
+		},
+		"authorizationServerDiscovery": {
+			"meta": {
+				"issuer": "https://as.example",
+				"authorization_endpoint": "https://as.example/authorize",
+				"token_endpoint": "https://as.example/token",
+				"response_types_supported": [
+					"code"
+				]
+			},
+			"requestUrls": [
+				"https://as.example/.well-known/oauth-authorization-server"
+			]
+		},
+		"issuerMismatch": {
+			"name": "OAuthIssuerMismatchError",
+			"message": "OAuth issuer mismatch: expected \"https://as.example\", received \"https://other.example\"",
+			"expected": "https://as.example",
+			"received": "https://other.example"
+		},
+		"metadataHttpError": "HTTP 503 loading authorization server metadata from https://as.example/.well-known/oauth-authorization-server",
+		"skipIssuerValidation": "https://other.example",
+		"serverInfo": {
+			"authorizationServerUrl": "https://rs.example/",
+			"hasResourceMetadata": false,
+			"hasAuthorizationServerMetadata": false,
+			"requestUrls": [
+				"https://rs.example/.well-known/oauth-protected-resource/mcp",
+				"https://rs.example/.well-known/oauth-protected-resource",
+				"https://rs.example/.well-known/oauth-authorization-server",
+				"https://rs.example/.well-known/openid-configuration"
+			]
+		},
+		"selectResource": [
+			{
+				"label": "ok",
+				"resource": "https://rs.example/mcp"
+			},
+			{
+				"label": "ok",
+				"resource": "https://rs.example/mcp"
+			},
+			{
+				"label": "ok",
+				"resource": "https://rs.example/mcp"
+			},
+			{
+				"label": "origin mismatch",
+				"error": "Protected resource https://rs.example/mcp does not match MCP server https://rs.example/other"
+			},
+			{
+				"label": "path mismatch",
+				"error": "Protected resource https://rs.example/mcp does not match MCP server https://rs.example/mopot"
+			},
+			{
+				"label": "case host",
+				"resource": "https://rs.example/mcp"
+			}
+		]
+	},
+	"oauth_start_authorization": {
+		"noMetadata": {
+			"url": "https://as.example/authorize?response_type=code&client_id=client-123&code_challenge=DwBzhbb51LfusnSGBa_hqYSgo7-j8BTQnip4TOnlzRo&code_challenge_method=S256&redirect_uri=http%3A%2F%2F127.0.0.1%3A9911%2Fcallback&state=st4te&scope=read+write&resource=https%3A%2F%2Frs.example%2Fmcp",
+			"verifier": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+		},
+		"offlineAccess": {
+			"url": "https://as.example/authorize?response_type=code&client_id=client-123&code_challenge=DwBzhbb51LfusnSGBa_hqYSgo7-j8BTQnip4TOnlzRo&code_challenge_method=S256&redirect_uri=http%3A%2F%2Flocalhost%3A9911%2Fcallback&scope=offline_access+read&prompt=consent",
+			"verifier": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+		},
+		"withMetadata": {
+			"url": "https://as.example/authz?response_type=code&client_id=client-123&code_challenge=DwBzhbb51LfusnSGBa_hqYSgo7-j8BTQnip4TOnlzRo&code_challenge_method=S256&redirect_uri=http%3A%2F%2F127.0.0.1%3A9911%2Fcallback",
+			"verifier": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+		},
+		"noCodeResponseTypes": "Authorization server does not support authorization codes",
+		"noS256": "Authorization server does not support PKCE S256"
+	},
+	"oauth_token_requests": {
+		"exchange": {
+			"tokens": {
+				"access_token": "at",
+				"token_type": "Bearer",
+				"expires_in": 3600,
+				"refresh_token": "rt"
+			},
+			"request": {
+				"url": "https://as.example/token",
+				"method": "POST",
+				"headers": {
+					"accept": "application/json",
+					"content-type": "application/x-www-form-urlencoded"
+				},
+				"body": "grant_type=authorization_code&code=abc&code_verifier=ver-123&redirect_uri=http%3A%2F%2F127.0.0.1%3A9911%2Fcallback&resource=https%3A%2F%2Frs.example%2Fmcp&client_id=cid-1"
+			}
+		},
+		"refreshKeep": {
+			"tokens": {
+				"refresh_token": "old-rt",
+				"access_token": "at2",
+				"token_type": "Bearer"
+			},
+			"request": {
+				"url": "https://as.example/token",
+				"method": "POST",
+				"headers": {
+					"accept": "application/json",
+					"content-type": "application/x-www-form-urlencoded"
+				},
+				"body": "grant_type=refresh_token&refresh_token=old-rt&client_id=cid-1"
+			}
+		},
+		"refreshReplace": {
+			"tokens": {
+				"refresh_token": "new-rt",
+				"access_token": "at3",
+				"token_type": "Bearer"
+			},
+			"request": {
+				"url": "https://as.example/token",
+				"method": "POST",
+				"headers": {
+					"accept": "application/json",
+					"content-type": "application/x-www-form-urlencoded"
+				},
+				"body": "grant_type=refresh_token&refresh_token=old-rt&client_id=cid-1"
+			}
+		},
+		"oauthError": {
+			"name": "OAuthError",
+			"code": "invalid_grant",
+			"message": "code expired",
+			"errorUri": "https://as.example/err"
+		},
+		"serverError": {
+			"name": "OAuthError",
+			"code": "server_error",
+			"message": "HTTP 500: <html>oops</html>"
+		},
+		"insecure": {
+			"name": "OAuthInsecureEndpointError",
+			"message": "Refusing to send OAuth credentials to non-HTTPS endpoint http://as.example/token",
+			"endpoint": "http://as.example/token"
+		},
+		"loopbackTokenUrl": "http://127.0.0.1:8080/token",
+		"loopbackHostnames": [
+			{
+				"host": "localhost"
+			},
+			{
+				"host": "127.0.0.1"
+			},
+			{
+				"host": "[::1]"
+			},
+			{
+				"host": "::1"
+			},
+			{
+				"host": "example.com"
+			}
+		]
+	},
+	"oauth_client_auth": {
+		"basic": {
+			"authorization": "Basic bXktaWQ6bXktc2VjcmV0",
+			"body": "grant_type=refresh_token&refresh_token=r"
+		},
+		"post": {
+			"body": "grant_type=refresh_token&refresh_token=r&client_id=my-id&client_secret=my-secret"
+		},
+		"hintedNone": {
+			"body": "grant_type=refresh_token&refresh_token=r&client_id=my-id"
+		},
+		"noSecretNone": {
+			"body": "grant_type=refresh_token&refresh_token=r&client_id=my-id"
+		},
+		"customAuth": {
+			"headers": {
+				"accept": "application/json",
+				"content-type": "application/x-www-form-urlencoded",
+				"x-custom": "yes"
+			},
+			"body": "grant_type=refresh_token&refresh_token=r&client_id=override-id&extra=https%3A%2F%2Fas.example%2Ftoken+meta"
+		}
+	},
+	"oauth_register_client": {
+		"registered": {
+			"info": {
+				"client_id": "reg-1",
+				"client_secret": "s3cret",
+				"client_id_issued_at": 1,
+				"redirect_uris": [
+					"http://127.0.0.1:9911/callback"
+				],
+				"client_name": "pi"
+			},
+			"request": {
+				"url": "https://as.example/register",
+				"method": "POST",
+				"headers": {
+					"Accept": "application/json",
+					"content-type": "application/json"
+				},
+				"body": "{\"client_name\":\"pi\",\"redirect_uris\":[\"http://127.0.0.1:9911/callback\"],\"grant_types\":[\"authorization_code\",\"refresh_token\"],\"response_types\":[\"code\"],\"token_endpoint_auth_method\":\"none\",\"scope\":\"read write\"}"
+			}
+		},
+		"noMetadataUrl": "https://as.example/register",
+		"noRegistrationEndpoint": "Authorization server does not support dynamic client registration",
+		"registrationError": {
+			"name": "OAuthRegistrationError",
+			"status": 400,
+			"message": "OAuth dynamic client registration failed with status 400: {\"error\":\"invalid_redirect_uri\"}",
+			"body": "{\"error\":\"invalid_redirect_uri\"}"
+		}
+	},
+	"oauth_flow": {
+		"first": "REDIRECT",
+		"firstAuthorizationUrl": "https://as.example/authorize?response_type=code&client_id=dynamic-client&code_challenge=DwBzhbb51LfusnSGBa_hqYSgo7-j8BTQnip4TOnlzRo&code_challenge_method=S256&redirect_uri=http%3A%2F%2Flocalhost%3A9911%2Fcallback&state=expected-state&scope=org%3Aread&resource=https%3A%2F%2Frs.example%2Fmcp",
+		"firstVerifier": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+		"firstDiscovery": {
+			"authorizationServerUrl": "https://as.example",
+			"resourceMetadata": {
+				"resource": "https://rs.example/mcp",
+				"authorization_servers": [
+					"https://as.example"
+				],
+				"scopes_supported": [
+					"org:read"
+				]
+			}
+		},
+		"firstSavedClient": {
+			"client_id": "dynamic-client",
+			"client_secret": "dynamic-secret",
+			"client_id_issued_at": 1,
+			"redirect_uris": [
+				"http://localhost:9911/callback"
+			],
+			"client_name": "pi-mcp-test",
+			"scope": "org:read"
+		},
+		"registerRequest": {
+			"url": "https://as.example/register",
+			"method": "POST",
+			"headers": {
+				"Accept": "application/json",
+				"content-type": "application/json"
+			},
+			"body": "{\"client_name\":\"pi-mcp-test\",\"redirect_uris\":[\"http://localhost:9911/callback\"],\"grant_types\":[\"authorization_code\",\"refresh_token\"],\"response_types\":[\"code\"],\"token_endpoint_auth_method\":\"none\",\"scope\":\"org:read\"}"
+		},
+		"second": "AUTHORIZED",
+		"tokensAfterCode": {
+			"access_token": "access-1",
+			"token_type": "Bearer",
+			"expires_in": 3600,
+			"scope": "org:read",
+			"refresh_token": "refresh-1"
+		},
+		"codeExchangeRequest": {
+			"url": "https://as.example/token",
+			"method": "POST",
+			"headers": {
+				"accept": "application/json",
+				"content-type": "application/x-www-form-urlencoded"
+			},
+			"body": "grant_type=authorization_code&code=good-code&code_verifier=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA&redirect_uri=http%3A%2F%2Flocalhost%3A9911%2Fcallback&resource=https%3A%2F%2Frs.example%2Fmcp&client_id=dynamic-client"
+		},
+		"third": "AUTHORIZED",
+		"tokensAfterRefresh": {
+			"refresh_token": "refresh-1",
+			"access_token": "access-2",
+			"token_type": "Bearer",
+			"expires_in": 3600
+		},
+		"refreshRequest": {
+			"url": "https://as.example/token",
+			"method": "POST",
+			"headers": {
+				"accept": "application/json",
+				"content-type": "application/x-www-form-urlencoded"
+			},
+			"body": "grant_type=refresh_token&refresh_token=refresh-1&resource=https%3A%2F%2Frs.example%2Fmcp&client_id=dynamic-client"
+		},
+		"redirectedOnRefresh": true,
+		"invalidationsBefore": [],
+		"fourth": "REDIRECT",
+		"invalidationsAfterInvalidClient": [
+			"all"
+		],
+		"redirectedAfterInvalidClient": true,
+		"fifth": "REDIRECT",
+		"invalidationsAfterInvalidGrant": [
+			"tokens"
+		],
+		"fifthRequests": [
+			{
+				"url": "https://as.example/.well-known/oauth-authorization-server"
+			},
+			{
+				"url": "https://as.example/token",
+				"body": "grant_type=refresh_token&refresh_token=stale-rt"
+			}
+		],
+		"missingClientDuringExchange": "OAuth client information is missing during code exchange"
+	},
+	"oauth_provider": {
+		"clientMetadataDefaults": {
+			"client_name": "pi",
+			"redirect_uris": [
+				"http://localhost:9911/callback"
+			],
+			"grant_types": [
+				"authorization_code",
+				"refresh_token"
+			],
+			"response_types": [
+				"code"
+			],
+			"token_endpoint_auth_method": "none"
+		},
+		"redirectUrl": "http://localhost:9911/callback",
+		"state": "0000000000000000000000000000000000000000000000000000000000000000",
+		"stateReused": "0000000000000000000000000000000000000000000000000000000000000000",
+		"noVerifier": "No OAuth PKCE code verifier is stored",
+		"verifier": "v-123",
+		"tokens": {
+			"access_token": "a",
+			"token_type": "Bearer",
+			"expires_in": 60
+		},
+		"rawState": {
+			"serverUrl": "https://rs.example/mcp/",
+			"oauthState": "0000000000000000000000000000000000000000000000000000000000000000",
+			"codeVerifier": "v-123",
+			"tokens": {
+				"access_token": "a",
+				"token_type": "Bearer",
+				"expires_in": 60
+			},
+			"tokensExpireAt": 1758240060000
+		},
+		"rawStateNoExpiry": {
+			"serverUrl": "https://rs.example/mcp/",
+			"oauthState": "0000000000000000000000000000000000000000000000000000000000000000",
+			"codeVerifier": "v-123",
+			"tokens": {
+				"access_token": "b",
+				"token_type": "Bearer"
+			}
+		},
+		"clientInformation": {
+			"client_id": "c1",
+			"client_secret": "s1"
+		},
+		"discovery": {
+			"authorizationServerUrl": "https://as.example"
+		},
+		"afterTokensInvalidation": {
+			"serverUrl": "https://rs.example/mcp/",
+			"oauthState": "0000000000000000000000000000000000000000000000000000000000000000",
+			"codeVerifier": "v-123",
+			"clientInformation": {
+				"client_id": "c1",
+				"client_secret": "s1"
+			},
+			"discovery": {
+				"authorizationServerUrl": "https://as.example"
+			}
+		},
+		"afterVerifierInvalidation": {
+			"serverUrl": "https://rs.example/mcp/",
+			"oauthState": "0000000000000000000000000000000000000000000000000000000000000000",
+			"clientInformation": {
+				"client_id": "c1",
+				"client_secret": "s1"
+			},
+			"discovery": {
+				"authorizationServerUrl": "https://as.example"
+			}
+		},
+		"afterClientInvalidation": {
+			"serverUrl": "https://rs.example/mcp/",
+			"oauthState": "0000000000000000000000000000000000000000000000000000000000000000",
+			"discovery": {
+				"authorizationServerUrl": "https://as.example"
+			}
+		},
+		"afterDiscoveryInvalidation": {
+			"serverUrl": "https://rs.example/mcp/",
+			"oauthState": "0000000000000000000000000000000000000000000000000000000000000000"
+		},
+		"isolatedVerifier": "No OAuth PKCE code verifier is stored",
+		"configuredClient": {
+			"client_id": "fixed-id",
+			"client_secret": "fixed-secret"
+		},
+		"configuredMetadata": {
+			"client_name": "pi",
+			"redirect_uris": [
+				"http://localhost:9911/callback"
+			],
+			"grant_types": [
+				"authorization_code",
+				"refresh_token"
+			],
+			"response_types": [
+				"code"
+			],
+			"token_endpoint_auth_method": "client_secret_post"
+		},
+		"explicitMetadata": {
+			"client_name": "pi",
+			"grant_types": [
+				"authorization_code"
+			],
+			"token_endpoint_auth_method": "client_secret_basic",
+			"redirect_uris": [
+				"http://cb/1"
+			],
+			"response_types": [
+				"code"
+			]
+		}
+	},
+	"oauth_adapt_provider": {
+		"token": "tok-1",
+		"authorizationRequired": {
+			"name": "McpOAuthAuthorizationRequiredError",
+			"message": "MCP OAuth authorization requires user interaction"
+		},
+		"authorizeCalls": 1,
+		"staleTokenAuthorizeCalls": 0,
+		"insufficientScope": {
+			"name": "McpOAuthAuthorizationRequiredError",
+			"message": "MCP OAuth authorization requires user interaction"
+		},
+		"insufficientScopeRedirect": "https://as.example/authorize?response_type=code&client_id=c-1&code_challenge=DwBzhbb51LfusnSGBa_hqYSgo7-j8BTQnip4TOnlzRo&code_challenge_method=S256&redirect_uri=http%3A%2F%2Flocalhost%3A9911%2Fcallback&state=expected-state&scope=more",
+		"freshAuthorizationRequired": "Error",
+		"freshAuthorizeCalls": 1
+	},
+	"oauth_callback_server": {
+		"redirectUrl": "http://127.0.0.1:PORT/callback",
+		"callback": {
+			"code": "xyz",
+			"state": "state-1",
+			"iss": "https://as.example"
+		},
+		"okPage": {
+			"status": 200,
+			"headers": {
+				"content-type": "text/plain; charset=utf-8",
+				"connection": "close",
+				"transfer-encoding": "chunked"
+			},
+			"body": "Authorization complete. You may close this window."
+		},
+		"errorCallback": "User said no",
+		"errorPage": {
+			"status": 200,
+			"headers": {
+				"content-type": "text/plain; charset=utf-8",
+				"connection": "close",
+				"transfer-encoding": "chunked"
+			},
+			"body": "Authorization failed. You may close this window.\n\nUser said no"
+		},
+		"unknownState": {
+			"status": 400,
+			"headers": {
+				"content-type": "text/plain; charset=utf-8",
+				"connection": "close",
+				"transfer-encoding": "chunked"
+			},
+			"body": "Invalid or expired OAuth state"
+		},
+		"missingState": {
+			"status": 400,
+			"headers": {
+				"content-type": "text/plain; charset=utf-8",
+				"connection": "close",
+				"transfer-encoding": "chunked"
+			},
+			"body": "Invalid or expired OAuth state"
+		},
+		"wrongPath": {
+			"status": 404,
+			"headers": {
+				"content-type": "text/plain; charset=utf-8",
+				"connection": "close",
+				"transfer-encoding": "chunked"
+			},
+			"body": "Not found"
+		},
+		"missingCodeCallback": "OAuth callback did not include an authorization code",
+		"missingCodePage": {
+			"status": 400,
+			"headers": {
+				"content-type": "text/plain; charset=utf-8",
+				"connection": "close",
+				"transfer-encoding": "chunked"
+			},
+			"body": "Missing authorization code"
+		},
+		"duplicateState": "OAuth state is already pending",
+		"customRedirectUrl": "http://localhost:PORT/cb",
+		"customCallback": {
+			"code": "1",
+			"state": "s"
+		},
+		"customOkPage": {
+			"status": 200,
+			"headers": {
+				"content-type": "text/html; charset=utf-8",
+				"cache-control": "no-store",
+				"connection": "close",
+				"transfer-encoding": "chunked"
+			},
+			"body": "<html>OK</html>"
+		},
+		"customErrorPage": {
+			"status": 200,
+			"headers": {
+				"content-type": "text/html; charset=utf-8",
+				"cache-control": "no-store",
+				"connection": "close",
+				"transfer-encoding": "chunked"
+			},
+			"body": "<html>NO: Authorization failed. You may close this window.</html>"
+		},
+		"closedPending": "OAuth callback server closed"
+	}
+}

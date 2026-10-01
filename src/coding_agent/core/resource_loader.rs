@@ -1098,6 +1098,7 @@ impl DefaultResourceLoader {
             extensions_result: LoadExtensionsResult {
                 extensions: Vec::new(),
                 errors: Vec::new(),
+                warnings: Vec::new(),
                 runtime: ExtensionRuntime::new(),
             },
             skills: Vec::new(),
@@ -1685,6 +1686,12 @@ impl DefaultResourceLoader {
                 .chain(remaining_extensions.errors.iter())
                 .cloned()
                 .collect(),
+            warnings: pre_trust_extensions
+                .warnings
+                .iter()
+                .chain(remaining_extensions.warnings.iter())
+                .cloned()
+                .collect(),
             runtime: pre_trust_extensions.runtime.clone(),
         };
         add_extension_conflict_diagnostics(&mut extensions_result);
@@ -2087,6 +2094,7 @@ impl DefaultResourceLoader {
         LoadExtensionsResult {
             extensions,
             errors,
+            warnings: Vec::new(),
             runtime: runtime.clone(),
         }
     }

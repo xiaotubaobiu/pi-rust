@@ -1,0 +1,926 @@
+{
+	"scenarios": [
+		{
+			"name": "tool_search_tokenize",
+			"observed": [
+				{
+					"text": "list open GitHub issues",
+					"tokens": [
+						"list",
+						"open",
+						"git",
+						"hub",
+						"issue"
+					]
+				},
+				{
+					"text": "WorldSearch WEB_fetch HTTPServer",
+					"tokens": [
+						"world",
+						"search",
+						"web",
+						"fetch",
+						"http",
+						"server"
+					]
+				},
+				{
+					"text": "the cats are running with boxes",
+					"tokens": [
+						"cat",
+						"running",
+						"box"
+					]
+				},
+				{
+					"text": "classes buses moss pass quest",
+					"tokens": [
+						"class",
+						"buse",
+						"moss",
+						"pass",
+						"quest"
+					]
+				},
+				{
+					"text": "machines watches boxes wzes",
+					"tokens": [
+						"machine",
+						"watch",
+						"box",
+						"wze"
+					]
+				},
+				{
+					"text": "a-b/c.d_e",
+					"tokens": [
+						"b",
+						"c",
+						"d",
+						"e"
+					]
+				},
+				{
+					"text": "truncate_session_tree",
+					"tokens": [
+						"truncate",
+						"session",
+						"tree"
+					]
+				},
+				{
+					"text": "",
+					"tokens": []
+				}
+			]
+		},
+		{
+			"name": "tool_search_documents",
+			"observed": [
+				{
+					"name": "issue_list",
+					"text": "issue_list issue list List repository issues query Search query for deferred tools. limit Maximum number of tools to return. Defaults to 8."
+				},
+				{
+					"name": "deploy",
+					"text": "deploy deploy Deploy a service target Deployment target variants A variant tags Tag names"
+				},
+				{
+					"name": "search_docs",
+					"text": "search_docs search docs Search documentation query Search query for deferred tools. limit Maximum number of tools to return. Defaults to 8. mcp__docs Documentation server\nsecond line Use for doc lookups."
+				},
+				{
+					"name": "bare",
+					"text": "bare bare"
+				}
+			]
+		},
+		{
+			"name": "tool_search_bm25",
+			"observed": {
+				"issue": [
+					{
+						"name": "issue_close",
+						"score": 1.0892312837370568
+					},
+					{
+						"name": "issue_list",
+						"score": 1.0516715842978481
+					}
+				],
+				"issues_stem": [
+					{
+						"name": "issue_close",
+						"score": 1.0892312837370568
+					},
+					{
+						"name": "issue_list",
+						"score": 1.0516715842978481
+					}
+				],
+				"limit2": [
+					{
+						"name": "issue_close",
+						"score": 1.7823784642970022
+					},
+					{
+						"name": "issue_list",
+						"score": 1.7005753278007758
+					}
+				],
+				"limit0": [],
+				"limitNegative": [],
+				"emptyQuery": [],
+				"noMatch": [],
+				"emptyDocs": [],
+				"singleDoc": [
+					{
+						"name": "deploy_service",
+						"score": 0.7911256992423973
+					}
+				],
+				"tieOrder": [
+					{
+						"name": "alpha",
+						"score": 0.13353139262452257
+					},
+					{
+						"name": "beta",
+						"score": 0.13353139262452257
+					},
+					{
+						"name": "gamma",
+						"score": 0.13353139262452257
+					}
+				],
+				"customParams": [
+					{
+						"name": "issue_close",
+						"score": 1.2476649250079015
+					},
+					{
+						"name": "issue_list",
+						"score": 1.2074176693624854
+					}
+				]
+			}
+		},
+		{
+			"name": "tool_search_description",
+			"observed": [
+				"# Tool discovery\n\nSearches over deferred tool metadata with BM25 and exposes matching tools for the next model call.\n\nYou have access to tools from the following sources:\nNone currently enabled.\n\nSome of the tools may not have been provided to you upfront, and you should use this tool (`tool_search`) to search for the required tools. For MCP tool discovery, always use `tool_search`.",
+				"# Tool discovery\n\nSearches over deferred tool metadata with BM25 and exposes matching tools for the next model call.\n\nYou have access to tools from the following sources:\nNone currently enabled.\n\nSome of the tools may not have been provided to you upfront, and you should use this tool (`tool_search`) to search for the required tools. For MCP tool discovery, always use `tool_search`.",
+				"# Tool discovery\n\nSearches over deferred tool metadata with BM25 and exposes matching tools for the next model call.\n\nYou have access to tools from the following sources:\n- mcp__docs: Documentation server\n\nSome of the tools may not have been provided to you upfront, and you should use this tool (`tool_search`) to search for the required tools. For MCP tool discovery, always use `tool_search`.",
+				"# Tool discovery\n\nSearches over deferred tool metadata with BM25 and exposes matching tools for the next model call.\n\nYou have access to tools from the following sources:\n- mcp__docs: padded first\n\nSome of the tools may not have been provided to you upfront, and you should use this tool (`tool_search`) to search for the required tools. For MCP tool discovery, always use `tool_search`.",
+				"# Tool discovery\n\nSearches over deferred tool metadata with BM25 and exposes matching tools for the next model call.\n\nYou have access to tools from the following sources:\n- mcp__jira\n- mcp__ci: starts blank\n\nSome of the tools may not have been provided to you upfront, and you should use this tool (`tool_search`) to search for the required tools. For MCP tool discovery, always use `tool_search`."
+			]
+		},
+		{
+			"name": "tool_search_schema",
+			"observed": {
+				"schema": {
+					"type": "object",
+					"required": [
+						"query"
+					],
+					"properties": {
+						"query": {
+							"type": "string",
+							"description": "Search query for deferred tools."
+						},
+						"limit": {
+							"type": "number",
+							"description": "Maximum number of tools to return. Defaults to 8."
+						}
+					}
+				},
+				"defaultLimit": 8,
+				"toolName": "tool_search",
+				"isTool_sameReference": true,
+				"isTool_structuralClone": false,
+				"isTool_otherName": false
+			}
+		},
+		{
+			"name": "tool_search_execute_load",
+			"observed": {
+				"result": {
+					"content": [
+						{
+							"type": "text",
+							"text": "Loaded 2 tools. They are available from your next call:\n- cm_tool: Codemode tool first line\n- def_tool: Deferred tool"
+						}
+					],
+					"details": {
+						"loaded": [
+							"cm_tool",
+							"def_tool"
+						]
+					}
+				},
+				"setActiveCalls": [
+					[
+						"direct_active",
+						"cm_active",
+						"cm_tool",
+						"def_tool"
+					]
+				]
+			}
+		},
+		{
+			"name": "tool_search_execute_no_match",
+			"observed": {
+				"result": {
+					"content": [
+						{
+							"type": "text",
+							"text": "No matching tools found."
+						}
+					],
+					"details": {
+						"loaded": []
+					}
+				},
+				"setActiveCalls": []
+			}
+		},
+		{
+			"name": "tool_search_execute_no_tools_option",
+			"observed": {
+				"result": {
+					"content": [
+						{
+							"type": "text",
+							"text": "No matching tools found."
+						}
+					],
+					"details": {
+						"loaded": []
+					}
+				}
+			}
+		},
+		{
+			"name": "tool_search_execute_validation",
+			"observed": {
+				"emptyQuery": {
+					"threw": "query must not be empty"
+				},
+				"limitZero": {
+					"threw": "limit must be a positive integer"
+				},
+				"limitFloat": {
+					"threw": "limit must be a positive integer"
+				},
+				"limitNegative": {
+					"threw": "limit must be a positive integer"
+				}
+			}
+		},
+		{
+			"name": "tool_search_execute_limit_one",
+			"observed": {
+				"result": {
+					"content": [
+						{
+							"type": "text",
+							"text": "Loaded 1 tool. They are available from your next call:\n- cm_tool: Codemode tool first line"
+						}
+					],
+					"details": {
+						"loaded": [
+							"cm_tool"
+						]
+					}
+				},
+				"setActiveCalls": [
+					[
+						"direct_active",
+						"cm_active",
+						"cm_tool"
+					]
+				]
+			}
+		},
+		{
+			"name": "tool_search_prepare_loadout",
+			"observed": {
+				"changes": {
+					"descriptions": {
+						"tool_search": "# Tool discovery\n\nSearches over deferred tool metadata with BM25 and exposes matching tools for the next model call.\n\nYou have access to tools from the following sources:\n- mcp__docs: Docs\n\nSome of the tools may not have been provided to you upfront, and you should use this tool (`tool_search`) to search for the required tools. For MCP tool discovery, always use `tool_search`."
+					}
+				},
+				"descriptionWithoutSources": "# Tool discovery\n\nSearches over deferred tool metadata with BM25 and exposes matching tools for the next model call.\n\nYou have access to tools from the following sources:\nNone currently enabled.\n\nSome of the tools may not have been provided to you upfront, and you should use this tool (`tool_search`) to search for the required tools. For MCP tool discovery, always use `tool_search`.",
+				"rewrittenDescription": "# Tool discovery\n\nSearches over deferred tool metadata with BM25 and exposes matching tools for the next model call.\n\nYou have access to tools from the following sources:\n- mcp__docs: Docs\n\nSome of the tools may not have been provided to you upfront, and you should use this tool (`tool_search`) to search for the required tools. For MCP tool discovery, always use `tool_search`.",
+				"changesWhenOnlyDirect": {
+					"descriptions": {
+						"tool_search": "# Tool discovery\n\nSearches over deferred tool metadata with BM25 and exposes matching tools for the next model call.\n\nYou have access to tools from the following sources:\nNone currently enabled.\n\nSome of the tools may not have been provided to you upfront, and you should use this tool (`tool_search`) to search for the required tools. For MCP tool discovery, always use `tool_search`."
+					}
+				}
+			}
+		},
+		{
+			"name": "tool_search_extension_registration",
+			"observed": {
+				"extensionPath": "builtin:tool-search",
+				"sourceInfo": {
+					"path": "builtin:tool-search",
+					"source": "builtin",
+					"scope": "temporary",
+					"origin": "top-level"
+				},
+				"defaultActive": false,
+				"definition": {
+					"name": "tool_search",
+					"label": "tool_search",
+					"description": "# Tool discovery\n\nSearches over deferred tool metadata with BM25 and exposes matching tools for the next model call.\n\nYou have access to tools from the following sources:\nNone currently enabled.\n\nSome of the tools may not have been provided to you upfront, and you should use this tool (`tool_search`) to search for the required tools. For MCP tool discovery, always use `tool_search`.",
+					"promptSnippet": "Search for tools that are not loaded yet and load the matches",
+					"parameters": {
+						"type": "object",
+						"required": [
+							"query"
+						],
+						"properties": {
+							"query": {
+								"type": "string",
+								"description": "Search query for deferred tools."
+							},
+							"limit": {
+								"type": "number",
+								"description": "Maximum number of tools to return. Defaults to 8."
+							}
+						}
+					},
+					"exposure": "model-only",
+					"hasExecute": true,
+					"hasPrepareLoadout": true
+				}
+			}
+		},
+		{
+			"name": "register_mcp_server_surface",
+			"observed": {
+				"one": {
+					"valid": "ok",
+					"invalid": "Invalid MCP server registered by extension \"<inline:one>\": invalid server name \"bad name!\" (use letters, digits, \"_\" and \"-\")",
+					"afterRegister": []
+				},
+				"two": {
+					"conflict": "MCP server \"jira\" is already registered by extension \"<inline:one>\"",
+					"ownReplace": [
+						"jira"
+					],
+					"foreignUnregister": "ok",
+					"afterForeignUnregister": [
+						"jira"
+					],
+					"ownUnregister": [
+						"jira"
+					]
+				},
+				"finalList": [
+					{
+						"name": "jira",
+						"config": {
+							"url": "https://mcp.example.com/jira",
+							"exposure": "codemode"
+						},
+						"extensionPath": "<inline:one>"
+					}
+				]
+			}
+		},
+		{
+			"name": "mcp_servers_change_with_handler",
+			"observed": {
+				"emitted": [
+					{
+						"type": "mcp_servers_change",
+						"servers": [
+							{
+								"name": "loaded",
+								"config": {
+									"command": "serve"
+								},
+								"extensionPath": "<inline:handler>"
+							},
+							{
+								"name": "live",
+								"config": {
+									"url": "https://mcp.example.com/live"
+								},
+								"extensionPath": "<inline:handler2>"
+							}
+						]
+					}
+				]
+			}
+		},
+		{
+			"name": "mcp_servers_unhandled_report",
+			"observed": {
+				"errors": [
+					{
+						"extensionPath": "<inline:nohandler-same>",
+						"event": "register_mcp_server",
+						"error": "MCP server \"alpha\" is registered, but no loaded extension connects MCP servers; another extension may have replaced the built-in MCP support"
+					},
+					{
+						"extensionPath": "<inline:nohandler-same>",
+						"event": "register_mcp_server",
+						"error": "MCP server \"beta\" is registered, but no loaded extension connects MCP servers; another extension may have replaced the built-in MCP support"
+					}
+				]
+			}
+		},
+		{
+			"name": "get_settings",
+			"observed": {
+				"preBind": "Extension runtime not initialized. Action methods cannot be called during extension loading.",
+				"inFactory": "Extension runtime not initialized. Action methods cannot be called during extension loading.",
+				"postBind": {
+					"defaultProvider": "anthropic",
+					"compaction": {
+						"enabled": true
+					}
+				},
+				"runtimeGetSettingsAfterBind": {
+					"defaultProvider": "anthropic",
+					"compaction": {
+						"enabled": true
+					}
+				}
+			}
+		},
+		{
+			"name": "register_command_validation",
+			"observed": {
+				"emptyName": "Command registered by extension \"<inline>\" must have a non-empty string name. Use pi.registerCommand(\"name\", { description, handler }).",
+				"missingHandler": "Command \"/nohandler\" registered by extension \"<inline>\" must define handler().",
+				"valid": "ok"
+			}
+		},
+		{
+			"name": "emit_boundary_chain",
+			"observed": {
+				"seen": [
+					{
+						"handler": "A",
+						"entries": [],
+						"continue": false,
+						"context": {
+							"contextEntries": [],
+							"contextMessages": [],
+							"llmMessages": [],
+							"pendingMessages": [],
+							"canContinue": true,
+							"label": "build-1"
+						},
+						"outcome": "completed",
+						"turnIndex": 0,
+						"messageEntryId": "entry-message",
+						"ctxIsObject": true
+					},
+					{
+						"handler": "B",
+						"entries": [
+							{
+								"type": "custom",
+								"customType": "note",
+								"data": {
+									"from": "A"
+								}
+							}
+						],
+						"continue": true,
+						"context": {
+							"contextEntries": [
+								{
+									"id": "note"
+								}
+							],
+							"contextMessages": [],
+							"llmMessages": [],
+							"pendingMessages": [],
+							"canContinue": true,
+							"label": "build-2"
+						}
+					}
+				],
+				"result": {
+					"entries": [
+						{
+							"type": "custom",
+							"customType": "note",
+							"data": {
+								"from": "A"
+							}
+						},
+						{
+							"type": "custom_message",
+							"customType": "b",
+							"content": "hi",
+							"display": true
+						}
+					],
+					"continue": true,
+					"context": {
+						"contextEntries": [
+							{
+								"id": "note"
+							},
+							{
+								"id": "b"
+							}
+						],
+						"contextMessages": [],
+						"llmMessages": [],
+						"pendingMessages": [],
+						"canContinue": true,
+						"label": "build-3"
+					},
+					"valid": true
+				}
+			}
+		},
+		{
+			"name": "emit_boundary_invalid",
+			"observed": {
+				"order": [
+					"A",
+					"B",
+					"C"
+				],
+				"result": {
+					"entries": [],
+					"continue": false,
+					"context": {
+						"contextEntries": [
+							{
+								"id": "ok"
+							}
+						],
+						"contextMessages": [],
+						"llmMessages": [],
+						"pendingMessages": [],
+						"canContinue": true,
+						"label": "build2-2"
+					},
+					"valid": false
+				}
+			}
+		},
+		{
+			"name": "emit_boundary_agent_before_settle",
+			"observed": {
+				"order": [
+					{
+						"outcome": "completed",
+						"type": "agent_before_settle"
+					}
+				],
+				"result": {
+					"entries": [],
+					"continue": true,
+					"context": {
+						"contextEntries": [],
+						"contextMessages": [],
+						"llmMessages": [],
+						"pendingMessages": [],
+						"canContinue": true,
+						"label": "settle"
+					},
+					"valid": true
+				}
+			}
+		},
+		{
+			"name": "emit_cache_warming_decision",
+			"observed": {
+				"seen": [
+					{
+						"type": "cache_warming_decision",
+						"warmCost": 0.001,
+						"missCost": 0.2,
+						"continuationProbability": 0.5,
+						"action": "warm"
+					}
+				],
+				"action": "warm",
+				"errors": [
+					{
+						"extensionPath": "<inline>",
+						"event": "cache_warming_decision",
+						"error": "classifier down",
+						"stack": "<js-stack:true>"
+					}
+				]
+			}
+		},
+		{
+			"name": "emit_context_two_phase",
+			"observed": {
+				"seen": {
+					"context": [
+						[
+							{
+								"role": "user",
+								"content": "hello",
+								"timestamp": 6
+							},
+							{
+								"role": "assistant",
+								"content": "hi",
+								"timestamp": 8
+							}
+						],
+						[
+							{
+								"role": "user",
+								"content": "hello!",
+								"timestamp": 6
+							},
+							{
+								"role": "assistant",
+								"content": "hi",
+								"timestamp": 8
+							}
+						]
+					],
+					"contextWithSystem": [
+						[
+							{
+								"role": "system",
+								"content": "BASE\n\nextra",
+								"sections": {
+									"s1": "v1"
+								},
+								"toolsAdded": [
+									{
+										"name": "read"
+									}
+								],
+								"timestamp": 5
+							},
+							{
+								"role": "user",
+								"content": "hello!",
+								"timestamp": 6
+							}
+						]
+					]
+				},
+				"result": [
+					{
+						"role": "user",
+						"content": "hello!",
+						"timestamp": 6
+					}
+				],
+				"errors": [
+					{
+						"extensionPath": "<inline>",
+						"event": "context_with_system",
+						"error": "Handler removed the leading system message; the request has no prompt or initial tool declarations. Keep it at index 0 or replace a dropped prefix with getCurrentSystemMessage()."
+					}
+				]
+			}
+		},
+		{
+			"name": "emit_context_unchanged",
+			"observed": {
+				"phases": {
+					"contextHandlers": 1,
+					"contextWithSystem": [
+						[
+							{
+								"role": "system",
+								"content": "only",
+								"timestamp": 1
+							},
+							{
+								"role": "user",
+								"content": "u",
+								"timestamp": 2
+							}
+						]
+					]
+				},
+				"result": [
+					{
+						"role": "system",
+						"content": "only",
+						"timestamp": 1
+					},
+					{
+						"role": "user",
+						"content": "u",
+						"timestamp": 2
+					}
+				]
+			}
+		},
+		{
+			"name": "emit_context_no_system",
+			"observed": {
+				"result": [
+					{
+						"role": "assistant",
+						"content": "b",
+						"timestamp": 2
+					},
+					{
+						"role": "user",
+						"content": "a",
+						"timestamp": 1
+					}
+				]
+			}
+		},
+		{
+			"name": "create_tool_context",
+			"observed": {
+				"forwardCalls": [
+					{
+						"callerId": "parent1",
+						"name": "mcp__docs__search",
+						"args": {
+							"q": "rust"
+						},
+						"hasSignal": true,
+						"sameSignal": true
+					},
+					{
+						"callerId": "parent1",
+						"name": "other",
+						"args": {},
+						"hasSignal": true,
+						"sameSignal": true
+					}
+				],
+				"nested": {
+					"toolCall": {
+						"type": "toolCall",
+						"id": "parent1/0",
+						"name": "mcp__docs__search",
+						"arguments": {
+							"q": "rust"
+						}
+					},
+					"result": {
+						"content": [
+							{
+								"type": "text",
+								"text": "nested ok"
+							}
+						],
+						"details": {}
+					},
+					"isError": false
+				},
+				"tools": [
+					{
+						"name": "callable_one"
+					},
+					{
+						"name": "callable_two"
+					}
+				],
+				"toolsLiveGetter": 2
+			}
+		},
+		{
+			"name": "create_tool_context_fallback",
+			"observed": {
+				"result": {
+					"toolCall": {
+						"type": "toolCall",
+						"id": "parent2/0",
+						"name": "target",
+						"arguments": {}
+					},
+					"result": {
+						"content": [
+							{
+								"type": "text",
+								"text": "Nested tool calls are not available in this context"
+							}
+						],
+						"details": {}
+					},
+					"isError": true
+				},
+				"tools": []
+			}
+		},
+		{
+			"name": "virtual_models_flush",
+			"observed": {
+				"pending": [
+					{
+						"definition": {
+							"provider": "llama.cpp",
+							"id": "auto",
+							"name": "Auto",
+							"thinkingLevels": [
+								"off",
+								"medium"
+							],
+							"contextWindow": 8192,
+							"route": "<fn>"
+						},
+						"extensionPath": "<inline:vm>"
+					}
+				],
+				"preBindRoute": "Extension runtime not initialized. Action methods cannot be called during extension loading.",
+				"registered": [
+					{
+						"provider": "llama.cpp",
+						"id": "auto",
+						"name": "Auto",
+						"thinkingLevels": [
+							"off",
+							"medium"
+						],
+						"contextWindow": 8192,
+						"route": "<fn>"
+					}
+				],
+				"unregistered": [],
+				"routedContexts": [
+					{
+						"result": {
+							"model": {
+								"id": "physical"
+							},
+							"thinkingLevel": "off",
+							"ctxOk": true
+						}
+					}
+				]
+			}
+		},
+		{
+			"name": "virtual_models_flush_error",
+			"observed": {
+				"errors": [
+					{
+						"extensionPath": "<inline:vmbad>",
+						"event": "register_virtual_model",
+						"error": "duplicate virtual model",
+						"stack": "<js-stack:true>"
+					}
+				]
+			}
+		},
+		{
+			"name": "virtual_models_registry_fallback",
+			"observed": {
+				"registryCalls": [
+					{
+						"provider": "p",
+						"id": "m",
+						"name": "M",
+						"route": "<fn>"
+					},
+					{
+						"provider": "q",
+						"id": "live",
+						"name": "Live",
+						"route": "<fn>"
+					},
+					[
+						"unregister",
+						"q",
+						"live"
+					]
+				]
+			}
+		},
+		{
+			"name": "synthetic_source_info",
+			"observed": {
+				"builtin": {
+					"path": "builtin:tool-search",
+					"source": "builtin",
+					"scope": "temporary",
+					"origin": "top-level"
+				},
+				"inline": {
+					"path": "<inline:named>",
+					"source": "inline",
+					"scope": "temporary",
+					"origin": "top-level"
+				},
+				"local": {
+					"path": "<root>/file-ext.ts",
+					"source": "local",
+					"scope": "temporary",
+					"origin": "top-level",
+					"baseDir": "<root>"
+				}
+			}
+		}
+	]
+}

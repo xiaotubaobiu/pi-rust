@@ -1,0 +1,36 @@
+{
+	"upstream": "2bbfcca43",
+	"package": "@earendil-works/pi-mcp 0.99.1",
+	"fixedNow": 1758240000000,
+	"rngStream": "draw k fills byte[i] = (k*32 + i) & 0xFF; the counter resets to 0 at the start of every scenario and draws are sequential within it",
+	"cryptoSubtle": "real WebCrypto SHA-256 (captured PKCE challenges are true S256 of the deterministic verifiers)",
+	"network": "all HTTP scenarios use an injected recorder fetch through the package's fetch options; the OAuth callback scenario listens on 127.0.0.1 loopback with raw sockets only",
+	"stagedSubstitutions": [
+		{
+			"file": "packages/mcp/src/transports/stdio.ts",
+			"original": "import crossSpawn from \"cross-spawn\";",
+			"replacement": "import { spawn as crossSpawn } from \"node:child_process\";",
+			"reason": "ESM bare specifiers cannot resolve without node_modules; scenarios spawn a direct executable where cross-spawn delegates to node's spawn with identical options"
+		}
+	],
+	"sourceHashes": {
+		"packages/mcp/src/auth-provider.ts": "3026f3b461c6038e15173a676b9136de4122bef0051c9c4f9b8c860f977b0e1c",
+		"packages/mcp/src/client.ts": "968d75671423ed12f35cd57b9918ebf72e4be538e09b5f69eafec9c22823ce79",
+		"packages/mcp/src/index.ts": "55c37d4698c9a8d03ea1a318faf24e2c70b4e9532585a3512275b85ca19b2b70",
+		"packages/mcp/src/oauth/callback.ts": "b63b7d5e355b29b3571e550e1be66c14654a404545f8e7dd97d5425e70f5e402",
+		"packages/mcp/src/oauth/discovery.ts": "9a82d1e6be1b0e94253efeb0425c6c4ee49472d0b7d7ccc4b3d0b4f0e41ed2d5",
+		"packages/mcp/src/oauth/errors.ts": "d49e33eaaaec4d0e437a3bc24af975578ff0250138641399a668ca12b54730be",
+		"packages/mcp/src/oauth/flow.ts": "670dcdfa6e20c68d6a38a5d07da132eee976e1e434c1c59120a287a29dc25284",
+		"packages/mcp/src/oauth/index.ts": "6c11951ab31eb1a94b7cfac52e173646df1e235de097e102d0f0fc1e0181bc4c",
+		"packages/mcp/src/oauth/provider.ts": "fc0ae0e6d54ef0ddcba715f3555b570ddebd93d914dd3f8489ae08304151395d",
+		"packages/mcp/src/oauth/types.ts": "276a76da236be42a7b9113b844d781a8adc9bfc579eac12e3fbd2d1567d00d62",
+		"packages/mcp/src/protocol/content.ts": "a7c5d6e79fd3ce841a36fcfff7b5ab281305dac5466929a28a963a7b7709f63d",
+		"packages/mcp/src/protocol/jsonrpc.ts": "2c37ff9ab0aa3d99ae7b600bc1c78939d4fab74f932f867507e1812ecbf19cc2",
+		"packages/mcp/src/protocol/types.ts": "87de9c4635ac1915abc17c981768e9d2d87a2c95404f3910eb5692a7b9f50f77",
+		"packages/mcp/src/testing/index.ts": "7ee6b52cb405d3295e8db71998fce56111ecd5d2bf85d52a0ccdbcbfea7278cf",
+		"packages/mcp/src/transports/in-memory.ts": "e83fba3b109335b51512b2c7bb72fdd2f8de1908d7d7576ec2a426e6e62bdbbc",
+		"packages/mcp/src/transports/stdio.ts": "1f69dae42bae51698bee843d6340225072b6f29c006ca422a60f19a798d7bde6",
+		"packages/mcp/src/transports/streamable-http.ts": "4d23900e25f82dfaae394b156fcfaa1cc581ac34f41b4dd303b881b192925894",
+		"packages/mcp/src/transports/transport.ts": "eaa06b1ac3cdd1de573ba96e5619d1f32aeb5650be5ad5bde2395fe3543c4dfd"
+	}
+}
