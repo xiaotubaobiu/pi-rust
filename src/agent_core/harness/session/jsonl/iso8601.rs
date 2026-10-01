@@ -81,7 +81,9 @@ pub fn parse_iso8601_utc(text: &str) -> Option<i64> {
         if clock.next().is_some()
             || !(0..24).contains(&hour)
             || !(0..60).contains(&minute)
-            || !(0..59).contains(&second)
+            // Upstream `Date.parse` accepts :00-:59 (the doc's :60-leap-second
+            // rejection stays); the exclusive range silently rejected :59.
+            || !(0..=59).contains(&second)
         {
             return None;
         }

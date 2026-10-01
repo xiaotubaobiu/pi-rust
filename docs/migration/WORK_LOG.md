@@ -2577,3 +2577,9 @@ WORK_LOG追加前缀：386287 bytes / cadeaf51fe906e35a1531ffc26058289e7d44c061d
 - js_cbrt replaced with libm::cbrt (=0.2.16, new dep, fdlibm port = V8 Math.cbrt bit-exact) - closes the colors oracle raw-channel tolerance seam T1 disclosed. System powf/cos/sin/atan2 stay (UCRT already matches V8; musl libm does NOT - verified empirically, T1 fixtures green again after revert).
 - Remaining theme slice: theme.ts rewrite wiring (+300/-375), theme-json appearance key, theme-controller delta, dark/light.json okhsl data - next pass (needs interactive-mode integration).
 - Gates: clippy -D warnings 0, fmt clean, tui 568/0, system_theme 3/3.
+
+## 2026-09-30 coding-agent: crash-log module (wave 3b)
+- Ported upstream crash-log.ts to src/coding_agent/core/crash_log.rs: CrashRecord journal (crashes.json, byte-pinned 2-space JSON + newline), read filter lenient like upstream (object with string timestamp+message), 5-record cap, 7-day freshness, takeUnnotifiedCrash marking, extension stack matcher (descendant/package-root/index-entry paths, drive-letter case folding, synthetic-path exclusion, decodeURI).
+- REAL BUG FIX found by the new tests: iso8601 parse_iso8601_utc rejected :59 seconds (exclusive 0..59 range; Date.parse accepts 0-59). Session timestamps landing on :59.x silently failed to parse; now 0..=59.
+- Tests: 7 (format pin, cap, filter, notify marking + persistence, clear, matcher incl. case-insensitive drive paths).
+- Gates: clippy -D warnings 0, fmt clean.
