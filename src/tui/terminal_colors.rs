@@ -82,7 +82,8 @@ fn osc_color_response_value(data: &str) -> Option<(OscColorTarget, &str)> {
         (OscColorTarget::Foreground, rest)
     } else if let Some(rest) = body.strip_prefix("11;") {
         (OscColorTarget::Background, rest)
-    } else if let Some(rest) = body.strip_prefix("4;") {
+    } else {
+        let rest = body.strip_prefix("4;")?;
         let digits_end = rest
             .bytes()
             .take_while(|b| b.is_ascii_digit())
@@ -93,8 +94,6 @@ fn osc_color_response_value(data: &str) -> Option<(OscColorTarget, &str)> {
         }
         let index: u16 = rest[..digits_end].parse().ok()?;
         (OscColorTarget::Index(index), &rest[digits_end + 1..])
-    } else {
-        return None;
     };
     let value = value
         .strip_suffix('\x07')

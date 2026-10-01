@@ -71,6 +71,7 @@ pub mod settings_diagnostics;
 pub mod settings_manager;
 pub mod skills;
 pub mod trust_manager;
+pub mod usage_totals;
 
 #[cfg(test)]
 pub mod oracle_data;

@@ -2589,3 +2589,9 @@ WORK_LOG追加前缀：386287 bytes / cadeaf51fe906e35a1531ffc26058289e7d44c061d
 - Tests: 5 (loopback grid, stdio+http validation, error-message pins, exposure resolution incl. literal regex chars, registry ownership/events).
 - Consumer note: extensions/mcp + tool_search (unported) will call get_mcp_tool_exposure/registry.
 - Gates: clippy -D warnings 0, fmt clean.
+
+## 2026-09-30 coding-agent: usage-totals module (wave 3d)
+- Ported upstream usage-totals.ts to src/coding_agent/core/usage_totals.rs: UsageTotals accumulator, combineUsage (single canonical impl; optional cacheWrite1h/reasoning presence semantics), getUsageCostBreakdown (assistant provider/responseModel keys, tool-result + branch-summary + compaction Tools/summaries bucket, stable cost-desc sort). The upstream usage ENTRY kind lands with the session-manager delta slice (TODO marked).
+- CI fix: clippy 1.98 question_mark lint in tui/terminal_colors.rs osc_color_response_value (pre-existing code, toolchain drift).
+- Tests: 2 (combine semantics incl. optional-presence, breakdown grouping/order/drop).
+- Gates: clippy -D warnings 0, fmt clean.
