@@ -2583,3 +2583,9 @@ WORK_LOG追加前缀：386287 bytes / cadeaf51fe906e35a1531ffc26058289e7d44c061d
 - REAL BUG FIX found by the new tests: iso8601 parse_iso8601_utc rejected :59 seconds (exclusive 0..59 range; Date.parse accepts 0-59). Session timestamps landing on :59.x silently failed to parse; now 0..=59.
 - Tests: 7 (format pin, cap, filter, notify marking + persistence, clear, matcher incl. case-insensitive drive paths).
 - Gates: clippy -D warnings 0, fmt clean.
+
+## 2026-09-30 coding-agent: mcp-servers module (wave 3c)
+- Ported upstream mcp-servers.ts to src/coding_agent/core/mcp_servers.rs: McpExposure (+codemode-deferred alias), validateMcpServerConfig with upstream-exact error strings (14 pinned cases), toolExposure pattern precedence (exact > first pattern in object order; serde_json preserve_order keeps nested object order), isLoopbackRedirectUri, McpOAuthConfig, McpServerRegistry (registration-order Vec, owner-scoped unregister, change listener).
+- Tests: 5 (loopback grid, stdio+http validation, error-message pins, exposure resolution incl. literal regex chars, registry ownership/events).
+- Consumer note: extensions/mcp + tool_search (unported) will call get_mcp_tool_exposure/registry.
+- Gates: clippy -D warnings 0, fmt clean.

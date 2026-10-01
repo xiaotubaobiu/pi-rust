@@ -51,6 +51,7 @@ pub mod event_bus;
 pub mod footer_data_provider;
 pub mod http_dispatcher;
 pub mod keybindings;
+pub mod mcp_servers;
 pub mod messages;
 pub mod model_config;
 pub mod model_registry;
