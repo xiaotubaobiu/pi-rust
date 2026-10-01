@@ -20,4 +20,11 @@ src/tui/utils/utf16/wrap-fixtures.json text eol=lf
 docs/migration/reference/latex/source-manifest.json text eol=lf
 docs/migration/reference/latex/utf16-domain.json text eol=lf
 docs/migration/reference/markdown/source-manifest.json text eol=lf
-scratch/evals_m6/oracle/report_formatted.txt text eol=lf
+
+# The whole fixture tree is byte-pinned: oracle captures embed SHA-256 of
+# upstream sources (system_theme_oracle_tests), include_str! compares bytes,
+# and runtime-fs fixtures (evals report_formatted.txt, r20 oracle paths) are
+# compared verbatim. No checkout may convert anything under here — the
+# per-file `text eol=lf` line that used to guard evals_m6 from the scratch/
+# era is subsumed by this rule.
+tests/fixtures/** -text

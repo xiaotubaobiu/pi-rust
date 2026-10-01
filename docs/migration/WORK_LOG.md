@@ -2608,3 +2608,9 @@ WORK_LOG追加前缀：386287 bytes / cadeaf51fe906e35a1531ffc26058289e7d44c061d
   (1) r20 session_selector delete-flow oracle embedded capture-machine scratch/ paths in the JSON (9 rewritten to tests/fixtures) and the live windows branch still built scratch paths (now tests/fixtures);
   (2) tui delta terminal_image detection rows were captured on a win32 console but replayed with cfg!(windows) - replay now pins is_windows_console=true (same fix as the r17-era matrix).
 - Gates: clippy -D warnings 0, fmt clean, session_selector 15/0, tui delta 14/0.
+
+## 2026-09-30 CI round-trip fixes round 2 (wave 3g)
+- windows-only failures on run 36838326172 (ubuntu now fully green, 5226/0):
+  (1) evals report_formatted regression: the fixture was protected by a scratch/-era .gitattributes eol=lf line; the scratch->tests/fixtures rename silently dropped the protection, so a windows CRLF checkout broke the byte compare. Fixed by replacing the stale rule with a blanket tests/fixtures/** -text (whole fixture tree is byte-pinned; also covers the new oracle .ts/.mjs/.json closure files).
+  (2) system_theme oracle_sources_are_pinned: same class - the added .ts closure converted to CRLF on checkout, changing SHA-256 vs the pinned capture provenance; covered by the same -text rule.
+- Gates: clippy -D warnings 0, fmt clean; evals::report + system_theme oracle green locally.
