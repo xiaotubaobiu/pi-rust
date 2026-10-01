@@ -29,12 +29,12 @@ use crate::ai::types::ordered_map::OrderedMap;
 use serde_json::{json, Value};
 
 use crate::ai::retry::{retry_provider_request, ProviderError};
-use crate::ai::types::model::ClassifierModel;
 use crate::ai::types::classifier::{
     ClassifierAnswer, ClassifierBoolAnswer, ClassifierChoiceAnswer, ClassifierContext,
     ClassifierOptions, ClassifierQuestion, ClassifierResult, ClassifierScoreAnswer,
     ClassifierStopReason,
 };
+use crate::ai::types::model::ClassifierModel;
 use crate::ai::types::options::ProviderHeaders;
 
 use super::system_one_shared::provider_headers_to_record;
@@ -263,7 +263,13 @@ pub fn render_question(context: &ClassifierContext, id: &str) -> Result<LabeledQ
     let task = render_task(question, Some(&labels));
     let final_block = format!("{task}\n\n{}", answer_instruction(question));
     Ok(LabeledQuestion {
-        content: [state, render_overview(context), render_state(&context.state), final_block].join("\n\n"),
+        content: [
+            state,
+            render_overview(context),
+            render_state(&context.state),
+            final_block,
+        ]
+        .join("\n\n"),
         labels,
         keys,
     })
@@ -272,7 +278,10 @@ pub fn render_question(context: &ClassifierContext, id: &str) -> Result<LabeledQ
 /// Upstream `labelProbabilities` (llama-cpp-classify.ts:180-186): softmax
 /// over label log-probabilities after dividing them by `temperature`.
 pub fn label_probabilities(logprobs: &[f64], temperature: f64) -> Vec<f64> {
-    let scaled: Vec<f64> = logprobs.iter().map(|logprob| logprob / temperature).collect();
+    let scaled: Vec<f64> = logprobs
+        .iter()
+        .map(|logprob| logprob / temperature)
+        .collect();
     let max = scaled.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
     let weights: Vec<f64> = scaled.iter().map(|value| (value - max).exp()).collect();
     let total: f64 = weights.iter().sum();
@@ -284,7 +293,10 @@ pub fn label_probabilities(logprobs: &[f64], temperature: f64) -> Vec<f64> {
 /// [0, 1].
 pub fn peak_confidence(probabilities: &[f64]) -> f64 {
     let n = probabilities.len();
-    let peak = probabilities.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+    let peak = probabilities
+        .iter()
+        .cloned()
+        .fold(f64::NEG_INFINITY, f64::max);
     let value = (n as f64 * peak - 1.0) / (n as f64 - 1.0);
     value.clamp(0.0, 1.0)
 }
@@ -379,11 +391,7 @@ async fn post(
                 return Err(ProviderError::http(
                     status,
                     response_headers,
-                    format!(
-                        "{LABEL} error ({}): {}",
-                        status,
-                        truncate_body(&body)
-                    ),
+                    format!("{LABEL} error ({}): {}", status, truncate_body(&body)),
                 ));
             }
             let parsed: Value = serde_json::from_str(&body)
@@ -430,11 +438,17 @@ async fn post(
 /// request headers.
 fn request_headers(request: &RequestContext<'_>) -> ProviderHeaders {
     let options = request.options;
-    let mut defaults: ProviderHeaders = [("content-type".to_string(), Some("application/json".to_string()))]
-        .into_iter()
-        .collect();
+    let mut defaults: ProviderHeaders = [(
+        "content-type".to_string(),
+        Some("application/json".to_string()),
+    )]
+    .into_iter()
+    .collect();
     if let Some(api_key) = options.api_key.as_deref().filter(|key| !key.is_empty()) {
-        defaults.insert("authorization".to_string(), Some(format!("Bearer {api_key}")));
+        defaults.insert(
+            "authorization".to_string(),
+            Some(format!("Bearer {api_key}")),
+        );
     }
     let empty = ProviderHeaders::new();
     provider_headers_to_record(&[
@@ -512,8 +526,7 @@ async fn label_tokens(request: &RequestContext<'_>, labels: &[String]) -> Result
         static CACHE: OnceLock<Mutex<HashMap<String, Option<u32>>>> = OnceLock::new();
         CACHE.get_or_init(|| Mutex::new(HashMap::new()))
     }
-    let cache_key =
-        |label: &str| format!("{}\u{0}{}\u{0}{label}", request.root, request.model.id);
+    let cache_key = |label: &str| format!("{}\u{0}{}\u{0}{label}", request.root, request.model.id);
     let mut tokens: Vec<u32> = Vec::new();
     for label in labels {
         let key = cache_key(label);
@@ -586,10 +599,9 @@ async fn render_prompt(request: &RequestContext<'_>, content: &str) -> Result<St
     // Some templates always open a reasoning block for the reply. Closing it
     // at once leaves an empty block, as templates with thinking disabled
     // produce, so the next token is the answer.
-    Ok(prompt.strip_suffix("<think>").map_or_else(
-        || prompt.to_string(),
-        |prompt| format!("{prompt}</think>"),
-    ))
+    Ok(prompt
+        .strip_suffix("<think>")
+        .map_or_else(|| prompt.to_string(), |prompt| format!("{prompt}</think>")))
 }
 
 /// Upstream `nextTokenLogprobs` (llama-cpp-classify.ts:359-391): the
@@ -680,7 +692,10 @@ async fn classify_question(
             depths[depths.len() - 1]
         ));
     }
-    let values: Vec<f64> = logprobs.into_iter().map(|logprob| logprob.unwrap_or(0.0)).collect();
+    let values: Vec<f64> = logprobs
+        .into_iter()
+        .map(|logprob| logprob.unwrap_or(0.0))
+        .collect();
     if values.iter().all(|logprob| *logprob <= UNDERFLOW_LOGPROB) {
         return Err(format!(
             "{} gave no probability to any answer label for {id}",
@@ -761,7 +776,11 @@ pub async fn classify(
 
     if let Err(error) = run {
         output.answers.clear();
-        output.stop_reason = if options.signal.as_ref().is_some_and(|token| token.is_cancelled()) {
+        output.stop_reason = if options
+            .signal
+            .as_ref()
+            .is_some_and(|token| token.is_cancelled())
+        {
             ClassifierStopReason::Aborted
         } else {
             ClassifierStopReason::Error

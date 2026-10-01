@@ -7,10 +7,8 @@ use serde_json::{json, Value};
 use super::system_one_shared::{
     classify_system_one, is_record, SystemOneTransport, SystemOneWireRequest,
 };
+use crate::ai::types::classifier::{ClassifierContext, ClassifierOptions, ClassifierResult};
 use crate::ai::types::model::ClassifierModel;
-use crate::ai::types::classifier::{
-    ClassifierContext, ClassifierOptions, ClassifierResult,
-};
 
 /// Upstream transport (`typesafe-system-one.ts:9-18`): the `systemone`
 /// endpoint on the model's base URL with the flat

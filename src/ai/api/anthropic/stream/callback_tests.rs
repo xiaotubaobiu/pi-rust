@@ -11,7 +11,10 @@ use wiremock::{Mock, MockServer, ResponseTemplate};
 const END: &str = "event: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\"}}\n\nevent: message_stop\ndata: {\"type\":\"message_stop\"}\n\n";
 
 fn model() -> Model {
-    Model {r#type: None, prompt_cache: None, input_limits: None, 
+    Model {
+        r#type: None,
+        prompt_cache: None,
+        input_limits: None,
         id: "claude-callback".into(),
         name: "Callback fixture".into(),
         api: API.into(),

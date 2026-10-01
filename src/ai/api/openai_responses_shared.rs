@@ -1272,7 +1272,9 @@ impl ResponsesStreamProcessor {
     /// whose output_item.done never did (its arguments may be cut off).
     pub fn finish(&self) -> Result<(), String> {
         if !self.saw_terminal_response_event {
-            return Err("OpenAI Responses stream ended before a terminal response event".to_string());
+            return Err(
+                "OpenAI Responses stream ended before a terminal response event".to_string(),
+            );
         }
         // The agent runs every tool call in the final message. Refuse to
         // hand over calls whose scratch buffers were never removed (their
@@ -2201,7 +2203,10 @@ mod tests {
     // ---- fixtures ----
 
     fn responses_model() -> Model {
-        Model {r#type: None, prompt_cache: None, input_limits: None, 
+        Model {
+            r#type: None,
+            prompt_cache: None,
+            input_limits: None,
             id: "gpt-5.4".to_string(),
             name: "GPT-5.4".to_string(),
             api: "openai-responses".to_string(),

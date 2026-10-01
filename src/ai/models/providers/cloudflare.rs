@@ -375,7 +375,10 @@ pub fn cloudflare_ai_gateway_provider() -> Arc<dyn Provider> {
             api_key: Some(Arc::new(CloudflareAiGatewayAuth)),
             oauth: None,
         },
-        models: embedded_provider_catalog("cloudflare-ai-gateway").into_iter().map(crate::ai::types::AnyModel::Chat).collect(),
+        models: embedded_provider_catalog("cloudflare-ai-gateway")
+            .into_iter()
+            .map(crate::ai::types::AnyModel::Chat)
+            .collect(),
         fetch_models: None,
         filter_models: None,
         filter_all_models: None,
@@ -415,7 +418,10 @@ pub fn cloudflare_workers_ai_provider() -> Arc<dyn Provider> {
             api_key: Some(Arc::new(CloudflareWorkersAiAuth)),
             oauth: None,
         },
-        models: embedded_provider_catalog("cloudflare-workers-ai").into_iter().map(crate::ai::types::AnyModel::Chat).collect(),
+        models: embedded_provider_catalog("cloudflare-workers-ai")
+            .into_iter()
+            .map(crate::ai::types::AnyModel::Chat)
+            .collect(),
         fetch_models: None,
         filter_models: None,
         filter_all_models: None,

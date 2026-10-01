@@ -911,7 +911,10 @@ async fn generation_hooks_reach_the_real_http_payload_and_response_metadata() {
     model.provider = "local-http".into();
     model.api = "openai-completions".into();
     model.base_url = format!("{}/v1", server.uri());
-    let provider = create_provider(CreateProviderOptions {filter_all_models: None, images: crate::ai::models::provider::ImagesImpls::new(), classifiers: crate::ai::models::provider::ClassifiersImpls::new(), 
+    let provider = create_provider(CreateProviderOptions {
+        filter_all_models: None,
+        images: crate::ai::models::provider::ImagesImpls::new(),
+        classifiers: crate::ai::models::provider::ClassifiersImpls::new(),
         id: model.provider.clone(),
         name: None,
         base_url: None,

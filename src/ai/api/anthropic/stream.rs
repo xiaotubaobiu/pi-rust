@@ -1081,7 +1081,10 @@ mod tests {
     // ---- fixtures ----
 
     fn make_model(compat: Value) -> Model {
-        Model {r#type: None, prompt_cache: None, input_limits: None, 
+        Model {
+            r#type: None,
+            prompt_cache: None,
+            input_limits: None,
             id: "claude-test".to_string(),
             name: "Claude Test".to_string(),
             api: "anthropic-messages".to_string(),

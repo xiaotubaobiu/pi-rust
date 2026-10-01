@@ -4325,7 +4325,10 @@ mod tests {
     /// real API implementation (the M1 wire tests' direct `ApiImpl` + config).
     fn wire_models(api: Arc<dyn ApiImpl>, provider_id: &str, model: Model) -> Arc<Models> {
         let mut models = create_models(CreateModelsOptions::default());
-        models.set_provider(create_provider(CreateProviderOptions {filter_all_models: None, images: crate::ai::models::provider::ImagesImpls::new(), classifiers: crate::ai::models::provider::ClassifiersImpls::new(), 
+        models.set_provider(create_provider(CreateProviderOptions {
+            filter_all_models: None,
+            images: crate::ai::models::provider::ImagesImpls::new(),
+            classifiers: crate::ai::models::provider::ClassifiersImpls::new(),
             id: provider_id.to_string(),
             name: None,
             base_url: None,

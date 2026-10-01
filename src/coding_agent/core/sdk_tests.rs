@@ -124,7 +124,10 @@ async fn runtime(models: Vec<Model>, configured: &[String], api: Arc<dyn ApiImpl
     }
     for provider in names {
         runtime
-            .register_native_provider(create_provider(CreateProviderOptions {filter_all_models: None, images: crate::ai::models::provider::ImagesImpls::new(), classifiers: crate::ai::models::provider::ClassifiersImpls::new(), 
+            .register_native_provider(create_provider(CreateProviderOptions {
+                filter_all_models: None,
+                images: crate::ai::models::provider::ImagesImpls::new(),
+                classifiers: crate::ai::models::provider::ClassifiersImpls::new(),
                 id: provider.clone(),
                 name: None,
                 base_url: None,
@@ -874,7 +877,10 @@ async fn headers_snapshot_runner_before_auth_while_other_hooks_read_current_runn
     let entered = Arc::new(Notify::new());
     let gate = Arc::new(Semaphore::new(0));
     f.runtime
-        .register_native_provider(create_provider(CreateProviderOptions {filter_all_models: None, images: crate::ai::models::provider::ImagesImpls::new(), classifiers: crate::ai::models::provider::ClassifiersImpls::new(), 
+        .register_native_provider(create_provider(CreateProviderOptions {
+            filter_all_models: None,
+            images: crate::ai::models::provider::ImagesImpls::new(),
+            classifiers: crate::ai::models::provider::ClassifiersImpls::new(),
             id: model().provider,
             name: None,
             base_url: None,

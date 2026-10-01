@@ -10,10 +10,8 @@ use serde_json::{json, Value};
 use super::system_one_shared::{
     classify_system_one, is_record, SystemOneTransport, SystemOneWireRequest,
 };
+use crate::ai::types::classifier::{ClassifierContext, ClassifierOptions, ClassifierResult};
 use crate::ai::types::model::ClassifierModel;
-use crate::ai::types::classifier::{
-    ClassifierContext, ClassifierOptions, ClassifierResult,
-};
 
 const LABEL: &str = "Cloudflare Workers AI";
 
@@ -102,7 +100,13 @@ pub async fn classify(
             &default_options
         }
     };
-    classify_system_one(&CloudflareWorkersAiSystemOneTransport, model, context, options).await
+    classify_system_one(
+        &CloudflareWorkersAiSystemOneTransport,
+        model,
+        context,
+        options,
+    )
+    .await
 }
 
 /// The [`crate::ai::models::provider::ClassifierApiImpl`] adapter the

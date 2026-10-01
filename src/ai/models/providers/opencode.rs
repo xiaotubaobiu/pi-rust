@@ -152,7 +152,10 @@ pub fn opencode_go_provider() -> Arc<dyn Provider> {
             )),
             oauth: None,
         },
-        models: embedded_provider_catalog("opencode-go").into_iter().map(crate::ai::types::AnyModel::Chat).collect(),
+        models: embedded_provider_catalog("opencode-go")
+            .into_iter()
+            .map(crate::ai::types::AnyModel::Chat)
+            .collect(),
         fetch_models: None,
         filter_models: None,
         filter_all_models: None,

@@ -1,1489 +1,3758 @@
-//! Port of the upstream `track()` write-time operation log
-//! (`packages/chord/src/delta/index.ts:310-1179`).
+//! Port of `packages/chord/src/delta/tracker.ts` (upstream sha256
+//! `3be4c18b42a4fff288617d96f8547137a485b41b0f455c2c811beae5b4bc5778`): the
+//! overlay transaction tracker behind `track()` — `beginChange()` drafts,
+//! `prepare()`/`abort()`, `prepareReplace()` and `adopt()`.
 //!
-//! Mutations are recorded directly into a slot log with an active trie for
-//! coalescing; retired child generations preserve dominance across array
-//! reindexing. This module reproduces that machinery over an explicit
-//! path-addressed mutation API (the upstream proxy traps are the JS-specific
-//! front end; the observable behavior — which op is recorded, in which
-//! coalesced form — is what the port keeps). See the [`super`] module docs for
-//! the deferred proxy-identity surface.
+//! # Draft surface (disclosed divergence, continuing M6/D2)
 //!
-//! Every mutator follows the upstream trap order: inspect the target
-//! immutably, record the operation, then mutate the target and run
-//! [`Tracker::collapse_pending`].
+//! Upstream drafts are JS `Proxy` graphs: writes land in per-node overlay
+//! records (single-slot `writeKey` spilling into an insertion-ordered
+//! `writes` map, `deletes`, `readded`), arrays keep a piece table with
+//! base-entry overrides and insert-source overrides, and every read composes
+//! base + overlay through proxy traps. The port reproduces that machinery
+//! over an explicit path-addressed mutation API — [`Change::set`],
+//! [`Change::delete`], [`Change::push`]/[`pop`]/[`shift`]/[`unshift`]/
+//! [`splice`]/[`set_length`]/[`reverse`]/[`sort_with`]/[`fill`]/
+//! [`copy_within`] — each mirroring the observable behavior of one upstream
+//! trap or array mutator (which overlay record it writes, which ops
+//! `prepare()` then emits). Reads ([`Change::read`]) resolve base + overlay
+//! the way the traps do but return plain values (no live proxies).
+//!
+//! JS container identity, which upstream uses for "is this position still
+//! the container my node wraps" checks, is stand-in modeled with stored-slot
+//! epochs: a fresh slot is a fresh object and replacing a slot's content
+//! bumps its epoch (upstream `replaceStoredValue` writes a different
+//! object). Containers compared by identity upstream never compare equal
+//! here — exactly upstream's behavior for the alias-free inputs `track()`
+//! documents; wrapper identity caching and structural aliasing of one
+//! container at several positions are otherwise unrepresentable (each
+//! position gets its own node). `sort` comparators receive resolved plain
+//! values (upstream hands proxies), so mutating comparators and the
+//! structural-comparator deduplicate pass are unreachable. The WeakRef/GC
+//! registry is invisible. Every value, op, revision and error message the
+//! upstream public surface produces is preserved; see
+//! `tests/fixtures/chord_delta_oracle/`.
 
 use std::collections::HashMap;
+use std::sync::{Arc, Mutex, MutexGuard};
 
+use super::apply_immutable_trusted::apply_immutable_trusted;
 use super::{
-    diff_value, is_reserved, slice_utf16_from, splice_clamped, DeltaError, JsonValue, Op, Path, Seg,
+    is_reserved, overlap, slice_utf16_from, utf16_len, DeltaError, JsonValue, Op, Path, Seg,
 };
 
-#[derive(Debug)]
-struct StrSlot {
-    anchor: String,
-    value: String,
+const MAX_DELTA_OPERATIONS: usize = 4_096;
+const MAX_SIMPLE_OBJECT_NODES: usize = 128;
+const DENSE_CANDIDATE_BITS: usize = 256;
+const DENSE_REGION_MIN_COUNT: usize = 256;
+
+// ─── Public surface ──────────────────────────────────────────────────────────
+
+/// Port of `Prepared<T>` (`tracker.ts:121-127`): one prepared immutable
+/// revision with the operations that produce it from [`Prepared::base`].
+pub struct Prepared {
+    core: Arc<Mutex<TrackerCore>>,
+    context: usize,
+    owner: u64,
+    /// Upstream `base` (`tracker.ts:122`): the revision prepared against.
+    pub base: JsonValue,
+    /// Upstream `value` (`tracker.ts:123`): the prepared immutable revision.
+    pub value: JsonValue,
+    /// Upstream `ops` (`tracker.ts:124`): the batch from `base` to `value`.
+    pub ops: Vec<Op>,
+    /// Upstream `baseRevision` (`tracker.ts:125-126`).
+    pub base_revision: u64,
 }
 
-#[derive(Debug)]
-struct Slot {
-    op: Op,
-    dead: bool,
-    order: u64,
-    /// Position in `log`; refreshed by compaction.
-    index: usize,
-    str: Option<StrSlot>,
-}
-
-#[derive(Debug, Default)]
-struct LogNode {
-    slots: Vec<usize>,
-    kids: HashMap<Seg, usize>,
-    retired_kids: Vec<HashMap<Seg, usize>>,
-    last_order: Option<u64>,
-}
-
-/// `track(root)`: take ownership of `root` and start tracking. Port of
-/// `track<T extends object>` (`delta/index.ts:310`); the first flush is
-/// always a base batch (`delta/index.ts:532-542`).
-pub fn track(root: JsonValue) -> Tracker {
-    Tracker::with_options(root, TrackerOptions::default())
-}
-
-/// Tracker options. Port of `TrackerOptions` (`delta/index.ts:108-110`).
-#[derive(Clone, Copy, Debug)]
-pub struct TrackerOptions {
-    /// Fall back to a per-diff set once string overlap scanning would address
-    /// more than this many UTF-16 code units (`maxOverlapScan`, default
-    /// 65,536, `delta/index.ts:311`).
-    pub max_overlap_scan: usize,
-}
-
-impl Default for TrackerOptions {
-    fn default() -> Self {
-        TrackerOptions {
-            max_overlap_scan: 65_536,
+impl Clone for Prepared {
+    fn clone(&self) -> Prepared {
+        Prepared {
+            core: Arc::clone(&self.core),
+            context: self.context,
+            owner: self.owner,
+            base: self.base.clone(),
+            value: self.value.clone(),
+            ops: self.ops.clone(),
+            base_revision: self.base_revision,
         }
     }
 }
 
-/// Tracker over a JSON value. Port of the upstream `Tracker<T>` interface
-/// (`delta/index.ts:112-127`) and the log machinery of `track`
-/// (`delta/index.ts:310-1179`). The tracked value is mutated only through the
-/// typed methods below; each mirrors the observable behavior of one upstream
-/// proxy trap or array mutator.
-#[derive(Debug)]
-pub struct Tracker {
-    target: JsonValue,
-    nodes: Vec<LogNode>,
-    slots: Vec<Option<Slot>>,
-    /// Record-order slot ids; `None` marks a tombstone.
-    log: Vec<Option<usize>>,
-    next_order: u64,
-    tombstones: usize,
-    live_slots: usize,
-    node_count: usize,
-    last_added_slot: Option<usize>,
-    has_pending: bool,
-    force_base: bool,
-    scan: usize,
+impl std::fmt::Debug for Prepared {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Prepared")
+            .field("base_revision", &self.base_revision)
+            .field("ops", &self.ops.len())
+            .finish()
+    }
 }
 
-impl Tracker {
-    /// `track(root, options)` (`delta/index.ts:310-311`).
-    pub fn with_options(root: JsonValue, options: TrackerOptions) -> Tracker {
-        let nodes = vec![LogNode::default()];
-        Tracker {
-            target: root,
-            nodes,
-            slots: Vec::new(),
-            log: Vec::new(),
-            next_order: 0,
-            tombstones: 0,
-            live_slots: 0,
-            node_count: 1,
-            last_added_slot: None,
-            has_pending: false,
-            force_base: true,
-            scan: options.max_overlap_scan,
+impl Prepared {
+    /// `prepared.abort()` (`tracker.ts:161-163`): discard the prepared
+    /// revision unless it was already adopted.
+    pub fn abort(self) {
+        let mut core = self.lock();
+        abort_context(&mut core, self.context);
+    }
+
+    fn lock(&self) -> MutexGuard<'_, TrackerCore> {
+        self.core
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+    }
+}
+
+/// Port of `Change<T>` (`tracker.ts:129-133`): one open transaction. The
+/// port's `Change` handle *is* the draft (upstream `change.state`):
+/// mutations go through the path-addressed methods below.
+pub struct Change {
+    core: Arc<Mutex<TrackerCore>>,
+    context: usize,
+    settled: bool,
+}
+
+impl std::fmt::Debug for Change {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Change").finish()
+    }
+}
+
+impl Change {
+    /// Resolve `path` against the draft (base + overlay). Port of the `get`
+    /// trap chain (`getProperty`, `tracker.ts:524-561`); `None` is upstream
+    /// `undefined`.
+    pub fn read(&self, path: &[Seg]) -> Result<Option<JsonValue>, TrackerError> {
+        if self.settled {
+            return Err(error(TrackerErrorKind::Plain(
+                "Change has already been settled".to_owned(),
+            )));
+        }
+        let mut core = self.lock();
+        assert_readable(&core, self.context)?;
+        let mut failure = None;
+        match walk(&mut core, self.context, path, &mut failure)? {
+            Some(node) => Ok(Some(clone_node(&core, self.context, node))),
+            None => Ok(None),
         }
     }
 
-    /// The tracked value (upstream `tracker.state` reads / `tracker.target`).
-    pub fn state(&self) -> &JsonValue {
-        &self.target
-    }
-
-    /// `rebase()` (`delta/index.ts:1146-1149`): make the next flush a complete
-    /// base batch without changing the value.
-    pub fn rebase(&mut self) {
-        self.clear_pending();
-        self.force_base = true;
-    }
-
-    /// `discard()` (`delta/index.ts:1155-1157`): accept pending mutations
-    /// locally without emitting them.
-    pub fn discard(&mut self) {
-        self.clear_pending();
-    }
-
-    /// `dirty` (`delta/index.ts:1150-1154`): conservative — true if anything
-    /// was written since the last flush, even if the writes cancelled out.
-    pub fn is_dirty(&self) -> bool {
-        self.force_base || self.has_pending
-    }
-
-    /// Upstream `tracker.state = next` (`delta/index.ts:1135-1145`): replace
-    /// the whole value. Upstream compares reference identity with the proxy;
-    /// the port compares by value, which gives the same observable outcomes:
-    /// re-assigning the current value drops pending ops and rebases, any
-    /// other value becomes the tracked root.
-    pub fn set_value(&mut self, next: JsonValue) {
-        if next == self.target {
-            self.clear_pending();
-            self.force_base = true;
-            return;
+    /// The `set` trap (`setProperty`, `tracker.ts:563-591`) at `path`.
+    pub fn set(&self, path: &[Seg], value: JsonValue) -> Result<(), TrackerError> {
+        if self.settled {
+            return Err(error(TrackerErrorKind::Plain(
+                "Change has already been settled".to_owned(),
+            )));
         }
-        self.clear_pending();
-        self.target = next;
-        self.force_base = true;
-    }
-
-    /// `flush()` (`delta/index.ts:1158-1177`): the first flush is a base
-    /// batch; later flushes return the coalesced pending operations, `[]` when
-    /// nothing is pending. A mutation window that restores its starting value
-    /// may still produce a redundant batch.
-    pub fn flush(&mut self) -> Vec<Op> {
-        if self.force_base {
-            let value = self.target.clone();
-            self.force_base = false;
-            self.clear_pending();
-            return vec![Op::Replace(value)];
-        }
-        if !self.has_pending {
-            return Vec::new();
-        }
-        let mut out = Vec::new();
-        for entry in &self.log {
-            let Some(id) = entry else { continue };
-            let Some(slot) = self.slots[*id].as_ref() else {
-                continue;
-            };
-            if slot.dead {
-                continue;
-            }
-            if let Some(str_slot) = &slot.str {
-                let path = match &slot.op {
-                    Op::Set { path, .. } => path.clone(),
-                    other => unreachable!("anchored string slots carry a set op, got {other:?}"),
-                };
-                diff_value(
-                    Some(&JsonValue::String(str_slot.anchor.clone())),
-                    Some(&JsonValue::String(str_slot.value.clone())),
-                    &path,
-                    self.scan,
-                    &mut out,
-                );
-                continue;
-            }
-            out.push(slot.op.clone());
-        }
-        self.clear_pending();
-        out
-    }
-
-    // ── Mutation API (upstream proxy traps) ─────────────────────────────────
-
-    /// The `set` trap (`delta/index.ts:1009-1090`) for a scalar, string or
-    /// whole-container value. `path` addresses the property or element from
-    /// the tracked root; the empty path is the whole-value setter
-    /// ([`Tracker::set_value`]). Setting an array element exactly one past
-    /// the end appends (`delta/index.ts:1070-1071`); a larger gap is a sparse
-    /// write and is rejected (`delta/index.ts:1049-1051`). Assigning a plain
-    /// object over a plain object deep-diffs outgoing against incoming
-    /// (`diffInto`, `delta/index.ts:717-757`); a string over a string anchors
-    /// the path so flush emits a truncate/append pair (`recordString`).
-    pub fn set(&mut self, path: &[Seg], value: JsonValue) -> Result<(), DeltaError> {
-        guard(path)?;
-        if path.is_empty() {
-            // Upstream `tracker.state = next` is a tracker property, not a
-            // proxy trap; a root set is that setter.
-            self.set_value(value);
-            return Ok(());
-        }
-        let (parent_path, last) = path.split_at(path.len() - 1);
-        let key = &last[0];
-
-        // Inspect immutably first: recording happens before the target
-        // mutation, matching the upstream trap order.
-        let parent_ref = read_container(&self.target, parent_path)?;
-        if parent_ref.is_array() {
-            let Seg::Index(index) = key else {
-                return Err(DeltaError::UnsafePath {
-                    segment: key.to_string(),
-                });
-            };
-            if *index > parent_ref.as_array().expect("checked above").len() {
-                return Err(DeltaError::UnsafePath {
-                    segment: index.to_string(),
-                });
-            }
-        } else {
-            let Seg::Key(_) = key else {
-                return Err(DeltaError::UnsafePath {
-                    segment: key.to_string(),
-                });
-            };
-        }
-        let parent_is_array = parent_ref.is_array();
-        let parent_len = parent_ref.as_array().map(|array| array.len());
-        let previous_value: Option<JsonValue> = read_own(parent_ref, key).cloned();
-
-        if previous_value.as_ref() == Some(&value) && !is_obj(&value) {
-            // `previous === value` for primitives (JS value identity). A
-            // structurally-equal container is a distinct object upstream, so
-            // it proceeds into the diff branch and marks the window dirty.
-            return Ok(());
-        }
-
-        if parent_is_array && matches!(key, Seg::Index(index) if Some(*index) == parent_len) {
-            let index = match key {
-                Seg::Index(index) => *index,
-                _ => unreachable!("array key checked above"),
-            };
-            self.record(Op::Splice {
-                path: parent_path.to_owned(),
-                index,
-                remove: 0,
-                items: vec![clone_json(&value)],
-            });
-            let parent = read_container_mut(&mut self.target, parent_path)?;
-            write_own(parent, key, value);
-            self.collapse_pending();
-            return Ok(());
-        }
-
-        let at: Path = path.to_owned();
-        match (&previous_value, &value) {
-            // whole-container assignment: diff locally so a producer that
-            // rebuilds its partial each frame still emits appends rather than
-            // replacements (delta/index.ts:1072-1075). Upstream `isObj` covers
-            // arrays too — same-length arrays recurse per index and
-            // differing-length arrays fall to chord's own diff.
-            (Some(previous), value) if is_obj(previous) && is_obj(value) => {
-                let mut scratch = at.clone();
-                self.diff_into(previous.clone(), value.clone(), &mut scratch);
-            }
-            // A string path keeps an anchor: the value it had at the first
-            // write in this window; flush diffs anchor -> final once
-            // (delta/index.ts:1076-1082).
-            (Some(previous), value) if previous.is_string() && value.is_string() => {
-                let previous = previous.as_str().expect("checked above").to_owned();
-                let value = value.as_str().expect("checked above").to_owned();
-                self.record_string(&at, previous, value);
-            }
-            _ => {
-                self.record(Op::Set {
-                    path: at,
-                    value: clone_json(&value),
-                });
-            }
-        }
-        let parent = read_container_mut(&mut self.target, parent_path)?;
-        write_own(parent, key, value);
-        self.collapse_pending();
-        Ok(())
-    }
-
-    /// The `deleteProperty` trap (`delta/index.ts:1092-1105`): deletes an
-    /// object property; arrays reject deletes (a sparse array does not
-    /// survive a JSON round trip).
-    pub fn delete(&mut self, path: &[Seg]) -> Result<(), DeltaError> {
-        guard(path)?;
-        if path.is_empty() {
-            return Err(DeltaError::InvalidOp(
-                "the tracked root cannot be deleted".to_owned(),
-            ));
-        }
-        let (parent_path, last) = path.split_at(path.len() - 1);
-        let key = &last[0];
-        let parent_ref = read_container(&self.target, parent_path)?;
-        if parent_ref.is_array() {
-            return match key {
-                Seg::Key(_) => Err(DeltaError::UnsafePath {
-                    segment: key.to_string(),
-                }),
-                Seg::Index(_) => Err(DeltaError::InvalidOp(
-                    "delete would create a sparse array; use splice instead".to_owned(),
+        let mut core = self.lock();
+        assert_writable(&core, self.context)?;
+        let (parent, key) = split_path(path)?;
+        let mut failure = None;
+        let node = walk(&mut core, self.context, parent, &mut failure)?.ok_or_else(|| {
+            match failure {
+                // The draft read resolved to a primitive; the JS runtime
+                // message names its type (`Cannot create property 'b' on
+                // number '1'`).
+                Some(WalkFailure::Primitive(primitive)) => type_error(format!(
+                    "Cannot create property '{key}' on {} '{}'",
+                    js_typeof(&primitive),
+                    js_value_to_string(&primitive)
                 )),
-            };
+                Some(WalkFailure::Null) => {
+                    type_error(format!("Cannot set properties of null (setting '{key}')"))
+                }
+                _ => type_error(format!(
+                    "Cannot set properties of undefined (setting '{key}')"
+                )),
+            }
+        })?;
+        set_property(&mut core, self.context, node, key, value)
+    }
+
+    /// The `deleteProperty` trap (`tracker.ts:593-604`).
+    pub fn delete(&self, path: &[Seg]) -> Result<(), TrackerError> {
+        if self.settled {
+            return Err(error(TrackerErrorKind::Plain(
+                "Change has already been settled".to_owned(),
+            )));
+        }
+        let mut core = self.lock();
+        assert_writable(&core, self.context)?;
+        let (parent, key) = split_path(path)?;
+        let mut failure = None;
+        let node =
+            walk(&mut core, self.context, parent, &mut failure)?.ok_or_else(|| match failure {
+                Some(WalkFailure::Primitive(primitive)) => type_error(format!(
+                    "Cannot convert {} '{}' to object (deleting '{key}')",
+                    js_typeof(&primitive),
+                    js_value_to_string(&primitive)
+                )),
+                _ => type_error(format!(
+                    "Cannot read properties of undefined (reading '{key}')"
+                )),
+            })?;
+        if is_array_base(&core, self.context, node) {
+            return Err(type_error("Overlay arrays cannot contain holes"));
         }
         let Seg::Key(key) = key else {
-            return Err(DeltaError::UnsafePath {
-                segment: key.to_string(),
-            });
+            return Err(type_error("Overlay arrays cannot contain holes"));
         };
-        if read_own(parent_ref, &Seg::Key(key.to_owned())).is_some() {
-            self.record(Op::Delete {
-                path: path.to_owned(),
-            });
-            let parent = read_container_mut(&mut self.target, parent_path)?;
-            parent
-                .as_object_mut()
-                .expect("object parent checked above")
-                .shift_remove(key);
-            self.collapse_pending();
-        }
-        Ok(())
+        delete_property(&mut core, self.context, node, key)
     }
 
-    /// `push` (`delta/index.ts:909-917`): records a `p` append.
-    pub fn push(&mut self, path: &[Seg], items: Vec<JsonValue>) -> Result<usize, DeltaError> {
-        guard(path)?;
-        let before = resolve_array(&self.target, path)?.len();
-        if !items.is_empty() {
-            self.record(Op::Splice {
-                path: path.to_owned(),
-                index: before,
-                remove: 0,
-                items: items.clone(),
-            });
+    fn mutator_node(&self, core: &mut TrackerCore, path: &[Seg]) -> Result<usize, TrackerError> {
+        let mut failure = None;
+        let node = walk(core, self.context, path, &mut failure)?
+            .ok_or_else(|| type_error("Array mutator called on incompatible receiver"))?;
+        if !is_array_base(core, self.context, node) {
+            return Err(type_error("Array mutator called on incompatible receiver"));
         }
-        let new_len = {
-            let array = resolve_array_mut(&mut self.target, path)?;
-            array.extend(items);
-            array.len()
-        };
-        self.collapse_pending();
-        Ok(new_len)
+        Ok(node)
     }
 
-    /// `pop` (`delta/index.ts:927-930`): records a one-item removal.
-    pub fn pop(&mut self, path: &[Seg]) -> Result<Option<JsonValue>, DeltaError> {
-        guard(path)?;
-        let array = resolve_array(&self.target, path)?;
-        let before = array.len();
-        let removed = array.last().cloned();
-        if before > 0 {
-            self.record(Op::Splice {
-                path: path.to_owned(),
-                index: before - 1,
-                remove: 1,
-                items: Vec::new(),
-            });
+    /// `push` (`tracker.ts:1178-1184`); returns the new length.
+    pub fn push(&self, path: &[Seg], items: Vec<JsonValue>) -> Result<usize, TrackerError> {
+        if self.settled {
+            return Err(error(TrackerErrorKind::Plain(
+                "Change has already been settled".to_owned(),
+            )));
         }
-        let array = resolve_array_mut(&mut self.target, path)?;
-        array.pop();
-        self.collapse_pending();
-        Ok(removed)
+        let mut core = self.lock();
+        assert_writable(&core, self.context)?;
+        let node = self.mutator_node(&mut core, path)?;
+        let context = self.context;
+        let pieces = insert_pieces(&mut core, context, node, items);
+        let length = array_length_at(&core, context, node);
+        replace_piece_range(&mut core, context, node, length, 0, pieces);
+        Ok(array_length_at(&core, context, node))
     }
 
-    /// `shift` (`delta/index.ts:931-934`).
-    pub fn shift(&mut self, path: &[Seg]) -> Result<Option<JsonValue>, DeltaError> {
-        guard(path)?;
-        let array = resolve_array(&self.target, path)?;
-        let before = array.len();
-        let removed = array.first().cloned();
-        if before > 0 {
-            self.record(Op::Splice {
-                path: path.to_owned(),
-                index: 0,
-                remove: 1,
-                items: Vec::new(),
-            });
+    /// `pop` (`tracker.ts:1185-1193`).
+    pub fn pop(&self, path: &[Seg]) -> Result<Option<JsonValue>, TrackerError> {
+        if self.settled {
+            return Err(error(TrackerErrorKind::Plain(
+                "Change has already been settled".to_owned(),
+            )));
         }
-        let array = resolve_array_mut(&mut self.target, path)?;
-        if !array.is_empty() {
-            array.remove(0);
+        let mut core = self.lock();
+        assert_writable(&core, self.context)?;
+        let node = self.mutator_node(&mut core, path)?;
+        let context = self.context;
+        let length = array_length_at(&core, context, node);
+        if length == 0 {
+            return Ok(None);
         }
-        self.collapse_pending();
-        Ok(removed)
+        let value = get_array_index_value(&core, context, node, length - 1);
+        replace_piece_range(&mut core, context, node, length - 1, 1, Vec::new());
+        Ok(value)
     }
 
-    /// `unshift` (`delta/index.ts:918-926`).
-    pub fn unshift(&mut self, path: &[Seg], items: Vec<JsonValue>) -> Result<usize, DeltaError> {
-        guard(path)?;
-        if !items.is_empty() {
-            self.record(Op::Splice {
-                path: path.to_owned(),
-                index: 0,
-                remove: 0,
-                items: items.clone(),
-            });
+    /// `shift` (`tracker.ts:1194-1202`).
+    pub fn shift(&self, path: &[Seg]) -> Result<Option<JsonValue>, TrackerError> {
+        if self.settled {
+            return Err(error(TrackerErrorKind::Plain(
+                "Change has already been settled".to_owned(),
+            )));
         }
-        let new_len = {
-            let array = resolve_array_mut(&mut self.target, path)?;
-            array.splice(..0, items);
-            array.len()
-        };
-        self.collapse_pending();
-        Ok(new_len)
+        let mut core = self.lock();
+        assert_writable(&core, self.context)?;
+        let node = self.mutator_node(&mut core, path)?;
+        let context = self.context;
+        let length = array_length_at(&core, context, node);
+        if length == 0 {
+            return Ok(None);
+        }
+        let value = get_array_index_value(&core, context, node, 0);
+        replace_piece_range(&mut core, context, node, 0, 1, Vec::new());
+        Ok(value)
     }
 
-    /// `splice` with the upstream argument normalization
-    /// (`spliceRange`, `delta/index.ts:773-783`; a start past the end
-    /// appends and the removal clamps to the tail). A splice that clears the
-    /// whole array is a replacement of it (`delta/index.ts:944-947`).
+    /// `unshift` (`tracker.ts:1203-1208`).
+    pub fn unshift(&self, path: &[Seg], items: Vec<JsonValue>) -> Result<usize, TrackerError> {
+        if self.settled {
+            return Err(error(TrackerErrorKind::Plain(
+                "Change has already been settled".to_owned(),
+            )));
+        }
+        let mut core = self.lock();
+        assert_writable(&core, self.context)?;
+        let node = self.mutator_node(&mut core, path)?;
+        let context = self.context;
+        let pieces = insert_pieces(&mut core, context, node, items);
+        replace_piece_range(&mut core, context, node, 0, 0, pieces);
+        Ok(array_length_at(&core, context, node))
+    }
+
+    /// `splice` (`tracker.ts:1209-1226`) with upstream argument
+    /// normalization: negative `start` counts from the tail, `remove`
+    /// clamps to `[0, length - start]`.
     pub fn splice(
-        &mut self,
+        &self,
         path: &[Seg],
-        index: usize,
-        remove: usize,
+        start: isize,
+        remove: isize,
         items: Vec<JsonValue>,
-    ) -> Result<Vec<JsonValue>, DeltaError> {
-        guard(path)?;
-        let array = resolve_array(&self.target, path)?;
-        let before = array.len();
-        let index = index.min(before);
-        let remove = remove.min(before - index);
-        if remove > 0 || !items.is_empty() {
-            if index == 0 && remove == before {
-                // a splice that clears the whole array is a replacement of it
-                if path.is_empty() {
-                    self.record(Op::Replace(JsonValue::Array(items.clone())));
-                } else {
-                    self.record(Op::Set {
-                        path: path.to_owned(),
-                        value: JsonValue::Array(items.clone()),
-                    });
-                }
-            } else {
-                self.record(Op::Splice {
-                    path: path.to_owned(),
-                    index,
-                    remove,
-                    items: items.clone(),
-                });
-            }
+    ) -> Result<Vec<JsonValue>, TrackerError> {
+        if self.settled {
+            return Err(error(TrackerErrorKind::Plain(
+                "Change has already been settled".to_owned(),
+            )));
         }
-        let array = resolve_array_mut(&mut self.target, path)?;
-        let removed: Vec<JsonValue> = array.splice(index..(index + remove), items).collect();
-        self.collapse_pending();
+        let mut core = self.lock();
+        assert_writable(&core, self.context)?;
+        let node = self.mutator_node(&mut core, path)?;
+        let context = self.context;
+        let length = array_length_at(&core, context, node);
+        let start = clamp_index(start, length);
+        let remove = if remove < 0 {
+            0
+        } else {
+            remove.min((length - start) as isize) as usize
+        };
+        let removed: Vec<JsonValue> = (0..remove)
+            .map(|offset| {
+                get_array_index_value(&core, context, node, start + offset)
+                    .unwrap_or(JsonValue::Null)
+            })
+            .collect();
+        // `insertPlacementPiece(node, args, 2)` over the JS arguments list:
+        // the two leading argument slots remain primitive junk refs and the
+        // piece starts at offset 2 inside its source.
+        let item_count = items.len();
+        let pieces = splice_pieces(&mut core, context, start, remove, items);
+        replace_piece_range(&mut core, context, node, start, remove, pieces);
+        set_array_length(&mut core, context, node, length - remove + item_count);
         Ok(removed)
     }
 
-    /// The default-mutator branch (`delta/index.ts:953-962`): `sort`,
-    /// `reverse`, `fill` and `copyWithin` permute rather than shift, so the
-    /// whole value is re-recorded as a set (or a root replacement). The port
-    /// exposes the permutation itself as a closure over the array.
-    pub fn reorder<F>(&mut self, path: &[Seg], permute: F) -> Result<(), DeltaError>
-    where
-        F: FnOnce(&mut Vec<JsonValue>),
-    {
-        guard(path)?;
-        {
-            let array = resolve_array_mut(&mut self.target, path)?;
-            permute(array);
-        }
-        if path.is_empty() {
-            self.record(Op::Replace(self.target.clone()));
-        } else {
-            let array = resolve_array(&self.target, path)?;
-            self.record(Op::Set {
-                path: path.to_owned(),
-                value: JsonValue::Array(array.clone()),
-            });
-        }
-        self.collapse_pending();
-        Ok(())
-    }
-
-    /// `sort` with the default JS comparator (elements compared by their
-    /// UTF-16 string form). Convenience over [`Tracker::reorder`].
-    pub fn sort_default(&mut self, path: &[Seg]) -> Result<(), DeltaError> {
-        self.reorder(path, |array| array.sort_by_key(js_string_key))
-    }
-
-    /// `reverse` (`delta/index.ts:953-962` default branch).
-    pub fn reverse(&mut self, path: &[Seg]) -> Result<(), DeltaError> {
-        self.reorder(path, |array| array.reverse())
-    }
-
-    /// The `length` set trap (`delta/index.ts:1023-1045`): truncation records
-    /// a removal splice (or a clearing set/replacement at zero); growth
-    /// records explicit null values.
-    pub fn set_length(&mut self, path: &[Seg], next: usize) -> Result<(), DeltaError> {
-        guard(path)?;
-        let before = resolve_array(&self.target, path)?.len();
-        if next < before {
-            if next == 0 {
-                if path.is_empty() {
-                    self.record(Op::Replace(JsonValue::Array(Vec::new())));
-                } else {
-                    self.record(Op::Set {
-                        path: path.to_owned(),
-                        value: JsonValue::Array(Vec::new()),
-                    });
-                }
-            } else {
-                self.record(Op::Splice {
-                    path: path.to_owned(),
-                    index: next,
-                    remove: before - next,
-                    items: Vec::new(),
-                });
+    /// `sort` with the default JS comparator (elements ordered by their
+    /// UTF-16 string form) (`tracker.ts:1244-1313`, default branch).
+    pub fn sort_default(&self, path: &[Seg]) -> Result<(), TrackerError> {
+        self.sort_with(path, |left, right| {
+            let a = js_value_to_string(left);
+            let b = js_value_to_string(right);
+            // JS `<`/`>` compare UTF-16 code units, not UTF-8 bytes.
+            let a_units = a.encode_utf16().collect::<Vec<_>>();
+            let b_units = b.encode_utf16().collect::<Vec<_>>();
+            match a_units.cmp(&b_units) {
+                std::cmp::Ordering::Less => -1,
+                std::cmp::Ordering::Greater => 1,
+                std::cmp::Ordering::Equal => 0,
             }
-        } else if next > before {
-            self.record(Op::Splice {
-                path: path.to_owned(),
-                index: before,
-                remove: 0,
-                items: vec![JsonValue::Null; next - before],
-            });
-        } else {
-            return Ok(());
-        }
-        let array = resolve_array_mut(&mut self.target, path)?;
-        if next < array.len() {
-            array.truncate(next);
-        } else {
-            array.resize(next, JsonValue::Null);
-        }
-        self.collapse_pending();
-        Ok(())
-    }
-
-    // ── Log machinery (delta/index.ts:313-757) ──────────────────────────────
-
-    fn clear_pending(&mut self) {
-        self.log.clear();
-        self.slots.clear();
-        self.nodes.clear();
-        self.nodes.push(LogNode::default());
-        self.next_order = 0;
-        self.tombstones = 0;
-        self.live_slots = 0;
-        self.node_count = 1;
-        self.last_added_slot = None;
-        self.has_pending = false;
-    }
-
-    /// `logNode` (`delta/index.ts:349-362`): walk to the node for `path`,
-    /// creating missing children.
-    fn log_node(&mut self, path: &[Seg]) -> usize {
-        let mut at = 0usize;
-        for segment in path {
-            let next = self.nodes[at].kids.get(segment).copied();
-            let next = match next {
-                Some(next) => next,
-                None => {
-                    let created = self.nodes.len();
-                    self.nodes.push(LogNode::default());
-                    self.node_count += 1;
-                    self.nodes[at].kids.insert(segment.clone(), created);
-                    created
-                }
-            };
-            at = next;
-        }
-        at
-    }
-
-    /// `findLogNode` (`delta/index.ts:364-372`).
-    fn find_log_node(&self, path: &[Seg]) -> Option<usize> {
-        let mut at = 0usize;
-        for segment in path {
-            let next = self.nodes[at].kids.get(segment).copied()?;
-            at = next;
-        }
-        Some(at)
-    }
-
-    /// `compactLog` (`delta/index.ts:374-384`).
-    fn compact_log(&mut self) {
-        if self.tombstones < 1_024 || self.tombstones * 2 < self.log.len() {
-            return;
-        }
-        let mut compacted: Vec<Option<usize>> = Vec::with_capacity(self.log.len());
-        for entry in std::mem::take(&mut self.log) {
-            let Some(id) = entry else { continue };
-            if let Some(slot) = self.slots[id].as_mut() {
-                slot.index = compacted.len();
-            }
-            compacted.push(Some(id));
-        }
-        self.log = compacted;
-        self.tombstones = 0;
-    }
-
-    /// `killSlot` (`delta/index.ts:386-394`).
-    fn kill_slot(&mut self, id: usize) {
-        let Some(slot) = self.slots[id].as_mut() else {
-            return;
-        };
-        if slot.dead {
-            return;
-        }
-        slot.dead = true;
-        self.live_slots -= 1;
-        let index = slot.index;
-        if self.log.get(index) == Some(&Some(id)) {
-            self.log[index] = None;
-            self.tombstones += 1;
-        }
-    }
-
-    /// `liveSlot` (`delta/index.ts:396-405`): drop dead tail slots and return
-    /// the newest live slot at the node.
-    fn live_slot(&mut self, node: usize) -> Option<usize> {
-        while let Some(&last) = self.nodes[node].slots.last() {
-            if self.slots[last].as_ref().is_some_and(|slot| slot.dead) {
-                self.nodes[node].slots.pop();
-            } else {
-                break;
-            }
-        }
-        self.nodes[node].slots.last().copied()
-    }
-
-    /// `killHere` (`delta/index.ts:407-411`).
-    fn kill_here(&mut self, node: usize) {
-        for id in std::mem::take(&mut self.nodes[node].slots) {
-            self.kill_slot(id);
-        }
-    }
-
-    /// `addSlot` (`delta/index.ts:413-423`).
-    fn add_slot(&mut self, node: usize, mut slot: Slot) {
-        self.compact_log();
-        slot.order = self.next_order;
-        self.next_order += 1;
-        slot.index = self.log.len();
-        self.nodes[node].last_order = Some(slot.order);
-        let id = self.slots.len();
-        self.slots.push(Some(slot));
-        self.nodes[node].slots.push(id);
-        self.log.push(Some(id));
-        self.live_slots += 1;
-        self.last_added_slot = Some(id);
-    }
-
-    /// `collapsePending` (`delta/index.ts:425-435`): fall back to a complete
-    /// snapshot once either history dimension exceeds the bounded coalescing
-    /// window.
-    fn collapse_pending(&mut self) {
-        if self.force_base || (self.live_slots <= 4_096 && self.node_count <= 4_096) {
-            return;
-        }
-        let value = self.target.clone();
-        self.clear_pending();
-        self.has_pending = true;
-        self.add_slot(
-            0,
-            Slot {
-                op: Op::Replace(value),
-                dead: false,
-                order: 0,
-                index: 0,
-                str: None,
-            },
-        );
-    }
-
-    /// `killSubtree` (`delta/index.ts:437-449`).
-    fn kill_subtree(&mut self, node: usize) {
-        self.kill_here(node);
-        for (_, child) in std::mem::take(&mut self.nodes[node].kids) {
-            self.kill_subtree(child);
-        }
-        for generation in std::mem::take(&mut self.nodes[node].retired_kids) {
-            for (_, child) in generation {
-                self.kill_subtree(child);
-            }
-        }
-    }
-
-    /// `retireKids` (`delta/index.ts:451-456`): splices preserve earlier
-    /// writes but form a barrier for later folding.
-    fn retire_kids(&mut self, node: usize) {
-        if self.nodes[node].kids.is_empty() {
-            return;
-        }
-        let kids = std::mem::take(&mut self.nodes[node].kids);
-        self.nodes[node].retired_kids.push(kids);
-    }
-
-    /// `foldTarget` (`delta/index.ts:461-491`): the deepest live ancestor op
-    /// carrying a payload we can fold a later write into. `s`/`r` carry the
-    /// whole subtree; `p` carries the items it inserted.
-    fn fold_target(&mut self, path: &[Seg]) -> Option<FoldTarget> {
-        let mut at = 0usize;
-        let mut found: Option<(usize, usize, Option<usize>)> = None; // (slot, depth, item)
-        let mut ancestor_max: Option<u64> = None;
-        for depth in 0..path.len() {
-            if let Some((slot, _, _)) = found {
-                let slot_order = self.slots[slot].as_ref().map(|s| s.order).unwrap_or(0);
-                if self.nodes[at]
-                    .last_order
-                    .is_some_and(|order| order > slot_order)
-                {
-                    found = None;
-                }
-            }
-            let slot = self.live_slot(at);
-            if let Some(slot) = slot {
-                let slot_order = self.slots[slot].as_ref().map(|s| s.order).unwrap_or(0);
-                // A fold is sound only if nothing has been recorded at this
-                // path or above it since (delta/index.ts:469-475). Writes to
-                // other branches are irrelevant, which is why this is not
-                // "the most recent op".
-                if ancestor_max.is_none_or(|max| slot_order >= max)
-                    && self.nodes[at].last_order == Some(slot_order)
-                {
-                    let slot_op = self.slots[slot].as_ref().map(|s| &s.op);
-                    match slot_op {
-                        Some(Op::Set { .. }) | Some(Op::Replace(_)) => {
-                            found = Some((slot, depth, None));
-                        }
-                        Some(Op::Splice { index, items, .. }) => {
-                            if let Some(Seg::Index(at_index)) = path.get(depth) {
-                                if *at_index >= *index && *at_index < index + items.len() {
-                                    found = Some((slot, depth + 1, Some(at_index - index)));
-                                }
-                            }
-                        }
-                        _ => {}
-                    }
-                }
-            }
-            if self.nodes[at]
-                .last_order
-                .is_some_and(|order| ancestor_max.is_none_or(|max| order > max))
-            {
-                ancestor_max = self.nodes[at].last_order;
-            }
-            let next = self.nodes[at].kids.get(&path[depth]).copied();
-            let Some(next) = next else { break };
-            at = next;
-        }
-        let (slot, depth, item) = found?;
-        Some(FoldTarget {
-            slot,
-            rest: path[depth..].to_vec(),
-            item,
         })
     }
 
-    /// `foldInto` (`delta/index.ts:493-535`): write `op` into a pending
-    /// payload at `rest`. Returns false when the fold does not apply.
-    fn fold_into(container: &mut JsonValue, rest: &[Seg], op: &Op) -> bool {
-        if rest.is_empty() {
-            return false;
+    /// `sort` with a caller comparator (`tracker.ts:1244-1313`). The
+    /// comparator receives resolved plain values (upstream hands proxies;
+    /// mutating comparators are not representable here).
+    pub fn sort_with(
+        &self,
+        path: &[Seg],
+        mut comparator: impl FnMut(&JsonValue, &JsonValue) -> i32,
+    ) -> Result<(), TrackerError> {
+        if self.settled {
+            return Err(error(TrackerErrorKind::Plain(
+                "Change has already been settled".to_owned(),
+            )));
         }
-        let mut target = container;
-        for segment in &rest[..rest.len() - 1] {
-            if !target.is_object() && !target.is_array() {
-                return false;
-            }
-            let next = match segment {
-                Seg::Key(key) => target.as_object_mut().and_then(|o| o.get_mut(key)),
-                Seg::Index(index) => target.as_array_mut().and_then(|a| a.get_mut(*index)),
-            };
-            let Some(next) = next else { return false };
-            target = next;
-        }
-        if !target.is_object() && !target.is_array() {
-            return false;
-        }
-        let Some(key) = rest.last() else { return false };
-        if let Some(object) = target.as_object_mut() {
-            let Seg::Key(key) = key else { return false };
-            return fold_into_object(object, key, op);
-        }
-        if let Some(array) = target.as_array_mut() {
-            let Seg::Index(index) = key else { return false };
-            return fold_into_array(array, *index, op);
-        }
-        false
+        let mut core = self.lock();
+        assert_writable(&core, self.context)?;
+        let node = self.mutator_node(&mut core, path)?;
+        sort_array(&mut core, self.context, node, &mut comparator);
+        Ok(())
     }
 
-    /// `recordString` (`delta/index.ts:537-590`).
-    fn record_string(&mut self, path: &[Seg], previous: String, value: String) {
-        if self.force_base {
-            return;
+    /// `reverse` (`tracker.ts:1227-1243`).
+    pub fn reverse(&self, path: &[Seg]) -> Result<(), TrackerError> {
+        if self.settled {
+            return Err(error(TrackerErrorKind::Plain(
+                "Change has already been settled".to_owned(),
+            )));
         }
-        self.has_pending = true;
-        // a string inside a pending payload belongs in that payload, as for
-        // any write
-        if let Some(fold) = self.fold_target(path) {
-            let op = Op::Set {
-                path: path.to_owned(),
-                value: JsonValue::String(value.clone()),
-            };
-            if let Some(item) = fold.item {
-                if fold.rest.is_empty() {
-                    if let Some(Op::Splice { items, .. }) = as_op_mut(&mut self.slots[fold.slot]) {
-                        items[item] = JsonValue::String(value);
-                    }
-                    return;
-                }
-                if let Some(Op::Splice { items, .. }) = as_op_mut(&mut self.slots[fold.slot]) {
-                    if Self::fold_into(&mut items[item], &fold.rest, &op) {
-                        return;
-                    }
-                }
-            } else {
-                let payload = payload_mut(&mut self.slots[fold.slot]);
-                if let Some(payload) = payload {
-                    if Self::fold_into(payload, &fold.rest, &op) {
-                        return;
-                    }
-                }
-            }
-        }
-        let at = self.log_node(path);
-        let live = self.live_slot(at);
-        if let Some(live) = live {
-            let anchored = self.slots[live].as_ref().is_some_and(|s| s.str.is_some());
-            if anchored {
-                if let Some(slot) = self.slots[live].as_mut() {
-                    if let Some(str_slot) = &mut slot.str {
-                        str_slot.value = value;
-                    }
-                }
-                return;
-            }
-            let verb = self.slots[live].as_ref().map(|s| s.op.verb());
-            match verb {
-                // a pending set or delete at this path already replaced the
-                // value; keep that op and carry the new value in it rather
-                // than anchoring to it (delta/index.ts:562-578)
-                Some("s") => {
-                    if let Some(slot) = self.slots[live].as_mut() {
-                        if let Op::Set {
-                            value: existing, ..
-                        } = &mut slot.op
-                        {
-                            *existing = JsonValue::String(value);
-                        }
-                    }
-                    return;
-                }
-                Some("r") => {
-                    if let Some(slot) = self.slots[live].as_mut() {
-                        slot.op = Op::Replace(JsonValue::String(value));
-                    }
-                    return;
-                }
-                Some("d") => {
-                    self.kill_here(at);
-                    self.add_slot(
-                        at,
-                        Slot {
-                            op: Op::Set {
-                                path: path.to_owned(),
-                                value: JsonValue::String(value.clone()),
-                            },
-                            dead: false,
-                            order: 0,
-                            index: 0,
-                            str: None,
-                        },
-                    );
-                    return;
-                }
-                // a truncate/append pair from an earlier string diff: both
-                // must go
-                Some(_) => self.kill_here(at),
-                None => {}
-            }
-        }
-        self.kill_subtree(at);
-        self.add_slot(
-            at,
-            Slot {
-                op: Op::Set {
-                    path: path.to_owned(),
-                    value: JsonValue::String(value.clone()),
-                },
-                dead: false,
-                order: 0,
-                index: 0,
-                str: Some(StrSlot {
-                    anchor: previous,
-                    value,
-                }),
-            },
-        );
+        let mut core = self.lock();
+        assert_writable(&core, self.context)?;
+        let node = self.mutator_node(&mut core, path)?;
+        reverse_array(&mut core, self.context, node);
+        Ok(())
     }
 
-    /// `record` (`delta/index.ts:592-709`).
-    fn record(&mut self, op: Op) {
-        if self.force_base {
-            return;
+    /// `fill` (`tracker.ts:1314-1324`).
+    pub fn fill(
+        &self,
+        path: &[Seg],
+        supplied: JsonValue,
+        start: Option<isize>,
+        end: Option<isize>,
+    ) -> Result<(), TrackerError> {
+        if self.settled {
+            return Err(error(TrackerErrorKind::Plain(
+                "Change has already been settled".to_owned(),
+            )));
         }
-        self.has_pending = true;
-        let path: Path = match &op {
-            Op::Replace(_) => Vec::new(),
-            other => other.path().cloned().unwrap_or_default(),
+        let mut core = self.lock();
+        assert_writable(&core, self.context)?;
+        let node = self.mutator_node(&mut core, path)?;
+        let context = self.context;
+        let length = array_length_at(&core, context, node);
+        let start = match start {
+            Some(at) => clamp_index(at, length),
+            None => 0,
         };
-        if let Some(existing) = self.find_log_node(&path) {
-            if let Some(anchored) = self.live_slot(existing) {
-                let is_str = self.slots[anchored]
-                    .as_ref()
-                    .is_some_and(|s| s.str.is_some());
-                if is_str {
-                    match &op {
-                        Op::Append { text, .. } => {
-                            if let Some(slot) = self.slots[anchored].as_mut() {
-                                if let Some(str_slot) = &mut slot.str {
-                                    str_slot.value.push_str(text);
-                                }
-                            }
-                            return;
-                        }
-                        Op::Truncate { count, .. } => {
-                            if let Some(slot) = self.slots[anchored].as_mut() {
-                                if let Some(str_slot) = &mut slot.str {
-                                    let cut = slice_utf16_from(&str_slot.value, *count).to_owned();
-                                    str_slot.value = cut;
-                                }
-                            }
-                            return;
-                        }
-                        Op::Set { value, .. } if value.is_string() => {
-                            if let Some(slot) = self.slots[anchored].as_mut() {
-                                if let Some(str_slot) = &mut slot.str {
-                                    str_slot.value =
-                                        value.as_str().expect("checked above").to_owned();
-                                }
-                            }
-                            return;
-                        }
-                        _ => {}
-                    }
-                    self.kill_subtree(existing);
-                } else if matches!(op.verb(), "s" | "d" | "r") {
-                    // A replacement absorbed into an ancestor payload must
-                    // still invalidate operations already recorded at and
-                    // below its destination (delta/index.ts:613-617).
-                    self.kill_subtree(existing);
-                }
-            } else if matches!(op.verb(), "s" | "d" | "r") {
-                self.kill_subtree(existing);
-            }
+        let end = match end {
+            Some(at) => clamp_index(at, length),
+            None => length,
+        };
+        if end <= start {
+            return Ok(());
         }
-
-        if !path.is_empty() {
-            let fold = self.fold_target(&path);
-            if let Some(fold) = fold {
-                if let Some(item) = fold.item {
-                    if fold.rest.is_empty() {
-                        if let Op::Set { value, .. } = &op {
-                            if let Some(Op::Splice { items, .. }) =
-                                as_op_mut(&mut self.slots[fold.slot])
-                            {
-                                items[item] = clone_json(value);
-                                return;
-                            }
-                        }
-                    } else if let Some(Op::Splice { items, .. }) =
-                        as_op_mut(&mut self.slots[fold.slot])
-                    {
-                        if Self::fold_into(&mut items[item], &fold.rest, &op) {
-                            return;
-                        }
-                    }
-                } else {
-                    let payload = payload_mut(&mut self.slots[fold.slot]);
-                    if let Some(payload) = payload {
-                        if Self::fold_into(payload, &fold.rest, &op) {
-                            return;
-                        }
-                    }
-                }
-            }
-        }
-
-        let at = self.log_node(&path);
-        let live = self.live_slot(at);
-        if let Some(live) = live {
-            let previous_verb = self.slots[live].as_ref().map(|s| s.op.verb());
-            match &op {
-                Op::Append { text, .. } => match previous_verb {
-                    Some("a") => {
-                        if let Some(slot) = self.slots[live].as_mut() {
-                            if let Op::Append { text: existing, .. } = &mut slot.op {
-                                existing.push_str(text);
-                            }
-                        }
-                        return;
-                    }
-                    Some("s") => {
-                        if let Some(slot) = self.slots[live].as_mut() {
-                            if let Op::Set { value, .. } = &mut slot.op {
-                                if value.is_string() {
-                                    let merged = format!(
-                                        "{}{}",
-                                        value.as_str().expect("checked above"),
-                                        text
-                                    );
-                                    *value = JsonValue::String(merged);
-                                    return;
-                                }
-                            }
-                        }
-                    }
-                    Some("r") => {
-                        if let Some(slot) = self.slots[live].as_mut() {
-                            if let Op::Replace(value) = &mut slot.op {
-                                if value.is_string() {
-                                    let merged = format!(
-                                        "{}{}",
-                                        value.as_str().expect("checked above"),
-                                        text
-                                    );
-                                    *value = JsonValue::String(merged);
-                                    return;
-                                }
-                            }
-                        }
-                    }
-                    _ => {}
-                },
-                Op::Truncate { count, .. } => match previous_verb {
-                    Some("s") => {
-                        if let Some(slot) = self.slots[live].as_mut() {
-                            if let Op::Set { value, .. } = &mut slot.op {
-                                if value.is_string() {
-                                    let cut = slice_utf16_from(
-                                        value.as_str().expect("checked above"),
-                                        *count,
-                                    )
-                                    .to_owned();
-                                    *value = JsonValue::String(cut);
-                                    return;
-                                }
-                            }
-                        }
-                    }
-                    Some("r") => {
-                        if let Some(slot) = self.slots[live].as_mut() {
-                            if let Op::Replace(value) = &mut slot.op {
-                                if value.is_string() {
-                                    let cut = slice_utf16_from(
-                                        value.as_str().expect("checked above"),
-                                        *count,
-                                    )
-                                    .to_owned();
-                                    *value = JsonValue::String(cut);
-                                    return;
-                                }
-                            }
-                        }
-                    }
-                    _ => {}
-                },
-                Op::Splice { .. }
-                    if previous_verb == Some("p") && self.coalesce_splices(live, &op) =>
-                {
-                    return;
-                }
-                _ => {}
-            }
-            if matches!(op.verb(), "s" | "d" | "r") {
-                self.kill_here(at);
-            }
-        }
-        if matches!(op.verb(), "s" | "r" | "d") {
-            // Replacements dominate all earlier descendants, including
-            // generations detached by array splices (delta/index.ts:700-703).
-            self.kill_subtree(at);
-        } else if matches!(op.verb(), "p") {
-            self.retire_kids(at);
-        }
-        self.add_slot(
-            at,
-            Slot {
-                op,
-                dead: false,
-                order: 0,
-                index: 0,
-                str: None,
-            },
-        );
+        let items: Vec<JsonValue> = (0..end - start).map(|_| supplied.clone()).collect();
+        let pieces = insert_pieces(&mut core, context, node, items);
+        replace_piece_range(&mut core, context, node, start, end - start, pieces);
+        Ok(())
     }
 
-    /// The `p`+`p` coalescing cases (`delta/index.ts:660-697`). Sound only
-    /// for adjacent recorded operations: a tombstoned operation remains a
-    /// barrier through `lastAddedSlot`.
-    fn coalesce_splices(&mut self, live: usize, op: &Op) -> bool {
-        let Op::Splice {
-            index: op_index,
-            remove: op_remove,
-            items: op_items,
-            ..
-        } = op
-        else {
-            return false;
+    /// `copyWithin` (`tracker.ts:1325-1336`).
+    pub fn copy_within(
+        &self,
+        path: &[Seg],
+        target: isize,
+        start: isize,
+        end: Option<isize>,
+    ) -> Result<(), TrackerError> {
+        if self.settled {
+            return Err(error(TrackerErrorKind::Plain(
+                "Change has already been settled".to_owned(),
+            )));
+        }
+        let mut core = self.lock();
+        assert_writable(&core, self.context)?;
+        let node = self.mutator_node(&mut core, path)?;
+        let context = self.context;
+        let length = array_length_at(&core, context, node);
+        let target = clamp_index(target, length);
+        let start = clamp_index(start, length);
+        let end = match end {
+            Some(at) => clamp_index(at, length),
+            None => length,
         };
-        let Some((previous_index, previous_remove, previous_len)) =
-            self.slots[live].as_ref().and_then(|s| match &s.op {
-                Op::Splice {
-                    index,
-                    remove,
-                    items,
-                    ..
-                } => Some((*index, *remove, items.len())),
-                _ => None,
+        let count = end.saturating_sub(start).min(length - target);
+        let values: Vec<JsonValue> = (0..count)
+            .map(|offset| {
+                get_array_index_value(&core, context, node, start + offset)
+                    .unwrap_or(JsonValue::Null)
             })
-        else {
-            return false;
+            .collect();
+        let pieces = insert_pieces(&mut core, context, node, values);
+        replace_piece_range(&mut core, context, node, target, count, pieces);
+        Ok(())
+    }
+
+    /// The `length` set trap (`setArrayLength` via `setProperty`,
+    /// `tracker.ts:566-569, 1134-1148`).
+    pub fn set_length(&self, path: &[Seg], next: usize) -> Result<(), TrackerError> {
+        if self.settled {
+            return Err(error(TrackerErrorKind::Plain(
+                "Change has already been settled".to_owned(),
+            )));
+        }
+        let mut core = self.lock();
+        assert_writable(&core, self.context)?;
+        let mut failure = None;
+        let node = walk(&mut core, self.context, path, &mut failure)?
+            .ok_or_else(|| type_error("Only array indices and length can be written"))?;
+        if !is_array_base(&core, self.context, node) {
+            return Err(type_error("Only array indices and length can be written"));
+        }
+        set_array_length(&mut core, self.context, node, next);
+        Ok(())
+    }
+
+    /// `change.prepare()` (`tracker.ts:181-200`): freeze the draft, emit
+    /// the operation batch and materialize the resulting revision.
+    /// Consumes the change; the context aborts if emission fails.
+    pub fn prepare(mut self) -> Result<Prepared, TrackerError> {
+        if self.settled {
+            return Err(error(TrackerErrorKind::Plain(
+                "Change has already been settled".to_owned(),
+            )));
+        }
+        self.settled = true;
+        let core = Arc::clone(&self.core);
+        let mut guard = self.lock();
+        let context = self.context;
+        assert_writable(&guard, context)?;
+        guard.contexts[context].status = Status::Prepared;
+        match prepare_context(&mut guard, context) {
+            Ok((base, value, ops)) => Ok(Prepared {
+                core,
+                context,
+                owner: guard.id,
+                base,
+                value,
+                ops,
+                base_revision: guard.contexts[context].base_revision,
+            }),
+            Err(report) => {
+                guard.contexts[context].status = Status::Aborted;
+                clear_context(&mut guard, context);
+                Err(report)
+            }
+        }
+    }
+
+    /// `change.abort()` (`tracker.ts:202-211`).
+    pub fn abort(mut self) {
+        if self.settled {
+            return;
+        }
+        self.settled = true;
+        let mut core = self.lock();
+        abort_context(&mut core, self.context);
+    }
+
+    fn lock(&self) -> MutexGuard<'_, TrackerCore> {
+        self.core
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+    }
+}
+
+/// Port of `Tracker<T>` (`tracker.ts:135-141`).
+#[derive(Clone)]
+pub struct Tracker {
+    core: Arc<Mutex<TrackerCore>>,
+}
+
+impl std::fmt::Debug for Tracker {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Tracker")
+            .field("revision", &self.revision())
+            .finish()
+    }
+}
+
+static NEXT_TRACKER_ID: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+
+impl Tracker {
+    /// `get value` (`tracker.ts:227-229`).
+    pub fn value(&self) -> JsonValue {
+        self.lock().value.clone()
+    }
+
+    /// `get revision` (`tracker.ts:231-233`).
+    pub fn revision(&self) -> u64 {
+        self.lock().revision
+    }
+
+    /// `beginChange()` (`tracker.ts:235-239`).
+    pub fn begin_change(&self) -> Change {
+        let mut core = self.lock();
+        let (base_revision, value) = (core.revision, core.value.clone());
+        let context = core.create_context(false, value.clone(), value, base_revision);
+        Change {
+            core: Arc::clone(&self.core),
+            context,
+            settled: false,
+        }
+    }
+
+    /// `prepareReplace(value)` (`tracker.ts:241-252`).
+    pub fn prepare_replace(&self, value: JsonValue) -> Result<Prepared, TrackerError> {
+        let core_arc = Arc::clone(&self.core);
+        let mut core = self.lock();
+        let (base_revision, base_value) = (core.revision, core.value.clone());
+        let context = core.create_context(true, value, base_value, base_revision);
+        core.contexts[context].status = Status::Prepared;
+        match prepare_context(&mut core, context) {
+            Ok((base, value, ops)) => Ok(Prepared {
+                core: core_arc,
+                context,
+                owner: core.id,
+                base,
+                value,
+                ops,
+                base_revision: core.contexts[context].base_revision,
+            }),
+            Err(report) => {
+                core.contexts[context].status = Status::Aborted;
+                clear_context(&mut core, context);
+                Err(report)
+            }
+        }
+    }
+
+    /// `adopt(prepared)` (`tracker.ts:254-277`): an infallible pointer swap
+    /// upstream; the checks below reproduce its failure contract.
+    pub fn adopt(&self, prepared: Prepared) -> Result<(), TrackerError> {
+        let mut core = self.lock();
+        if prepared.owner != core.id {
+            return Err(error(TrackerErrorKind::Plain(
+                "Prepared change belongs to a different tracker".to_owned(),
+            )));
+        }
+        let context = prepared.context;
+        match core.contexts[context].status {
+            Status::Consumed => {
+                return Err(error(TrackerErrorKind::Plain(
+                    "Prepared change has already been used".to_owned(),
+                )))
+            }
+            Status::Aborted => {
+                return Err(error(TrackerErrorKind::Plain(
+                    "Prepared change has been aborted".to_owned(),
+                )))
+            }
+            Status::Stale => {
+                return Err(error(TrackerErrorKind::Plain(
+                    "Prepared change is stale".to_owned(),
+                )))
+            }
+            Status::Open => {
+                return Err(error(TrackerErrorKind::Plain(
+                    "Prepared change is not ready".to_owned(),
+                )))
+            }
+            Status::Prepared => {}
+        }
+        if core.contexts[context].base_revision != core.revision {
+            core.contexts[context].status = Status::Stale;
+            clear_context(&mut core, context);
+            return Err(error(TrackerErrorKind::Plain(
+                "Prepared change is stale".to_owned(),
+            )));
+        }
+        // Upstream also rejects when `this.#value !== prepared.base` by
+        // identity; over owned trees that condition is unreachable once the
+        // base revision matches (see module docs).
+        core.value = prepared.value;
+        core.contexts[context].status = Status::Consumed;
+        core.revision += 1;
+        invalidate(&mut core, context);
+        Ok(())
+    }
+
+    fn lock(&self) -> MutexGuard<'_, TrackerCore> {
+        self.core
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+    }
+}
+
+/// `track(initial)` (`tracker.ts:320-323`): take immutable ownership of an
+/// alias-free strict-JSON root in O(1). The caller must not mutate
+/// `initial` afterwards (an ownership contract).
+pub fn track(initial: JsonValue) -> Tracker {
+    let id = NEXT_TRACKER_ID.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    Tracker {
+        core: Arc::new(Mutex::new(TrackerCore {
+            id,
+            value: initial,
+            revision: 0,
+            contexts: Vec::new(),
+        })),
+    }
+}
+
+// ─── Error taxonomy ──────────────────────────────────────────────────────────
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) enum TrackerErrorKind {
+    /// Upstream `TypeError`.
+    Type(String),
+    /// Upstream `Error`.
+    Plain(String),
+}
+
+/// Error raised by the tracker surface; [`TrackerError::message`]
+/// reproduces the upstream error `message` byte-for-byte.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TrackerError(pub(crate) TrackerErrorKind);
+
+impl TrackerError {
+    /// The upstream `error.message` text.
+    pub fn message(&self) -> String {
+        match &self.0 {
+            TrackerErrorKind::Type(message) | TrackerErrorKind::Plain(message) => message.clone(),
+        }
+    }
+
+    /// Upstream error class name.
+    pub fn kind(&self) -> &'static str {
+        match &self.0 {
+            TrackerErrorKind::Type(_) => "TypeError",
+            TrackerErrorKind::Plain(_) => "Error",
+        }
+    }
+
+    /// Route a tracker failure into the shared [`DeltaError`] taxonomy.
+    pub fn into_delta(self) -> DeltaError {
+        DeltaError::InvalidOp(self.message())
+    }
+}
+
+impl std::fmt::Display for TrackerError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.message())
+    }
+}
+
+impl std::error::Error for TrackerError {}
+
+impl From<DeltaError> for TrackerError {
+    fn from(report: DeltaError) -> TrackerError {
+        TrackerError(TrackerErrorKind::Type(report.message()))
+    }
+}
+
+fn type_error(message: impl Into<String>) -> TrackerError {
+    TrackerError(TrackerErrorKind::Type(message.into()))
+}
+
+fn error(kind: TrackerErrorKind) -> TrackerError {
+    TrackerError(kind)
+}
+
+// ─── Core state ──────────────────────────────────────────────────────────────
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Status {
+    Open,
+    Prepared,
+    Consumed,
+    Aborted,
+    Stale,
+}
+
+/// What the parent's position pointed at when a node was created. Upstream
+/// compares container identity; owned trees stand in with a slot/epoch pair
+/// (same slot + epoch means the same stored container).
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum Origin {
+    /// The parent's base value at the position (no overriding write).
+    Base,
+    /// A stored slot as of a particular write epoch.
+    Slot { slot: usize, epoch: u64 },
+    /// A scalar or deletion displaced the position; no container matches.
+    Scalar,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum ParentKind {
+    Object,
+    BaseEntry,
+    InsertEntry,
+}
+
+#[derive(Clone, Debug)]
+enum ParentKey {
+    Key(String),
+    Source(usize),
+}
+
+#[derive(Clone, Debug)]
+enum Piece {
+    Base {
+        start: usize,
+        length: usize,
+        step: i64,
+    },
+    Insert {
+        source: u64,
+        start: usize,
+        length: usize,
+        step: i64,
+    },
+}
+
+impl Piece {
+    fn length(&self) -> usize {
+        match self {
+            Piece::Base { length, .. } | Piece::Insert { length, .. } => *length,
+        }
+    }
+
+    fn start(&self) -> usize {
+        match self {
+            Piece::Base { start, .. } | Piece::Insert { start, .. } => *start,
+        }
+    }
+
+    fn step(&self) -> i64 {
+        match self {
+            Piece::Base { step, .. } | Piece::Insert { step, .. } => *step,
+        }
+    }
+
+    fn set_length(&mut self, length: usize) {
+        match self {
+            Piece::Base { length: at, .. } | Piece::Insert { length: at, .. } => *at = length,
+        }
+    }
+
+    fn set_start(&mut self, start: usize) {
+        match self {
+            Piece::Base { start: at, .. } | Piece::Insert { start: at, .. } => *at = start,
+        }
+    }
+
+    fn set_step(&mut self, step: i64) {
+        match self {
+            Piece::Base { step: at, .. } | Piece::Insert { step: at, .. } => *at = step,
+        }
+    }
+
+    fn is_base(&self) -> bool {
+        matches!(self, Piece::Base { .. })
+    }
+}
+
+/// An array-entry reference: base content, an inline primitive, or a stored
+/// slot at a write epoch (`entryValueAt`, `tracker.ts:986-997`).
+#[derive(Clone, Debug)]
+enum EntryRef {
+    Base,
+    Primitive(JsonValue),
+    Slot { slot: usize, epoch: u64 },
+}
+
+impl EntryRef {
+    fn from(&self) -> Origin {
+        match self {
+            EntryRef::Base => Origin::Base,
+            EntryRef::Primitive(_) => Origin::Scalar,
+            EntryRef::Slot { slot, epoch } => Origin::Slot {
+                slot: *slot,
+                epoch: *epoch,
+            },
+        }
+    }
+}
+
+/// A stored write value: primitives inline (JS value-identity over them is
+/// value equality), containers in the slot arena.
+#[derive(Clone, Debug)]
+enum WriteValue {
+    Primitive(JsonValue),
+    Slot { slot: usize, epoch: u64 },
+}
+
+impl WriteValue {
+    fn from(&self) -> Origin {
+        match self {
+            WriteValue::Primitive(_) => Origin::Scalar,
+            WriteValue::Slot { slot, epoch } => Origin::Slot {
+                slot: *slot,
+                epoch: *epoch,
+            },
+        }
+    }
+}
+
+struct ArrayPlan {
+    remove_runs: Vec<usize>,
+    permutation: Option<Vec<usize>>,
+    insert_runs: Vec<usize>,
+}
+
+#[derive(Default)]
+struct ArrayOverlay {
+    pieces: Vec<Piece>,
+    /// Insertion-ordered `baseOverrides` (`tracker.ts:45`).
+    base_overrides: Vec<(usize, EntryRef)>,
+    /// Insertion-ordered `insertOverrides` (`tracker.ts:46`): source id →
+    /// ordered (source index → ref).
+    insert_overrides: Vec<(u64, Vec<(usize, EntryRef)>)>,
+    structural: bool,
+    generation: u64,
+    plan: Option<ArrayPlan>,
+}
+
+impl ArrayOverlay {
+    /// `tracker.ts:784-785`: a fresh overlay starts with one base piece
+    /// covering the whole base array.
+    fn for_base(base: &JsonValue) -> ArrayOverlay {
+        let mut overlay = ArrayOverlay::default();
+        if let Some(items) = base.as_array() {
+            if !items.is_empty() {
+                overlay.pieces = vec![Piece::Base {
+                    start: 0,
+                    length: items.len(),
+                    step: 1,
+                }];
+            }
+        }
+        overlay
+    }
+}
+
+struct OverlayNode {
+    base: JsonValue,
+    parent: Option<usize>,
+    parent_kind: ParentKind,
+    parent_key: ParentKey,
+    parent_source: Option<u64>,
+    parent_placement: bool,
+    from: Origin,
+    write_key: Option<String>,
+    write_value: Option<WriteValue>,
+    writes: Vec<(String, WriteValue)>,
+    delete_key: Option<String>,
+    deletes: Vec<String>,
+    readded: Vec<String>,
+    array: ArrayOverlay,
+    dirty: bool,
+    subtree_dirty: bool,
+    /// Child nodes created through reads at object keys.
+    child_keys: HashMap<String, usize>,
+    /// Child nodes created through array entries:
+    /// (is-base-entry, source id, source index) → node.
+    child_entries: HashMap<(bool, u64, usize), usize>,
+}
+
+struct Overlay {
+    root: usize,
+    nodes: Vec<OverlayNode>,
+    stored: Vec<Option<JsonValue>>,
+    epochs: Vec<u64>,
+    next_epoch: u64,
+    next_source: u64,
+    /// Insert sources (`InsertSource.refs`): `None` once merged away.
+    sources: Vec<Option<Vec<EntryRef>>>,
+    dirty: Vec<usize>,
+    replacement: bool,
+    replacement_noop: bool,
+    base_value: JsonValue,
+    simple_object_materialization: bool,
+    ops: Option<Vec<Op>>,
+}
+
+impl Overlay {
+    /// `storeValue` (`tracker.ts:473-478`): primitives inline, containers
+    /// in fresh slots.
+    fn store(&mut self, value: JsonValue) -> EntryRef {
+        if value.is_object() || value.is_array() {
+            let slot = self.stored.len();
+            self.stored.push(Some(value));
+            self.epochs.push(self.next_epoch);
+            self.next_epoch += 1;
+            EntryRef::Slot {
+                slot,
+                epoch: self.next_epoch - 1,
+            }
+        } else {
+            EntryRef::Primitive(value)
+        }
+    }
+
+    /// `replaceStoredValue` (`tracker.ts:484-494`): replace slot content in
+    /// place (a different object upstream → epoch bump).
+    fn replace_slot(&mut self, slot: usize, value: JsonValue) -> EntryRef {
+        self.stored[slot] = Some(value);
+        self.epochs[slot] = self.next_epoch;
+        self.next_epoch += 1;
+        EntryRef::Slot {
+            slot,
+            epoch: self.next_epoch - 1,
+        }
+    }
+
+    /// `releaseStoredValue` (`tracker.ts:496-498`).
+    fn release_slot(&mut self, slot: usize) {
+        self.stored[slot] = None;
+        self.epochs[slot] = self.next_epoch;
+        self.next_epoch += 1;
+    }
+
+    fn slot_value(&self, slot: usize) -> JsonValue {
+        self.stored[slot].clone().unwrap_or(JsonValue::Null)
+    }
+
+    /// `replaceStoredValue` semantics for a position with an optional
+    /// existing slot: container values reuse the slot (epoch bump),
+    /// scalars release it.
+    fn overwrite(&mut self, existing_slot: Option<usize>, value: JsonValue) -> EntryRef {
+        let is_container = value.is_object() || value.is_array();
+        match (existing_slot, is_container) {
+            (Some(slot), true) => self.replace_slot(slot, value),
+            (Some(slot), false) => {
+                self.release_slot(slot);
+                EntryRef::Primitive(value)
+            }
+            (None, _) => self.store(value),
+        }
+    }
+}
+
+struct ContextCell {
+    status: Status,
+    base_revision: u64,
+    overlay: Option<Overlay>,
+}
+
+struct TrackerCore {
+    id: u64,
+    value: JsonValue,
+    revision: u64,
+    contexts: Vec<ContextCell>,
+}
+
+impl TrackerCore {
+    /// `createContext` (`tracker.ts:351-380`).
+    fn create_context(
+        &mut self,
+        replacement: bool,
+        root: JsonValue,
+        base: JsonValue,
+        base_revision: u64,
+    ) -> usize {
+        let mut overlay = Overlay {
+            root: 0,
+            nodes: Vec::new(),
+            stored: Vec::new(),
+            epochs: Vec::new(),
+            next_epoch: 0,
+            next_source: 0,
+            sources: Vec::new(),
+            dirty: Vec::new(),
+            replacement,
+            replacement_noop: false,
+            base_value: base,
+            simple_object_materialization: false,
+            ops: None,
         };
-        let last_added = self.last_added_slot == Some(live);
-        if previous_remove == 0
-            && *op_remove == 0
-            && previous_index + previous_len == *op_index
-            && last_added
-        {
-            if let Some(Op::Splice { items, .. }) = as_op_mut(&mut self.slots[live]) {
-                items.extend(op_items.iter().cloned());
-            }
-            return true;
-        }
-        if previous_remove == 0
-            && last_added
-            && *op_index >= previous_index
-            && op_index + op_remove <= previous_index + previous_len
-        {
-            let at = op_index - previous_index;
-            let now_empty = {
-                let Some(Op::Splice { items, .. }) = as_op_mut(&mut self.slots[live]) else {
-                    return false;
-                };
-                splice_clamped(items, at, *op_remove, op_items);
-                items.is_empty()
-            };
-            if now_empty && previous_remove == 0 {
-                self.kill_slot(live);
-            }
-            return true;
-        }
-        if *op_remove > 0
-            && op_items.is_empty()
-            && previous_len > 0
-            && last_added
-            && *op_index >= previous_index
-        {
-            let from = op_index - previous_index;
-            if from + op_remove == previous_len {
-                let new_len = from;
-                let now_empty = {
-                    let Some(Op::Splice { items, .. }) = as_op_mut(&mut self.slots[live]) else {
-                        return false;
-                    };
-                    items.truncate(new_len);
-                    items.is_empty()
-                };
-                if now_empty && previous_remove == 0 {
-                    self.kill_slot(live);
-                }
-                return true;
-            }
-        }
-        false
-    }
-
-    /// `diffInto` (`delta/index.ts:717-757`): local diff used when a whole
-    /// container is assigned; string leaves go through
-    /// [`Tracker::record_string`]. Note: upstream iterates object keys in
-    /// insertion order, the port in sorted order — value-equivalent, and the
-    /// oracle scenarios build multi-key objects in sorted order (M6 report D1).
-    fn diff_into(&mut self, before: JsonValue, after: JsonValue, at: &mut Vec<Seg>) {
-        if self.force_base {
-            return;
-        }
-        self.has_pending = true;
-        if before == after {
-            return;
-        }
-        match (&before, &after) {
-            (JsonValue::String(before), JsonValue::String(after)) => {
-                self.record_string(at, before.clone(), after.clone());
-                return;
-            }
-            (JsonValue::Array(before), JsonValue::Array(after)) if before.len() == after.len() => {
-                for (index, item) in after.iter().enumerate() {
-                    let previous = before[index].clone();
-                    at.push(Seg::Index(index));
-                    self.diff_into(previous, item.clone(), at);
-                    at.pop();
-                }
-                return;
-            }
-            (JsonValue::Object(before), JsonValue::Object(after)) => {
-                if before
-                    .keys()
-                    .chain(after.keys())
-                    .any(|key| is_reserved(key))
-                {
-                    self.record(Op::Set {
-                        path: at.clone(),
-                        value: JsonValue::Object(after.clone()),
-                    });
-                    return;
-                }
-                for (key, value) in after {
-                    at.push(Seg::Key(key.clone()));
-                    match before.get(key) {
-                        Some(previous) => self.diff_into(previous.clone(), value.clone(), at),
-                        None => self.record(Op::Set {
-                            path: at.clone(),
-                            value: value.clone(),
-                        }),
-                    }
-                    at.pop();
-                }
-                for key in before.keys() {
-                    if !after.contains_key(key) {
-                        let mut path = at.clone();
-                        path.push(Seg::Key(key.clone()));
-                        self.record(Op::Delete { path });
-                    }
-                }
-                return;
-            }
-            _ => {}
-        }
-        // arrays of differing length, and everything else: chord's own diff
-        let mut out = Vec::new();
-        diff_value(Some(&before), Some(&after), at, self.scan, &mut out);
-        for op in out {
-            self.record(op);
-        }
+        let root_node = create_node(
+            &mut overlay,
+            root,
+            None,
+            ParentKind::Object,
+            ParentKey::Key(String::new()),
+            None,
+            false,
+            Origin::Base,
+        );
+        overlay.root = root_node;
+        self.contexts.push(ContextCell {
+            status: Status::Open,
+            base_revision,
+            overlay: Some(overlay),
+        });
+        self.contexts.len() - 1
     }
 }
 
-struct FoldTarget {
-    slot: usize,
-    rest: Path,
-    item: Option<usize>,
+fn live(core: &TrackerCore, context: usize) -> Result<&Overlay, TrackerError> {
+    core.contexts
+        .get(context)
+        .and_then(|cell| cell.overlay.as_ref())
+        .ok_or_else(|| type_error("Cannot use a settled overlay"))
 }
 
-fn as_op_mut(slot: &mut Option<Slot>) -> Option<&mut Op> {
-    slot.as_mut().map(|slot| &mut slot.op)
+fn live_mut(core: &mut TrackerCore, context: usize) -> Result<&mut Overlay, TrackerError> {
+    core.contexts
+        .get_mut(context)
+        .and_then(|cell| cell.overlay.as_mut())
+        .ok_or_else(|| type_error("Cannot use a settled overlay"))
 }
 
-/// The payload a fold writes into: an `r` value or an `s` value
-/// (`delta/index.ts:552,631`); `p` slots carry no single payload, so their
-/// folds go through the item branch.
-fn payload_mut(slot: &mut Option<Slot>) -> Option<&mut JsonValue> {
-    slot.as_mut().and_then(|slot| match &mut slot.op {
-        Op::Replace(value) => Some(value),
-        Op::Set { value, .. } => Some(value),
-        _ => None,
-    })
-}
-
-fn fold_into_object(object: &mut serde_json::Map<String, JsonValue>, key: &str, op: &Op) -> bool {
-    match op {
-        Op::Set { value, .. } => {
-            if key == "__proto__" {
-                return false;
-            }
-            object.insert(key.to_owned(), value.clone());
-            true
+/// `isSettledContext` (`tracker.ts:506-513`).
+fn is_settled(core: &TrackerCore, context: usize) -> bool {
+    match core.contexts.get(context) {
+        Some(cell) => {
+            matches!(
+                cell.status,
+                Status::Consumed | Status::Aborted | Status::Stale
+            ) || cell.overlay.is_none()
         }
-        Op::Delete { .. } => {
-            object.shift_remove(key);
-            true
-        }
-        Op::Append { text, .. } => match object.get(key).and_then(JsonValue::as_str) {
-            Some(current) => {
-                object.insert(
-                    key.to_owned(),
-                    JsonValue::String(format!("{current}{text}")),
-                );
-                true
-            }
-            None => false,
-        },
-        Op::Truncate { count, .. } => match object.get(key).and_then(JsonValue::as_str) {
-            Some(current) => {
-                let cut = slice_utf16_from(current, *count).to_owned();
-                object.insert(key.to_owned(), JsonValue::String(cut));
-                true
-            }
-            None => false,
-        },
-        Op::Splice {
-            index,
-            remove,
-            items,
-            ..
-        } => match object.get_mut(key).and_then(JsonValue::as_array_mut) {
-            Some(array) => {
-                splice_clamped(array, *index, *remove, items);
-                true
-            }
-            None => false,
-        },
-        Op::Replace(_) => false,
+        None => true,
     }
 }
 
-fn fold_into_array(array: &mut Vec<JsonValue>, index: usize, op: &Op) -> bool {
-    match op {
-        Op::Set { value, .. } => {
-            if index > array.len() {
-                return false;
-            }
-            if index == array.len() {
-                array.push(value.clone());
-            } else {
-                array[index] = value.clone();
-            }
-            true
-        }
-        Op::Delete { .. } => {
-            if index >= array.len() {
-                return false;
-            }
-            array.remove(index);
-            true
-        }
-        Op::Append { text, .. } => match array.get(index).and_then(JsonValue::as_str) {
-            Some(current) => {
-                array[index] = JsonValue::String(format!("{current}{text}"));
-                true
-            }
-            None => false,
-        },
-        Op::Truncate { count, .. } => match array.get(index).and_then(JsonValue::as_str) {
-            Some(current) => {
-                let cut = slice_utf16_from(current, *count).to_owned();
-                array[index] = JsonValue::String(cut);
-                true
-            }
-            None => false,
-        },
-        Op::Splice {
-            index: at,
-            remove,
-            items,
-            ..
-        } => {
-            splice_clamped(array, *at, *remove, items);
-            true
-        }
-        Op::Replace(_) => false,
-    }
-}
-
-/// `guard` (`delta/index.ts:759-763`): reject reserved path segments. Symbols
-/// have no Rust representation; the typed [`Seg`] rules them out.
-fn guard(path: &[Seg]) -> Result<(), DeltaError> {
-    for segment in path {
-        if let Seg::Key(key) = segment {
-            if is_reserved(key) {
-                return Err(DeltaError::UnsafePath {
-                    segment: key.clone(),
-                });
-            }
-        }
+/// `assertReadable` (`tracker.ts:515-517`).
+fn assert_readable(core: &TrackerCore, context: usize) -> Result<(), TrackerError> {
+    if is_settled(core, context) {
+        return Err(type_error("Cannot use a settled overlay"));
     }
     Ok(())
 }
 
-/// Immutable walk to the container at `path` (the root for an empty path).
-fn read_container<'a>(target: &'a JsonValue, path: &[Seg]) -> Result<&'a JsonValue, DeltaError> {
-    let mut node = target;
-    for seg in path {
-        node = match (node, seg) {
-            (JsonValue::Object(object), Seg::Key(key)) => object
-                .get(key)
-                .ok_or_else(|| unresolvable_container(path))?,
-            (JsonValue::Array(array), Seg::Index(index)) => array
-                .get(*index)
-                .ok_or_else(|| unresolvable_container(path))?,
-            _ => return Err(unresolvable_container(path)),
-        };
+/// `assertWritable` (`tracker.ts:519-522`).
+fn assert_writable(core: &TrackerCore, context: usize) -> Result<(), TrackerError> {
+    assert_readable(core, context)?;
+    if core.contexts[context].status != Status::Open {
+        return Err(type_error("Prepared overlays are read-only"));
     }
-    Ok(node)
+    Ok(())
 }
 
-/// Own-property read over a container (the `Object.hasOwn` guards upstream).
-fn read_own<'b>(parent: &'b JsonValue, key: &Seg) -> Option<&'b JsonValue> {
-    match (parent, key) {
-        (JsonValue::Object(object), Seg::Key(key)) => object.get(key),
-        (JsonValue::Array(array), Seg::Index(index)) => array.get(*index),
-        _ => None,
-    }
+fn is_array_base(core: &TrackerCore, context: usize, node: usize) -> bool {
+    live(core, context)
+        .map(|overlay| overlay.nodes[node].base.is_array())
+        .unwrap_or(false)
 }
 
-/// Own-property write over a container.
-fn write_own(parent: &mut JsonValue, key: &Seg, value: JsonValue) {
-    match (parent, key) {
-        (JsonValue::Object(object), Seg::Key(key)) => {
-            object.insert(key.clone(), value);
-        }
-        (JsonValue::Array(array), Seg::Index(index)) => {
-            if *index == array.len() {
-                array.push(value);
-            } else {
-                array[*index] = value;
+// ─── Node creation and path walking ──────────────────────────────────────────
+
+/// `createNode` (`tracker.ts:432-463`) over per-position nodes.
+#[allow(clippy::too_many_arguments)]
+fn create_node(
+    overlay: &mut Overlay,
+    base: JsonValue,
+    parent: Option<usize>,
+    parent_kind: ParentKind,
+    parent_key: ParentKey,
+    parent_source: Option<u64>,
+    parent_placement: bool,
+    from: Origin,
+) -> usize {
+    overlay.nodes.push(OverlayNode {
+        array: ArrayOverlay::for_base(&base),
+        base,
+        parent,
+        parent_kind,
+        parent_key,
+        parent_source,
+        parent_placement,
+        from,
+        write_key: None,
+        write_value: None,
+        writes: Vec::new(),
+        delete_key: None,
+        deletes: Vec::new(),
+        readded: Vec::new(),
+        dirty: false,
+        subtree_dirty: false,
+        child_keys: HashMap::new(),
+        child_entries: HashMap::new(),
+    });
+    overlay.nodes.len() - 1
+}
+
+/// Walk `path` from the overlay root, creating nodes for containers reached
+/// along the way (the `getProperty`/`getArrayIndex` + `createNode` chain).
+/// `None` where an intermediate does not resolve to a container, with
+/// `failure` describing what the walk landed on (mirrors the JS values the
+/// proxy reads return, which drive the runtime `TypeError` messages).
+pub(crate) enum WalkFailure {
+    Undefined,
+    Null,
+    Primitive(JsonValue),
+}
+
+fn walk(
+    core: &mut TrackerCore,
+    context: usize,
+    path: &[Seg],
+    failure: &mut Option<WalkFailure>,
+) -> Result<Option<usize>, TrackerError> {
+    let mut current = live(core, context)?.root;
+    for segment in path {
+        match segment {
+            Seg::Key(key) => {
+                if live(core, context)?.nodes[current].base.is_array() {
+                    // String members of arrays resolve through
+                    // `Array.prototype` upstream; the draft surface cannot
+                    // address them.
+                    *failure = Some(WalkFailure::Undefined);
+                    return Ok(None);
+                }
+                if !object_has(core, context, current, key)? {
+                    *failure = Some(WalkFailure::Undefined);
+                    return Ok(None);
+                }
+                let value = read_object_position(core, context, current, key)?;
+                let Some(value) = value else {
+                    *failure = Some(WalkFailure::Undefined);
+                    return Ok(None);
+                };
+                if value.is_null() {
+                    *failure = Some(WalkFailure::Null);
+                    return Ok(None);
+                }
+                if !value.is_object() && !value.is_array() {
+                    *failure = Some(WalkFailure::Primitive(value));
+                    return Ok(None);
+                }
+                current = child_for_key(core, context, current, key.clone())?;
+            }
+            Seg::Index(index) => {
+                {
+                    let overlay = live(core, context)?;
+                    if !overlay.nodes[current].base.is_array() {
+                        *failure = Some(WalkFailure::Undefined);
+                        return Ok(None);
+                    }
+                    if *index >= array_length(overlay, current) {
+                        *failure = Some(WalkFailure::Undefined);
+                        return Ok(None);
+                    }
+                }
+                let (source, source_index, from, placement) = {
+                    let overlay = live(core, context)?;
+                    let (source, source_index) = locate_piece(overlay, current, *index);
+                    let reference = entry_ref(overlay, current, source, source_index);
+                    let placement = match source {
+                        None => matches!(reference, EntryRef::Slot { .. }),
+                        Some(_) => true,
+                    };
+                    (source, source_index, reference.from(), placement)
+                };
+                current = child_for_entry(
+                    core,
+                    context,
+                    current,
+                    source,
+                    source_index,
+                    from,
+                    placement,
+                )?;
             }
         }
-        _ => {}
+    }
+    Ok(Some(current))
+}
+
+/// Reuse a cached child node for an object-key position when its `from`
+/// still matches; otherwise create one (upstream `createNode` keyed by the
+/// base container object).
+fn child_for_key(
+    core: &mut TrackerCore,
+    context: usize,
+    parent: usize,
+    key: String,
+) -> Result<usize, TrackerError> {
+    let from = position_from(core, context, parent, &key)?;
+    {
+        let overlay = live(core, context)?;
+        if let Some(&child) = overlay.nodes[parent].child_keys.get(&key) {
+            if overlay.nodes[child].from == from {
+                return Ok(child);
+            }
+        }
+    }
+    let base = read_object_position(core, context, parent, &key)?.unwrap_or(JsonValue::Null);
+    let placement = find_write(&live(core, context)?.nodes[parent], &key).is_some();
+    let child = {
+        let overlay = live_mut(core, context)?;
+        create_node(
+            overlay,
+            base,
+            Some(parent),
+            ParentKind::Object,
+            ParentKey::Key(key.clone()),
+            None,
+            placement,
+            from,
+        )
+    };
+    live_mut(core, context)?.nodes[parent]
+        .child_keys
+        .insert(key, child);
+    Ok(child)
+}
+
+fn child_for_entry(
+    core: &mut TrackerCore,
+    context: usize,
+    parent: usize,
+    source: Option<u64>,
+    source_index: usize,
+    from: Origin,
+    placement: bool,
+) -> Result<usize, TrackerError> {
+    let cache_key = (source.is_none(), source.unwrap_or(0), source_index);
+    {
+        let overlay = live(core, context)?;
+        if let Some(&child) = overlay.nodes[parent].child_entries.get(&cache_key) {
+            if overlay.nodes[child].from == from {
+                return Ok(child);
+            }
+        }
+    }
+    let base = read_entry_position(core, context, parent, source, source_index)?
+        .unwrap_or(JsonValue::Null);
+    let (parent_kind, parent_key, parent_source) = match source {
+        None => (ParentKind::BaseEntry, ParentKey::Source(source_index), None),
+        Some(source) => (
+            ParentKind::InsertEntry,
+            ParentKey::Source(source_index),
+            Some(source),
+        ),
+    };
+    let child = {
+        let overlay = live_mut(core, context)?;
+        create_node(
+            overlay,
+            base,
+            Some(parent),
+            parent_kind,
+            parent_key,
+            parent_source,
+            placement,
+            from,
+        )
+    };
+    live_mut(core, context)?.nodes[parent]
+        .child_entries
+        .insert(cache_key, child);
+    Ok(child)
+}
+
+// ─── Object overlay records ──────────────────────────────────────────────────
+
+fn find_write(node: &OverlayNode, key: &str) -> Option<WriteValue> {
+    if node.write_key.as_deref() == Some(key) {
+        return node.write_value.clone();
+    }
+    node.writes
+        .iter()
+        .find(|(name, _)| name == key)
+        .map(|(_, value)| value.clone())
+}
+
+fn is_object_deleted(node: &OverlayNode, key: &str) -> bool {
+    node.delete_key.as_deref() == Some(key) || node.deletes.iter().any(|at| at == key)
+}
+
+/// `objectHas` (`tracker.ts:749-752`).
+fn object_has(
+    core: &TrackerCore,
+    context: usize,
+    node: usize,
+    key: &str,
+) -> Result<bool, TrackerError> {
+    let overlay = live(core, context)?;
+    let node_ref = &overlay.nodes[node];
+    if is_object_deleted(node_ref, key) {
+        return Ok(false);
+    }
+    Ok(find_write(node_ref, key).is_some()
+        || node_ref
+            .base
+            .as_object()
+            .is_some_and(|object| object.contains_key(key)))
+}
+
+/// What the position currently points to as a [`From`].
+fn position_from(
+    core: &TrackerCore,
+    context: usize,
+    node: usize,
+    key: &str,
+) -> Result<Origin, TrackerError> {
+    let overlay = live(core, context)?;
+    if let Some(write) = find_write(&overlay.nodes[node], key) {
+        return Ok(write.from());
+    }
+    Ok(Origin::Base)
+}
+
+/// Read the current overlay value at an object position; `None` is
+/// upstream `undefined` (absent or deleted).
+fn read_object_position(
+    core: &TrackerCore,
+    context: usize,
+    node: usize,
+    key: &str,
+) -> Result<Option<JsonValue>, TrackerError> {
+    let overlay = live(core, context)?;
+    let node_ref = &overlay.nodes[node];
+    if is_object_deleted(node_ref, key) {
+        return Ok(None);
+    }
+    if let Some(write) = find_write(node_ref, key) {
+        return Ok(Some(match write {
+            WriteValue::Primitive(value) => value,
+            WriteValue::Slot { slot, .. } => overlay.slot_value(slot),
+        }));
+    }
+    Ok(node_ref
+        .base
+        .as_object()
+        .and_then(|object| object.get(key))
+        .cloned())
+}
+
+/// Read the current overlay value at an array entry.
+fn read_entry_position(
+    core: &TrackerCore,
+    context: usize,
+    node: usize,
+    source: Option<u64>,
+    source_index: usize,
+) -> Result<Option<JsonValue>, TrackerError> {
+    let overlay = live(core, context)?;
+    Ok(match entry_ref(overlay, node, source, source_index) {
+        EntryRef::Base => overlay.nodes[node]
+            .base
+            .as_array()
+            .and_then(|array| array.get(source_index))
+            .cloned(),
+        EntryRef::Primitive(value) => Some(value),
+        EntryRef::Slot { slot, .. } => Some(overlay.slot_value(slot)),
+    })
+}
+
+/// `entryValueAt` (`tracker.ts:986-997`).
+fn entry_ref(overlay: &Overlay, node: usize, source: Option<u64>, source_index: usize) -> EntryRef {
+    if source.is_none() {
+        if let Some((_, reference)) = overlay.nodes[node]
+            .array
+            .base_overrides
+            .iter()
+            .find(|(at, _)| *at == source_index)
+        {
+            return reference.clone();
+        }
+        return match overlay.nodes[node]
+            .base
+            .as_array()
+            .and_then(|array| array.get(source_index))
+        {
+            Some(value) if value.is_object() || value.is_array() => EntryRef::Base,
+            Some(value) => EntryRef::Primitive(value.clone()),
+            None => EntryRef::Primitive(JsonValue::Null),
+        };
+    }
+    let source = source.expect("checked above");
+    if let Some((_, overrides)) = overlay.nodes[node]
+        .array
+        .insert_overrides
+        .iter()
+        .find(|(at, _)| *at == source)
+    {
+        if let Some((_, reference)) = overrides.iter().find(|(at, _)| *at == source_index) {
+            return reference.clone();
+        }
+    }
+    match overlay.sources[source as usize]
+        .as_ref()
+        .and_then(|refs| refs.get(source_index))
+    {
+        Some(EntryRef::Slot { slot, epoch }) => EntryRef::Slot {
+            slot: *slot,
+            epoch: *epoch,
+        },
+        Some(EntryRef::Primitive(value)) => EntryRef::Primitive(value.clone()),
+        _ => EntryRef::Primitive(JsonValue::Null),
     }
 }
 
-/// Mutable variant of [`read_container`].
-fn read_container_mut<'a>(
-    target: &'a mut JsonValue,
+/// `setObjectWrite` (`tracker.ts:689-711`) with
+/// `storeValue`/`replaceStoredValue` slot reuse.
+fn set_object_write(overlay: &mut Overlay, node: usize, key: String, value: JsonValue) {
+    let existing_slot = find_write(&overlay.nodes[node], &key).and_then(|write| match write {
+        WriteValue::Slot { slot, .. } => Some(slot),
+        WriteValue::Primitive(_) => None,
+    });
+    let reference = overlay.overwrite(existing_slot, value);
+    let write = match reference {
+        EntryRef::Primitive(value) => WriteValue::Primitive(value),
+        EntryRef::Slot { slot, epoch } => WriteValue::Slot { slot, epoch },
+        EntryRef::Base => unreachable!("overwrite never returns Base"),
+    };
+    let node_ref = &mut overlay.nodes[node];
+    if !node_ref.writes.is_empty() {
+        match node_ref.writes.iter().position(|(name, _)| name == &key) {
+            Some(at) => node_ref.writes[at].1 = write,
+            None => node_ref.writes.push((key, write)),
+        }
+        return;
+    }
+    match &node_ref.write_key {
+        Some(existing) if existing != &key => {
+            let previous_key = node_ref.write_key.take().expect("checked above");
+            let previous_value = node_ref.write_value.take().expect("checked above");
+            node_ref.writes.push((previous_key, previous_value));
+            node_ref.writes.push((key, write));
+        }
+        _ => {
+            node_ref.write_key = Some(key);
+            node_ref.write_value = Some(write);
+        }
+    }
+}
+
+/// `deleteObjectWrite` (`tracker.ts:713-723`).
+fn delete_object_write(overlay: &mut Overlay, node: usize, key: &str) {
+    if overlay.nodes[node].write_key.as_deref() == Some(key) {
+        if let Some(WriteValue::Slot { slot, .. }) = overlay.nodes[node].write_value.take() {
+            overlay.release_slot(slot);
+        }
+        overlay.nodes[node].write_key = None;
+        return;
+    }
+    if let Some(at) = overlay.nodes[node]
+        .writes
+        .iter()
+        .position(|(name, _)| name == key)
+    {
+        if let WriteValue::Slot { slot, .. } = overlay.nodes[node].writes.remove(at).1 {
+            overlay.release_slot(slot);
+        }
+    }
+}
+
+/// `setObjectDeletion` (`tracker.ts:729-742`).
+fn set_object_deletion(node: &mut OverlayNode, key: String) {
+    if !node.deletes.is_empty() {
+        if !node.deletes.contains(&key) {
+            node.deletes.push(key);
+        }
+        return;
+    }
+    match &node.delete_key {
+        Some(existing) if existing != &key => {
+            let previous = node.delete_key.take().expect("checked above");
+            node.deletes = vec![previous, key];
+        }
+        _ => node.delete_key = Some(key),
+    }
+}
+
+/// `deleteObjectDeletion` (`tracker.ts:744-747`).
+fn delete_object_deletion(node: &mut OverlayNode, key: &str) {
+    if node.delete_key.as_deref() == Some(key) {
+        node.delete_key = None;
+    } else {
+        node.deletes.retain(|at| at != key);
+    }
+}
+
+/// The `set` trap over objects and arrays (`setProperty`,
+/// `tracker.ts:563-591`).
+fn set_property(
+    core: &mut TrackerCore,
+    context: usize,
+    node: usize,
+    key: Seg,
+    value: JsonValue,
+) -> Result<(), TrackerError> {
+    if is_array_base(core, context, node) {
+        return match key {
+            Seg::Key(_) => Err(type_error("Only array indices and length can be written")),
+            Seg::Index(index) => {
+                let length = array_length_at(core, context, node);
+                if index > length {
+                    return Err(type_error("Overlay arrays cannot contain holes"));
+                }
+                set_array_index(core, context, node, index, value);
+                Ok(())
+            }
+        };
+    }
+    let Seg::Key(key) = key else {
+        return Err(type_error("Symbol writes are not supported"));
+    };
+    let was_deleted = {
+        let overlay = live(core, context)?;
+        is_object_deleted(&overlay.nodes[node], &key)
+    };
+    if !was_deleted {
+        // `!isContainer(stored) && current === stored` for primitives.
+        let current = {
+            let overlay = live(core, context)?;
+            let node_ref = &overlay.nodes[node];
+            match find_write(node_ref, &key) {
+                Some(WriteValue::Primitive(value)) => Some(value),
+                Some(WriteValue::Slot { .. }) => None,
+                None => node_ref
+                    .base
+                    .as_object()
+                    .and_then(|object| object.get(&key))
+                    .cloned(),
+            }
+        };
+        if !value.is_object() && !value.is_array() && current.as_ref() == Some(&value) {
+            return Ok(());
+        }
+    }
+    let overlay = live_mut(core, context)?;
+    set_object_write(overlay, node, key.clone(), value);
+    let overlay = live_mut(core, context)?;
+    if was_deleted
+        && overlay.nodes[node]
+            .base
+            .as_object()
+            .is_some_and(|object| object.contains_key(&key))
+        && !overlay.nodes[node].readded.contains(&key)
+    {
+        overlay.nodes[node].readded.push(key.clone());
+    }
+    delete_object_deletion(&mut overlay.nodes[node], &key);
+    mark_dirty(overlay, node);
+    Ok(())
+}
+
+/// The `deleteProperty` trap over objects (`tracker.ts:593-604`).
+fn delete_property(
+    core: &mut TrackerCore,
+    context: usize,
+    node: usize,
+    key: String,
+) -> Result<(), TrackerError> {
+    if !object_has(core, context, node, &key)? {
+        return Ok(());
+    }
+    let overlay = live_mut(core, context)?;
+    delete_object_write(overlay, node, &key);
+    overlay.nodes[node].readded.retain(|at| at != &key);
+    set_object_deletion(&mut overlay.nodes[node], key);
+    mark_dirty(overlay, node);
+    Ok(())
+}
+
+/// `markDirty` (`tracker.ts:761-766`).
+fn mark_dirty(overlay: &mut Overlay, node: usize) {
+    if overlay.nodes[node].dirty {
+        return;
+    }
+    overlay.nodes[node].dirty = true;
+    overlay.dirty.push(node);
+    let mut current = overlay.nodes[node].parent;
+    while let Some(parent) = current {
+        overlay.nodes[parent].subtree_dirty = true;
+        current = overlay.nodes[parent].parent;
+    }
+}
+
+// ─── Array overlay (piece table) ─────────────────────────────────────────────
+
+fn array_length(overlay: &Overlay, node: usize) -> usize {
+    overlay.nodes[node]
+        .array
+        .pieces
+        .iter()
+        .map(Piece::length)
+        .sum()
+}
+
+fn array_length_at(core: &TrackerCore, context: usize, node: usize) -> usize {
+    array_length(live(core, context).expect("live overlay"), node)
+}
+
+/// `locatePiece` (`tracker.ts:955-969`): the piece covering `index`,
+/// resolved to (insert source, source index); `None` source is a base
+/// entry.
+fn locate_piece(overlay: &Overlay, node: usize, index: usize) -> (Option<u64>, usize) {
+    let mut remaining = index;
+    for piece in &overlay.nodes[node].array.pieces {
+        let length = piece.length();
+        if remaining < length {
+            let source_index = (piece.start() as i64 + piece.step() * remaining as i64) as usize;
+            return match piece {
+                Piece::Base { .. } => (None, source_index),
+                Piece::Insert { source, .. } => (Some(*source), source_index),
+            };
+        }
+        remaining -= length;
+    }
+    panic!("Array overlay index is out of range")
+}
+
+/// `getArrayIndex` value resolution (`tracker.ts:545-561`).
+fn get_array_index_value(
+    core: &TrackerCore,
+    context: usize,
+    node: usize,
+    index: usize,
+) -> Option<JsonValue> {
+    let overlay = live(core, context).expect("live overlay");
+    if index >= array_length(overlay, node) {
+        return None;
+    }
+    let (source, source_index) = locate_piece(overlay, node, index);
+    Some(match entry_ref(overlay, node, source, source_index) {
+        EntryRef::Base => overlay.nodes[node]
+            .base
+            .as_array()
+            .and_then(|array| array.get(source_index))
+            .cloned()
+            .unwrap_or(JsonValue::Null),
+        EntryRef::Primitive(value) => value,
+        EntryRef::Slot { slot, .. } => overlay.slot_value(slot),
+    })
+}
+
+/// `insertPiece` (`tracker.ts:1068-1073`): one fresh insert source holding
+/// the stored items.
+fn insert_pieces(
+    core: &mut TrackerCore,
+    context: usize,
+    node: usize,
+    items: Vec<JsonValue>,
+) -> Vec<Piece> {
+    if items.is_empty() {
+        return Vec::new();
+    }
+    let overlay = live_mut(core, context).expect("live overlay");
+    let mut refs = Vec::with_capacity(items.len());
+    for item in items {
+        refs.push(overlay.store(item));
+    }
+    let source = overlay.next_source;
+    overlay.next_source += 1;
+    let length = refs.len();
+    overlay.sources.push(Some(refs));
+    let _ = node;
+    vec![Piece::Insert {
+        source,
+        start: 0,
+        length,
+        step: 1,
+    }]
+}
+
+/// The splice mutator's `insertPlacementPiece(node, args, 2)`
+/// (`tracker.ts:1209-1226`): the two leading argument slots remain
+/// primitive junk refs and the piece starts at offset 2 inside its source.
+fn splice_pieces(
+    core: &mut TrackerCore,
+    context: usize,
+    start: usize,
+    remove: usize,
+    items: Vec<JsonValue>,
+) -> Vec<Piece> {
+    if items.is_empty() {
+        return Vec::new();
+    }
+    let overlay = live_mut(core, context).expect("live overlay");
+    let mut refs: Vec<EntryRef> = vec![
+        EntryRef::Primitive(super::number_json(start)),
+        EntryRef::Primitive(super::number_json(remove)),
+    ];
+    for item in items {
+        refs.push(overlay.store(item));
+    }
+    let source = overlay.next_source;
+    overlay.next_source += 1;
+    let length = refs.len() - 2;
+    overlay.sources.push(Some(refs));
+    vec![Piece::Insert {
+        source,
+        start: 2,
+        length,
+        step: 1,
+    }]
+}
+
+/// `setArrayIndex` (`tracker.ts:1096-1132`).
+fn set_array_index(
+    core: &mut TrackerCore,
+    context: usize,
+    node: usize,
+    index: usize,
+    value: JsonValue,
+) {
+    let length = array_length_at(core, context, node);
+    if index == length {
+        let pieces = insert_pieces(core, context, node, vec![value]);
+        replace_piece_range(core, context, node, length, 0, pieces);
+        return;
+    }
+    {
+        // `!isContainer(stored) && current === stored` early return.
+        let overlay = live(core, context).expect("live overlay");
+        let (source, source_index) = locate_piece(overlay, node, index);
+        let current = match entry_ref(overlay, node, source, source_index) {
+            EntryRef::Base => overlay.nodes[node]
+                .base
+                .as_array()
+                .and_then(|array| array.get(source_index))
+                .cloned(),
+            EntryRef::Primitive(value) => Some(value),
+            EntryRef::Slot { slot, .. } => Some(overlay.slot_value(slot)),
+        };
+        if !value.is_object() && !value.is_array() && current.as_ref() == Some(&value) {
+            return;
+        }
+    }
+    let (source, source_index, base_equal) = {
+        let overlay = live(core, context).expect("live overlay");
+        let (source, source_index) = locate_piece(overlay, node, index);
+        let base_equal = match source {
+            None => {
+                !value.is_object()
+                    && !value.is_array()
+                    && overlay.nodes[node]
+                        .base
+                        .as_array()
+                        .and_then(|array| array.get(source_index))
+                        .is_some_and(|at| at == &value)
+            }
+            _ => false,
+        };
+        (source, source_index, base_equal)
+    };
+    let overlay = live_mut(core, context).expect("live overlay");
+    match source {
+        None => {
+            let existing = overlay.nodes[node]
+                .array
+                .base_overrides
+                .iter()
+                .position(|(at, _)| *at == source_index);
+            let existing_slot =
+                existing.and_then(|at| match &overlay.nodes[node].array.base_overrides[at].1 {
+                    EntryRef::Slot { slot, .. } => Some(*slot),
+                    _ => None,
+                });
+            if base_equal {
+                if let Some(at) = existing {
+                    let (_, reference) = overlay.nodes[node].array.base_overrides.remove(at);
+                    if let EntryRef::Slot { slot, .. } = reference {
+                        overlay.release_slot(slot);
+                    }
+                }
+            } else {
+                let reference = overlay.overwrite(existing_slot, value);
+                match existing {
+                    None => overlay.nodes[node]
+                        .array
+                        .base_overrides
+                        .push((source_index, reference)),
+                    Some(at) => overlay.nodes[node].array.base_overrides[at].1 = reference,
+                }
+            }
+        }
+        Some(source_id) => {
+            let position = overlay.nodes[node]
+                .array
+                .insert_overrides
+                .iter()
+                .position(|(at, _)| *at == source_id);
+            let existing_entry = position.and_then(|at| {
+                overlay.nodes[node].array.insert_overrides[at]
+                    .1
+                    .iter()
+                    .position(|(entry, _)| *entry == source_index)
+                    .map(|entry_at| (at, entry_at))
+            });
+            let existing_slot = existing_entry.and_then(|(at, entry_at)| {
+                match &overlay.nodes[node].array.insert_overrides[at].1[entry_at].1 {
+                    EntryRef::Slot { slot, .. } => Some(*slot),
+                    _ => None,
+                }
+            });
+            let refs_equal = existing_entry.is_none()
+                && match overlay.sources[source_id as usize]
+                    .as_ref()
+                    .and_then(|refs| refs.get(source_index))
+                {
+                    Some(EntryRef::Primitive(prev)) => prev == &value,
+                    _ => false,
+                };
+            if refs_equal {
+                if let Some((at, entry_at)) = existing_entry {
+                    let (_, reference) = overlay.nodes[node].array.insert_overrides[at]
+                        .1
+                        .remove(entry_at);
+                    if let EntryRef::Slot { slot, .. } = reference {
+                        overlay.release_slot(slot);
+                    }
+                    if overlay.nodes[node].array.insert_overrides[at].1.is_empty() {
+                        overlay.nodes[node].array.insert_overrides.remove(at);
+                    }
+                }
+            } else {
+                let reference = overlay.overwrite(existing_slot, value);
+                let at = match position {
+                    Some(at) => at,
+                    None => {
+                        overlay.nodes[node]
+                            .array
+                            .insert_overrides
+                            .push((source_id, Vec::new()));
+                        overlay.nodes[node].array.insert_overrides.len() - 1
+                    }
+                };
+                match overlay.nodes[node].array.insert_overrides[at]
+                    .1
+                    .iter()
+                    .position(|(entry, _)| *entry == source_index)
+                {
+                    None => overlay.nodes[node].array.insert_overrides[at]
+                        .1
+                        .push((source_index, reference)),
+                    Some(entry_at) => {
+                        overlay.nodes[node].array.insert_overrides[at].1[entry_at].1 = reference;
+                    }
+                }
+            }
+        }
+    }
+    mark_dirty(overlay, node);
+}
+
+/// `setArrayLength` (`tracker.ts:1134-1148`).
+fn set_array_length(core: &mut TrackerCore, context: usize, node: usize, next: usize) {
+    let current = array_length_at(core, context, node);
+    if next == current {
+        return;
+    }
+    if next < current {
+        replace_piece_range(core, context, node, next, current - next, Vec::new());
+    } else {
+        let items: Vec<JsonValue> = (0..next - current).map(|_| JsonValue::Null).collect();
+        let pieces = insert_pieces(core, context, node, items);
+        replace_piece_range(core, context, node, current, 0, pieces);
+    }
+}
+
+/// `clampIndex` (`tracker.ts:1162-1166`).
+fn clamp_index(value: isize, length: usize) -> usize {
+    if value < 0 {
+        (length as isize + value).max(0) as usize
+    } else {
+        (value as usize).min(length)
+    }
+}
+
+/// `replacePieceRange` (`tracker.ts:1018-1049`) over the flat piece list.
+fn replace_piece_range(
+    core: &mut TrackerCore,
+    context: usize,
+    node: usize,
+    index: usize,
+    remove: usize,
+    inserted: Vec<Piece>,
+) {
+    if remove == 0 && inserted.is_empty() {
+        return;
+    }
+    let length = array_length_at(core, context, node);
+    // Fast path: appending to an insert piece whose source still ends at
+    // the piece tail (`tracker.ts:1021-1039`).
+    if remove == 0 && index == length && inserted.len() == 1 {
+        let addition = match &inserted[0] {
+            Piece::Insert {
+                source,
+                start,
+                length,
+                ..
+            } => Some((*source, *start, *length)),
+            _ => None,
+        };
+        let tail = live(core, context).ok().and_then(|overlay| {
+            overlay.nodes[node]
+                .array
+                .pieces
+                .last()
+                .and_then(|tail| match tail {
+                    Piece::Insert {
+                        source,
+                        start,
+                        length,
+                        step,
+                    } if *step == 1 => Some((*source, *start, *length)),
+                    _ => None,
+                })
+        });
+        if let (
+            Some((addition_source, addition_start, addition_length)),
+            Some((tail_source, tail_start, tail_length)),
+        ) = (addition, tail)
+        {
+            let refs_len = live(core, context)
+                .ok()
+                .and_then(|overlay| overlay.sources[tail_source as usize].as_ref().map(Vec::len))
+                .unwrap_or(0);
+            if tail_start + tail_length == refs_len {
+                let addition_refs: Vec<EntryRef> = {
+                    let overlay = live(core, context).expect("live overlay");
+                    overlay.sources[addition_source as usize]
+                        .as_ref()
+                        .expect("live source")[addition_start..addition_start + addition_length]
+                        .to_vec()
+                };
+                let overlay = live_mut(core, context).expect("live overlay");
+                let tail_refs = overlay.sources[tail_source as usize]
+                    .as_mut()
+                    .expect("live source");
+                tail_refs.extend(addition_refs);
+                overlay.sources[addition_source as usize] = None;
+                if let Some(tail_piece) = overlay.nodes[node].array.pieces.last_mut() {
+                    let new_length = tail_piece.length() + addition_length;
+                    tail_piece.set_length(new_length);
+                }
+                overlay.nodes[node].array.structural = true;
+                overlay.nodes[node].array.generation += 1;
+                overlay.nodes[node].array.plan = None;
+                mark_dirty(overlay, node);
+                return;
+            }
+        }
+    }
+    let overlay = live_mut(core, context).expect("live overlay");
+    let pieces = std::mem::take(&mut overlay.nodes[node].array.pieces);
+    let (left, rest) = split_pieces(pieces, index);
+    let (_removed, right) = split_pieces(rest, remove);
+    let mut merged = left;
+    merge_pieces(&mut merged);
+    let mut middle = inserted;
+    merge_pieces(&mut middle);
+    merged.extend(middle);
+    merged.extend(right);
+    merge_pieces(&mut merged);
+    overlay.nodes[node].array.pieces = merged;
+    overlay.nodes[node].array.structural = true;
+    overlay.nodes[node].array.generation += 1;
+    overlay.nodes[node].array.plan = None;
+    mark_dirty(overlay, node);
+}
+
+/// `splitPieceTree` (`tracker.ts:834-877`) over the flat list: split at a
+/// logical index, cutting an interior piece in two when needed.
+fn split_pieces(mut pieces: Vec<Piece>, index: usize) -> (Vec<Piece>, Vec<Piece>) {
+    let mut offset = 0usize;
+    for at in 0..pieces.len() {
+        let length = pieces[at].length();
+        if index < offset + length {
+            if index == offset {
+                let right = pieces.split_off(at);
+                return (pieces, right);
+            }
+            let inside = index - offset;
+            let original = pieces[at].clone();
+            let mut left_piece = original.clone();
+            left_piece.set_length(inside);
+            let mut right_piece = original;
+            let shifted =
+                (right_piece.start() as i64 + right_piece.step() * inside as i64) as usize;
+            right_piece.set_start(shifted);
+            right_piece.set_length(length - inside);
+            // Replace the original piece with its two halves.
+            let mut tail = pieces.split_off(at);
+            tail.remove(0);
+            let mut left = pieces;
+            left.push(left_piece);
+            let mut right = vec![right_piece];
+            right.extend(tail);
+            return (left, right);
+        }
+        offset += length;
+    }
+    (pieces, Vec::new())
+}
+
+/// `mergePieces` (`tracker.ts:1051-1066`).
+fn merge_pieces(pieces: &mut Vec<Piece>) {
+    let mut index = 1usize;
+    while index < pieces.len() {
+        let merge = {
+            let (left, right) = (&pieces[index - 1], &pieces[index]);
+            let same_source = match (left, right) {
+                (Piece::Base { .. }, Piece::Base { .. }) => true,
+                (Piece::Insert { source: a, .. }, Piece::Insert { source: b, .. }) => a == b,
+                _ => false,
+            };
+            if !same_source {
+                false
+            } else if left.length() == 1 && right.length() == 1 {
+                (right.start() as i64 - left.start() as i64).abs() == 1
+            } else {
+                left.step() == right.step()
+                    && left.start() as i64 + left.step() * left.length() as i64
+                        == right.start() as i64
+            }
+        };
+        if merge {
+            if pieces[index - 1].length() == 1 && pieces[index].length() == 1 {
+                let step = pieces[index].start() as i64 - pieces[index - 1].start() as i64;
+                pieces[index - 1].set_step(step);
+                pieces[index - 1].set_length(2);
+            } else {
+                let new_length = pieces[index - 1].length() + pieces[index].length();
+                pieces[index - 1].set_length(new_length);
+            }
+            pieces.remove(index);
+        } else {
+            index += 1;
+        }
+    }
+}
+
+/// `reverse` (`tracker.ts:1227-1243`).
+fn reverse_array(core: &mut TrackerCore, context: usize, node: usize) {
+    if array_length_at(core, context, node) < 2 {
+        return;
+    }
+    let overlay = live_mut(core, context).expect("live overlay");
+    let mut pieces = std::mem::take(&mut overlay.nodes[node].array.pieces);
+    pieces.reverse();
+    for piece in &mut pieces {
+        let new_start =
+            (piece.start() as i64 + piece.step() * (piece.length() as i64 - 1)) as usize;
+        piece.set_start(new_start);
+        piece.set_step(if piece.step() == 1 { -1 } else { 1 });
+    }
+    overlay.nodes[node].array.pieces = pieces;
+    overlay.nodes[node].array.structural = true;
+    overlay.nodes[node].array.generation += 1;
+    overlay.nodes[node].array.plan = None;
+    mark_dirty(overlay, node);
+}
+
+/// `sort` (`tracker.ts:1244-1313`).
+fn sort_array(
+    core: &mut TrackerCore,
+    context: usize,
+    node: usize,
+    comparator: &mut dyn FnMut(&JsonValue, &JsonValue) -> i32,
+) {
+    // Walk the pieces collecting the token order plus resolved comparator
+    // values (`publicSortValue`, `tracker.ts:1347-1376`).
+    let (mut order, values, sources, indices) = {
+        let mut inserted_values: Vec<JsonValue> = Vec::new();
+        let mut inserted_sources: Vec<u64> = Vec::new();
+        let mut inserted_indices: Vec<usize> = Vec::new();
+        let mut order: Vec<i64> = Vec::new();
+        let pieces: Vec<Piece> = live(core, context).expect("live overlay").nodes[node]
+            .array
+            .pieces
+            .clone();
+        for piece in &pieces {
+            for offset in 0..piece.length() {
+                let source_index = (piece.start() as i64 + piece.step() * offset as i64) as usize;
+                match piece {
+                    Piece::Base { .. } => order.push(source_index as i64),
+                    Piece::Insert { source, .. } => {
+                        let token = -(inserted_sources.len() as i64) - 1;
+                        order.push(token);
+                        inserted_sources.push(*source);
+                        inserted_indices.push(source_index);
+                        inserted_values.push(
+                            read_entry_position(core, context, node, Some(*source), source_index)
+                                .ok()
+                                .flatten()
+                                .unwrap_or(JsonValue::Null),
+                        );
+                    }
+                }
+            }
+        }
+        (order, inserted_values, inserted_sources, inserted_indices)
+    };
+    let base_snapshot: Vec<(usize, JsonValue)> = {
+        let overlay = live(core, context).expect("live overlay");
+        overlay.nodes[node]
+            .array
+            .base_overrides
+            .iter()
+            .map(|(index, reference)| (*index, entry_ref_value(overlay, reference)))
+            .collect()
+    };
+    let insert_snapshots: Vec<(u64, Vec<(usize, JsonValue)>)> = {
+        let overlay = live(core, context).expect("live overlay");
+        overlay.nodes[node]
+            .array
+            .insert_overrides
+            .iter()
+            .map(|(source, overrides)| {
+                (
+                    *source,
+                    overrides
+                        .iter()
+                        .map(|(index, reference)| (*index, entry_ref_value(overlay, reference)))
+                        .collect(),
+                )
+            })
+            .collect()
+    };
+    let has_overrides = !base_snapshot.is_empty() || !insert_snapshots.is_empty();
+    {
+        let values = &values;
+        order.sort_by(|left, right| {
+            let left_value = if *left < 0 {
+                values[(-left - 1) as usize].clone()
+            } else {
+                read_entry_position(core, context, node, None, *left as usize)
+                    .ok()
+                    .flatten()
+                    .unwrap_or(JsonValue::Null)
+            };
+            let right_value = if *right < 0 {
+                values[(-right - 1) as usize].clone()
+            } else {
+                read_entry_position(core, context, node, None, *right as usize)
+                    .ok()
+                    .flatten()
+                    .unwrap_or(JsonValue::Null)
+            };
+            comparator(&left_value, &right_value).cmp(&0)
+        });
+    }
+    if has_overrides {
+        restore_sort_overrides(
+            core,
+            context,
+            node,
+            &order,
+            &sources,
+            &indices,
+            &base_snapshot,
+            &insert_snapshots,
+        );
+    }
+    let current_length = array_length_at(core, context, node);
+    let same_prefix = {
+        let overlay = live(core, context).expect("live overlay");
+        current_length >= order.len()
+            && order.iter().enumerate().all(|(logical, token)| {
+                same_sort_token_at(overlay, node, logical, *token, &sources, &indices)
+            })
+    };
+    if !same_prefix {
+        let pieces = pieces_from_sort_order(&order, &sources, &indices);
+        replace_piece_range(
+            core,
+            context,
+            node,
+            0,
+            order.len().min(current_length),
+            pieces,
+        );
+    }
+}
+
+fn entry_ref_value(overlay: &Overlay, reference: &EntryRef) -> JsonValue {
+    match reference {
+        EntryRef::Base => JsonValue::Null,
+        EntryRef::Primitive(value) => value.clone(),
+        EntryRef::Slot { slot, .. } => overlay.slot_value(*slot),
+    }
+}
+
+/// `restoreSortOverride` loop (`tracker.ts:1288-1297, 1378-1417`).
+#[allow(clippy::too_many_arguments)]
+fn restore_sort_overrides(
+    core: &mut TrackerCore,
+    context: usize,
+    node: usize,
+    order: &[i64],
+    sources: &[u64],
+    indices: &[usize],
+    base_snapshot: &[(usize, JsonValue)],
+    insert_snapshots: &[(u64, Vec<(usize, JsonValue)>)],
+) {
+    for &token in order {
+        if token >= 0 {
+            let source_index = token as usize;
+            let snapshot = base_snapshot
+                .iter()
+                .find(|(index, _)| *index == source_index)
+                .map(|(_, value)| value.clone());
+            let overlay = live_mut(core, context).expect("live overlay");
+            let existing = overlay.nodes[node]
+                .array
+                .base_overrides
+                .iter()
+                .position(|(index, _)| *index == source_index);
+            match snapshot {
+                Some(value) => {
+                    let existing_slot = existing.and_then(|at| {
+                        match &overlay.nodes[node].array.base_overrides[at].1 {
+                            EntryRef::Slot { slot, .. } => Some(*slot),
+                            _ => None,
+                        }
+                    });
+                    let reference = overlay.overwrite(existing_slot, value);
+                    match existing {
+                        None => overlay.nodes[node]
+                            .array
+                            .base_overrides
+                            .push((source_index, reference)),
+                        Some(at) => overlay.nodes[node].array.base_overrides[at].1 = reference,
+                    }
+                }
+                None => {
+                    if let Some(at) = existing {
+                        let (_, reference) = overlay.nodes[node].array.base_overrides.remove(at);
+                        if let EntryRef::Slot { slot, .. } = reference {
+                            overlay.release_slot(slot);
+                        }
+                    }
+                }
+            }
+            continue;
+        }
+        let at = (-token - 1) as usize;
+        let source = sources[at];
+        let source_index = indices[at];
+        let snapshot = insert_snapshots
+            .iter()
+            .find(|(at, _)| *at == source)
+            .and_then(|(_, overrides)| {
+                overrides
+                    .iter()
+                    .find(|(index, _)| *index == source_index)
+                    .map(|(_, value)| value.clone())
+            });
+        let overlay = live_mut(core, context).expect("live overlay");
+        let position = overlay.nodes[node]
+            .array
+            .insert_overrides
+            .iter()
+            .position(|(at, _)| *at == source);
+        match snapshot {
+            Some(value) => {
+                let existing_slot = position.and_then(|at| {
+                    overlay.nodes[node].array.insert_overrides[at]
+                        .1
+                        .iter()
+                        .find(|(entry, _)| *entry == source_index)
+                        .and_then(|(_, reference)| match reference {
+                            EntryRef::Slot { slot, .. } => Some(*slot),
+                            _ => None,
+                        })
+                });
+                let reference = overlay.overwrite(existing_slot, value);
+                let position = match position {
+                    Some(position) => position,
+                    None => {
+                        overlay.nodes[node]
+                            .array
+                            .insert_overrides
+                            .push((source, Vec::new()));
+                        overlay.nodes[node].array.insert_overrides.len() - 1
+                    }
+                };
+                match overlay.nodes[node].array.insert_overrides[position]
+                    .1
+                    .iter()
+                    .position(|(entry, _)| *entry == source_index)
+                {
+                    None => overlay.nodes[node].array.insert_overrides[position]
+                        .1
+                        .push((source_index, reference)),
+                    Some(entry_at) => {
+                        overlay.nodes[node].array.insert_overrides[position].1[entry_at].1 =
+                            reference;
+                    }
+                }
+            }
+            None => {
+                if let Some(at) = position {
+                    if let Some(entry_at) = overlay.nodes[node].array.insert_overrides[at]
+                        .1
+                        .iter()
+                        .position(|(entry, _)| *entry == source_index)
+                    {
+                        let (_, reference) = overlay.nodes[node].array.insert_overrides[at]
+                            .1
+                            .remove(entry_at);
+                        if let EntryRef::Slot { slot, .. } = reference {
+                            overlay.release_slot(slot);
+                        }
+                    }
+                    if overlay.nodes[node].array.insert_overrides[at].1.is_empty() {
+                        overlay.nodes[node].array.insert_overrides.remove(at);
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// `sameSortTokenAt` (`tracker.ts:1419-1434`).
+fn same_sort_token_at(
+    overlay: &Overlay,
+    node: usize,
+    logical: usize,
+    token: i64,
+    sources: &[u64],
+    indices: &[usize],
+) -> bool {
+    if logical >= array_length(overlay, node) {
+        return false;
+    }
+    let (source, source_index) = locate_piece(overlay, node, logical);
+    match (source, token < 0) {
+        (None, false) => source_index == token as usize,
+        (Some(at), true) => {
+            source_index == indices[(-token - 1) as usize] && at == sources[(-token - 1) as usize]
+        }
+        _ => false,
+    }
+}
+
+/// `piecesFromSortOrder` (`tracker.ts:1475-1509`): reuses the original
+/// insert sources so run merging matches upstream.
+fn pieces_from_sort_order(order: &[i64], sources: &[u64], indices: &[usize]) -> Vec<Piece> {
+    let mut pieces: Vec<Piece> = Vec::new();
+    for &token in order {
+        if token < 0 {
+            let at = (-token - 1) as usize;
+            append_merged_piece(
+                &mut pieces,
+                Piece::Insert {
+                    source: sources[at],
+                    start: indices[at],
+                    length: 1,
+                    step: 1,
+                },
+            );
+        } else {
+            append_merged_piece(
+                &mut pieces,
+                Piece::Base {
+                    start: token as usize,
+                    length: 1,
+                    step: 1,
+                },
+            );
+        }
+    }
+    pieces
+}
+
+/// `appendMergedPiece` (`tracker.ts:1511-1533`).
+fn append_merged_piece(pieces: &mut Vec<Piece>, piece: Piece) {
+    let matches_last = pieces
+        .last()
+        .map(|previous| match (previous, &piece) {
+            (Piece::Base { .. }, Piece::Base { .. }) => true,
+            (Piece::Insert { source: a, .. }, Piece::Insert { source: b, .. }) => a == b,
+            _ => false,
+        })
+        .unwrap_or(false);
+    if let Some(previous) = pieces.last_mut() {
+        let same_source = matches_last;
+        if same_source && previous.length() == 1 && piece.length() == 1 {
+            let step = piece.start() as i64 - previous.start() as i64;
+            if step == 1 || step == -1 {
+                previous.set_step(step);
+                previous.set_length(2);
+                return;
+            }
+        }
+        if same_source
+            && previous.step() == piece.step()
+            && previous.start() as i64 + previous.step() * previous.length() as i64
+                == piece.start() as i64
+        {
+            let new_length = previous.length() + piece.length();
+            previous.set_length(new_length);
+            return;
+        }
+    }
+    pieces.push(piece);
+}
+
+// ─── Path resolution for emission ────────────────────────────────────────────
+
+/// `resolvePath` (`tracker.ts:2036-2058`): walk parents; a node's emission
+/// path only resolves while every parent position still holds the container
+/// the node was created for. (Upstream caches successes in
+/// `preparedPath`; the result is deterministic, so the port recomputes.)
+fn resolve_path(core: &TrackerCore, context: usize, node: usize) -> Option<Path> {
+    let parent = match live(core, context).ok()?.nodes.get(node)?.parent {
+        Some(parent) => parent,
+        // The tracked root resolves to the empty path (`tracker.ts:2039-2042`).
+        None => return Some(Path::new()),
+    };
+    let parent_path = resolve_path(core, context, parent)?;
+    let overlay = live(core, context).ok()?;
+    let node_ref = &overlay.nodes[node];
+    let segment: Seg = match node_ref.parent_kind {
+        ParentKind::Object => {
+            let ParentKey::Key(key) = &node_ref.parent_key else {
+                return None;
+            };
+            // `objectHas(parent, key) && objectValue(parent, key) ===
+            // nodeBase(node)`.
+            let from = if is_object_deleted(&overlay.nodes[parent], key) {
+                Origin::Scalar
+            } else {
+                match find_write(&overlay.nodes[parent], key) {
+                    Some(write) => write.from(),
+                    None => Origin::Base,
+                }
+            };
+            if from != node_ref.from {
+                return None;
+            }
+            if from == Origin::Base
+                && !overlay.nodes[parent]
+                    .base
+                    .as_object()
+                    .is_some_and(|object| object.contains_key(key))
+            {
+                return None;
+            }
+            Seg::Key(key.clone())
+        }
+        ParentKind::BaseEntry | ParentKind::InsertEntry => {
+            let ParentKey::Source(source_index) = &node_ref.parent_key else {
+                return None;
+            };
+            let index = find_entry_index(
+                overlay,
+                parent,
+                node_ref.parent_kind,
+                *source_index,
+                node_ref.parent_source,
+            )?;
+            let (source, at) = locate_piece(overlay, parent, index);
+            if entry_ref(overlay, parent, source, at).from() != node_ref.from {
+                return None;
+            }
+            Seg::Index(index)
+        }
+    };
+    let mut path = parent_path;
+    path.push(segment);
+    Some(path)
+}
+
+/// `findEntryIndex` (`tracker.ts:2089-2110`).
+fn find_entry_index(
+    overlay: &Overlay,
+    node: usize,
+    kind: ParentKind,
+    source_index: usize,
+    source: Option<u64>,
+) -> Option<usize> {
+    let array = &overlay.nodes[node].array;
+    if kind == ParentKind::BaseEntry && !array.structural {
+        return Some(source_index);
+    }
+    // `ensurePieceLocations` (`tracker.ts:2060-2087`): locations ordered by
+    // minimum source index.
+    let mut locations: Vec<(usize, usize, usize, usize, i64)> = Vec::new();
+    let mut logical_start = 0usize;
+    for (at, piece) in array.pieces.iter().enumerate() {
+        let last = piece.start() as i64 + piece.step() * (piece.length() as i64 - 1);
+        let minimum = piece.start().min(last.max(0) as usize);
+        let matches = match (kind, piece) {
+            (ParentKind::BaseEntry, Piece::Base { .. }) => true,
+            (ParentKind::InsertEntry, Piece::Insert { source: at, .. }) => Some(*at) == source,
+            _ => false,
+        };
+        if matches {
+            locations.push((
+                minimum,
+                logical_start,
+                piece.start(),
+                piece.length(),
+                at as i64,
+            ));
+        }
+        logical_start += piece.length();
+    }
+    locations.sort_by_key(|(minimum, _, _, _, _)| *minimum);
+    let mut low = 0usize;
+    let mut high = locations.len();
+    while low < high {
+        let middle = (low + high) / 2;
+        if locations[middle].0 <= source_index {
+            low = middle + 1;
+        } else {
+            high = middle;
+        }
+    }
+    let (_, logical_start, start, length, at) = *locations.get(low.checked_sub(1)?)?;
+    let step = array.pieces[at as usize].step();
+    let last = start as i64 + step * (length as i64 - 1);
+    let maximum = start.max(last.max(0) as usize);
+    if source_index > maximum || step == 0 {
+        return None;
+    }
+    let offset = (source_index as i64 - start as i64) / step;
+    if offset < 0 || offset >= length as i64 {
+        return None;
+    }
+    Some(logical_start + offset as usize)
+}
+
+// ─── Materialization and op emission ─────────────────────────────────────────
+
+/// `materializePrepared` (`tracker.ts:325-341`) plus `ensureOperations`
+/// (`tracker.ts:2112-2122`): returns `(base, value, ops)`.
+fn prepare_context(
+    core: &mut TrackerCore,
+    context: usize,
+) -> Result<(JsonValue, JsonValue, Vec<Op>), TrackerError> {
+    let operations = ensure_operations(core, context)?;
+    let (base, root, simple) = {
+        let overlay = live(core, context)?;
+        (
+            overlay.base_value.clone(),
+            overlay.root,
+            overlay.simple_object_materialization,
+        )
+    };
+    let value = if operations.is_empty() {
+        base.clone()
+    } else if simple {
+        clone_node(core, context, root)
+    } else {
+        materialize_operations(&base, &operations)?
+    };
+    Ok((base, value, operations))
+}
+
+/// `materializeOperations` (`tracker.ts:343-349`).
+fn materialize_operations(base: &JsonValue, operations: &[Op]) -> Result<JsonValue, TrackerError> {
+    if operations
+        .iter()
+        .any(|operation| matches!(operation, Op::Splice { .. } | Op::Reorder { .. }))
+    {
+        return Ok(super::apply_immutable(Some(base), operations)?);
+    }
+    Ok(apply_immutable_trusted(base, operations)?)
+}
+
+/// `ensureOperations` (`tracker.ts:2112-2122`).
+fn ensure_operations(core: &mut TrackerCore, context: usize) -> Result<Vec<Op>, TrackerError> {
+    if let Some(ops) = live(core, context)?.ops.clone() {
+        return Ok(ops);
+    }
+    assert_readable(core, context)?;
+    let replacement = live(core, context)?.replacement;
+    if replacement {
+        let matches_revision = core.contexts[context].base_revision == core.revision;
+        let current_value = core.value.clone();
+        let overlay = live_mut(core, context)?;
+        let root_base = overlay.nodes[overlay.root].base.clone();
+        let noop = matches_revision && current_value == root_base;
+        overlay.replacement_noop = noop;
+        let ops = if noop {
+            Vec::new()
+        } else {
+            vec![Op::Replace(root_base)]
+        };
+        overlay.ops = Some(ops);
+    } else {
+        let ops = emit_operations(core, context);
+        live_mut(core, context)?.ops = Some(ops);
+    }
+    Ok(live(core, context)?.ops.clone().expect("just stored"))
+}
+
+/// `emitOperations` (`tracker.ts:1602-1674`).
+fn emit_operations(core: &mut TrackerCore, context: usize) -> Vec<Op> {
+    if let Some(simple) = emit_simple_object_operations(core, context) {
+        return simple;
+    }
+    let mut operations: Vec<Op> = Vec::new();
+    // (node, path) in insertion order; `positions` overrides paths in place
+    // (a Map.set on an existing key keeps its insertion position).
+    let mut emission: Vec<(usize, Path)> = Vec::new();
+    let mut positions: HashMap<usize, usize> = HashMap::new();
+    let mut forced: Vec<usize> = Vec::new();
+    let mut forced_paths: HashMap<usize, Path> = HashMap::new();
+
+    let dirty: Vec<usize> = live(core, context).expect("live overlay").dirty.clone();
+    // Dense candidates over base-array overrides (`tracker.ts:1609-1631`).
+    let mut dense_candidates: HashMap<usize, DenseCandidates> = HashMap::new();
+    for node in &dirty {
+        record_dense_array_position(core, context, *node, &mut dense_candidates);
+        let overlay = live(core, context).expect("live overlay");
+        if overlay.nodes[*node].base.is_array() {
+            let array = &overlay.nodes[*node].array;
+            if !array.structural && !array.base_overrides.is_empty() {
+                let length = overlay.nodes[*node].base.as_array().map_or(0, Vec::len);
+                let candidates = dense_candidates
+                    .entry(*node)
+                    .or_insert_with(|| DenseCandidates::new(length));
+                for (index, _) in &array.base_overrides {
+                    add_dense_candidate(candidates, *index);
+                }
+            }
+        }
+    }
+    let mut dense_regions: HashMap<usize, Vec<DenseRegion>> = HashMap::new();
+    let candidate_nodes: Vec<usize> = dense_candidates.keys().copied().collect();
+    for node in candidate_nodes {
+        let Some(path) = resolve_path(core, context, node) else {
+            continue;
+        };
+        if path
+            .iter()
+            .any(|segment| matches!(segment, Seg::Key(key) if is_reserved(key)))
+        {
+            continue;
+        }
+        let regions = build_dense_regions(&dense_candidates[&node]);
+        if !regions.is_empty() {
+            dense_regions.insert(node, regions);
+        }
+    }
+    for node in &dirty {
+        let Some(path) = resolve_path(core, context, *node) else {
+            continue;
+        };
+        if has_covering_dense_region(core, context, *node, &path, &dense_regions) {
+            continue;
+        }
+        match positions.get(node) {
+            Some(&at) => emission[at].1 = path.clone(),
+            None => {
+                positions.insert(*node, emission.len());
+                emission.push((*node, path.clone()));
+            }
+        }
+        {
+            let overlay = live(core, context).expect("live overlay");
+            if !overlay.nodes[*node].base.is_array()
+                && has_reserved_mutation(&overlay.nodes[*node])
+                && !forced.contains(node)
+            {
+                forced.push(*node);
+                forced_paths.insert(*node, path.clone());
+            }
+        }
+        if let Some(reserved_at) = path
+            .iter()
+            .position(|segment| matches!(segment, Seg::Key(key) if is_reserved(key)))
+        {
+            // Fold the ancestor sitting at the reserved depth.
+            let overlay = live(core, context).expect("live overlay");
+            let mut ancestor = *node;
+            let mut depth = path.len();
+            while depth > reserved_at {
+                ancestor = overlay.nodes[ancestor]
+                    .parent
+                    .expect("reserved path implies ancestors");
+                depth -= 1;
+            }
+            if !forced.contains(&ancestor) {
+                forced.push(ancestor);
+                forced_paths.insert(ancestor, path[..reserved_at].to_vec());
+            }
+        }
+    }
+    for (node, path) in &forced_paths {
+        match positions.get(node) {
+            Some(&at) => emission[at].1 = path.clone(),
+            None => {
+                positions.insert(*node, emission.len());
+                emission.push((*node, path.clone()));
+            }
+        }
+    }
+    let region_nodes: Vec<usize> = dense_regions.keys().copied().collect();
+    for node in region_nodes {
+        if let Some(path) = resolve_path(core, context, node) {
+            if !has_covering_dense_region(core, context, node, &path, &dense_regions)
+                && !positions.contains_key(&node)
+            {
+                positions.insert(node, emission.len());
+                emission.push((node, path));
+            }
+        }
+    }
+
+    let mut max_depth = 0usize;
+    for (_, path) in &emission {
+        max_depth = max_depth.max(path.len());
+    }
+    let mut buckets: Vec<Vec<usize>> = vec![Vec::new(); max_depth + 1];
+    for (at, (_, path)) in emission.iter().enumerate() {
+        buckets[path.len()].push(at);
+    }
+    let mut folded: Vec<usize> = Vec::new();
+    for bucket in &buckets {
+        for at in bucket {
+            let (node, path) = (&emission[*at].0, &emission[*at].1);
+            let node = *node;
+            if has_placement_ancestor(core, context, node)
+                || has_folded_ancestor(core, context, node, &folded)
+            {
+                continue;
+            }
+            if forced.contains(&node) {
+                let path = forced_paths
+                    .get(&node)
+                    .cloned()
+                    .unwrap_or_else(|| path.clone());
+                let value = clone_node(core, context, node);
+                emit_set_op(&mut operations, &path, value);
+                folded.push(node);
+                continue;
+            }
+            let is_array = live(core, context).expect("live overlay").nodes[node]
+                .base
+                .is_array();
+            if is_array {
+                emit_array_operations(
+                    core,
+                    context,
+                    node,
+                    path,
+                    &mut operations,
+                    dense_regions.get(&node),
+                );
+            } else {
+                emit_object_operations(core, context, node, path, &mut operations);
+            }
+            if operations.len() > MAX_DELTA_OPERATIONS {
+                let root = live(core, context).expect("live overlay").root;
+                let value = clone_node(core, context, root);
+                return vec![Op::Replace(value)];
+            }
+        }
+    }
+    operations
+}
+
+struct DenseCandidates {
+    indices: Vec<usize>,
+    bits: Option<Vec<u8>>,
+    length: usize,
+}
+
+impl DenseCandidates {
+    fn new(length: usize) -> DenseCandidates {
+        DenseCandidates {
+            indices: Vec::new(),
+            bits: None,
+            length,
+        }
+    }
+}
+
+struct DenseRegion {
+    start: usize,
+    length: usize,
+}
+
+/// `addDenseCandidate` (`tracker.ts:1762-1772`).
+fn add_dense_candidate(candidates: &mut DenseCandidates, index: usize) {
+    if let Some(bits) = &mut candidates.bits {
+        bits[index] = 1;
+        return;
+    }
+    candidates.indices.push(index);
+    if candidates.indices.len() < DENSE_CANDIDATE_BITS {
+        return;
+    }
+    let mut bits = vec![0u8; candidates.length];
+    for existing in &candidates.indices {
+        bits[*existing] = 1;
+    }
+    candidates.indices.clear();
+    candidates.bits = Some(bits);
+}
+
+/// `recordDenseArrayPosition`/`locateDenseArrayPosition`
+/// (`tracker.ts:1716-1782`).
+fn record_dense_array_position(
+    core: &TrackerCore,
+    context: usize,
+    node: usize,
+    groups: &mut HashMap<usize, DenseCandidates>,
+) {
+    let overlay = match live(core, context) {
+        Ok(overlay) => overlay,
+        Err(_) => return,
+    };
+    let mut child = node;
+    loop {
+        let parent = match overlay.nodes.get(child).and_then(|at| at.parent) {
+            Some(parent) => parent,
+            None => return,
+        };
+        if overlay.nodes[parent].base.is_array() {
+            let array = &overlay.nodes[parent].array;
+            if overlay.nodes[child].parent_kind != ParentKind::BaseEntry || array.structural {
+                return;
+            }
+            let ParentKey::Source(source_index) = overlay.nodes[child].parent_key.clone() else {
+                return;
+            };
+            // `current !== nodeBase(child)`: the entry must still resolve to
+            // the container the child was created for.
+            let reference = entry_ref(overlay, parent, None, source_index);
+            if reference.from() != overlay.nodes[child].from {
+                return;
+            }
+            let candidates = groups.entry(parent).or_insert_with(|| {
+                DenseCandidates::new(overlay.nodes[parent].base.as_array().map_or(0, Vec::len))
+            });
+            add_dense_candidate(candidates, source_index);
+            return;
+        }
+        child = parent;
+    }
+}
+
+/// `buildDenseRegions` (`tracker.ts:1784-1807`).
+fn build_dense_regions(candidates: &DenseCandidates) -> Vec<DenseRegion> {
+    let Some(bits) = &candidates.bits else {
+        return Vec::new();
+    };
+    let mut regions = Vec::new();
+    let mut at = 0usize;
+    while at < bits.len() {
+        while at < bits.len() && bits[at] == 0 {
+            at += 1;
+        }
+        if at == bits.len() {
+            break;
+        }
+        let start = at;
+        let mut end = at;
+        let mut count = 0usize;
+        let mut gap = 0usize;
+        while at < bits.len() {
+            if bits[at] != 0 {
+                count += 1;
+                end = at;
+                gap = 0;
+            } else {
+                gap += 1;
+                if gap > 1 {
+                    break;
+                }
+            }
+            at += 1;
+        }
+        let length = end - start + 1;
+        if count >= DENSE_REGION_MIN_COUNT && count * 2 >= length {
+            regions.push(DenseRegion { start, length });
+        }
+    }
+    regions
+}
+
+fn region_containing(regions: &[DenseRegion], index: usize) -> bool {
+    regions
+        .iter()
+        .any(|region| index >= region.start && index < region.start + region.length)
+}
+
+/// `hasCoveringDenseRegion` (`tracker.ts:1738-1760`).
+fn has_covering_dense_region(
+    core: &TrackerCore,
+    context: usize,
+    node: usize,
     path: &[Seg],
-) -> Result<&'a mut JsonValue, DeltaError> {
+    dense_regions: &HashMap<usize, Vec<DenseRegion>>,
+) -> bool {
+    let overlay = match live(core, context) {
+        Ok(overlay) => overlay,
+        Err(_) => return false,
+    };
+    let mut current = node;
+    while let Some(parent) = overlay.nodes[current].parent {
+        current = parent;
+        let Some(regions) = dense_regions.get(&current) else {
+            continue;
+        };
+        let Some(parent_path) = resolve_path(core, context, current) else {
+            continue;
+        };
+        if path.len() <= parent_path.len() {
+            continue;
+        }
+        if path[..parent_path.len()] != parent_path[..] {
+            continue;
+        }
+        if let Seg::Index(index) = path[parent_path.len()] {
+            if region_containing(regions, index) {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+/// `hasReservedMutation` (`tracker.ts:1814-1824`).
+fn has_reserved_mutation(node: &OverlayNode) -> bool {
+    if node.write_key.as_deref().is_some_and(is_reserved) {
+        return true;
+    }
+    if node.delete_key.as_deref().is_some_and(is_reserved) {
+        return true;
+    }
+    if node.writes.iter().any(|(key, _)| is_reserved(key)) {
+        return true;
+    }
+    node.deletes.iter().any(|key| is_reserved(key))
+}
+
+/// `hasFoldedAncestor` (`tracker.ts:1826-1830`).
+fn has_folded_ancestor(core: &TrackerCore, context: usize, node: usize, folded: &[usize]) -> bool {
+    let overlay = match live(core, context) {
+        Ok(overlay) => overlay,
+        Err(_) => return false,
+    };
+    let mut current = overlay.nodes[node].parent;
+    while let Some(parent) = current {
+        if folded.contains(&parent) {
+            return true;
+        }
+        current = overlay.nodes[parent].parent;
+    }
+    false
+}
+
+/// `hasPlacementAncestor` (`tracker.ts:1832-1837`).
+fn has_placement_ancestor(core: &TrackerCore, context: usize, node: usize) -> bool {
+    let overlay = match live(core, context) {
+        Ok(overlay) => overlay,
+        Err(_) => return false,
+    };
+    let mut current = Some(node);
+    while let Some(at) = current {
+        if overlay.nodes[at].parent.is_some() && overlay.nodes[at].parent_placement {
+            return true;
+        }
+        current = overlay.nodes[at].parent;
+    }
+    false
+}
+
+/// `emitSimpleObjectOperations` (`tracker.ts:1676-1711`).
+fn emit_simple_object_operations(core: &mut TrackerCore, context: usize) -> Option<Vec<Op>> {
+    let dirty: Vec<usize> = live(core, context).expect("live overlay").dirty.clone();
+    let mut nodes: Vec<(usize, Path)> = Vec::new();
+    for node in &dirty {
+        {
+            let overlay = live(core, context).expect("live overlay");
+            if overlay.nodes[*node].base.is_array()
+                || has_reserved_mutation(&overlay.nodes[*node])
+                || has_placement_ancestor(core, context, *node)
+            {
+                return None;
+            }
+            let mut parent = overlay.nodes[*node].parent;
+            while let Some(at) = parent {
+                if overlay.nodes[at].base.is_array() {
+                    return None;
+                }
+                parent = overlay.nodes[at].parent;
+            }
+        }
+        let Some(path) = resolve_path(core, context, *node) else {
+            continue;
+        };
+        nodes.push((*node, path));
+        if nodes.len() > MAX_SIMPLE_OBJECT_NODES {
+            return None;
+        }
+    }
+    // Stable insertion sort by path length (`tracker.ts:1693-1702`).
+    for index in 1..nodes.len() {
+        let entry = nodes[index].clone();
+        let depth = entry.1.len();
+        let mut at = index;
+        while at > 0 && nodes[at - 1].1.len() > depth {
+            nodes[at] = nodes[at - 1].clone();
+            at -= 1;
+        }
+        nodes[at] = entry;
+    }
+    let mut operations: Vec<Op> = Vec::new();
+    let mut can_materialize_directly = true;
+    for (node, path) in &nodes {
+        if emit_object_operations(core, context, *node, path, &mut operations) {
+            can_materialize_directly = false;
+        }
+        if operations.len() > MAX_DELTA_OPERATIONS {
+            let root = live(core, context).expect("live overlay").root;
+            let value = clone_node(core, context, root);
+            return Some(vec![Op::Replace(value)]);
+        }
+    }
+    live_mut(core, context)
+        .expect("live overlay")
+        .simple_object_materialization = can_materialize_directly;
+    Some(operations)
+}
+
+/// `emitObjectOperations` (`tracker.ts:1850-1884`); returns
+/// `normalizedContainerWrite`.
+fn emit_object_operations(
+    core: &mut TrackerCore,
+    context: usize,
+    node: usize,
+    path: &[Seg],
+    operations: &mut Vec<Op>,
+) -> bool {
+    let (readded, write_key, writes, delete_key, deletes) = {
+        let overlay = live(core, context).expect("live overlay");
+        let node_ref = &overlay.nodes[node];
+        (
+            node_ref.readded.clone(),
+            node_ref.write_key.clone(),
+            node_ref.writes.clone(),
+            node_ref.delete_key.clone(),
+            node_ref.deletes.clone(),
+        )
+    };
+    for key in &readded {
+        if base_has_key(core, context, node, key) {
+            let mut next = path.to_owned();
+            next.push(Seg::Key(key.clone()));
+            operations.push(Op::Delete { path: next });
+        }
+    }
+    let mut normalized_container_write = false;
+    if let Some(key) = &write_key {
+        let write = {
+            let overlay = live(core, context).expect("live overlay");
+            find_write(&overlay.nodes[node], key)
+        };
+        if let Some(write) = write {
+            normalized_container_write |=
+                emit_object_write(core, context, node, path, operations, key, &write);
+        }
+    }
+    for (key, write) in &writes {
+        if operations.len() > MAX_DELTA_OPERATIONS {
+            return normalized_container_write;
+        }
+        normalized_container_write |=
+            emit_object_write(core, context, node, path, operations, key, write);
+    }
+    if let Some(key) = &delete_key {
+        if base_has_key(core, context, node, key) {
+            let mut next = path.to_owned();
+            next.push(Seg::Key(key.clone()));
+            operations.push(Op::Delete { path: next });
+        }
+    }
+    for key in &deletes {
+        if operations.len() > MAX_DELTA_OPERATIONS {
+            return normalized_container_write;
+        }
+        if base_has_key(core, context, node, key) {
+            let mut next = path.to_owned();
+            next.push(Seg::Key(key.clone()));
+            operations.push(Op::Delete { path: next });
+        }
+    }
+    normalized_container_write
+}
+
+fn base_has_key(core: &TrackerCore, context: usize, node: usize, key: &str) -> bool {
+    live(core, context)
+        .ok()
+        .and_then(|overlay| overlay.nodes[node].base.as_object())
+        .is_some_and(|object| object.contains_key(key))
+}
+
+/// `emitObjectWrite` (`tracker.ts:1839-1848`).
+fn emit_object_write(
+    core: &mut TrackerCore,
+    context: usize,
+    node: usize,
+    path: &[Seg],
+    operations: &mut Vec<Op>,
+    key: &str,
+    write: &WriteValue,
+) -> bool {
+    let mut next_path = path.to_owned();
+    next_path.push(Seg::Key(key.to_owned()));
+    let before = {
+        let overlay = live(core, context).expect("live overlay");
+        let node_ref = &overlay.nodes[node];
+        if node_ref.readded.iter().any(|at| at == key)
+            || !node_ref
+                .base
+                .as_object()
+                .is_some_and(|object| object.contains_key(key))
+        {
+            None
+        } else {
+            node_ref
+                .base
+                .as_object()
+                .and_then(|object| object.get(key))
+                .cloned()
+        }
+    };
+    let after = clone_write_value(core, context, node, key, write);
+    let emitted = emit_changed_value(operations, &next_path, before.as_ref(), &after);
+    before
+        .as_ref()
+        .is_some_and(|value| value.is_object() || value.is_array())
+        && (after.is_object() || after.is_array())
+        && !emitted
+}
+
+/// `emitArrayOperations` (`tracker.ts:1945-1992`).
+fn emit_array_operations(
+    core: &mut TrackerCore,
+    context: usize,
+    node: usize,
+    path: &[Seg],
+    operations: &mut Vec<Op>,
+    dense_regions: Option<&Vec<DenseRegion>>,
+) {
+    if let Some(regions) = dense_regions {
+        for region in regions {
+            if operations.len() > MAX_DELTA_OPERATIONS {
+                return;
+            }
+            let items = clone_array_region(core, context, node, region);
+            operations.push(Op::Splice {
+                path: path.to_owned(),
+                index: region.start,
+                remove: region.length,
+                items,
+            });
+        }
+    }
+    let structural = live(core, context).expect("live overlay").nodes[node]
+        .array
+        .structural;
+    if !structural {
+        emit_array_base_overrides(core, context, node, path, operations, dense_regions);
+        return;
+    }
+    let plan = build_array_plan(core, context, node);
+    for at in (0..plan.remove_runs.len()).step_by(2) {
+        if operations.len() > MAX_DELTA_OPERATIONS {
+            return;
+        }
+        operations.push(Op::Splice {
+            path: path.to_owned(),
+            index: plan.remove_runs[at],
+            remove: plan.remove_runs[at + 1],
+            items: Vec::new(),
+        });
+    }
+    if let Some(permutation) = &plan.permutation {
+        operations.push(Op::Reorder {
+            path: path.to_owned(),
+            permutation: permutation.clone(),
+        });
+    }
+    for run in (0..plan.insert_runs.len()).step_by(3) {
+        if operations.len() > MAX_DELTA_OPERATIONS {
+            return;
+        }
+        let logical_index = plan.insert_runs[run];
+        let start_piece = plan.insert_runs[run + 1];
+        let end_piece = plan.insert_runs[run + 2];
+        let mut items: Vec<JsonValue> = Vec::new();
+        {
+            let overlay = live(core, context).expect("live overlay");
+            for piece_index in start_piece..end_piece {
+                let piece = &overlay.nodes[node].array.pieces[piece_index];
+                for offset in 0..piece.length() {
+                    let source_index =
+                        (piece.start() as i64 + piece.step() * offset as i64) as usize;
+                    let (source, at) = match piece {
+                        Piece::Base { .. } => (None, source_index),
+                        Piece::Insert { source, .. } => (Some(*source), source_index),
+                    };
+                    items.push(clone_entry_value(core, context, node, source, at));
+                }
+            }
+        }
+        operations.push(Op::Splice {
+            path: path.to_owned(),
+            index: logical_index,
+            remove: 0,
+            items,
+        });
+    }
+    emit_array_base_overrides(core, context, node, path, operations, dense_regions);
+}
+
+/// The `baseOverrides` loop of `emitArrayOperations` (`tracker.ts:1981-1991`).
+fn emit_array_base_overrides(
+    core: &mut TrackerCore,
+    context: usize,
+    node: usize,
+    path: &[Seg],
+    operations: &mut Vec<Op>,
+    dense_regions: Option<&Vec<DenseRegion>>,
+) {
+    let overrides: Vec<(usize, EntryRef)> = {
+        let overlay = live(core, context).expect("live overlay");
+        overlay.nodes[node].array.base_overrides.clone()
+    };
+    for (base_index, _) in overrides {
+        if operations.len() > MAX_DELTA_OPERATIONS {
+            return;
+        }
+        let overlay = live(core, context).expect("live overlay");
+        let Some(index) = find_entry_index(overlay, node, ParentKind::BaseEntry, base_index, None)
+        else {
+            continue;
+        };
+        if dense_regions.is_some_and(|regions| region_containing(regions, index)) {
+            continue;
+        }
+        let before = overlay.nodes[node]
+            .base
+            .as_array()
+            .and_then(|array| array.get(base_index))
+            .cloned();
+        let after = clone_entry_value(core, context, node, None, base_index);
+        let mut next_path = path.to_owned();
+        next_path.push(Seg::Index(index));
+        emit_changed_value(operations, &next_path, before.as_ref(), &after);
+    }
+}
+
+/// `buildArrayPlan` (`tracker.ts:1886-1937`).
+fn build_array_plan(core: &mut TrackerCore, context: usize, node: usize) -> ArrayPlan {
+    if let Some(plan) = &live(core, context).expect("live overlay").nodes[node]
+        .array
+        .plan
+    {
+        return ArrayPlan {
+            remove_runs: plan.remove_runs.clone(),
+            permutation: plan.permutation.clone(),
+            insert_runs: plan.insert_runs.clone(),
+        };
+    }
+    let overlay = live(core, context).expect("live overlay");
+    let node_ref = &overlay.nodes[node];
+    let base_length = node_ref.base.as_array().map_or(0, Vec::len);
+    let mut retained = vec![0u8; base_length];
+    let mut target_base: Vec<usize> = Vec::new();
+    for piece in &node_ref.array.pieces {
+        if let Piece::Base { .. } = piece {
+            for offset in 0..piece.length() {
+                let index = (piece.start() as i64 + piece.step() * offset as i64) as usize;
+                if index < base_length {
+                    retained[index] = 1;
+                }
+                target_base.push(index);
+            }
+        }
+    }
+    let mut remove_runs: Vec<usize> = Vec::new();
+    let mut end = base_length;
+    while end > 0 {
+        if retained[end - 1] != 0 {
+            end -= 1;
+            continue;
+        }
+        let mut start = end - 1;
+        while start > 0 && retained[start - 1] == 0 {
+            start -= 1;
+        }
+        remove_runs.push(start);
+        remove_runs.push(end - start);
+        end = start;
+    }
+    let retained_base: Vec<usize> = (0..base_length).filter(|at| retained[*at] != 0).collect();
+    let permutation = if target_base != retained_base {
+        let positions: HashMap<usize, usize> = retained_base
+            .iter()
+            .enumerate()
+            .map(|(index, value)| (*value, index))
+            .collect();
+        Some(
+            target_base
+                .iter()
+                .map(|value| positions.get(value).copied().unwrap_or(0))
+                .collect(),
+        )
+    } else {
+        None
+    };
+    let mut insert_runs: Vec<usize> = Vec::new();
+    let mut logical_index = 0usize;
+    let mut piece_index = 0usize;
+    while piece_index < node_ref.array.pieces.len() {
+        let piece = &node_ref.array.pieces[piece_index];
+        if piece.is_base() {
+            logical_index += piece.length();
+            piece_index += 1;
+            continue;
+        }
+        let start_piece = piece_index;
+        let mut run_length = 0usize;
+        while piece_index < node_ref.array.pieces.len()
+            && !node_ref.array.pieces[piece_index].is_base()
+        {
+            logical_index += node_ref.array.pieces[piece_index].length();
+            run_length += node_ref.array.pieces[piece_index].length();
+            piece_index += 1;
+        }
+        insert_runs.push(logical_index - run_length);
+        insert_runs.push(start_piece);
+        insert_runs.push(piece_index);
+    }
+    let plan = ArrayPlan {
+        remove_runs,
+        permutation,
+        insert_runs,
+    };
+    live_mut(core, context).expect("live overlay").nodes[node]
+        .array
+        .plan = Some(ArrayPlan {
+        remove_runs: plan.remove_runs.clone(),
+        permutation: plan.permutation.clone(),
+        insert_runs: plan.insert_runs.clone(),
+    });
+    plan
+}
+
+/// `cloneArrayRegion` (`tracker.ts:1994-2003`).
+fn clone_array_region(
+    core: &TrackerCore,
+    context: usize,
+    node: usize,
+    region: &DenseRegion,
+) -> Vec<JsonValue> {
+    let overlay = live(core, context).expect("live overlay");
+    let mut result = Vec::with_capacity(region.length);
+    for index in region.start..region.start + region.length {
+        let (source, source_index) = locate_piece(overlay, node, index);
+        result.push(match entry_ref(overlay, node, source, source_index) {
+            EntryRef::Base => overlay.nodes[node]
+                .base
+                .as_array()
+                .and_then(|array| array.get(source_index))
+                .cloned()
+                .unwrap_or(JsonValue::Null),
+            EntryRef::Primitive(value) => value,
+            EntryRef::Slot { slot, .. } => overlay.slot_value(slot),
+        });
+    }
+    result
+}
+
+/// `emitChangedValue` (`tracker.ts:2005-2029`).
+fn emit_changed_value(
+    operations: &mut Vec<Op>,
+    path: &[Seg],
+    before: Option<&JsonValue>,
+    after: &JsonValue,
+) -> bool {
+    let after_is_container = after.is_object() || after.is_array();
+    if let Some(before) = before {
+        let before_is_container = before.is_object() || before.is_array();
+        if !after_is_container && !before_is_container && before == after {
+            return false;
+        }
+        if before_is_container && after_is_container && before == after {
+            // `equalTrustedJson` over alias-free trees.
+            return false;
+        }
+    }
+    if let (Some(JsonValue::String(before)), JsonValue::String(after)) = (before, after) {
+        if after.len() > before.len() && after.starts_with(before.as_str()) {
+            operations.push(Op::Append {
+                path: path.to_owned(),
+                text: after[before.len()..].to_owned(),
+            });
+            return true;
+        }
+        let shared = overlap(before, after, 65_536);
+        if shared > 0 {
+            operations.push(Op::Truncate {
+                path: path.to_owned(),
+                count: utf16_len(before) - shared,
+            });
+            if utf16_len(after) > shared {
+                operations.push(Op::Append {
+                    path: path.to_owned(),
+                    text: slice_utf16_from(after, shared).to_owned(),
+                });
+            }
+            return true;
+        }
+    }
+    operations.push(Op::Set {
+        path: path.to_owned(),
+        value: after.clone(),
+    });
+    true
+}
+
+/// `emitSet` (`tracker.ts:2031-2034`).
+fn emit_set_op(operations: &mut Vec<Op>, path: &[Seg], value: JsonValue) {
     if path.is_empty() {
-        return Ok(target);
-    }
-    super::resolve_container(target, path)
-}
-
-fn unresolvable_container(path: &[Seg]) -> DeltaError {
-    DeltaError::UnresolvablePath {
-        path: serde_json::to_string(&super::path_to_json(path))
-            .expect("path JSON serialization cannot fail"),
+        operations.push(Op::Replace(value));
+    } else {
+        operations.push(Op::Set {
+            path: path.to_owned(),
+            value,
+        });
     }
 }
 
-fn resolve_array<'a>(
-    target: &'a JsonValue,
-    path: &[Seg],
-) -> Result<&'a Vec<JsonValue>, DeltaError> {
-    read_container(target, path)?
-        .as_array()
-        .ok_or_else(|| unresolvable_container(path))
+// ─── Clone helpers (cloneNode / cloneStored) ─────────────────────────────────
+
+/// `cloneNode` (`tracker.ts:1546-1563`): the node's full overlay view as a
+/// plain value.
+fn clone_node(core: &TrackerCore, context: usize, node: usize) -> JsonValue {
+    let overlay = live(core, context).expect("live overlay");
+    if overlay.nodes[node].base.is_array() {
+        let mut result: Vec<JsonValue> = Vec::new();
+        let pieces: Vec<Piece> = overlay.nodes[node].array.pieces.clone();
+        for piece in &pieces {
+            for offset in 0..piece.length() {
+                let source_index = (piece.start() as i64 + piece.step() * offset as i64) as usize;
+                let (source, at) = match piece {
+                    Piece::Base { .. } => (None, source_index),
+                    Piece::Insert { source, .. } => (Some(*source), source_index),
+                };
+                result.push(clone_entry_value(core, context, node, source, at));
+            }
+        }
+        JsonValue::Array(result)
+    } else {
+        let mut object = serde_json::Map::new();
+        for segment in own_keys(overlay, node) {
+            let Seg::Key(key) = segment else { continue };
+            let value = clone_object_position(core, context, node, &key);
+            object.insert(key, value);
+        }
+        JsonValue::Object(object)
+    }
 }
 
-fn resolve_array_mut<'a>(
-    target: &'a mut JsonValue,
-    path: &[Seg],
-) -> Result<&'a mut Vec<JsonValue>, DeltaError> {
-    read_container_mut(target, path)?
-        .as_array_mut()
-        .ok_or_else(|| unresolvable_container(path))
+/// `cloneStored` for an object-key base position: fold a dirty
+/// base-derived child view when one was created for this key.
+fn clone_object_position(core: &TrackerCore, context: usize, node: usize, key: &str) -> JsonValue {
+    let overlay = live(core, context).expect("live overlay");
+    let node_ref = &overlay.nodes[node];
+    if is_object_deleted(node_ref, key) {
+        return JsonValue::Null;
+    }
+    if let Some(write) = find_write(node_ref, key) {
+        return clone_write_value(core, context, node, key, &write);
+    }
+    if let Some(&child) = node_ref.child_keys.get(key) {
+        if overlay.nodes[child].from == Origin::Base
+            && (overlay.nodes[child].dirty || overlay.nodes[child].subtree_dirty)
+        {
+            return clone_node(core, context, child);
+        }
+    }
+    node_ref
+        .base
+        .as_object()
+        .and_then(|object| object.get(key))
+        .cloned()
+        .unwrap_or(JsonValue::Null)
 }
 
-/// Upstream `isObj` (`delta/index.ts:129`): objects or arrays.
-fn is_obj(value: &JsonValue) -> bool {
-    value.is_object() || value.is_array()
+/// `cloneStored` for an object-key write: fold a dirty child view when one
+/// was created for the stored container at this key.
+fn clone_write_value(
+    core: &TrackerCore,
+    context: usize,
+    node: usize,
+    key: &str,
+    write: &WriteValue,
+) -> JsonValue {
+    let overlay = live(core, context).expect("live overlay");
+    if let WriteValue::Slot { slot, epoch } = write {
+        if let Some(&child) = overlay.nodes[node].child_keys.get(key) {
+            if overlay.nodes[child].from
+                == (Origin::Slot {
+                    slot: *slot,
+                    epoch: *epoch,
+                })
+                && (overlay.nodes[child].dirty || overlay.nodes[child].subtree_dirty)
+            {
+                return clone_node(core, context, child);
+            }
+        }
+        return overlay.slot_value(*slot);
+    }
+    match write {
+        WriteValue::Primitive(value) => value.clone(),
+        WriteValue::Slot { slot, .. } => overlay.slot_value(*slot),
+    }
 }
 
-/// `cloneJson` (`delta/index.ts:130-150`) is a plain deep copy over owned
-/// trees.
-fn clone_json(value: &JsonValue) -> JsonValue {
-    value.clone()
+/// `cloneStored` for an array-entry reference: fold a dirty child view
+/// created for the referenced container.
+fn clone_entry_value(
+    core: &TrackerCore,
+    context: usize,
+    node: usize,
+    source: Option<u64>,
+    source_index: usize,
+) -> JsonValue {
+    let overlay = live(core, context).expect("live overlay");
+    let reference = entry_ref(overlay, node, source, source_index);
+    let cache_key = (source.is_none(), source.unwrap_or(0), source_index);
+    if let Some(&child) = overlay.nodes[node].child_entries.get(&cache_key) {
+        if overlay.nodes[child].from == reference.from()
+            && (overlay.nodes[child].dirty || overlay.nodes[child].subtree_dirty)
+        {
+            return clone_node(core, context, child);
+        }
+    }
+    match reference {
+        EntryRef::Base => overlay.nodes[node]
+            .base
+            .as_array()
+            .and_then(|array| array.get(source_index))
+            .cloned()
+            .unwrap_or(JsonValue::Null),
+        EntryRef::Primitive(value) => value,
+        EntryRef::Slot { slot, .. } => overlay.slot_value(slot),
+    }
 }
 
-/// JS default `Array.prototype.sort` comparator: elements compared by their
-/// UTF-16 string form.
-fn js_string_key(value: &JsonValue) -> String {
+/// `ownKeys` (`tracker.ts:617-662`): numeric keys first (sorted), then the
+/// string keys, with writes added and deletes/readds removed.
+fn own_keys(overlay: &Overlay, node: usize) -> Vec<Seg> {
+    let node_ref = &overlay.nodes[node];
+    if node_ref.base.is_array() {
+        let length = node_ref.array.pieces.iter().map(Piece::length).sum();
+        return (0..length).map(Seg::Index).collect();
+    }
+    let mut existing_keys_only = node_ref.delete_key.is_none()
+        && node_ref.deletes.is_empty()
+        && node_ref.readded.is_empty()
+        && match &node_ref.write_key {
+            Some(key) => node_ref
+                .base
+                .as_object()
+                .is_some_and(|object| object.contains_key(key)),
+            None => true,
+        };
+    if existing_keys_only && !node_ref.writes.is_empty() {
+        for (key, _) in &node_ref.writes {
+            if !node_ref
+                .base
+                .as_object()
+                .is_some_and(|object| object.contains_key(key))
+            {
+                existing_keys_only = false;
+                break;
+            }
+        }
+    }
+    let mut keys: Vec<String> = Vec::new();
+    if existing_keys_only {
+        if let Some(object) = node_ref.base.as_object() {
+            keys.extend(object.keys().cloned());
+        }
+    } else {
+        if let Some(object) = node_ref.base.as_object() {
+            for key in object.keys() {
+                if !is_object_deleted(node_ref, key) && !node_ref.readded.iter().any(|at| at == key)
+                {
+                    keys.push(key.clone());
+                }
+            }
+        }
+        let mut seen: Vec<String> = keys.clone();
+        if let Some(key) = &node_ref.write_key {
+            if !seen.contains(key) {
+                keys.push(key.clone());
+                seen.push(key.clone());
+            }
+        }
+        for (key, _) in &node_ref.writes {
+            if !seen.contains(key) {
+                keys.push(key.clone());
+                seen.push(key.clone());
+            }
+        }
+    }
+    let mut indices: Vec<usize> = Vec::new();
+    let mut strings: Vec<String> = Vec::new();
+    for key in keys {
+        match parse_array_index(&key) {
+            Some(index) => indices.push(index),
+            None => strings.push(key),
+        }
+    }
+    indices.sort_unstable();
+    let mut out: Vec<Seg> = indices.into_iter().map(Seg::Index).collect();
+    out.extend(strings.into_iter().map(Seg::Key));
+    out
+}
+
+/// `arrayIndex` (`tracker.ts:971-984`): canonical array-index strings only.
+fn parse_array_index(property: &str) -> Option<usize> {
+    if property.is_empty() || property.len() > 10 {
+        return None;
+    }
+    if property == "0" {
+        return Some(0);
+    }
+    let first = property.as_bytes()[0];
+    if !(b'1'..=b'9').contains(&first) {
+        return None;
+    }
+    let mut index: usize = (first - b'0') as usize;
+    for digit in property.as_bytes()[1..].iter() {
+        if !digit.is_ascii_digit() {
+            return None;
+        }
+        index = index * 10 + (digit - b'0') as usize;
+        if index >= 4_294_967_295 {
+            return None;
+        }
+    }
+    Some(index)
+}
+
+// ─── Abort / clear / invalidate ──────────────────────────────────────────────
+
+/// `abortContext` (`tracker.ts:2141-2146`).
+fn abort_context(core: &mut TrackerCore, context: usize) {
+    let status = core.contexts.get(context).map(|cell| cell.status);
+    match status {
+        Some(Status::Aborted) | Some(Status::Consumed) | Some(Status::Stale) | None => {}
+        Some(_) => {
+            core.contexts[context].status = Status::Aborted;
+            clear_context(core, context);
+        }
+    }
+}
+
+/// `clearContext` (`tracker.ts:2162-2201`): release the overlay; statuses
+/// keep driving the settled checks.
+fn clear_context(core: &mut TrackerCore, context: usize) {
+    if let Some(cell) = core.contexts.get_mut(context) {
+        cell.overlay = None;
+    }
+}
+
+/// `#invalidate` (`tracker.ts:301-313`): mark competing drafts stale and
+/// drop their overlays in O(1).
+fn invalidate(core: &mut TrackerCore, winner: usize) {
+    for at in 0..core.contexts.len() {
+        if at == winner {
+            continue;
+        }
+        if matches!(core.contexts[at].status, Status::Open | Status::Prepared) {
+            core.contexts[at].status = Status::Stale;
+        }
+        if core.contexts[at].status == Status::Stale {
+            core.contexts[at].overlay = None;
+        }
+    }
+}
+
+/// JS `typeof value` over the JSON union.
+fn js_typeof(value: &JsonValue) -> &'static str {
+    match value {
+        JsonValue::Null => "null",
+        JsonValue::Bool(_) => "boolean",
+        JsonValue::Number(_) => "number",
+        JsonValue::String(_) => "string",
+        JsonValue::Array(_) | JsonValue::Object(_) => "object",
+    }
+}
+
+/// JS `String(value)` for default sort keys (`tracker.ts:1284-1286`).
+fn js_value_to_string(value: &JsonValue) -> String {
     match value {
         JsonValue::Null => "null".to_owned(),
         JsonValue::Bool(true) => "true".to_owned(),
         JsonValue::Bool(false) => "false".to_owned(),
-        JsonValue::Number(number) => number.to_string(),
+        JsonValue::Number(number) => {
+            super::diff::js_number_to_string(number.as_f64().unwrap_or_default())
+        }
         JsonValue::String(text) => text.clone(),
-        other => serde_json::to_string(other).expect("JSON serialization cannot fail"),
+        JsonValue::Array(_) | JsonValue::Object(_) => "[object Object]".to_owned(),
+    }
+}
+
+fn split_path(path: &[Seg]) -> Result<(&[Seg], Seg), TrackerError> {
+    match path.split_last() {
+        Some((last, prefix)) => Ok((prefix, last.clone())),
+        None => Err(type_error("Cannot set properties of undefined")),
     }
 }

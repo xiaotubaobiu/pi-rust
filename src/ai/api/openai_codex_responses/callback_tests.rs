@@ -51,7 +51,10 @@ fn mock_token(account_id: &str) -> String {
 }
 
 fn model_on(server: &wiremock::MockServer) -> Model {
-    Model {r#type: None, prompt_cache: None, input_limits: None, 
+    Model {
+        r#type: None,
+        prompt_cache: None,
+        input_limits: None,
         id: "gpt-5.1-codex".to_string(),
         name: "GPT-5.1 Codex".to_string(),
         api: "openai-codex-responses".to_string(),

@@ -62,6 +62,10 @@ pub enum WireOp {
         remove: usize,
         items: Vec<JsonValue>,
     },
+    /// `["m", ref, permutation]`
+    Reorder { r: PathRef, permutation: Vec<usize> },
+    /// `["m", permutation]`
+    ReorderShort(Vec<usize>),
     /// `["#", id, path]`
     Define { id: u64, path: Path },
 }
@@ -121,11 +125,25 @@ pub fn wire_op_to_json(op: &WireOp) -> JsonValue {
                 JsonValue::Array(items.clone()),
             ],
         ),
+        WireOp::Reorder { r, permutation } => {
+            verb("m", vec![wire_ref_json(r), permutation_json(permutation)])
+        }
+        WireOp::ReorderShort(permutation) => verb("m", vec![permutation_json(permutation)]),
         WireOp::Define { id, path } => verb(
             "#",
             vec![JsonValue::Number(Number::from(*id)), path_to_json(path)],
         ),
     }
+}
+
+/// `m` permutations serialize as plain number arrays.
+fn permutation_json(permutation: &[usize]) -> JsonValue {
+    JsonValue::Array(
+        permutation
+            .iter()
+            .map(|at| JsonValue::Number(Number::from(*at)))
+            .collect(),
+    )
 }
 
 fn wire_nonneg_int(value: &JsonValue, what: &str) -> Result<usize, DeltaError> {
@@ -285,6 +303,21 @@ pub fn wire_op_from_json(value: &JsonValue) -> Result<WireOp, DeltaError> {
                 },
             }
         }
+        "m" => {
+            // `["m", ref, permutation]` / `["m", permutation]`; the
+            // permutation is always the final element
+            // (delta/index.ts:1261-1264).
+            if tuple.len() == 3 {
+                WireOp::Reorder {
+                    r: wire_ref_from_json(&tuple[1])?,
+                    permutation: permutation_from_json(&tuple[2])?,
+                }
+            } else if tuple.len() == 2 {
+                WireOp::ReorderShort(permutation_from_json(&tuple[1])?)
+            } else {
+                return Err(DeltaError::InvalidOp("m arity".to_owned()));
+            }
+        }
         "#" => {
             if tuple.len() != 3 || !tuple[1].is_u64() || !tuple[2].is_array() {
                 return Err(DeltaError::InvalidOp("# shape".to_owned()));
@@ -303,6 +336,31 @@ pub fn wire_op_from_json(value: &JsonValue) -> Result<WireOp, DeltaError> {
 
 fn path_key(path: &[Seg]) -> String {
     serde_json::to_string(&path_to_json(path)).expect("path JSON serialization cannot fail")
+}
+
+/// `assertPermutation` (`delta/index.ts:199-208`): an array of distinct
+/// in-range indices — a bijection.
+fn permutation_from_json(value: &JsonValue) -> Result<Vec<usize>, DeltaError> {
+    let items = value
+        .as_array()
+        .ok_or_else(|| DeltaError::InvalidOp("m permutation is not an array".to_owned()))?;
+    let mut seen = vec![false; items.len()];
+    let mut out = Vec::with_capacity(items.len());
+    for item in items {
+        let index = item
+            .as_f64()
+            .filter(|n| n.is_finite() && n.fract() == 0.0 && *n >= 0.0 && *n < items.len() as f64)
+            .ok_or_else(|| DeltaError::InvalidOp("m permutation is not a bijection".to_owned()))?
+            as usize;
+        if seen[index] {
+            return Err(DeltaError::InvalidOp(
+                "m permutation is not a bijection".to_owned(),
+            ));
+        }
+        seen[index] = true;
+        out.push(index);
+    }
+    Ok(out)
 }
 
 /// Stateful path-interning encoder. Port of `encoder`/`Encoder`
@@ -361,6 +419,7 @@ impl Encoder {
                         remove: *remove,
                         items: items.clone(),
                     },
+                    Op::Reorder { permutation, .. } => WireOp::ReorderShort(permutation.clone()),
                     Op::Replace(_) => unreachable!("handled above"),
                 });
                 continue;
@@ -403,6 +462,10 @@ impl Encoder {
                     index: *index,
                     remove: *remove,
                     items: items.clone(),
+                },
+                Op::Reorder { permutation, .. } => WireOp::Reorder {
+                    r,
+                    permutation: permutation.clone(),
                 },
                 Op::Replace(_) => unreachable!("handled above"),
             };
@@ -450,6 +513,7 @@ impl Decoder {
                             | WireOp::AppendShort(_)
                             | WireOp::TruncateShort(_)
                             | WireOp::SpliceShort { .. }
+                            | WireOp::ReorderShort(_)
                     );
 
                     let path: Path = if short {
@@ -463,7 +527,8 @@ impl Decoder {
                             | WireOp::Delete { r }
                             | WireOp::Append { r, .. }
                             | WireOp::Truncate { r, .. }
-                            | WireOp::Splice { r, .. } => r,
+                            | WireOp::Splice { r, .. }
+                            | WireOp::Reorder { r, .. } => r,
                             _ => unreachable!("covered above"),
                         };
                         let path = match r {
@@ -478,8 +543,13 @@ impl Decoder {
                         path
                     };
 
-                    if !matches!(op, WireOp::Splice { .. } | WireOp::SpliceShort { .. })
-                        && path.is_empty()
+                    if !matches!(
+                        op,
+                        WireOp::Splice { .. }
+                            | WireOp::SpliceShort { .. }
+                            | WireOp::Reorder { .. }
+                            | WireOp::ReorderShort(_)
+                    ) && path.is_empty()
                     {
                         return Err(unresolvable(&path));
                     }
@@ -523,6 +593,12 @@ impl Decoder {
                             remove: *remove,
                             items: items.clone(),
                         }),
+                        WireOp::Reorder { permutation, .. } | WireOp::ReorderShort(permutation) => {
+                            out.push(Op::Reorder {
+                                path,
+                                permutation: permutation.clone(),
+                            })
+                        }
                         _ => unreachable!("define/replace handled above"),
                     }
                 }

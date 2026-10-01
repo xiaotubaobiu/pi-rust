@@ -254,8 +254,7 @@ pub(crate) fn radius_provider_with_loader(
                 crate::ai::types::AnyModel::Chat(model)
             })
             .collect();
-    let models: Arc<RwLock<Vec<crate::ai::types::AnyModel>>> =
-        Arc::new(RwLock::new(Vec::new()));
+    let models: Arc<RwLock<Vec<crate::ai::types::AnyModel>>> = Arc::new(RwLock::new(Vec::new()));
     let oauth_name = name.clone();
     let oauth_gateway = gateway.clone();
     let oauth = lazy_oauth(
@@ -337,9 +336,7 @@ impl Provider for RadiusProvider {
             .collect())
     }
 
-    fn get_all_models(
-        &self,
-    ) -> Result<Vec<crate::ai::types::AnyModel>, ModelsError> {
+    fn get_all_models(&self) -> Result<Vec<crate::ai::types::AnyModel>, ModelsError> {
         let models = self
             .models
             .read()

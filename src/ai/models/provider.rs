@@ -33,8 +33,8 @@ use futures::future::BoxFuture;
 use crate::ai::api::ApiImpl;
 use crate::ai::auth::resolve::ModelsError;
 use crate::ai::auth::types::{Credential, ProviderAuth};
-use crate::ai::now_ms;
 use crate::ai::model_operations::get_model_type;
+use crate::ai::now_ms;
 use crate::ai::types::{
     AnyModel, AssistantImages, ClassifierContext, ClassifierModel, ClassifierOptions,
     ClassifierResult, ImageModel, ImagesContext, ImagesOptions, Model, ModelType, ProviderHeaders,
@@ -87,11 +87,7 @@ pub trait Provider: Send + Sync {
     /// default serves every model as chat, mirroring the upstream absence
     /// path.
     fn get_all_models(&self) -> Result<Vec<AnyModel>, ModelsError> {
-        Ok(self
-            .get_models()?
-            .into_iter()
-            .map(AnyModel::Chat)
-            .collect())
+        Ok(self.get_models()?.into_iter().map(AnyModel::Chat).collect())
     }
 
     /// Upstream `refreshModels?` (models.ts:124-129): dynamic providers only.
@@ -134,7 +130,6 @@ pub trait Provider: Send + Sync {
     /// Upstream `provider.filterModels !== undefined`.
     fn has_filter_models(&self) -> bool {
         false
-
     }
 
     /// Upstream `provider.filterAllModels !== undefined`.
@@ -548,9 +543,7 @@ pub(crate) fn has_known_model_type(model: &AnyModel) -> bool {
 
 /// std RwLock write access, poison-recovering (no await while held — the
 /// publication update runs synchronously by contract).
-fn write_lock(
-    dynamic: &RwLock<Vec<AnyModel>>,
-) -> std::sync::RwLockWriteGuard<'_, Vec<AnyModel>> {
+fn write_lock(dynamic: &RwLock<Vec<AnyModel>>) -> std::sync::RwLockWriteGuard<'_, Vec<AnyModel>> {
     dynamic
         .write()
         .unwrap_or_else(std::sync::PoisonError::into_inner)
@@ -723,8 +716,15 @@ mod tests {
         let dynamic = [refreshed_b, test_model("p", "c")];
 
         let merged = merge_catalog(
-            &baseline.iter().map(|m| crate::ai::types::AnyModel::Chat(m.clone())).collect::<Vec<_>>(),
-            &dynamic.iter().cloned().map(crate::ai::types::AnyModel::Chat).collect::<Vec<_>>(),
+            &baseline
+                .iter()
+                .map(|m| crate::ai::types::AnyModel::Chat(m.clone()))
+                .collect::<Vec<_>>(),
+            &dynamic
+                .iter()
+                .cloned()
+                .map(crate::ai::types::AnyModel::Chat)
+                .collect::<Vec<_>>(),
         );
         let ids: Vec<String> = merged.iter().map(|model| model.id().to_string()).collect();
         // Replaced in place, new entries appended after the baseline.
@@ -736,10 +736,18 @@ mod tests {
         // An empty overlay returns the baseline unchanged.
         assert_eq!(
             merge_catalog(
-                &baseline.iter().cloned().map(crate::ai::types::AnyModel::Chat).collect::<Vec<_>>(),
+                &baseline
+                    .iter()
+                    .cloned()
+                    .map(crate::ai::types::AnyModel::Chat)
+                    .collect::<Vec<_>>(),
                 &[],
             ),
-            baseline.iter().cloned().map(crate::ai::types::AnyModel::Chat).collect::<Vec<_>>(),
+            baseline
+                .iter()
+                .cloned()
+                .map(crate::ai::types::AnyModel::Chat)
+                .collect::<Vec<_>>(),
         );
     }
 

@@ -275,7 +275,10 @@ fn mistral_options_from_simple(
 
 /// Upstream `effortMap[reasoning] ?? "high"`: the raw map value, `"high"`
 /// when the level is absent or mapped to null.
-fn mapped_reasoning_effort(map: &crate::ai::types::primitives::ThinkingLevelMap, key: &str) -> String {
+fn mapped_reasoning_effort(
+    map: &crate::ai::types::primitives::ThinkingLevelMap,
+    key: &str,
+) -> String {
     match map.get(key) {
         Some(Some(value)) => value.clone(),
         Some(None) | None => "high".to_string(),
@@ -1526,8 +1529,7 @@ mod tests {
     use crate::ai::transcript::{normalize_context, Context};
     use crate::ai::types::content::{ImageContent, TextContent};
     use crate::ai::types::events::PartialAssistant;
-    use crate::ai::types::message::{Message, StringOrBlocks, ToolResultMessage, UserMessage,
-    };
+    use crate::ai::types::message::{Message, StringOrBlocks, ToolResultMessage, UserMessage};
     use crate::ai::types::primitives::{CacheRetention, ModelCost, ThinkingLevelMap};
     use crate::ai::types::tool::{ConstrainedSampling, JsonSchemaSampling, Strict, Tool};
     use crate::ai::types::{ModelInput, ThinkingLevel};
@@ -1538,7 +1540,10 @@ mod tests {
     // ---- fixtures ----
 
     fn model(base_url: &str) -> Model {
-        Model {r#type: None, prompt_cache: None, input_limits: None, 
+        Model {
+            r#type: None,
+            prompt_cache: None,
+            input_limits: None,
             id: "mistral-large-latest".to_string(),
             name: "Mistral Large".to_string(),
             api: API.to_string(),
@@ -1563,7 +1568,10 @@ mod tests {
     }
 
     fn model_with_id(base_url: &str, id: &str, reasoning: bool) -> Model {
-        Model {r#type: None, prompt_cache: None, input_limits: None, 
+        Model {
+            r#type: None,
+            prompt_cache: None,
+            input_limits: None,
             id: id.to_string(),
             reasoning,
             ..model(base_url)
@@ -1801,7 +1809,10 @@ mod tests {
                 matches!(events.last(), Some(AssistantMessageEvent::Done { .. })),
                 "{id}: {events:?}"
             );
-            (body.get("prompt_mode").cloned(), body.get("reasoning_effort").cloned())
+            (
+                body.get("prompt_mode").cloned(),
+                body.get("reasoning_effort").cloned(),
+            )
         }
 
         let reasoning_high = SimpleStreamOptions {
@@ -1840,14 +1851,26 @@ mod tests {
         // Mapped models (#8700/#9375): reasoning_effort from the map, no
         // prompt_mode; thinking off sends the map's "off" entry ("none").
         for id in ["mistral-small-2603", "mistral-medium-latest", "zai-glm-5-2"] {
-            let (prompt_mode, effort) =
-                controls_of(&server, &ctx, id, true, Some(none_high.clone()), &reasoning_high)
-                    .await;
+            let (prompt_mode, effort) = controls_of(
+                &server,
+                &ctx,
+                id,
+                true,
+                Some(none_high.clone()),
+                &reasoning_high,
+            )
+            .await;
             assert_eq!(prompt_mode, None, "{id}");
             assert_eq!(effort, Some(json!("high")), "{id}");
-            let (prompt_mode, effort) =
-                controls_of(&server, &ctx, id, true, Some(none_high.clone()), &reasoning_off)
-                    .await;
+            let (prompt_mode, effort) = controls_of(
+                &server,
+                &ctx,
+                id,
+                true,
+                Some(none_high.clone()),
+                &reasoning_off,
+            )
+            .await;
             assert_eq!(prompt_mode, None, "{id}");
             assert_eq!(effort, Some(json!("none")), "{id}");
         }
@@ -1865,7 +1888,6 @@ mod tests {
         assert_eq!(prompt_mode, None);
         assert_eq!(effort, None);
     }
-
 
     #[tokio::test]
     async fn reasoning_effort_follows_the_thinking_level_map() {

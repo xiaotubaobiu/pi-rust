@@ -2560,3 +2560,12 @@ WORK_LOG追加前缀：386287 bytes / cadeaf51fe906e35a1531ffc26058289e7d44c061d
 - Kept during delta migration: docs/migration/{WORK_LOG,ORACLE_COVERAGE}.md + tools/ + reference/ + oracles/ + validation/.
 - Verified: cargo check --all-targets green; protocol::cbor spot-run 20/20.
 - Next: upstream delta migration v0.86.0-590144609 -> v0.99.1-2bbfcca43 (~45k prod lines: tui 1.3k, ai 3.5k incl oauth, agent 0.3k refactor, chord 3.9k delta-tracker, coding-agent 14k incl MCP+codemode+tool-search exts; new packages pi-mcp 3k, pi-codemode 1.6k quickjs, pi-durable 16.6k zero-consumer last).
+
+## 2026-09-30 wave-2 (ai oauth + chord delta, agent quota exhausted mid-run)
+- Subagent quota hit weekly limit (resets 2026-10-06); C1 died after ~4h leaving chord delta ~90% complete (tracker 3k lines, diff, validator, apply-immutable, services updates, chord_delta_oracle fixtures + manifest captured from upstream).
+- Main thread took over: repaired torn edit (2 stray quotes in tracker.rs), removed duplicate Decoder import, bound discarded subscribe handle, pinned clippy in oauth files A1 wrote post-verification (12 lints: duplicate bound, digit grouping, manual ok x2, useless format, trim-before-split, needless borrow, MutexGuard-across-await x2, type_complexity x2, single-pattern match).
+- Verified/fixed dead-agent test defects (never run before): callback browser requests missing state=expected-state (state guard correctly 400s), wrong expected complete() value (string_complete prefix), wrong failure-page assertion (shared server renders {provider} sign-in failed), chatgpt route assertions carried trailing periods upstream messages do not have, chatgpt issued-client-ID message.
+- Upstream-faithful redirect fix: openai-chatgpt redirect_uri is the pinned upstream constant http://127.0.0.1:1455/auth/callback (authorize URL, exchange body, manual-input origin check); test listener override only moves the bind; bind-failure info notice reports the tried URI.
+- Fixed real behavioral gap: anthropic AuthUrl instructions carried the manual-prompt message; upstream sends the separate browser instructions sentence (anthropic.ts:158-163).
+- Gates: clippy -D warnings 0; fmt check clean; oauth 270/0; chord 55/0 (serial).
+- Remaining: coding-agent core delta (~14k), pi-mcp + extensions/mcp + tool-search, pi-codemode + quickjs engine, pi-durable (zero consumers, last).

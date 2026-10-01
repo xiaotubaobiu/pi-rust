@@ -400,7 +400,10 @@ mod tests {
     use tokio::sync::mpsc;
 
     fn model() -> Model {
-        Model {r#type: None, prompt_cache: None, input_limits: None, 
+        Model {
+            r#type: None,
+            prompt_cache: None,
+            input_limits: None,
             id: "test-model".to_string(),
             name: "Test Model".to_string(),
             api: "openai-completions".to_string(),

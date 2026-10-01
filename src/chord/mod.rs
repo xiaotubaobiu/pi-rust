@@ -1,19 +1,23 @@
 //! # chord — standalone application-composition runtime. Port of
-//! `pi/packages/chord` (M6).
-//!
-//! Upstream sha256 registrations (source of truth for this slice):
+//! `pi/packages/chord` (M6 + the delta slice). Upstream sha256
+//! registrations (source of truth for this slice):
 //!
 //! | Upstream file | sha256 |
 //! | --- | --- |
-//! | `src/delta/index.ts` | `b026dde11b1b28c696a9a23b4fc8a4b8a1eff5059f89616b50650e3e3e06c797` |
-//! | `src/json.ts` | `d94a2f33d6c83fc022580466700d34cd1bca21003d567522f58b38902e1806fa` |
-//! | `src/types.ts` | `885283da0e2a60274e3bdfcd503ca15bd66a8a485e0963816684c1ab3586e2be` |
-//! | `src/api.ts` | `769a04a5f903bb53cc5b66e7353c69b02f12159d82f196a7894ceea5800ac201` |
+//! | `src/delta/index.ts` | `a95d221ff4ea9b48bd129904a3c4daacf9dd10182163d5d3f8e0b1c21b533b34` |
+//! | `src/delta/tracker.ts` | `3be4c18b42a4fff288617d96f8547137a485b41b0f455c2c811beae5b4bc5778` |
+//! | `src/delta/diff.ts` | `4d1ee245aef0967154ff7177527dcf68606cde400f6cfcfe00cedd4c1e21986e` |
+//! | `src/delta/apply-immutable-trusted.ts` | `861e7f8b7f410326cfb9658c272ee0d5e6235def40c3304237e41a5a49d3ec69` |
+//! | `src/delta/revision-validator.ts` | `d4d5c62b67271ecfe3029b0619a333b4d8a96a2bb6b8015fe83bffd0f7718c09` |
+//! | `src/json.ts` | `8b7d633aabcf694f3827355a9d5bc305efbcdb6c276f9420509eeccfa613edf8` |
+//! | `src/types.ts` | `adb3602bbf8ccdc94015b950151504e890612cdd1e836366137ceaa4f228b5f4` |
+//! | `src/api.ts` | `2ad07e4621229bdc3cfb7d917ed3f098d36fa84d3bcbcad7c2b50edd973ad087` |
 //! | `src/context/index.ts` | `0f0925a896cf1e506d9495d929157347639e90da343bf28d7472ea645897e7d3` |
-//! | `src/services/provider.ts` | `fe810eaa1eb8418025b2dd0d16bb049c8641fd1b864fbd31c8f8de031c563fcc` |
-//! | `src/services/wire.ts` | `84ec6e3362ae3c5239b27b63be8e8377e1cf45c97088bb8d628c5e55458614b8` |
-//! | `src/services/state.ts` | `4605021d763b5b82b99ebab783769640e61b19fb8f64082953b3d0c1be717319` |
-//! | `src/services/state-codec.ts` | `4bebb2ffc7ed0ffd62933460d5a4a5733e3d7647294476c475cb9431f121f904` |
+//! | `src/services/provider.ts` | `47ca6cd540079906cff962e58a86961ee52f82ef8949fe4674e964bcfaf12100` |
+//! | `src/services/wire.ts` | `dbe4011b774fbeb90535d4c89ec0ffe19aa3828b602db9cc75506fb2f39eef74` |
+//! | `src/services/state.ts` | `6722c58e0816120d4f48a6d58d0d7248c3fe6dd9baf6f7cfd9181a56f2797668` |
+//! | `src/services/state-codec.ts` | `a42c889ae7659ef5dfabca835b3e59fb85796f0b45f58666f8418d4e34f40834` |
+//! | `src/services/state-internals.ts` | `1ff3650206497e3c0863f978b358593bacaee437d7e141b80e31327c00629cea` |
 //! | `src/services/errors.ts` | `487e73b60a1c69dd132cf6f4c4ec625e346b5cecc1cb890da25a5199a43798a8` |
 //!
 //! ## Slice boundary (M6 chord slice)

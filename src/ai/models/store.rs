@@ -176,7 +176,10 @@ mod tests {
     use crate::ai::types::Model;
 
     fn test_model(provider: &str, id: &str) -> Model {
-        Model {r#type: None, prompt_cache: None, input_limits: None, 
+        Model {
+            r#type: None,
+            prompt_cache: None,
+            input_limits: None,
             id: id.to_string(),
             name: id.to_string(),
             api: "test-api".to_string(),

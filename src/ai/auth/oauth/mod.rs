@@ -1,14 +1,17 @@
 //! OAuth login flows ported from upstream `packages/ai/src/auth/oauth/`:
 //! PKCE utilities (`pkce`), the local redirect landing page (`oauth_page`),
-//! the generic device-code poll engine (`device_code`), the Anthropic
-//! (Claude Pro/Max) flow (`anthropic`, exposing [`AnthropicOAuth`]), the
-//! OpenAI Codex (ChatGPT Plus/Pro) flow (`openai_codex`, exposing
-//! [`OpenAICodexOAuth`]), the GitHub Copilot flow (`github_copilot`, exposing
-//! [`GitHubCopilotOAuth`]), the OpenRouter flow (`openrouter`, exposing
-//! [`OpenRouterOAuth`]), the xAI flow (`xai`, exposing [`XaiOAuth`]), the
-//! Kimi Code flow (`kimi_coding`, exposing [`KimiCodingOAuth`]) and the
-//! Radius gateway flow (`radius`, exposing [`RadiusOAuth`]); `load` is the
-//! flow-loader registry (upstream `load.ts`).
+//! the generic device-code poll engine (`device_code`), the shared loopback
+//! redirect handler (`callback_server`, upstream `callback-server.ts`), the
+//! Anthropic (Claude Pro/Max) flow (`anthropic`, exposing
+//! [`AnthropicOAuth`]), the OpenAI Codex (ChatGPT Plus/Pro) flow
+//! (`openai_codex`, exposing [`OpenAICodexOAuth`]), the Sign in with ChatGPT
+//! flow (`openai_chatgpt`, exposing [`OpenAIChatGptOAuth`]), the Meta Muse
+//! flow (`meta`, exposing [`MetaOAuth`]), the GitHub Copilot flow
+//! (`github_copilot`, exposing [`GitHubCopilotOAuth`]), the OpenRouter flow
+//! (`openrouter`, exposing [`OpenRouterOAuth`]), the xAI flow (`xai`,
+//! exposing [`XaiOAuth`]), the Kimi Code flow (`kimi_coding`, exposing
+//! [`KimiCodingOAuth`]) and the Radius gateway flow (`radius`, exposing
+//! [`RadiusOAuth`]); `load` is the flow-loader registry (upstream `load.ts`).
 //!
 //! Flows are interactive through [`crate::ai::auth::types::AuthInteraction`]
 //! only: the browser gets the authorize URL via the `auth_url` event, the
@@ -17,16 +20,23 @@
 //! (M2d controller ruling).
 //!
 //! The pieces below are shared infrastructure used by more than one flow.
-//! Upstream duplicates them per flow file (`parseAuthorizationInput` is
-//! byte-identical in `anthropic.ts` and `openai-codex.ts`); the port hoists
-//! them here once.
+//! Upstream hoisted the loopback callback server into `callback-server.ts`
+//! with the auth delta (previously duplicated per flow file); the port also
+//! shares `parse_authorization_input` (byte-identical in the upstream
+//! anthropic/openai-codex copies) here once.
 
 pub mod anthropic;
+pub mod callback_server;
 pub mod device_code;
 pub mod github_copilot;
 pub mod kimi_coding;
 pub mod load;
+pub mod meta;
 pub mod oauth_page;
+
+#[cfg(test)]
+mod oauth_oracle_tests;
+pub mod openai_chatgpt;
 pub mod openai_codex;
 pub mod openrouter;
 pub mod pkce;
@@ -36,14 +46,58 @@ pub mod xai;
 pub use anthropic::AnthropicOAuth;
 pub use github_copilot::GitHubCopilotOAuth;
 pub use kimi_coding::KimiCodingOAuth;
+pub use meta::MetaOAuth;
+pub use openai_chatgpt::OpenAIChatGptOAuth;
 pub use openai_codex::OpenAICodexOAuth;
 pub use openrouter::OpenRouterOAuth;
 pub use radius::{create_radius_oauth, RadiusOAuth, RadiusOAuthOptions};
 pub use xai::XaiOAuth;
 
+/// Deterministic entropy injection for the oracle tests: the capture stubs
+/// `crypto.getRandomValues`/`randomBytes` with a fixed byte stream, and the
+/// injected draws here replay the same bytes in the same order. Only live
+/// under `cfg(test)`; every consumer falls back to OS entropy when the queue
+/// is empty.
+#[cfg(test)]
+pub(crate) mod test_entropy {
+    use std::sync::Mutex;
+
+    fn queue() -> &'static Mutex<Vec<Vec<u8>>> {
+        static QUEUE: std::sync::OnceLock<Mutex<Vec<Vec<u8>>>> = std::sync::OnceLock::new();
+        QUEUE.get_or_init(|| Mutex::new(Vec::new()))
+    }
+
+    /// Queue one deterministic draw (FIFO, consumed by the next 32-byte
+    /// request).
+    pub(crate) fn push(bytes: Vec<u8>) {
+        queue().lock().unwrap().push(bytes);
+    }
+
+    /// Take the next draw, truncated/zero-padded to `len` bytes. `None`
+    /// when the queue is empty (the caller falls back to OS entropy).
+    pub(crate) fn take(len: usize) -> Option<Vec<u8>> {
+        let mut guard = queue().lock().unwrap();
+        if guard.is_empty() {
+            return None;
+        }
+        let mut bytes = guard.remove(0);
+        bytes.resize(len, 0);
+        Some(bytes)
+    }
+
+    /// Drop any queued draws (oracle tests run serially and clear between
+    /// scenarios).
+    #[allow(dead_code)]
+    pub(crate) fn clear() {
+        queue().lock().unwrap().clear();
+    }
+}
+
 use std::sync::Arc;
 
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::AsyncReadExt;
+#[cfg(test)]
+use tokio::io::AsyncWriteExt;
 use tokio::sync::watch;
 
 /// Response body content type of the OAuth landing pages (upstream
@@ -195,7 +249,11 @@ pub(crate) async fn read_request_head(stream: &mut tokio::net::TcpStream) -> Opt
 }
 
 /// Writes one HTTP/1.1 response and closes the connection (the callback
-/// servers never keep-alive).
+/// servers never keep-alive). The auth-delta refactor moved the anthropic/
+/// openai-codex/openrouter/radius flows onto the shared callback server's
+/// own writer (which adds `Cache-Control: no-store`); only test doubles
+/// still use this minimal form.
+#[cfg(test)]
 pub(crate) async fn write_response(
     stream: &mut tokio::net::TcpStream,
     status: u16,
@@ -275,6 +333,13 @@ impl<T: Clone + Send> Waiter<T> {
 /// per flow (`radius.ts`, `openrouter.ts`); the port hoists it here once.
 pub(crate) fn uuid_v4() -> String {
     let mut bytes = [0u8; 16];
+    #[cfg(test)]
+    if let Some(injected) = test_entropy::take(16) {
+        bytes.copy_from_slice(&injected);
+    } else {
+        rand::fill(&mut bytes);
+    }
+    #[cfg(not(test))]
     rand::fill(&mut bytes);
     bytes[6] = (bytes[6] & 0x0f) | 0x40;
     bytes[8] = (bytes[8] & 0x3f) | 0x80;

@@ -61,13 +61,15 @@ mod llama_cpp {
                 ),
                 (
                     "bool1".to_string(),
-                    ClassifierQuestion::Bool(crate::ai::types::classifier::ClassifierBoolQuestion {
-                        instructions: "Is the state positive?".into(),
-                        criteria: ClassifierBoolCriteria {
-                            r#true: "Yes it is".into(),
-                            r#false: "No it is not".into(),
+                    ClassifierQuestion::Bool(
+                        crate::ai::types::classifier::ClassifierBoolQuestion {
+                            instructions: "Is the state positive?".into(),
+                            criteria: ClassifierBoolCriteria {
+                                r#true: "Yes it is".into(),
+                                r#false: "No it is not".into(),
+                            },
                         },
-                    }),
+                    ),
                 ),
             ]),
         }
@@ -104,7 +106,11 @@ mod llama_cpp {
         for id in ["choice1", "score1", "bool1"] {
             let rendered = render_question(&context, id).unwrap();
             let upstream = &fixture[id];
-            assert_eq!(rendered.content, upstream["content"].as_str().unwrap(), "{id}");
+            assert_eq!(
+                rendered.content,
+                upstream["content"].as_str().unwrap(),
+                "{id}"
+            );
             let labels: Vec<String> = upstream["labels"]
                 .as_array()
                 .unwrap()
@@ -229,8 +235,8 @@ mod system_one {
     };
     use crate::ai::types::model::ClassifierModel;
     use crate::ai::types::model::{ModelInput, ModelType};
-    use crate::ai::types::primitives::ModelCost;
     use crate::ai::types::ordered_map::OrderedMap;
+    use crate::ai::types::primitives::ModelCost;
     use wiremock::matchers::{method, path};
     use wiremock::{Mock, MockServer, ResponseTemplate};
 
@@ -336,10 +342,7 @@ mod system_one {
         let requests = server.received_requests().await.unwrap();
         let sent = requests.last().unwrap();
         for (name, value) in captured["headers"].as_object().unwrap() {
-            let wire = sent
-                .headers
-                .get(name)
-                .and_then(|value| value.to_str().ok());
+            let wire = sent.headers.get(name).and_then(|value| value.to_str().ok());
             assert_eq!(wire, Some(value.as_str().unwrap()), "header {name}");
         }
         // Body: key-set/value equality against the captured wire bytes (the
@@ -351,17 +354,27 @@ mod system_one {
         assert_eq!(body, expected_body);
 
         // Result: answers and catalog-priced usage match the capture.
-        assert_eq!(result.stop_reason, ClassifierStopReason::Stop, "err: {:?}", result.error_message);
+        assert_eq!(
+            result.stop_reason,
+            ClassifierStopReason::Stop,
+            "err: {:?}",
+            result.error_message
+        );
         assert!(result.error_message.is_none());
         let answers = serde_json::to_value(result.answers).unwrap();
         assert_eq!(answers, response["result"]["answers"]);
         let usage = serde_json::to_value(result.usage).unwrap();
         assert_eq!(usage["input"], response["result"]["usage"]["input"]);
         assert_eq!(usage["output"], response["result"]["usage"]["output"]);
-        assert_eq!(usage["totalTokens"], response["result"]["usage"]["totalTokens"]);
+        assert_eq!(
+            usage["totalTokens"],
+            response["result"]["usage"]["totalTokens"]
+        );
         for bucket in ["input", "output", "cacheRead", "cacheWrite", "total"] {
             let actual = usage["cost"][bucket].as_f64().unwrap();
-            let expected = response["result"]["usage"]["cost"][bucket].as_f64().unwrap();
+            let expected = response["result"]["usage"]["cost"][bucket]
+                .as_f64()
+                .unwrap();
             assert!(
                 (actual - expected).abs() < 1e-15,
                 "cost.{bucket}: {actual} vs {expected}"
@@ -384,7 +397,12 @@ mod system_one {
         let model = cloudflare_model(&format!("{}/ai", server.uri()));
         let result = classify_cloudflare(&model, &oracle_context(), Some(&options())).await;
 
-        assert_eq!(result.stop_reason, ClassifierStopReason::Stop, "err: {:?}", result.error_message);
+        assert_eq!(
+            result.stop_reason,
+            ClassifierStopReason::Stop,
+            "err: {:?}",
+            result.error_message
+        );
         assert!(result.error_message.is_none());
         let answers = serde_json::to_value(result.answers).unwrap();
         assert_eq!(answers, response["result"]["answers"]);
@@ -419,10 +437,9 @@ mod system_one {
         // (2) cloudflare-not-complete
         let server = MockServer::start().await;
         Mock::given(method("POST"))
-            .respond_with(
-                ResponseTemplate::new(200)
-                    .set_body_json(serde_json::json!({"success": true, "result": {"state": "Running"}})),
-            )
+            .respond_with(ResponseTemplate::new(200).set_body_json(
+                serde_json::json!({"success": true, "result": {"state": "Running"}}),
+            ))
             .expect(1)
             .mount(&server)
             .await;
@@ -437,12 +454,10 @@ mod system_one {
         // and joins with "; ".
         let server = MockServer::start().await;
         Mock::given(method("POST"))
-            .respond_with(
-                ResponseTemplate::new(200).set_body_json(serde_json::json!({
-                    "success": false,
-                    "errors": [{"message": "first"}, {"code": 7}, {"message": "second"}],
-                })),
-            )
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "success": false,
+                "errors": [{"message": "first"}, {"code": 7}, {"message": "second"}],
+            })))
             .expect(1)
             .mount(&server)
             .await;
@@ -492,7 +507,10 @@ mod model_catalog {
     fn sorted_map(models: Vec<AnyModel>) -> BTreeMap<String, Value> {
         let mut map = BTreeMap::new();
         for model in models {
-            map.insert(model.id().to_string(), serde_json::to_value(&model).unwrap());
+            map.insert(
+                model.id().to_string(),
+                serde_json::to_value(&model).unwrap(),
+            );
         }
         map
     }
@@ -513,7 +531,11 @@ mod model_catalog {
             };
             let groups = embedded_provider_groups(provider)
                 .unwrap_or_else(|| panic!("{provider} missing from the embedded snapshot"));
-            let actual = sorted_map(flatten_typed_model_catalog(provider, groups, ModelType::Chat));
+            let actual = sorted_map(flatten_typed_model_catalog(
+                provider,
+                groups,
+                ModelType::Chat,
+            ));
 
             let mut expected_chat: BTreeMap<String, Value> = BTreeMap::new();
             for (id, model) in expected["chat"].as_object().unwrap() {
@@ -542,9 +564,16 @@ mod model_catalog {
                 continue;
             };
             let groups = embedded_provider_groups(provider).unwrap();
-            let image = sorted_map(flatten_typed_model_catalog(provider, groups, ModelType::Image));
-            let classifier =
-                sorted_map(flatten_typed_model_catalog(provider, groups, ModelType::Classifier));
+            let image = sorted_map(flatten_typed_model_catalog(
+                provider,
+                groups,
+                ModelType::Image,
+            ));
+            let classifier = sorted_map(flatten_typed_model_catalog(
+                provider,
+                groups,
+                ModelType::Classifier,
+            ));
             let expected_image: BTreeMap<String, Value> = expected["image"]
                 .as_object()
                 .unwrap()
@@ -578,29 +607,54 @@ mod model_catalog {
         let expected = &fixture["<synthetic>"];
         // Upstream: only the explicit `type: "chat"` entry is a chat model;
         // the untyped v2 is excluded.
-        let upstream_chat_keys: Vec<&str> =
-            expected["chat"].as_object().unwrap().keys().map(String::as_str).collect();
+        let upstream_chat_keys: Vec<&str> = expected["chat"]
+            .as_object()
+            .unwrap()
+            .keys()
+            .map(String::as_str)
+            .collect();
         assert_eq!(upstream_chat_keys, ["v1"]);
         assert_eq!(
-            expected["image"].as_object().unwrap().keys().map(String::as_str).collect::<Vec<_>>(),
+            expected["image"]
+                .as_object()
+                .unwrap()
+                .keys()
+                .map(String::as_str)
+                .collect::<Vec<_>>(),
             ["i1"]
         );
         assert_eq!(
-            expected["classifier"].as_object().unwrap().keys().map(String::as_str).collect::<Vec<_>>(),
+            expected["classifier"]
+                .as_object()
+                .unwrap()
+                .keys()
+                .map(String::as_str)
+                .collect::<Vec<_>>(),
             ["c1"]
         );
         // The port's strict image/classifier flatten agrees exactly (values
         // included).
-        let image = sorted_map(flatten_typed_model_catalog("p", &synthetic, ModelType::Image));
-        let classifier =
-            sorted_map(flatten_typed_model_catalog("p", &synthetic, ModelType::Classifier));
+        let image = sorted_map(flatten_typed_model_catalog(
+            "p",
+            &synthetic,
+            ModelType::Image,
+        ));
+        let classifier = sorted_map(flatten_typed_model_catalog(
+            "p",
+            &synthetic,
+            ModelType::Classifier,
+        ));
         assert_eq!(image.len(), 1);
         assert_eq!(image["i1"], expected["image"]["i1"]);
         assert_eq!(classifier.len(), 1);
         assert_eq!(classifier["c1"], expected["classifier"]["c1"]);
         // And the port's chat flatten admits both the explicit and the
         // untyped chat entries (the documented superset rule).
-        let chat = sorted_map(flatten_typed_model_catalog("p", &synthetic, ModelType::Chat));
+        let chat = sorted_map(flatten_typed_model_catalog(
+            "p",
+            &synthetic,
+            ModelType::Chat,
+        ));
         let chat_keys: Vec<String> = chat.keys().cloned().collect();
         assert_eq!(chat_keys, vec!["v1".to_string(), "v2".to_string()]);
     }

@@ -380,7 +380,11 @@ fn build_params(
         }
     }
 
-    if let Some(temperature) = options.stream.temperature.filter(|_| !omit_unsupported_fields) {
+    if let Some(temperature) = options
+        .stream
+        .temperature
+        .filter(|_| !omit_unsupported_fields)
+    {
         params.insert("temperature".into(), json!(temperature));
     }
 
@@ -718,9 +722,7 @@ async fn run_stream_task(
             let event = item.map_err(|error| error.to_string())?;
             let payload: Value = serde_json::from_str(&event.data)
                 .map_err(|error| format!("Could not parse Responses SSE event: {error}"))?;
-            processor
-                .observe_raw_event(payload.clone())
-                .await?;
+            processor.observe_raw_event(payload.clone()).await?;
             processor
                 .process_event(&ResponsesStreamEvent::from_value(payload), &tx)
                 .await?;
@@ -820,7 +822,10 @@ mod tests {
     // ---- fixtures ----
 
     fn model() -> Model {
-        Model {r#type: None, prompt_cache: None, input_limits: None, 
+        Model {
+            r#type: None,
+            prompt_cache: None,
+            input_limits: None,
             id: "gpt-5.4".to_string(),
             name: "GPT-5.4".to_string(),
             api: API.to_string(),

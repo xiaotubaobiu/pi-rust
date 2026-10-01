@@ -1744,7 +1744,10 @@ mod tests {
     }
 
     fn model() -> Model {
-        Model {r#type: None, prompt_cache: None, input_limits: None, 
+        Model {
+            r#type: None,
+            prompt_cache: None,
+            input_limits: None,
             id: "gpt-5.1-codex".to_string(),
             name: "GPT-5.1 Codex".to_string(),
             api: API.to_string(),
@@ -4125,7 +4128,10 @@ mod tests {
         assert!(body.get("reasoning").is_none());
 
         // effort "none" without a map sends "none".
-        let model = Model {r#type: None, prompt_cache: None, input_limits: None, 
+        let model = Model {
+            r#type: None,
+            prompt_cache: None,
+            input_limits: None,
             thinking_level_map: None,
             ..model
         };

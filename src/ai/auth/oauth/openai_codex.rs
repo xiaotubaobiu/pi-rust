@@ -34,20 +34,16 @@
 //!   `AuthOperationOptions.signal` the same way — upstream passes the
 //!   interaction `AbortSignal` into its `fetch` — so cancellation surfaces as
 //!   [`AuthError::Cancelled`] rather than the "token refresh error" wrap.
-//! - A callback-server bind failure errors as "Failed to start the OAuth
-//!   callback server on host:port: …". Upstream codex instead resolves the
-//!   server promise with a dead server and degrades to manual-paste-only
-//!   login (divergence, matching the anthropic port's simpler failure).
-//! - Upstream's second `await manualPromise` (openai-codex.ts:489-497)
-//!   re-checks the manual answer when the server wait settled empty without
-//!   one; that state is unreachable in the port's race loop — the wait
-//!   settles empty only after a prompt settle (handled) or via the
-//!   interaction signal / a bind failure, which exit earlier — so the
-//!   re-check reduces to the same end state in every reachable case.
-//! - A malformed callback request line answers 500
-//!   "Internal error while processing OAuth callback." (the upstream handler
-//!   catch-all; Node itself answers 400 for malformed request lines before
-//!   the handler runs).
+//! - The browser flow runs on the shared [`super::callback_server`] (upstream
+//!   `callback-server.ts`, which this delta refactored the private
+//!   `startLocalOAuthServer` onto): wrong path/non-GET → 404 "Callback route
+//!   not found.", a state mismatch → 400 "State mismatch." (keeping the
+//!   login waiting), a claimed or settled sign-in → 409 "This sign-in has
+//!   already been handled.", and the success page reads "Signed in to
+//!   OpenAI. You may now close this page.".
+//! - A callback-server bind failure degrades to manual-paste-only login
+//!   (upstream `.catch(() => undefined)`); the bind error text itself never
+//!   surfaces.
 //! - Transport failures of the device/user-code and exchange requests carry
 //!   the raw transport error text (upstream's `fetch` rejection propagates
 //!   un-caught); refresh wraps them as "OpenAI Codex token refresh error: …"
@@ -67,9 +63,9 @@
 //!   server interval reports truncated (intervals are integral in practice).
 
 use std::collections::BTreeMap;
+use std::sync::Arc;
 
 use futures::future::BoxFuture;
-use tokio::net::TcpStream;
 use tokio_util::sync::CancellationToken;
 
 use crate::ai::api::azure_openai_responses::get_provider_env_value;
@@ -81,13 +77,13 @@ use crate::ai::auth::types::{
 };
 use crate::ai::now_ms;
 
-use super::device_code::{poll_device_code_flow, PollOutcome};
-use super::oauth_page::{oauth_error_html, oauth_success_html};
-use super::pkce::{generate_pkce, Pkce};
-use super::{
-    first_pair, parse_authorization_input, parse_urlencoded_pairs, read_request_head,
-    request_target, write_response, Waiter, HTML_CONTENT_TYPE,
+use super::callback_server::{
+    start_oauth_callback_server, wait_for_callback_or_manual_input, CallbackOrManual,
+    CallbackServerOptions, OAuthCallbackServer,
 };
+use super::device_code::{poll_device_code_flow, PollOutcome};
+use super::parse_authorization_input;
+use super::pkce::{generate_pkce, Pkce};
 
 /// Upstream `CLIENT_ID` (openai-codex.ts:26).
 const CLIENT_ID: &str = "app_EMoamEEZ73f0CkXaXp7hrann";
@@ -181,7 +177,7 @@ impl OpenAICodexOAuth {
     /// stub the global `fetch` and keep port 1455 because they run
     /// sequentially).
     #[cfg(test)]
-    fn with_endpoints(
+    pub(crate) fn with_endpoints(
         token_url: String,
         device_user_code_url: String,
         device_token_url: String,
@@ -199,166 +195,21 @@ impl OpenAICodexOAuth {
 }
 
 /// Upstream `createState` (openai-codex.ts:66-71): 16 random bytes, hex.
+/// The oracle tests inject the capture's deterministic byte stream through
+/// [`super::test_entropy`].
 fn create_state() -> String {
     let mut bytes = [0u8; 16];
+    #[cfg(test)]
+    if let Some(injected) = super::test_entropy::take(16) {
+        bytes.copy_from_slice(&injected);
+        return bytes.iter().map(|byte| format!("{byte:02x}")).collect();
+    }
     rand::fill(&mut bytes);
     bytes.iter().map(|byte| format!("{byte:02x}")).collect()
 }
 
 // Upstream `parseAuthorizationInput` lives in `super` (byte-identical to the
 // anthropic copy).
-
-enum CodexRoute {
-    /// 200 + the success page; the waiter settles with the code afterwards.
-    Success { body: String, code: String },
-    /// A rendered error page with status/reason.
-    Rejected(u16, &'static str, String),
-    /// The upstream catch-all: 500 + "Internal error while processing OAuth
-    /// callback." (HTML, unlike the anthropic flow's plain-text catch-all).
-    Malformed,
-}
-
-/// The codex callback router (upstream request handler, openai-codex.ts:335-366):
-/// wrong path → 404 "Callback route not found."; a state param that differs
-/// from the expected one (including missing/empty — `get("state") !== state`)
-/// → 400 "State mismatch."; a missing/empty code → 400 "Missing authorization
-/// code."; otherwise the success page plus the delivered code. No `error`
-/// parameter branch (unlike anthropic).
-fn route_callback(request_line: &str, expected_state: &str) -> CodexRoute {
-    let Some(target) = request_target(request_line) else {
-        return CodexRoute::Malformed;
-    };
-    let (path, query) = match target.split_once('?') {
-        Some((path, query)) => (path, query),
-        None => (target, ""),
-    };
-    if path != CALLBACK_PATH {
-        return CodexRoute::Rejected(
-            404,
-            "Not Found",
-            oauth_error_html("Callback route not found.", None),
-        );
-    }
-    let params = parse_urlencoded_pairs(query);
-    // `url.searchParams.get("state") !== state`: an absent or empty param
-    // never equals the expected state, so it lands in the same branch.
-    let state = first_pair(&params, "state");
-    if state.as_deref() != Some(expected_state) {
-        return CodexRoute::Rejected(
-            400,
-            "Bad Request",
-            oauth_error_html("State mismatch.", None),
-        );
-    }
-    // `if (!code)` truthiness.
-    let code = first_pair(&params, "code").filter(|code| !code.is_empty());
-    let Some(code) = code else {
-        return CodexRoute::Rejected(
-            400,
-            "Bad Request",
-            oauth_error_html("Missing authorization code.", None),
-        );
-    };
-    CodexRoute::Success {
-        body: oauth_success_html("OpenAI authentication completed. You can close this window."),
-        code,
-    }
-}
-
-/// One handled browser request (upstream request handler plus the catch-all
-/// mapping described in the module notes).
-async fn handle_connection(mut stream: TcpStream, expected_state: String, waiter: Waiter<String>) {
-    let Some(request_line) = read_request_head(&mut stream).await else {
-        // No readable request head: nothing to answer (upstream: an
-        // abandoned browser request never completes either).
-        return;
-    };
-    let route = route_callback(&request_line, &expected_state);
-    let (status, reason, body): (u16, &str, String) = match &route {
-        CodexRoute::Success { body, .. } => (200, "OK", body.clone()),
-        CodexRoute::Rejected(status, reason, body) => (*status, reason, body.clone()),
-        CodexRoute::Malformed => (
-            500,
-            "Internal Server Error",
-            oauth_error_html("Internal error while processing OAuth callback.", None),
-        ),
-    };
-    write_response(&mut stream, status, reason, HTML_CONTENT_TYPE, &body).await;
-    if let CodexRoute::Success { code, .. } = route {
-        waiter.settle(Some(code));
-    }
-}
-
-/// The local redirect-capture server (upstream `startLocalOAuthServer`,
-/// openai-codex.ts:320-394, plus the `server.close()` teardown).
-struct CodexCallbackServer {
-    waiter: Waiter<String>,
-    shutdown: CancellationToken,
-    accept_loop: Option<tokio::task::JoinHandle<()>>,
-}
-
-impl CodexCallbackServer {
-    async fn start(
-        expected_state: String,
-        callback_host: &str,
-        callback_port: u16,
-    ) -> Result<Self, AuthError> {
-        let listener = tokio::net::TcpListener::bind((callback_host, callback_port))
-            .await
-            .map_err(|error| {
-                AuthError::Operation(format!(
-                    "Failed to start the OAuth callback server on \
-                     {callback_host}:{callback_port}: {error}"
-                ))
-            })?;
-        let waiter = Waiter::new();
-        let shutdown = CancellationToken::new();
-        let task_shutdown = shutdown.clone();
-        let loop_waiter = waiter.clone();
-        let loop_state = expected_state;
-        let accept_loop = tokio::spawn(async move {
-            loop {
-                tokio::select! {
-                    _ = task_shutdown.cancelled() => break,
-                    // Transient accept errors must not kill the capture;
-                    // upstream's server keeps listening too.
-                    accepted = listener.accept() => match accepted {
-                        Ok((stream, _)) => {
-                            let waiter = loop_waiter.clone();
-                            let expected_state = loop_state.clone();
-                            tokio::spawn(handle_connection(stream, expected_state, waiter));
-                        }
-                        Err(_) => continue,
-                    },
-                }
-            }
-        });
-        Ok(CodexCallbackServer {
-            waiter,
-            shutdown,
-            accept_loop: Some(accept_loop),
-        })
-    }
-
-    /// Upstream `waitForCode()`: resolves with the first settle.
-    async fn wait(&self) -> Option<String> {
-        self.waiter.wait().await
-    }
-
-    /// Upstream `cancelWait()`: settles with `None` unless a code landed.
-    fn cancel_wait(&self) {
-        self.waiter.settle(None);
-    }
-
-    /// Upstream `server.close()`: stop accepting and wait for the listener
-    /// to drop (frees the port for the next login).
-    async fn close(mut self) {
-        self.shutdown.cancel();
-        if let Some(accept_loop) = self.accept_loop.take() {
-            let _ = accept_loop.await;
-        }
-    }
-}
 
 /// One poll of the device-token endpoint (the `poll` closure passed to
 /// [`super::device_code::poll_device_code_flow`] by [`login_device_code`]).
@@ -792,15 +643,18 @@ async fn login_device_code(
     )
 }
 
-/// Upstream `loginOpenAICodex` (openai-codex.ts:445-506): open the callback
-/// server, publish the authorize URL, race the manual prompt against the
-/// callback (and the interaction signal), then exchange the code.
+/// Upstream `loginOpenAICodex` (openai-codex.ts:359-403): open the shared
+/// callback server on port 1455 (shared with the Codex CLI; when it is
+/// taken, the login falls back to the pasted redirect URL), publish the
+/// authorize URL, race the manual paste against the callback, then exchange
+/// the code.
 async fn login_browser(
     token_url: &str,
     callback_host: &str,
     callback_port: u16,
     interaction: &ProviderAuthInteraction,
 ) -> Result<OAuthCredential, AuthError> {
+    // Port divergence (module port notes): the pre-flight cancellation guard.
     if interaction.signal.is_cancelled() {
         return Err(AuthError::Cancelled);
     }
@@ -809,11 +663,28 @@ async fn login_browser(
         challenge,
     } = generate_pkce();
     let state = create_state();
-    let server = CodexCallbackServer::start(state.clone(), callback_host, callback_port).await?;
+    // Upstream `.catch(() => undefined)`: a taken port means
+    // manual-paste-only sign-in, not a failed login.
+    let callback: Option<OAuthCallbackServer<String>> =
+        start_oauth_callback_server(CallbackServerOptions {
+            provider_name: "OpenAI".to_string(),
+            host: callback_host.to_string(),
+            port: callback_port,
+            path: CALLBACK_PATH.to_string(),
+            // The shared server's redirectUri is unused here: the flow keeps
+            // the upstream `localhost:1455` REDIRECT_URI for the authorize
+            // URL and the exchange.
+            redirect_host: None,
+            state: Some(state.clone()),
+            // Upstream `complete: async (code) => code`: the page reports
+            // success immediately and the exchange happens after the wait.
+            complete: Arc::new(|code| Box::pin(async move { Ok(code) })),
+            signal: interaction.signal.clone(),
+            timeout_ms: None,
+        })
+        .await
+        .ok();
 
-    // Upstream's `manualAbort` controller: aborts the pending prompt in the
-    // finally block so UIs can dismiss it once login settles.
-    let manual_token = CancellationToken::new();
     let result = async {
         // `new URL(AUTHORIZE_URL)` + `searchParams.set` — insertion order
         // preserved, form-urlencoded serialization. Built (and the
@@ -840,61 +711,36 @@ async fn login_browser(
             ),
         });
 
-        let prompt = interaction.prompt(AuthPrompt {
-            signal: Some(manual_token.clone()),
-            kind: AuthPromptKind::ManualCode {
-                message: "Complete login in your browser, or paste the authorization code / \
-                          redirect URL here:"
-                    .to_string(),
-                placeholder: Some(REDIRECT_URI.to_string()),
-            },
-        });
-        tokio::pin!(prompt);
-
-        let mut manual: Option<Result<String, AuthError>> = None;
-        // Upstream races the manual prompt against `server.waitForCode()` —
-        // the prompt's then/catch cancels the wait, and the abort listener
-        // cancels the wait when the interaction signal fires. `biased` makes
-        // the port deterministic: cancellation, then the prompt, then the
-        // delivered callback. The guard disables the prompt arm once settled
-        // so the loop can keep polling the wait without re-polling a
-        // completed future.
-        let delivered = loop {
-            tokio::select! {
-                biased;
-                _ = interaction.signal.cancelled() => return Err(AuthError::Cancelled),
-                settled = &mut prompt, if manual.is_none() => {
-                    manual = Some(settled);
-                    server.cancel_wait();
-                }
-                code = server.wait() => break code,
-            }
-        };
-
-        // Upstream throws the manual rejection before looking at any result.
-        if let Some(Err(error)) = &manual {
-            return Err(error.clone());
-        }
-
-        let code = if let Some(code) = delivered {
-            // The callback server already validated the state.
-            Some(code)
-        } else if let Some(Ok(input)) = &manual {
-            let parsed = parse_authorization_input(input);
-            if let Some(parsed_state) = parsed.state.as_deref().filter(|state| !state.is_empty()) {
-                if parsed_state != state {
+        let result = wait_for_callback_or_manual_input(
+            interaction,
+            callback.as_ref(),
+            "Complete login in your browser, or paste the authorization code / redirect URL here:",
+            REDIRECT_URI,
+        )
+        .await?;
+        let code = match result {
+            // The callback server validated the state.
+            CallbackOrManual::Callback(code) => code,
+            CallbackOrManual::Manual(input) => {
+                let parsed = parse_authorization_input(&input);
+                // `if (parsed.state && parsed.state !== state)` — JS
+                // truthiness on the state, then a mismatch.
+                if parsed
+                    .state
+                    .as_deref()
+                    .is_some_and(|past| !past.is_empty() && past != state)
+                {
                     return Err(AuthError::Operation("State mismatch".to_string()));
                 }
+                // Upstream truthiness check (`if (!code)`).
+                parsed.code.unwrap_or_default()
             }
-            parsed.code
-        } else {
-            None
         };
-
-        // Upstream truthiness check (`if (!code)`).
-        let code = code
-            .filter(|code| !code.is_empty())
-            .ok_or_else(|| AuthError::Operation("Missing authorization code".to_string()))?;
+        if code.is_empty() {
+            return Err(AuthError::Operation(
+                "Missing authorization code".to_string(),
+            ));
+        }
 
         exchange_authorization_code(
             token_url,
@@ -908,9 +754,10 @@ async fn login_browser(
     }
     .await;
 
-    // Upstream `finally`: abort the manual prompt and close the server.
-    manual_token.cancel();
-    server.close().await;
+    // Upstream `finally { callback?.close() }`.
+    if let Some(callback) = callback {
+        callback.close().await;
+    }
     result
 }
 
@@ -1733,7 +1580,8 @@ mod tests {
         assert!(response.starts_with("HTTP/1.1 200 OK\r\n"));
         assert!(response.contains("Content-Type: text/html; charset=utf-8"));
         assert!(response.contains("<h1>Authentication successful</h1>"));
-        assert!(response.contains("OpenAI authentication completed."));
+        assert!(response.contains("Cache-Control: no-store"));
+        assert!(response.contains("Signed in to OpenAI. You may now close this page."));
         // The manual prompt was aborted by the finally block.
         assert!(fake.prompts.lock().unwrap()[1]
             .signal
@@ -2109,108 +1957,6 @@ mod tests {
                     .to_string()
             )
         );
-    }
-
-    // ---- Callback server ----
-
-    async fn started_server() -> (CodexCallbackServer, u16) {
-        let port = free_callback_port();
-        let server = CodexCallbackServer::start("expected-state".to_string(), "127.0.0.1", port)
-            .await
-            .unwrap();
-        (server, port)
-    }
-
-    async fn settle_within(server: &CodexCallbackServer) -> Option<String> {
-        tokio::time::timeout(Duration::from_secs(5), server.wait())
-            .await
-            .unwrap()
-    }
-
-    async fn stays_pending(server: &CodexCallbackServer) {
-        assert!(
-            tokio::time::timeout(Duration::from_millis(200), server.wait())
-                .await
-                .is_err()
-        );
-    }
-
-    #[tokio::test]
-    async fn callback_delivers_the_code_with_the_success_page() {
-        let (server, port) = started_server().await;
-        let response = http_get(port, "/auth/callback?code=cb&state=expected-state").await;
-        assert!(response.starts_with("HTTP/1.1 200 OK\r\n"));
-        assert!(response.contains("<h1>Authentication successful</h1>"));
-        assert_eq!(settle_within(&server).await, Some("cb".to_string()));
-        server.close().await;
-    }
-
-    #[tokio::test]
-    async fn callback_rejects_wrong_routes_state_mismatch_and_missing_code() {
-        let (server, port) = started_server().await;
-
-        // Unknown route.
-        let response = http_get(port, "/nope?code=cb&state=expected-state").await;
-        assert!(response.starts_with("HTTP/1.1 404 Not Found\r\n"));
-        assert!(response.contains("Callback route not found."));
-        stays_pending(&server).await;
-
-        // State mismatch (including a missing state — `get("state") !== state`).
-        let response = http_get(port, "/auth/callback?code=cb&state=wrong").await;
-        assert!(response.starts_with("HTTP/1.1 400 Bad Request\r\n"));
-        assert!(response.contains("State mismatch."));
-        stays_pending(&server).await;
-        let response = http_get(port, "/auth/callback?code=cb").await;
-        assert!(response.contains("State mismatch."));
-        stays_pending(&server).await;
-
-        // Missing/empty code.
-        let response = http_get(port, "/auth/callback?state=expected-state").await;
-        assert!(response.starts_with("HTTP/1.1 400 Bad Request\r\n"));
-        assert!(response.contains("Missing authorization code."));
-        stays_pending(&server).await;
-        let response = http_get(port, "/auth/callback?code=&state=expected-state").await;
-        assert!(response.contains("Missing authorization code."));
-
-        server.close().await;
-    }
-
-    #[tokio::test]
-    async fn callback_malformed_request_line_gets_the_internal_error_page() {
-        use tokio::io::{AsyncReadExt, AsyncWriteExt};
-        let (server, port) = started_server().await;
-        let mut stream = tokio::net::TcpStream::connect(("127.0.0.1", port))
-            .await
-            .unwrap();
-        stream.write_all(b"NOREQUESTTARGET\r\n\r\n").await.unwrap();
-        let mut response = Vec::new();
-        tokio::time::timeout(Duration::from_secs(5), stream.read_to_end(&mut response))
-            .await
-            .unwrap()
-            .unwrap();
-        let response = String::from_utf8_lossy(&response);
-        assert!(response.starts_with("HTTP/1.1 500 Internal Server Error\r\n"));
-        assert!(response.contains("Internal error while processing OAuth callback."));
-        stays_pending(&server).await;
-        server.close().await;
-    }
-
-    #[tokio::test]
-    async fn cancel_wait_wins_over_a_later_code() {
-        let (server, port) = started_server().await;
-        server.cancel_wait();
-        assert_eq!(settle_within(&server).await, None);
-        let _ = http_get(port, "/auth/callback?code=late&state=expected-state").await;
-        assert_eq!(settle_within(&server).await, None);
-        server.close().await;
-    }
-
-    #[tokio::test]
-    async fn close_releases_the_port() {
-        let (server, port) = started_server().await;
-        server.close().await;
-        let rebound = std::net::TcpListener::bind(("127.0.0.1", port));
-        assert!(rebound.is_ok(), "port {port} must be released after close");
     }
 
     // ---- Poll timing engine (device-code.ts pollOAuthDeviceCodeFlow, via

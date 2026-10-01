@@ -217,15 +217,13 @@ pub fn parse_service_provider_update(
     value: &JsonValue,
 ) -> Result<ServiceProviderUpdate, ChordError> {
     assert_provider_update(value, |op| op_from_json(op).map(|_: Op| ()))?;
-    Ok(serde_json::from_value(value.clone())
-        .map(|raw: RawProviderUpdate| {
-            raw.into_update(|ops| {
-                ops.iter()
-                    .map(op_from_json)
-                    .collect::<Result<Vec<Op>, DeltaError>>()
-            })
-        })
-        .expect("validated above"))
+    let raw: RawProviderUpdate =
+        serde_json::from_value(value.clone()).map_err(|_| invalid("service provider update"))?;
+    raw.into_update(|ops| {
+        ops.iter()
+            .map(op_from_json)
+            .collect::<Result<Vec<Op>, DeltaError>>()
+    })
 }
 
 /// `parseWireServiceProviderUpdate` (`wire.ts:128-131`).
@@ -233,15 +231,13 @@ pub fn parse_wire_service_provider_update(
     value: &JsonValue,
 ) -> Result<WireServiceProviderUpdate, ChordError> {
     assert_provider_update(value, |op| wire_op_from_json(op).map(|_: WireOp| ()))?;
-    Ok(serde_json::from_value(value.clone())
-        .map(|raw: RawProviderUpdate| {
-            raw.into_wire_update(|ops| {
-                ops.iter()
-                    .map(wire_op_from_json)
-                    .collect::<Result<Vec<WireOp>, DeltaError>>()
-            })
-        })
-        .expect("validated above"))
+    let raw: RawProviderUpdate =
+        serde_json::from_value(value.clone()).map_err(|_| invalid("service provider update"))?;
+    raw.into_wire_update(|ops| {
+        ops.iter()
+            .map(wire_op_from_json)
+            .collect::<Result<Vec<WireOp>, DeltaError>>()
+    })
 }
 
 fn assert_subscription_snapshot(
@@ -291,6 +287,31 @@ fn assert_provider_update(
             }
             for op in update["ops"].as_array().expect("checked above") {
                 assert_op(op)?;
+            }
+            Ok(())
+        }
+        Some("reset") => {
+            assert_keys(update, &["type", "snapshot"], &[], "reset update")?;
+            assert_subscription_snapshot(&update["snapshot"], &assert_op)?;
+            // Service reset must contain full root replacements
+            // (`wire.ts:154-166`).
+            let snapshot = update["snapshot"]["instances"]
+                .as_array()
+                .expect("validated above");
+            for instance in snapshot {
+                for member in instance["members"].as_array().expect("validated above") {
+                    if member["kind"] == json!("state") {
+                        let ops = member["ops"].as_array().expect("validated above");
+                        let ok = ops.len() == 1
+                            && ops[0].is_array()
+                            && ops[0].get(0).and_then(JsonValue::as_str) == Some("r");
+                        if !ok {
+                            return Err(ChordError::Type(
+                                "Service reset must contain full root replacements".to_owned(),
+                            ));
+                        }
+                    }
+                }
             }
             Ok(())
         }
@@ -468,7 +489,9 @@ struct RawProviderUpdate {
     member: Option<String>,
     sequence: Option<u64>,
     ops: Option<Vec<JsonValue>>,
-    snapshot: Option<RawInstanceSnapshot>,
+    /// Raw: `replaced`/`spawned` carry an instance snapshot, `reset` a
+    /// whole subscription snapshot (decoded per kind below).
+    snapshot: Option<JsonValue>,
 }
 
 #[derive(serde::Deserialize)]
@@ -582,63 +605,69 @@ impl RawMemberSnapshot {
 }
 
 impl RawProviderUpdate {
+    fn instance_snapshot(&self) -> Result<RawInstanceSnapshot, ChordError> {
+        serde_json::from_value(self.snapshot.clone().unwrap_or(JsonValue::Null))
+            .map_err(|_| invalid("service instance snapshot"))
+    }
+
+    fn subscription_snapshot(&self) -> Result<RawSubscriptionSnapshot, ChordError> {
+        serde_json::from_value(self.snapshot.clone().unwrap_or(JsonValue::Null))
+            .map_err(|_| invalid("service subscription snapshot"))
+    }
+
     fn into_update(
         self,
         decode_ops: impl Fn(&[JsonValue]) -> Result<Vec<Op>, DeltaError>,
-    ) -> ServiceProviderUpdate {
+    ) -> Result<ServiceProviderUpdate, ChordError> {
         match self.kind.as_str() {
-            "state" => ServiceProviderUpdate::State {
+            "state" => Ok(ServiceProviderUpdate::State {
                 instance: self.instance,
                 member: self.member.unwrap_or_default(),
                 sequence: self.sequence.unwrap_or_default(),
                 ops: decode_ops(&self.ops.unwrap_or_default()).expect("validated above"),
-            },
-            "replaced" => ServiceProviderUpdate::Replaced {
-                snapshot: self
-                    .snapshot
-                    .expect("validated above")
-                    .into_snapshot(&decode_ops),
-            },
-            "spawned" => ServiceProviderUpdate::Spawned {
-                instance: self
-                    .snapshot
-                    .expect("validated above")
-                    .into_snapshot(&decode_ops),
-            },
-            "closed" => ServiceProviderUpdate::Closed {
+            }),
+            "reset" => Ok(ServiceProviderUpdate::Reset {
+                snapshot: self.subscription_snapshot()?.into_snapshot(&decode_ops),
+            }),
+            "replaced" => Ok(ServiceProviderUpdate::Replaced {
+                snapshot: self.instance_snapshot()?.into_snapshot(&decode_ops),
+            }),
+            "spawned" => Ok(ServiceProviderUpdate::Spawned {
+                instance: self.instance_snapshot()?.into_snapshot(&decode_ops),
+            }),
+            "closed" => Ok(ServiceProviderUpdate::Closed {
                 instance: self.instance.expect("validated above"),
-            },
-            _ => ServiceProviderUpdate::Unavailable,
+            }),
+            _ => Ok(ServiceProviderUpdate::Unavailable),
         }
     }
 
     fn into_wire_update(
         self,
         decode_ops: impl Fn(&[JsonValue]) -> Result<Vec<WireOp>, DeltaError>,
-    ) -> WireServiceProviderUpdate {
+    ) -> Result<WireServiceProviderUpdate, ChordError> {
         match self.kind.as_str() {
-            "state" => WireServiceProviderUpdate::State {
+            "state" => Ok(WireServiceProviderUpdate::State {
                 instance: self.instance,
                 member: self.member.unwrap_or_default(),
                 sequence: self.sequence.unwrap_or_default(),
                 ops: decode_ops(&self.ops.unwrap_or_default()).expect("validated above"),
-            },
-            "replaced" => WireServiceProviderUpdate::Replaced {
+            }),
+            "reset" => Ok(WireServiceProviderUpdate::Reset {
                 snapshot: self
-                    .snapshot
-                    .expect("validated above")
+                    .subscription_snapshot()?
                     .into_wire_snapshot(&decode_ops),
-            },
-            "spawned" => WireServiceProviderUpdate::Spawned {
-                instance: self
-                    .snapshot
-                    .expect("validated above")
-                    .into_wire_snapshot(&decode_ops),
-            },
-            "closed" => WireServiceProviderUpdate::Closed {
+            }),
+            "replaced" => Ok(WireServiceProviderUpdate::Replaced {
+                snapshot: self.instance_snapshot()?.into_wire_snapshot(&decode_ops),
+            }),
+            "spawned" => Ok(WireServiceProviderUpdate::Spawned {
+                instance: self.instance_snapshot()?.into_wire_snapshot(&decode_ops),
+            }),
+            "closed" => Ok(WireServiceProviderUpdate::Closed {
                 instance: self.instance.expect("validated above"),
-            },
-            _ => WireServiceProviderUpdate::Unavailable,
+            }),
+            _ => Ok(WireServiceProviderUpdate::Unavailable),
         }
     }
 }

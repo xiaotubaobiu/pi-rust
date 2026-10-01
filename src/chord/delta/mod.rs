@@ -1,71 +1,75 @@
-//! chord/delta — operation-log change tracking over plain JSON. Port of
-//! `packages/chord/src/delta/index.ts` (upstream sha256
-//! `b026dde11b1b28c696a9a23b4fc8a4b8a1eff5059f89616b50650e3e3e06c797`).
+//! chord/delta — immutable revision tracking and operations over plain JSON.
+//! Port of `packages/chord/src/delta/index.ts` at the upstream file split:
+//!
+//! | Upstream file | Port |
+//! | --- | --- |
+//! | `delta/index.ts` (core vocabulary, validators, applier, codec) | this file + [`codec`] |
+//! | `delta/tracker.ts` | [`tracker`] |
+//! | `delta/diff.ts` | [`diff`] |
+//! | `delta/apply-immutable-trusted.ts` | [`apply_immutable_trusted`] |
+//! | `delta/revision-validator.ts` | [`revision_validator`] |
+//! | `delta/draft.ts` | the [`Draft`] alias |
+//!
+//! The re-exports below mirror the upstream `index.ts` export list exactly.
 //!
 //! # Vocabulary
 //!
-//! Upstream ops are JSON tuples (`delta/index.ts:30-36`); the port models them
-//! as the [`Op`] enum with the same verb set — [`Op::Replace`] (`r`, the only
-//! whole-value op), [`Op::Set`] (`s`, non-root), [`Op::Delete`] (`d`,
-//! non-root), [`Op::Append`] (`a`, string append), [`Op::Truncate`] (`t`,
-//! drop UTF-16 code units from the front) and [`Op::Splice`] (`p`, array
-//! splice; may target a root array). [`op_from_json`] is the port of
-//! `assertValidOp` (`delta/index.ts:1215-1249`) and [`wire_op_from_json`] the
-//! port of `assertValidWireOp` (`delta/index.ts:1258-1319`); each vocabulary
-//! keeps its own validator, exactly like upstream.
+//! Upstream ops are JSON tuples (`delta/index.ts:30-40`); the port models
+//! them as the [`Op`] enum with the same verb set — [`Op::Replace`] (`r`,
+//! the only whole-value op), [`Op::Set`] (`s`, non-root), [`Op::Delete`]
+//! (`d`, non-root), [`Op::Append`] (`a`, string append), [`Op::Truncate`]
+//! (`t`, drop UTF-16 code units from the front), [`Op::Splice`] (`p`, array
+//! splice; may target a root array) and [`Op::Reorder`] (`m`, in-place
+//! permutation; may target a root array). [`op_from_json`] is the port of
+//! `assertValidOp` and [`wire_op_from_json`] the port of
+//! `assertValidWireOp`; each vocabulary keeps its own validator, exactly
+//! like upstream.
 //!
-//! # String ops count UTF-16 code units
+//! # Strings count UTF-16 code units
 //!
-//! Upstream strings are JS strings and `t`/`overlap` arithmetic counts UTF-16
-//! code units (README "Strings"). [`utf16_len`], [`slice_utf16_from`] and
-//! [`overlap`] all work in code units, so ops produced by the TypeScript
-//! implementation stay interoperable.
+//! Upstream strings are JS strings and `t`/`overlap` arithmetic counts
+//! UTF-16 code units (README "Strings"). [`utf16_len`],
+//! [`slice_utf16_from`] and [`overlap`] all work in code units, so ops
+//! produced by the TypeScript implementation stay interoperable.
 //!
-//! # Tracker (port of the write-time operation log)
+//! # Canonical serialization note (disclosed divergence D1, continuing)
 //!
-//! Upstream `track` records ops at write time through a `Proxy`, with
-//! coalescing (slot trie, tombstones, folding into ancestor payloads,
-//! collapse-to-base at bounded windows). The port reproduces that machinery
-//! ([`Tracker`]) over an explicit path-addressed mutation API: [`Tracker::set`]
-//! / [`Tracker::delete`] / [`Tracker::push`] / [`Tracker::pop`] /
-//! [`Tracker::shift`] / [`Tracker::unshift`] / [`Tracker::splice`] /
-//! [`Tracker::reverse`] / [`Tracker::sort_with`] / [`Tracker::set_length`] /
-//! [`Tracker::set_value`] implement the observable behavior of the upstream
-//! proxy traps (which op each mutation records, in which coalesced form), and
-//! `flush`/`rebase`/`discard`/`dirty` keep the upstream contract.
-//!
-//! Deferred, JS-proxy-specific surface (unrepresentable over owned
-//! `serde_json::Value` trees; disclosed in the M6 report): wrapper identity
-//! caching, structural aliasing of one object at several positions
-//! (`wrappers`/`cells`/`renumber`), held-reference renumbering, and the
-//! `defineProperty`/`setPrototypeOf`/`preventExtensions` traps. Path-addressed
-//! writes always address the live document position, which is upstream's
-//! single-position behavior.
-//!
-//! Upstream features that exist only for JS engine performance and are
-//! behaviorally invisible (single [`Tracker::splice`] instead of 10,000-item
-//! chunked splices; cloning instead of `structuredClone`-style sharing) are
-//! implemented directly.
+//! Upstream JS objects iterate in insertion order; the port runs
+//! `serde_json` with `preserve_order`, so wire bytes keep upstream's
+//! insertion order. Oracle comparison still canonicalizes both sides with
+//! recursively sorted object keys (see `tests/fixtures/chord_delta_oracle/`),
+//! and oracle scenarios build multi-key objects in sorted key order.
 
+mod apply_immutable_trusted;
 mod codec;
+mod diff;
+mod revision_validator;
 mod tracker;
 
+pub use apply_immutable_trusted::apply_immutable_trusted;
 pub use codec::{
     decoder, encoder, wire_op_from_json, wire_op_to_json, Decoder, Encoder, PathRef, WireOp,
 };
-pub use tracker::{track, Tracker, TrackerOptions};
+pub use diff::diff_revisions;
+pub use revision_validator::JsonRevisionValidator;
+pub use tracker::{track, Change, Prepared, Tracker, TrackerError};
 
 use std::fmt;
 
-use serde_json::{Map, Number};
+use serde_json::Number;
 
 /// Upstream `JsonValue` (`packages/chord/src/types.ts:21`): the strict JSON
 /// value union, mapped to `serde_json::Value`.
 pub type JsonValue = serde_json::Value;
 
+/// Upstream `Draft<T>` (`delta/draft.ts`): a mutable transaction-scoped view
+/// of a JSON value. The TS mapped type describes the proxy draft handed to
+/// `change` callbacks; the port's draft is the [`Change`] handle.
+pub type Draft = Change;
+
 /// One path segment: an object key or an array index. Port of `Seg =
-/// string | number` (`delta/index.ts:12`); the number case is a non-negative
-/// integer after validation (`assertSafePath`, `delta/index.ts:1321-1329`).
+/// string | number` (`delta/index.ts:14`); the number case is a non-negative
+/// integer after validation (`assertSafePath`).
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Seg {
     /// An object key (upstream string segment).
@@ -102,11 +106,11 @@ impl fmt::Display for Seg {
 }
 
 /// A path into a nested JSON value. Port of `Path = readonly Seg[]`
-/// (`delta/index.ts:13`).
+/// (`delta/index.ts:15`).
 pub type Path = Vec<Seg>;
 
 /// One operation of the delta vocabulary. Port of the upstream `Op` tuple
-/// union (`delta/index.ts:30-36`).
+/// union (`delta/index.ts:32-40`).
 #[derive(Clone, Debug, PartialEq)]
 pub enum Op {
     /// `["r", value]` — replace the complete value. The only op that may
@@ -119,17 +123,20 @@ pub enum Op {
     Delete { path: Path },
     /// `["a", path, text]` — append to an existing string.
     Append { path: Path, text: String },
-    /// `["t", path, count]` — remove `count` UTF-16 code units from the front
-    /// of an existing string.
+    /// `["t", path, count]` — remove `count` UTF-16 code units from the
+    /// front of an existing string.
     Truncate { path: Path, count: usize },
-    /// `["p", path, index, remove, items]` — splice an array; the path may be
-    /// empty (a root array).
+    /// `["p", path, index, remove, items]` — splice an array; the path may
+    /// be empty (a root array).
     Splice {
         path: Path,
         index: usize,
         remove: usize,
         items: Vec<JsonValue>,
     },
+    /// `["m", path, permutation]` — reorder an array in place:
+    /// `new[i] = old[permutation[i]]`; the path may be empty (a root array).
+    Reorder { path: Path, permutation: Vec<usize> },
 }
 
 impl Op {
@@ -141,7 +148,8 @@ impl Op {
             | Op::Delete { path }
             | Op::Append { path, .. }
             | Op::Truncate { path, .. }
-            | Op::Splice { path, .. } => Some(path),
+            | Op::Splice { path, .. }
+            | Op::Reorder { path, .. } => Some(path),
         }
     }
 
@@ -154,15 +162,16 @@ impl Op {
             Op::Append { .. } => "a",
             Op::Truncate { .. } => "t",
             Op::Splice { .. } => "p",
+            Op::Reorder { .. } => "m",
         }
     }
 }
 
-/// Error taxonomy for the delta surface. Upstream throws `TypeError` for shape
-/// violations, `UnsafePathError` (`delta/index.ts:1196-1205`) for segments that
-/// would reach the prototype chain, and `PathError` (`delta/index.ts:1352-1359`)
-/// for paths that do not resolve. [`Display`](fmt::Display) reproduces the
-/// upstream `error.message` text byte-for-byte.
+/// Error taxonomy for the delta surface. Upstream throws `TypeError` for
+/// shape violations, `UnsafePathError` for segments that would reach the
+/// prototype chain, and `PathError` for paths that do not resolve.
+/// [`Display`](fmt::Display) reproduces the upstream `error.message` text
+/// byte-for-byte.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum DeltaError {
     /// Upstream `TypeError` from op validation or a tracker guard.
@@ -178,12 +187,8 @@ impl DeltaError {
     pub fn message(&self) -> String {
         match self {
             DeltaError::InvalidOp(message) => message.clone(),
-            DeltaError::UnsafePath { segment } => {
-                format!("unsafe path segment: {segment}")
-            }
-            DeltaError::UnresolvablePath { path } => {
-                format!("unresolvable path: {path}")
-            }
+            DeltaError::UnsafePath { segment } => format!("unsafe path segment: {segment}"),
+            DeltaError::UnresolvablePath { path } => format!("unresolvable path: {path}"),
         }
     }
 }
@@ -197,18 +202,18 @@ impl fmt::Display for DeltaError {
 impl std::error::Error for DeltaError {}
 
 /// Segments that would reach the prototype chain in a JS host. Port of
-/// `RESERVED_SEGMENTS` (`delta/index.ts:1194`): `JSON.parse` makes `__proto__`
-/// an own property, but `parent[key] = value` in an applier would pollute
-/// `Object.prototype`, so path segments are untrusted input.
+/// `RESERVED_SEGMENTS` (`delta/index.ts:131`): `JSON.parse` makes
+/// `__proto__` an own property, but `parent[key] = value` in an applier
+/// would pollute `Object.prototype`, so path segments are untrusted input.
 pub const RESERVED_SEGMENTS: [&str; 3] = ["__proto__", "constructor", "prototype"];
 
 pub(crate) fn is_reserved(segment: &str) -> bool {
     RESERVED_SEGMENTS.contains(&segment)
 }
 
-/// Port of `assertSafePath` (`delta/index.ts:1321-1329`): string segments must
-/// not be reserved; number segments must be non-negative integers (enforced by
-/// the [`Seg::Index`] type).
+/// Port of `assertSafePath` (`delta/index.ts:279-287`): string segments
+/// must not be reserved; number segments must be non-negative integers
+/// (enforced by the [`Seg::Index`] type).
 pub fn assert_safe_path(path: &[Seg]) -> Result<(), DeltaError> {
     for seg in path {
         if let Seg::Key(key) = seg {
@@ -222,13 +227,32 @@ pub fn assert_safe_path(path: &[Seg]) -> Result<(), DeltaError> {
     Ok(())
 }
 
-/// Validate one op's shape the way `assertValidOp` + `assertSafePath` do inside
-/// `apply` (`delta/index.ts:1372-1401`): `p` may target the root, every other
-/// verb has a non-empty safe path.
+/// `assertPermutation` (`delta/index.ts:199-208`): a distinct in-range
+/// index list — a bijection.
+pub(crate) fn assert_permutation(permutation: &[usize]) -> Result<(), DeltaError> {
+    let mut seen = vec![false; permutation.len()];
+    for &index in permutation {
+        if index >= permutation.len() || seen[index] {
+            return Err(DeltaError::InvalidOp(
+                "m permutation is not a bijection".to_owned(),
+            ));
+        }
+        seen[index] = true;
+    }
+    Ok(())
+}
+
+/// Validate one op's shape the way `assertValidOp` + `assertSafePath` do
+/// inside `apply`: `p`/`m` may target the root, every other verb has a
+/// non-empty safe path, and `m` permutations must be bijections.
 pub fn validate_op(op: &Op) -> Result<(), DeltaError> {
     match op {
         Op::Replace(_) => Ok(()),
         Op::Splice { path, .. } => assert_safe_path(path),
+        Op::Reorder { path, permutation } => {
+            assert_safe_path(path)?;
+            assert_permutation(permutation)
+        }
         Op::Set { path, .. }
         | Op::Delete { path }
         | Op::Append { path, .. }
@@ -251,11 +275,11 @@ fn json_nonneg_int(value: &JsonValue, what: &str) -> Result<usize, DeltaError> {
     Ok(number as usize)
 }
 
-/// Parse one decoded op tuple, rejecting wire forms. Port of `assertValidOp`
-/// (`delta/index.ts:1215-1249`) plus the tuple-to-enum mapping. Wire-only
-/// shapes (`["s", 1]`, `["d"]`, `["a", "x"]`, `["t", 2]`, `["p", 0, 0, []]`,
-/// `["#", id, path]`) fail here, exactly as upstream: validating `Op` against
-/// the wire grammar would be laxer than the type (`delta/index.ts:1207-1214`).
+/// Parse one decoded op tuple, rejecting wire forms. Port of
+/// `assertValidOp` plus the tuple-to-enum mapping. Wire-only shapes
+/// (`["s", 1]`, `["d"]`, `["a", "x"]`, `["t", 2]`, `["p", 0, 0, []]`,
+/// `["#", id, path]`) fail here, exactly as upstream: validating `Op`
+/// against the wire grammar would be laxer than the type.
 pub fn op_from_json(value: &JsonValue) -> Result<Op, DeltaError> {
     let tuple = value
         .as_array()
@@ -303,8 +327,6 @@ pub fn op_from_json(value: &JsonValue) -> Result<Op, DeltaError> {
             if tuple.len() != 3 {
                 return Err(DeltaError::InvalidOp("t shape".to_owned()));
             }
-            // !Number.isInteger(op[2]) || op[2] < 0 → "t shape"
-            // (delta/index.ts:1234).
             let count = tuple[2]
                 .as_f64()
                 .filter(|n| n.is_finite() && n.fract() == 0.0 && *n >= 0.0)
@@ -328,15 +350,31 @@ pub fn op_from_json(value: &JsonValue) -> Result<Op, DeltaError> {
                 items: items.clone(),
             }
         }
+        "m" => {
+            if tuple.len() != 3 {
+                return Err(DeltaError::InvalidOp("m arity".to_owned()));
+            }
+            let permutation = tuple[2]
+                .as_array()
+                .ok_or_else(|| DeltaError::InvalidOp("m permutation is not an array".to_owned()))?;
+            let mut indices = Vec::with_capacity(permutation.len());
+            for item in permutation {
+                indices.push(json_nonneg_int(item, "m permutation is not a bijection")?);
+            }
+            Op::Reorder {
+                path: path_from_json(&tuple[1], false)?,
+                permutation: indices,
+            }
+        }
         // Silently skipping an unknown verb is how a newer producer's op
-        // vanishes (delta/index.ts:1245-1247).
+        // vanishes (`delta/index.ts:187-189`).
         other => return Err(DeltaError::InvalidOp(format!("unknown op verb: {other}"))),
     };
     validate_op(&op)?;
     Ok(op)
 }
 
-/// `assertPathArg` (`delta/index.ts:1251-1255`): a real array, non-empty when
+/// `assertPathArg` (`delta/index.ts:193-197`): a real array, non-empty when
 /// the verb forbids the root, with safe segments.
 fn path_from_json(value: &JsonValue, non_empty: bool) -> Result<Path, DeltaError> {
     let segments = value
@@ -359,7 +397,7 @@ fn path_from_json(value: &JsonValue, non_empty: bool) -> Result<Path, DeltaError
     Ok(path)
 }
 
-/// Serialize an op back to its upstream tuple form (`delta/index.ts:30-36`);
+/// Serialize an op back to its upstream tuple form (`delta/index.ts:30-40`);
 /// the inverse of [`op_from_json`] for valid ops.
 pub fn op_to_json(op: &Op) -> JsonValue {
     let verb = |name: &str, mut fields: Vec<JsonValue>| {
@@ -393,6 +431,18 @@ pub fn op_to_json(op: &Op) -> JsonValue {
                 JsonValue::Array(items.clone()),
             ],
         ),
+        Op::Reorder { path, permutation } => verb(
+            "m",
+            vec![
+                path_to_json(path),
+                JsonValue::Array(
+                    permutation
+                        .iter()
+                        .map(|at| JsonValue::Number(Number::from(*at)))
+                        .collect(),
+                ),
+            ],
+        ),
     }
 }
 
@@ -407,12 +457,18 @@ pub(crate) fn path_to_json(path: &[Seg]) -> JsonValue {
     JsonValue::Array(path.iter().map(seg_to_json).collect())
 }
 
-/// `isReplace` (`delta/index.ts:64`).
+/// A plain non-negative integer as a JSON number (argument-slot junk refs
+/// in the tracker, permutation serialization).
+pub(crate) fn number_json(value: usize) -> JsonValue {
+    JsonValue::Number(Number::from(value))
+}
+
+/// `isReplace` (`delta/index.ts:70`).
 pub fn is_replace(op: &Op) -> bool {
     matches!(op, Op::Replace(_))
 }
 
-/// A batch begins with a replacement. Port of `isBase` (`delta/index.ts:70`):
+/// A batch begins with a replacement. Port of `isBase` (`delta/index.ts:76`):
 /// exact rather than a heuristic, because flush guarantees `r` is at index 0
 /// or absent.
 pub fn is_base(ops: &[Op]) -> bool {
@@ -439,7 +495,7 @@ pub(crate) fn slice_utf16_from(value: &str, start: usize) -> &str {
 }
 
 /// Longest UTF-16 suffix of `a` that is a prefix of `b`. Port of `overlap`
-/// (`delta/index.ts:74-104`): probe with a long head first (few candidates),
+/// (`delta/index.ts:87-110`): probe with a long head first (few candidates),
 /// fall back to one code unit, bound the candidates, give up with 0 — which
 /// emits a set: larger, never wrong.
 pub fn overlap(a: &str, b: &str, scan: usize) -> usize {
@@ -479,10 +535,9 @@ fn find_unit_slice(haystack: &[u16], needle: &[u16]) -> Option<usize> {
         .position(|window| window == needle)
 }
 
-/// JS `Array.prototype.splice(start, deleteCount)` clamping for the `p` op: a
-/// start past the end appends, and the removal clamps to the tail
-/// (deterministic and identical on both sides — see the upstream "clamps a
-/// splice remove past the end" test).
+/// JS `Array.prototype.splice(start, deleteCount)` clamping for the `p`
+/// op: a start past the end appends, and the removal clamps to the tail
+/// (deterministic and identical on both sides).
 pub(crate) fn splice_clamped(
     array: &mut Vec<JsonValue>,
     index: usize,
@@ -502,8 +557,8 @@ fn unresolvable(path: &[Seg]) -> DeltaError {
     }
 }
 
-/// Resolve `path` to a mutable container (object or array). Port of `resolve`
-/// with `resolveValue`'s own-property walk (`delta/index.ts:1496-1513`).
+/// Resolve `path` to a mutable container (object or array). Port of
+/// `resolve` with `resolveValue`'s own-property walk.
 fn resolve_container<'a>(
     root: &'a mut JsonValue,
     path: &[Seg],
@@ -528,19 +583,20 @@ fn resolve_container<'a>(
 }
 
 /// Apply ops to a plain mutable value. Port of `apply`/`applyOps`
-/// (`delta/index.ts:1362-1441`). Upstream adopts `r` payloads and mutates in
-/// place; the port takes the previous value by reference and returns a fully
-/// owned result (the ownership equivalent — inputs are never mutated or
-/// retained). Takes decoded ops: path ids and omitted paths are a wire
-/// concern — run [`decoder().decode`](decoder) first for boundary input.
+/// (`delta/index.ts:326-406`). Upstream adopts `r` payloads and mutates in
+/// place; the port takes the previous value by reference and returns a
+/// fully owned result (the ownership equivalent — inputs are never mutated
+/// or retained). Takes decoded ops: path ids and omitted paths are a wire
+/// concern — run [`decoder().decode`](Decoder::decode) first for boundary
+/// input.
 pub fn apply(target: Option<&JsonValue>, ops: &[Op]) -> Result<JsonValue, DeltaError> {
     let mut root = target.cloned().unwrap_or(JsonValue::Null);
     for op in ops {
         validate_op(op)?;
         match op {
             Op::Replace(value) => {
-                // Adopted, not copied, upstream (delta/index.ts:1377-1386);
-                // the clone is the ownership equivalent in Rust.
+                // Adopted, not copied, upstream; the clone is the ownership
+                // equivalent in Rust.
                 root = value.clone();
             }
             Op::Splice {
@@ -557,6 +613,21 @@ pub fn apply(target: Option<&JsonValue>, ops: &[Op]) -> Result<JsonValue, DeltaE
                 let array = container.as_array_mut().ok_or_else(|| unresolvable(path))?;
                 splice_clamped(array, *index, *remove, items);
             }
+            Op::Reorder { path, permutation } => {
+                let container = if path.is_empty() {
+                    &mut root
+                } else {
+                    resolve_container(&mut root, path)?
+                };
+                let array = container.as_array_mut().ok_or_else(|| unresolvable(path))?;
+                if array.len() != permutation.len() {
+                    return Err(unresolvable(path));
+                }
+                let previous = array.clone();
+                for (index, from) in permutation.iter().enumerate() {
+                    array[index] = previous[*from].clone();
+                }
+            }
             Op::Set { .. } | Op::Delete { .. } | Op::Append { .. } | Op::Truncate { .. } => {
                 let path = op.path().expect("non-replace op has a path");
                 let (parent_path, key) = path.split_at(path.len() - 1);
@@ -569,16 +640,14 @@ pub fn apply(target: Option<&JsonValue>, ops: &[Op]) -> Result<JsonValue, DeltaE
 }
 
 /// Apply one already-validated non-replace op against the resolved parent.
-/// Port of the `s`/`d`/`a`/`t` arms of `applyOps` (`delta/index.ts:1404-1438`)
-/// plus the array-parent guards (`assertIndexInRange`,
-/// `delta/index.ts:1346-1348`).
+/// Port of the `s`/`d`/`a`/`t` arms of `applyOps` plus the array-parent
+/// guards (`assertIndexInRange`, `delta/index.ts:304-306`).
 fn apply_leaf(parent: &mut JsonValue, key: &Seg, op: &Op) -> Result<(), DeltaError> {
     if parent.is_array() {
         let index = match key {
             Seg::Index(index) => *index,
             // A string segment under an array parent is rejected at the
-            // consumer ("rejects string-spelled array indices at the
-            // consumer").
+            // consumer.
             Seg::Key(key) => {
                 return Err(DeltaError::UnsafePath {
                     segment: key.clone(),
@@ -588,7 +657,7 @@ fn apply_leaf(parent: &mut JsonValue, key: &Seg, op: &Op) -> Result<(), DeltaErr
         let array = parent.as_array_mut().expect("checked above");
         match op {
             // An index may address an existing element or append exactly one
-            // past the end (delta/index.ts:1331-1345).
+            // past the end (`delta/index.ts:289-306`).
             Op::Set { value, .. } => {
                 if index > array.len() {
                     return Err(DeltaError::UnsafePath {
@@ -620,8 +689,10 @@ fn apply_leaf(parent: &mut JsonValue, key: &Seg, op: &Op) -> Result<(), DeltaErr
                 array[index] = JsonValue::String(updated);
                 Ok(())
             }
-            Op::Replace(_) | Op::Splice { .. } => {
-                unreachable!("replace handled by the caller; splice resolves its own path")
+            Op::Replace(_) | Op::Splice { .. } | Op::Reorder { .. } => {
+                unreachable!(
+                    "replace handled by the caller; splice/permutation resolve their own path"
+                )
             }
         }
     } else {
@@ -633,13 +704,13 @@ fn apply_leaf(parent: &mut JsonValue, key: &Seg, op: &Op) -> Result<(), DeltaErr
         };
         match op {
             Op::Set { value, .. } => {
-                // defineProperty rather than assignment upstream — a plain map
-                // insert cannot run inherited setters either; reserved names
-                // are legal as VALUE keys.
+                // defineProperty rather than assignment upstream — a plain
+                // map insert cannot run inherited setters either; reserved
+                // names are legal as VALUE keys.
                 object.insert(key.clone(), value.clone());
                 Ok(())
             }
-            // JS `delete obj.missing` is a no-op (delta/index.ts:1424).
+            // JS `delete obj.missing` is a no-op.
             Op::Delete { .. } => {
                 object.shift_remove(key);
                 Ok(())
@@ -655,15 +726,17 @@ fn apply_leaf(parent: &mut JsonValue, key: &Seg, op: &Op) -> Result<(), DeltaErr
                 object.insert(key.clone(), JsonValue::String(updated));
                 Ok(())
             }
-            Op::Replace(_) | Op::Splice { .. } => {
-                unreachable!("replace handled by the caller; splice resolves its own path")
+            Op::Replace(_) | Op::Splice { .. } | Op::Reorder { .. } => {
+                unreachable!(
+                    "replace handled by the caller; splice/permutation resolve their own path"
+                )
             }
         }
     }
 }
 
-/// The `a`/`t` result over an existing string: append, or slice off the front
-/// by UTF-16 code units (`delta/index.ts:1426-1436`).
+/// The `a`/`t` result over an existing string: append, or slice off the
+/// front by UTF-16 code units.
 fn string_op_result(op: &Op, existing: &str) -> String {
     match op {
         Op::Append { text, .. } => format!("{existing}{text}"),
@@ -673,225 +746,31 @@ fn string_op_result(op: &Op, existing: &str) -> String {
 }
 
 /// Apply decoded operations without mutating the previous immutable value.
-/// Port of `applyImmutable` (`delta/index.ts:1444-1456`). Upstream copies only
+/// Port of `applyImmutable` (`delta/index.ts:409-411`). Upstream copies only
 /// the containers along each op's path and shares unchanged subtrees; owned
-/// Rust trees have no structural sharing, so the port produces the same value
-/// by repeated application of [`apply`] (which never mutates its input). `None`
-/// is upstream `undefined` (a replica that has not hydrated yet).
+/// Rust trees have no structural sharing, so the port produces the same
+/// value by application over an owned clone. `None` is upstream `undefined`
+/// (a replica that has not hydrated yet).
 pub fn apply_immutable(target: Option<&JsonValue>, ops: &[Op]) -> Result<JsonValue, DeltaError> {
     apply(target, ops)
 }
 
-// ─── Diff (flush-side) ───────────────────────────────────────────────────────
-//
-// Direct ports of upstream's own diff functions (`delta/index.ts:200-308`),
-// used by the tracker's flush for anchored strings and by whole-container
-// assignment diffs.
-
-pub(crate) fn emit_set(path: &[Seg], value: &JsonValue, out: &mut Vec<Op>) {
-    if path.is_empty() {
-        out.push(Op::Replace(value.clone()));
-    } else {
-        out.push(Op::Set {
-            path: path.to_owned(),
-            value: value.clone(),
-        });
+/// Apply decoded operation batches as one final-result-only replay. Port of
+/// `applyImmutableBatches` (`delta/index.ts:419-434`): containers copied for
+/// an earlier batch may be mutated while applying a later batch, so no
+/// intermediate revisions are exposed.
+pub fn apply_immutable_batches<I>(
+    target: Option<&JsonValue>,
+    batches: I,
+) -> Result<JsonValue, DeltaError>
+where
+    I: IntoIterator<Item = Vec<Op>>,
+{
+    let mut current = target.cloned().unwrap_or(JsonValue::Null);
+    for ops in batches {
+        current = apply(Some(&current), &ops)?;
     }
-}
-
-pub(crate) fn emit_delete(path: &[Seg], out: &mut Vec<Op>) {
-    // The tracked root cannot be deleted (delta/index.ts:195-198); the diff
-    // only ever deletes object keys, whose paths are non-empty.
-    debug_assert!(!path.is_empty());
-    if path.is_empty() {
-        return;
-    }
-    out.push(Op::Delete {
-        path: path.to_owned(),
-    });
-}
-
-/// Port of `diffValue` (`delta/index.ts:224-247`). `None` is upstream's
-/// MISSING sentinel (a key absent from the before-object).
-pub(crate) fn diff_value(
-    before: Option<&JsonValue>,
-    after: Option<&JsonValue>,
-    path: &[Seg],
-    scan: usize,
-    out: &mut Vec<Op>,
-) {
-    let (Some(before), Some(after)) = (before, after) else {
-        if let Some(after) = after {
-            emit_set(path, after, out);
-        } else if before.is_some() {
-            emit_delete(path, out);
-        }
-        return;
-    };
-    if before == after {
-        return;
-    }
-    match (before, after) {
-        (JsonValue::String(before), JsonValue::String(after)) => {
-            diff_string(before, after, path, scan, out);
-        }
-        (JsonValue::Array(before), JsonValue::Array(after)) => {
-            diff_array(before, after, path, scan, out);
-        }
-        (JsonValue::Object(before), JsonValue::Object(after)) => {
-            diff_object(before, after, path, scan, out);
-        }
-        _ => emit_set(path, after, out),
-    }
-}
-
-/// Port of `diffString` (`delta/index.ts:200-222`).
-pub(crate) fn diff_string(before: &str, after: &str, path: &[Seg], scan: usize, out: &mut Vec<Op>) {
-    if before == after {
-        return;
-    }
-    if path.is_empty() {
-        emit_set(path, &JsonValue::String(after.to_owned()), out);
-        return;
-    }
-    // A byte-prefix of a UTF-8 string is exactly its code-unit prefix, so
-    // `starts_with` is `after.slice(0, before.length) === before`
-    // (delta/index.ts:211-214).
-    if after.len() > before.len() && after.starts_with(before) {
-        out.push(Op::Append {
-            path: path.to_owned(),
-            text: after[before.len()..].to_owned(),
-        });
-        return;
-    }
-    let shared = overlap(before, after, scan);
-    if shared == 0 {
-        out.push(Op::Set {
-            path: path.to_owned(),
-            value: JsonValue::String(after.to_owned()),
-        });
-        return;
-    }
-    out.push(Op::Truncate {
-        path: path.to_owned(),
-        count: utf16_len(before) - shared,
-    });
-    if utf16_len(after) > shared {
-        out.push(Op::Append {
-            path: path.to_owned(),
-            text: slice_utf16_from(after, shared).to_owned(),
-        });
-    }
-}
-
-/// Port of `diffArray` (`delta/index.ts:268-308`).
-pub(crate) fn diff_array(
-    before: &[JsonValue],
-    after: &[JsonValue],
-    path: &[Seg],
-    scan: usize,
-    out: &mut Vec<Op>,
-) {
-    if before.len() == after.len() {
-        for (index, item) in after.iter().enumerate() {
-            let mut sub = path.to_owned();
-            sub.push(Seg::Index(index));
-            diff_value(Some(&before[index]), Some(item), &sub, scan, out);
-        }
-        return;
-    }
-
-    let mut prefix = 0;
-    while prefix < before.len() && prefix < after.len() && before[prefix] == after[prefix] {
-        prefix += 1;
-    }
-    let mut suffix = 0;
-    while suffix < before.len() - prefix
-        && suffix < after.len() - prefix
-        && before[before.len() - 1 - suffix] == after[after.len() - 1 - suffix]
-    {
-        suffix += 1;
-    }
-    let shorter = before.len().min(after.len());
-    if prefix + suffix == shorter {
-        let remove = before.len() - prefix - suffix;
-        let items: Vec<JsonValue> = after[prefix..after.len() - suffix].to_vec();
-        if prefix == 0 && remove == before.len() {
-            emit_set(path, &JsonValue::Array(after.to_vec()), out);
-        } else {
-            out.push(Op::Splice {
-                path: path.to_owned(),
-                index: prefix,
-                remove,
-                items,
-            });
-        }
-        return;
-    }
-
-    // Structural movement combined with retained-index edits has no unique
-    // alignment. Preserve the retained index deltas and express only the tail
-    // length change structurally (delta/index.ts:295-307).
-    for index in 0..shorter {
-        let mut sub = path.to_owned();
-        sub.push(Seg::Index(index));
-        diff_value(Some(&before[index]), Some(&after[index]), &sub, scan, out);
-    }
-    if after.len() > before.len() {
-        out.push(Op::Splice {
-            path: path.to_owned(),
-            index: before.len(),
-            remove: 0,
-            items: after[before.len()..].to_vec(),
-        });
-    } else if before.len() > after.len() {
-        if after.is_empty() {
-            emit_set(path, &JsonValue::Array(Vec::new()), out);
-        } else {
-            out.push(Op::Splice {
-                path: path.to_owned(),
-                index: after.len(),
-                remove: before.len() - after.len(),
-                items: Vec::new(),
-            });
-        }
-    }
-}
-
-/// Port of `diffObject` (`delta/index.ts:249-266`). Reserved keys anywhere in
-/// either object degrade the whole subtree to a set
-/// (`delta/index.ts:256-259`). `Map` now retains insertion order because
-/// serde_json/preserve_order is enabled. Upstream `Object.keys` additionally
-/// enumerates integer-index names numerically first; that diff/op-order case
-/// still needs its own audit. Canonicalized oracle comparisons alone do not
-/// prove that all emitted operation sequences have the upstream byte order.
-pub(crate) fn diff_object(
-    before: &Map<String, JsonValue>,
-    after: &Map<String, JsonValue>,
-    path: &[Seg],
-    scan: usize,
-    out: &mut Vec<Op>,
-) {
-    if before
-        .keys()
-        .chain(after.keys())
-        .any(|key| is_reserved(key))
-    {
-        emit_set(path, &JsonValue::Object(after.clone()), out);
-        return;
-    }
-    for (key, value) in after {
-        let mut sub = path.to_owned();
-        sub.push(Seg::Key(key.clone()));
-        diff_value(before.get(key), Some(value), &sub, scan, out);
-    }
-    for key in before.keys() {
-        if !after.contains_key(key) {
-            let mut sub = path.to_owned();
-            sub.push(Seg::Key(key.clone()));
-            emit_delete(&sub, out);
-        }
-    }
+    Ok(current)
 }
 
 #[cfg(test)]

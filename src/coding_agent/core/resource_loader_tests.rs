@@ -40,7 +40,8 @@ use crate::coding_agent::package_manager::{
     PathMetadata, PathMetadataOrigin, SourceScope as PmSourceScope,
 };
 
-const ORACLE: &str = include_str!("../../../tests/fixtures/core_oracle_w38/resource_loader.oracle.json");
+const ORACLE: &str =
+    include_str!("../../../tests/fixtures/core_oracle_w38/resource_loader.oracle.json");
 
 fn oracle() -> &'static Value {
     static PARSED: OnceLock<Value> = OnceLock::new();

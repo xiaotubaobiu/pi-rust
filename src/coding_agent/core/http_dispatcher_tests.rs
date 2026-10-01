@@ -11,7 +11,8 @@ use serde_json::Value;
 
 /// Upstream `http-dispatcher.ts` parse/format tables (real upstream module
 /// under node; generator `tests/fixtures/core_oracle_model/oracle_http_dispatcher.mjs`).
-const ORACLE: &str = include_str!("../../../tests/fixtures/core_oracle_model/http_dispatcher.oracle.json");
+const ORACLE: &str =
+    include_str!("../../../tests/fixtures/core_oracle_model/http_dispatcher.oracle.json");
 
 /// Serializes the process-env mutation in [`apply_http_proxy_settings`] tests
 /// (cargo runs test targets in threads; upstream tests are per-file workers).

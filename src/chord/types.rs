@@ -163,7 +163,7 @@ impl ServiceSubscriptionSnapshot {
     }
 }
 
-/// Upstream `ServiceProviderUpdate` (`types.ts:149-160`).
+/// Upstream `ServiceProviderUpdate` (`types.ts:149-162`).
 #[derive(Clone, Debug, PartialEq)]
 pub enum ServiceProviderUpdate {
     State {
@@ -171,6 +171,11 @@ pub enum ServiceProviderUpdate {
         member: String,
         sequence: u64,
         ops: Vec<Op>,
+    },
+    /// Full subscription rebaseline after buffer overflow; every state is a
+    /// root replacement at its new sequence (`types.ts:220-221`).
+    Reset {
+        snapshot: ServiceSubscriptionSnapshot,
     },
     Unavailable,
     Replaced {
@@ -203,6 +208,9 @@ impl ServiceProviderUpdate {
                     value["instance"] = instance.to_json();
                 }
                 value
+            }
+            ServiceProviderUpdate::Reset { snapshot } => {
+                json!({ "type": "reset", "snapshot": snapshot.to_json() })
             }
             ServiceProviderUpdate::Unavailable => json!({ "type": "unavailable" }),
             ServiceProviderUpdate::Replaced { snapshot } => {
@@ -339,7 +347,7 @@ impl WireServiceSubscriptionSnapshot {
     }
 }
 
-/// Upstream `WireServiceProviderUpdate` (`services/wire.ts:26-37`).
+/// Upstream `WireServiceProviderUpdate` (`services/wire.ts:26-39`).
 #[derive(Clone, Debug, PartialEq)]
 pub enum WireServiceProviderUpdate {
     State {
@@ -347,6 +355,10 @@ pub enum WireServiceProviderUpdate {
         member: String,
         sequence: u64,
         ops: Vec<WireOp>,
+    },
+    /// `["reset", subscription snapshot]` (`services/wire.ts:34`).
+    Reset {
+        snapshot: WireServiceSubscriptionSnapshot,
     },
     Unavailable,
     Replaced {
@@ -380,6 +392,9 @@ impl WireServiceProviderUpdate {
                 }
                 value
             }
+            WireServiceProviderUpdate::Reset { snapshot } => {
+                json!({ "type": "reset", "snapshot": snapshot.to_json() })
+            }
             WireServiceProviderUpdate::Unavailable => json!({ "type": "unavailable" }),
             WireServiceProviderUpdate::Replaced { snapshot } => {
                 json!({ "type": "replaced", "snapshot": snapshot.to_json() })
@@ -393,3 +408,63 @@ impl WireServiceProviderUpdate {
         }
     }
 }
+
+// ─── Replicated state sources (`types.ts:44-107`) ────────────────────────────
+
+use std::sync::Arc as SourceArc;
+
+use crate::chord::context::Context as SourceContext;
+use crate::chord::services::errors::ChordError as SourceError;
+
+/// One immutable authoritative revision committed after an attachment
+/// snapshot. Port of `ReplicatedStateSourceFrame<T>` (`types.ts:44-52`).
+pub struct ReplicatedStateSourceFrame {
+    /// Monotonic source cursor. The first frame after a snapshot must be
+    /// `snapshot.cursor + 1`.
+    pub cursor: u64,
+    /// The exact immutable value produced by this commit.
+    pub value: JsonValue,
+    /// The exact immutable operation batch that produced `value`.
+    pub ops: Vec<Op>,
+    pub context: SourceContext,
+}
+
+/// The attachment returned by [`ReplicatedStateSource::attach`]. Port of
+/// `ReplicatedStateSourceAttachment<T>` (`types.ts:54-66`): a fixed
+/// snapshot, a single-use `activate` that synchronously drains every
+/// buffered frame in commit order, and idempotent disposal. The upstream
+/// promise-based listener contract flattens to a synchronous closure
+/// (divergence D2).
+pub trait ReplicatedStateSourceAttachment: Send {
+    /// The fixed immutable snapshot captured at the atomic attachment
+    /// boundary: `(value, cursor)`.
+    fn snapshot(&self) -> (JsonValue, u64);
+    /// Install the sole listener and synchronously drain every buffered
+    /// frame. Single-use.
+    fn activate(
+        self: Box<Self>,
+        listener: Box<dyn FnMut(ReplicatedStateSourceFrame) + Send>,
+    ) -> Result<(), SourceError>;
+    /// Stop delivery and release source resources. Idempotent.
+    fn dispose(self: Box<Self>) -> Result<(), SourceError>;
+}
+
+/// An authoritative immutable revision source (`types.ts:69-82`): `attach`
+/// must synchronously and atomically capture one snapshot and register the
+/// attachment to buffer every later committed frame, with no overlap or gap.
+pub trait ReplicatedStateSource: Send + Sync {
+    fn attach(
+        self: SourceArc<Self>,
+    ) -> Result<Box<dyn ReplicatedStateSourceAttachment>, SourceError>;
+}
+
+/// Options for attaching a source (`types.ts:84-89`): receives
+/// source-contract and publication-listener failures without throwing them
+/// into the source.
+#[derive(Clone, Default)]
+pub struct ReplicatedStateSourceOptions {
+    pub on_error: Option<SourceErrorReporter>,
+}
+
+/// The `onError` reporter type: the upstream `(error: Error) => void`.
+pub type SourceErrorReporter = std::sync::Arc<dyn Fn(&SourceError) + Send + Sync>;

@@ -645,117 +645,330 @@ fn service_rows_match_oracle() {
     }
 }
 
-#[test]
-fn state_rows_match_oracle() {
-    let oracle: Value = serde_json::from_str(ORACLE).expect("oracle fixture parses");
-    let find = |name: &str| -> Value {
-        oracle["state"]
-            .as_array()
-            .expect("state rows")
-            .iter()
-            .find(|row| row["name"] == json!(name))
-            .expect("state row")
-            .clone()
-    };
+// ── delta-slice oracle (chord_delta_oracle.json) ─────────────────────────────
 
-    // subscribe delivers hydrate then update; published revisions are immutable
-    let state =
-        crate::chord::api::replicated_state(json!({ "revision": 0, "selected": Value::Null }));
-    let deliveries = Arc::new(Mutex::new(Vec::<String>::new()));
-    let values = Arc::new(Mutex::new(Vec::<String>::new()));
+const DELTA_ORACLE: &str =
+    include_str!("../../../tests/fixtures/chord_delta_oracle/chord_delta_oracle.json");
+
+fn canon_value(value: &JsonValue) -> String {
+    let mut sorted = value.clone();
+    sorted.sort_all_objects();
+    serde_json::to_string(&sorted).expect("canonical serialization cannot fail")
+}
+
+/// Replicated state publication order: subscribe hydrate, one delivery per
+/// publication (empty changes and no-op replacements consume the revision
+/// silently), unsubscribe stops deliveries, replace publishes atomically.
+#[test]
+fn replicated_state_matches_oracle() {
+    let oracle: Value = serde_json::from_str(DELTA_ORACLE).expect("delta oracle parses");
+    let expected = &oracle["services"]["state"];
+    let state = crate::chord::api::replicated_state(json!({ "count": 0, "log": [] }));
+    let events = Arc::new(Mutex::new(Vec::<Value>::new()));
     let unsubscribe = {
-        let deliveries = Arc::clone(&deliveries);
-        let values = Arc::clone(&values);
+        let events = Arc::clone(&events);
         state.subscribe(move |value, _context, delivery| {
-            deliveries.lock().unwrap().push(
-                if delivery.kind == crate::chord::types::ReplicatedStateDeliveryKind::Hydrate {
-                    "hydrate".to_owned()
-                } else {
-                    "update".to_owned()
-                },
-            );
-            values.lock().unwrap().push(canon(value));
+            events.lock().unwrap().push(json!({
+                "kind": "listener",
+                "delivery": delivery.to_json(),
+                "value": serde_json::from_str::<Value>(
+                    &{
+                        let mut sorted = value.clone();
+                        sorted.sort_all_objects();
+                        serde_json::to_string(&sorted).unwrap()
+                    },
+                )
+                .unwrap(),
+            }));
         })
     };
-    assert_eq!(
-        canon(&state.value()),
-        find("state_initial_value")["value"].as_str().unwrap()
-    );
+    let change_n = |state: &Arc<MutableReplicatedState>, n: i64| {
+        state
+            .change(&Context::background(), |draft| {
+                draft
+                    .set(&[k("count")], json!(n))
+                    .map_err(|error| ChordError::Type(error.message()))
+            })
+            .expect("change publishes");
+    };
+    // change 1: one draft mutation touching two members.
     state
-        .set(
-            &[k("selected")],
-            json!({ "modelId": "one", "provider": "test" }),
+        .change(&Context::background(), |draft| {
+            draft
+                .set(&[k("count")], json!(1))
+                .map_err(|error| ChordError::Type(error.message()))?;
+            draft
+                .push(&[k("log")], vec![json!("one")])
+                .map_err(|error| ChordError::Type(error.message()))
+                .map(|_| ())
+        })
+        .expect("change publishes");
+    change_n(&state, 2);
+    // An empty change consumes a revision without publishing.
+    state
+        .change(&Context::background(), |_| Ok(()))
+        .expect("empty change");
+    // Whole-value replacement, then a no-op replacement (revision only).
+    state
+        .replace(
+            &Context::background(),
+            json!({ "count": 2, "log": ["one"], "extra": true }),
         )
-        .unwrap();
-    state.set(&[k("revision")], json!(1)).unwrap();
-    state.publish(&Context::background());
-    assert_eq!(
-        canon(&state.value()),
-        find("state_after_update")["value"].as_str().unwrap()
-    );
-    assert_eq!(
-        json!(*deliveries.lock().unwrap()),
-        find("state_deliveries")["result"],
-        "deliveries"
-    );
-    assert_eq!(
-        json!(*values.lock().unwrap()),
-        find("state_values")["result"],
-        "values"
-    );
-    unsubscribe();
-
-    // a mutation window that restores its starting value still publishes
-    let state = crate::chord::api::replicated_state(json!({ "value": 1 }));
-    let deliveries = Arc::new(Mutex::new(Vec::<Value>::new()));
-    {
-        let deliveries = Arc::clone(&deliveries);
-        let _unsubscribe = state.subscribe(move |_value, _context, delivery| {
-            deliveries.lock().unwrap().push(delivery.to_json());
-        });
-    }
-    state.set(&[k("value")], json!(2)).unwrap();
-    state.set(&[k("value")], json!(1)).unwrap();
-    state.publish(&Context::background());
-    assert_eq!(
-        canon(&state.value()),
-        find("redundant_value")["value"].as_str().unwrap()
-    );
-    assert_eq!(
-        json!(*deliveries.lock().unwrap()),
-        find("redundant_deliveries")["result"],
-        "redundant deliveries"
-    );
-
-    // pending mutations flush before a new subscriber hydrates
-    let state = crate::chord::api::replicated_state(json!({ "entries": [{ "id": "one" }] }));
-    let first = Arc::new(Mutex::new(Vec::<String>::new()));
-    {
-        let first = Arc::clone(&first);
-        let _unsubscribe = state.subscribe(move |value, _context, _delivery| {
-            first.lock().unwrap().push(canon(value));
-        });
-    }
+        .expect("replace publishes");
     state
-        .push(&[k("entries")], vec![json!({ "id": "two" })])
-        .unwrap();
-    let second = Arc::new(Mutex::new(Vec::<String>::new()));
+        .replace(
+            &Context::background(),
+            json!({ "count": 2, "log": ["one"], "extra": true }),
+        )
+        .expect("noop replace");
+    unsubscribe();
+    change_n(&state, 3);
+
+    assert!(expected["error"].is_null(), "capture reported an error");
+    assert_eq!(
+        events.lock().unwrap().len(),
+        expected["events"].as_array().expect("events").len(),
+        "event count"
+    );
+    for (at, (actual, want)) in events
+        .lock()
+        .unwrap()
+        .iter()
+        .zip(expected["events"].as_array().unwrap().iter())
+        .enumerate()
     {
-        let second = Arc::clone(&second);
-        let _unsubscribe = state.subscribe(move |value, _context, _delivery| {
-            second.lock().unwrap().push(canon(value));
-        });
+        assert_eq!(
+            canon_value(&actual["value"]),
+            want["value"].as_str().unwrap(),
+            "event {at}"
+        );
     }
     assert_eq!(
-        json!(*first.lock().unwrap()),
-        find("hydrate_flush_first")["result"],
-        "first subscriber"
+        canon_value(&state.value()),
+        expected["final"].as_str().unwrap(),
+        "final value"
     );
     assert_eq!(
-        json!(*second.lock().unwrap()),
-        find("hydrate_flush_second")["result"],
-        "second subscriber"
+        expected["final_sequence"],
+        json!(expected["events"]
+            .as_array()
+            .unwrap()
+            .last()
+            .map(|at| at["delivery"]["sequence"].clone())
+            .unwrap_or(Value::Null)),
+        "fixture sanity"
     );
+    // The post-unsubscribe change still advanced the publication sequence
+    // (4 = hydrate 0 + three delivered publications + one silent one).
+    assert_eq!(state.sequence(), 4, "sequence advances on publications");
+}
+
+/// Provider buffer overflow rebaselines a cold subscriber with a full reset
+/// snapshot; active subscribers stream; snapshot sequences suppress
+/// already-covered updates.
+#[test]
+fn provider_reset_matches_oracle() {
+    let oracle: Value = serde_json::from_str(DELTA_ORACLE).expect("delta oracle parses");
+    let expected = &oracle["services"]["provider_reset"];
+    assert!(expected["error"].is_null(), "capture reported an error");
+
+    let provider = RemoteServiceProvider::new(&[ProviderEntry {
+        id: "svc".to_owned(),
+        mode: ServiceMode::Singleton,
+        local: false,
+    }])
+    .expect("provider");
+    let state = crate::chord::api::replicated_state(json!({ "n": 0 }));
+    let mut implementation = Implementation::new();
+    implementation.insert("state".to_owned(), state_member(&state));
+    provider
+        .provide(
+            &crate::chord::api::define_service("svc").unwrap(),
+            implementation,
+        )
+        .expect("provide");
+
+    let updates = Arc::new(Mutex::new(Vec::<String>::new()));
+    let subscription = {
+        let updates = Arc::clone(&updates);
+        provider
+            .subscribe("svc", ServiceMode::Singleton, move |update, _context| {
+                updates.lock().unwrap().push(canon_value(&update.to_json()));
+                Ok(())
+            })
+            .expect("subscribe")
+    };
+    subscription.activate().expect("activate");
+    for n in 1..=120i64 {
+        state
+            .change(&Context::background(), |draft| {
+                draft
+                    .set(&[k("n")], json!(n))
+                    .map_err(|error| ChordError::Type(error.message()))
+            })
+            .expect("change publishes");
+    }
+    assert_eq!(
+        updates.lock().unwrap().len(),
+        120,
+        "every active-subscriber update delivers inline"
+    );
+
+    let buffered = Arc::new(Mutex::new(Vec::<String>::new()));
+    let late_subscription = {
+        let buffered = Arc::clone(&buffered);
+        provider
+            .subscribe("svc", ServiceMode::Singleton, move |update, _context| {
+                buffered
+                    .lock()
+                    .unwrap()
+                    .push(canon_value(&update.to_json()));
+                Ok(())
+            })
+            .expect("subscribe")
+    };
+    for n in 121..=240i64 {
+        state
+            .change(&Context::background(), |draft| {
+                draft
+                    .set(&[k("n")], json!(n))
+                    .map_err(|error| ChordError::Type(error.message()))
+            })
+            .expect("change publishes");
+    }
+    late_subscription.activate().expect("activate");
+    let buffered_after = buffered.lock().unwrap().clone();
+    let resets = buffered_after
+        .iter()
+        .filter(|at| {
+            serde_json::from_str::<Value>(at)
+                .expect("canonical json")
+                .get("type")
+                .and_then(Value::as_str)
+                == Some("reset")
+        })
+        .count();
+    assert_eq!(
+        resets,
+        expected["resets"].as_u64().unwrap_or(0) as usize + 1,
+        "exactly one reset rebaseline"
+    );
+    let first: Value = serde_json::from_str(&buffered_after[0]).unwrap();
+    assert_eq!(first["type"], json!("reset"));
+    assert_eq!(
+        first["snapshot"]["instances"][0]["members"][0]["ops"][0][0],
+        json!("r"),
+        "reset carries full root replacements"
+    );
+    assert_eq!(
+        first["snapshot"]["instances"][0]["members"][0]["sequence"],
+        json!(221),
+        "reset snapshot sequence"
+    );
+    provider.dispose().expect("dispose");
+    assert!(
+        updates
+            .lock()
+            .unwrap()
+            .last()
+            .map(|at| at.contains("\"unavailable\""))
+            .unwrap_or(false),
+        "dispose closes active subscribers with unavailable"
+    );
+}
+
+/// Replica hydration, update sequencing, gap clearing and base-batch
+/// validation.
+#[test]
+fn replica_matches_oracle() {
+    let oracle: Value = serde_json::from_str(DELTA_ORACLE).expect("delta oracle parses");
+    let expected = &oracle["services"]["replica"];
+    let replica = crate::chord::services::state::ReplicatedStateReplica::new();
+    let events = Arc::new(Mutex::new(Vec::<Value>::new()));
+    {
+        let events = Arc::clone(&events);
+        let _unsubscribe = replica.subscribe(move |value, _context, delivery| {
+            let mut sorted = value.clone();
+            sorted.sort_all_objects();
+            events.lock().unwrap().push(json!({
+                "delivery": delivery.to_json(),
+                "value": serde_json::to_string(&sorted).unwrap(),
+            }));
+        });
+    }
+    replica
+        .hydrate(1, &[Op::Replace(json!({ "v": 1 }))], &Context::background())
+        .expect("hydrate");
+    replica
+        .update(
+            2,
+            &[Op::Set {
+                path: vec![k("v")],
+                value: json!(2),
+            }],
+            &Context::background(),
+        )
+        .expect("update");
+    let gap = replica
+        .update(
+            5,
+            &[Op::Set {
+                path: vec![k("v")],
+                value: json!(5),
+            }],
+            &Context::background(),
+        )
+        .expect_err("gap fails");
+    assert_eq!(gap.message(), "Replicated state update sequence has a gap");
+    assert!(replica.value().is_none(), "a gap clears the replica");
+    let non_base = replica
+        .hydrate(
+            9,
+            &[Op::Set {
+                path: vec![k("v")],
+                value: json!(9),
+            }],
+            &Context::background(),
+        )
+        .expect_err("non-base snapshot fails");
+    assert_eq!(
+        non_base.message(),
+        "Replicated state snapshot is not a base operation batch"
+    );
+    assert!(expected["error"].is_null(), "capture reported an error");
+    assert_eq!(
+        events.lock().unwrap().len(),
+        expected["events"].as_array().expect("events").len()
+    );
+    for (at, (actual, want)) in events
+        .lock()
+        .unwrap()
+        .iter()
+        .zip(expected["events"].as_array().unwrap().iter())
+        .enumerate()
+    {
+        assert_eq!(canon_value(actual), canon_value(want), "replica event {at}");
+    }
+}
+
+/// The replica-side revision validator accepts strict JSON trees (every
+/// upstream rejection is unrepresentable over owned values; see the
+/// validator module docs).
+#[test]
+fn validator_and_json_guards() {
+    let oracle: Value = serde_json::from_str(DELTA_ORACLE).expect("delta oracle parses");
+    let expected = &oracle["services"]["validator"];
+    let validator = crate::chord::delta::JsonRevisionValidator;
+    let validated = validator.validate(&json!({ "a": [1, { "b": null }] }));
+    assert_eq!(
+        canon_value(&validated),
+        expected["plain"].as_str().unwrap(),
+        "validate pass-through"
+    );
+    // isJsonValue over owned trees is constant true (the Map case in the
+    // fixture is JS-only).
+    assert!(crate::chord::json::is_json_value(&json!({ "a": 1 })));
+    assert_eq!(expected["is_json"], json!([true, false]), "fixture sanity");
 }
 
 type Publisher = Arc<dyn Fn(&str, &ServiceProviderUpdate, &Context) + Send + Sync>;
@@ -769,6 +982,28 @@ where
 
 fn state_member(state: &Arc<MutableReplicatedState>) -> InstanceMember {
     InstanceMember::State(Arc::clone(state))
+}
+
+/// One draft mutation published synchronously (the new-API equivalent of
+/// the old `set` + `publish` pair in these rows).
+fn publish_value(state: &Arc<MutableReplicatedState>, value: JsonValue) {
+    state
+        .change(&Context::background(), |draft| {
+            draft
+                .set(&[k("value")], value)
+                .map_err(|error| ChordError::Type(error.message()))
+        })
+        .expect("change publishes");
+}
+
+fn publish_revision(state: &Arc<MutableReplicatedState>, revision: i64) {
+    state
+        .change(&Context::background(), |draft| {
+            draft
+                .set(&[k("revision")], json!(revision))
+                .map_err(|error| ChordError::Type(error.message()))
+        })
+        .expect("change publishes");
 }
 
 fn implementation<const N: usize>(members: [(&str, InstanceMember); N]) -> Implementation {
@@ -834,15 +1069,13 @@ fn provider_rows_match_oracle() {
                 .as_str()
                 .unwrap()
         );
-        state.set(&[k("value")], json!(1)).unwrap();
-        state.publish(&Context::background());
+        publish_value(&state, json!(1));
         assert_eq!(
             updates_json(&updates.lock().unwrap()),
             canon(&find("endpoint_updates_after_publish")["result"])
         );
         endpoint.dispose();
-        state.set(&[k("value")], json!(2)).unwrap();
-        state.publish(&Context::background());
+        publish_value(&state, json!(2));
         assert_eq!(
             updates.lock().unwrap().len(),
             find("endpoint_updates_after_dispose_len")["result"]
@@ -884,10 +1117,13 @@ fn provider_rows_match_oracle() {
                 implementation([
                     (
                         "select",
-                        method(move |args, _context| {
+                        method(move |args, context| {
                             let _ = args;
-                            method_state.set(&[k("revision")], json!(1))?;
-                            method_state.publish(&Context::background());
+                            method_state.change(context, |draft| {
+                                draft
+                                    .set(&[k("revision")], json!(1))
+                                    .map_err(|error| ChordError::Type(error.message()))
+                            })?;
                             Ok(None)
                         }),
                     ),
@@ -1109,10 +1345,8 @@ fn provider_rows_match_oracle() {
                 }
             })
             .unwrap();
-        state.set(&[k("revision")], json!(1)).unwrap();
-        state.publish(&Context::background());
-        state.set(&[k("revision")], json!(2)).unwrap();
-        state.publish(&Context::background());
+        publish_revision(&state, 1);
+        publish_revision(&state, 2);
         let error = subscription.activate().expect_err("activation fails");
         assert_eq!(
             error.message(),
@@ -1359,23 +1593,25 @@ fn provider_rows_match_oracle() {
     }
 }
 
-/// Port of the upstream "is linear in the number of ops" performance guard
-/// (`delta.test.ts` "pending operation coalescing"): a wide flush must stay
-/// roughly linear, not quadratic, in the number of recorded operations.
+/// Port of the upstream tracker performance guard (the old delta.test.ts
+/// "pending operation coalescing" check, kept as a local guard now that the
+/// upstream benchmark moved to worker processes): one wide change must stay
+/// roughly linear, not quadratic, in the number of dirty nodes.
 #[test]
-fn coalescing_is_linear_in_the_number_of_ops() {
+fn emission_is_linear_in_the_number_of_dirty_nodes() {
     fn wide(n: usize) -> u128 {
         let mut root = serde_json::Map::new();
         for i in 0..n {
             root.insert(format!("f{i}"), json!(i));
         }
-        let mut t = crate::chord::delta::track(JsonValue::Object(root));
-        t.flush();
-        let started = std::time::Instant::now();
+        let tracker = crate::chord::delta::track(JsonValue::Object(root));
+        let change = tracker.begin_change();
         for i in 0..n {
-            t.set(&[k(&format!("f{i}"))], json!(i + 1)).unwrap();
+            change.set(&[k(&format!("f{i}"))], json!(i + 1)).unwrap();
         }
-        t.flush();
+        let started = std::time::Instant::now();
+        let prepared = change.prepare().expect("wide change prepares");
+        prepared.abort();
         started.elapsed().as_millis().max(1)
     }
     wide(200);
@@ -1383,6 +1619,6 @@ fn coalescing_is_linear_in_the_number_of_ops() {
     let large = wide(2500);
     assert!(
         large / small < 40,
-        "coalescing should be near-linear: large={large}ms small={small}ms"
+        "emission should be near-linear: large={large}ms small={small}ms"
     );
 }

@@ -136,6 +136,20 @@ impl ServiceStateEncoder {
                 sequence: *sequence,
                 ops: self.codecs.get(instance.as_ref(), member)?.encode(ops),
             },
+            ServiceProviderUpdate::Reset { snapshot } => {
+                self.codecs.reset();
+                let mut instances = Vec::with_capacity(snapshot.instances.len());
+                for instance in &snapshot.instances {
+                    instances.push(encode_instance(instance, &mut self.codecs)?);
+                }
+                WireServiceProviderUpdate::Reset {
+                    snapshot: WireServiceSubscriptionSnapshot {
+                        service_id: snapshot.service_id.clone(),
+                        mode: snapshot.mode,
+                        instances,
+                    },
+                }
+            }
             ServiceProviderUpdate::Replaced { snapshot } => {
                 self.codecs.reset();
                 WireServiceProviderUpdate::Replaced {
@@ -206,6 +220,20 @@ impl ServiceStateDecoder {
                 sequence: *sequence,
                 ops: self.codecs.get(instance.as_ref(), member)?.decode(ops)?,
             },
+            WireServiceProviderUpdate::Reset { snapshot } => {
+                self.codecs.reset();
+                let mut instances = Vec::with_capacity(snapshot.instances.len());
+                for instance in &snapshot.instances {
+                    instances.push(decode_instance(instance, &mut self.codecs)?);
+                }
+                ServiceProviderUpdate::Reset {
+                    snapshot: ServiceSubscriptionSnapshot {
+                        service_id: snapshot.service_id.clone(),
+                        mode: snapshot.mode,
+                        instances,
+                    },
+                }
+            }
             WireServiceProviderUpdate::Replaced { snapshot } => {
                 self.codecs.reset();
                 ServiceProviderUpdate::Replaced {

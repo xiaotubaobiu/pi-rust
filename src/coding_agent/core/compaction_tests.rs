@@ -45,7 +45,8 @@ use crate::ai::types::primitives::ToolChoice;
 // Oracle plumbing
 // ---------------------------------------------------------------------------
 
-const ORACLE: &str = include_str!("../../../tests/fixtures/core_oracle_compaction/compaction.oracle.json");
+const ORACLE: &str =
+    include_str!("../../../tests/fixtures/core_oracle_compaction/compaction.oracle.json");
 
 /// The capture is a static JSON document; parsed fresh per test.
 fn oracle() -> Value {

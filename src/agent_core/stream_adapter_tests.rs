@@ -22,7 +22,10 @@ fn trace(log: &Trace, row: Value) {
     log.lock().unwrap().push(row);
 }
 fn model() -> Model {
-    Model {r#type: None, prompt_cache: None, input_limits: None, 
+    Model {
+        r#type: None,
+        prompt_cache: None,
+        input_limits: None,
         id: "r14-model".into(),
         name: "r14-model".into(),
         api: "r14-api".into(),
@@ -906,7 +909,10 @@ async fn local_runtime(
     model.reasoning = false;
     model.headers = Some([("x-model".into(), Some("model-header".into()))].into());
     runtime
-        .register_native_provider(create_provider(CreateProviderOptions {filter_all_models: None, images: crate::ai::models::provider::ImagesImpls::new(), classifiers: crate::ai::models::provider::ClassifiersImpls::new(), 
+        .register_native_provider(create_provider(CreateProviderOptions {
+            filter_all_models: None,
+            images: crate::ai::models::provider::ImagesImpls::new(),
+            classifiers: crate::ai::models::provider::ClassifiersImpls::new(),
             id: model.provider.clone(),
             name: None,
             base_url: None,

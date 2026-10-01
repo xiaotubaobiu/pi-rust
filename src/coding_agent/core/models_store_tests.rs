@@ -28,7 +28,10 @@ fn oracle() -> serde_json::Value {
 
 /// The upstream test's `model()` fixture (matching the oracle script).
 fn model(provider: &str, id: &str) -> Model {
-    Model {r#type: None, prompt_cache: None, input_limits: None, 
+    Model {
+        r#type: None,
+        prompt_cache: None,
+        input_limits: None,
         id: id.to_string(),
         name: id.to_string(),
         api: "openai-completions".to_string(),
@@ -48,7 +51,10 @@ fn model(provider: &str, id: &str) -> Model {
 
 fn entry(models: Vec<Model>, checked_at: i64) -> ModelsStoreEntry {
     ModelsStoreEntry {
-        models: models.into_iter().map(crate::ai::types::AnyModel::Chat).collect(),
+        models: models
+            .into_iter()
+            .map(crate::ai::types::AnyModel::Chat)
+            .collect(),
         last_modified: None,
         checked_at: Some(checked_at),
         etag: None,
@@ -57,7 +63,10 @@ fn entry(models: Vec<Model>, checked_at: i64) -> ModelsStoreEntry {
 
 fn entry_with_meta(models: Vec<Model>) -> ModelsStoreEntry {
     ModelsStoreEntry {
-        models: models.into_iter().map(crate::ai::types::AnyModel::Chat).collect(),
+        models: models
+            .into_iter()
+            .map(crate::ai::types::AnyModel::Chat)
+            .collect(),
         last_modified: Some(4),
         checked_at: Some(5),
         etag: Some("\"abc\"".to_string()),
@@ -270,11 +279,7 @@ async fn coalesces_file_reloads_across_concurrent_readers() {
     // A satisfied-revision read does not re-lock.
     let cached = second.read("one", &options()).await.unwrap().unwrap();
     assert_eq!(
-        cached
-            .models
-            .iter()
-            .map(|m| m.id())
-            .collect::<Vec<_>>(),
+        cached.models.iter().map(|m| m.id()).collect::<Vec<_>>(),
         ["old"]
     );
     assert_eq!(
@@ -301,8 +306,14 @@ async fn coalesces_file_reloads_across_concurrent_readers() {
     let third_store = FileModelsStore::new(path.to_str().unwrap());
     let (first_reload, third_reload) =
         tokio::join!(first.read("one", &opts), third_store.read("one", &opts),);
-    assert_eq!(first_reload.unwrap().unwrap().models[0].id(), "newest-model");
-    assert_eq!(third_reload.unwrap().unwrap().models[0].id(), "newest-model");
+    assert_eq!(
+        first_reload.unwrap().unwrap().models[0].id(),
+        "newest-model"
+    );
+    assert_eq!(
+        third_reload.unwrap().unwrap().models[0].id(),
+        "newest-model"
+    );
     assert_eq!(
         LOCK_CALLS.load(std::sync::atomic::Ordering::SeqCst),
         3,

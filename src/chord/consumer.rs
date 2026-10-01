@@ -532,6 +532,60 @@ fn validate_members(
     Ok(result)
 }
 
+/// `validateResetSnapshot` (`consumer.ts:660-687`): service and mode must
+/// match, singleton resets carry at most one address-less instance, keyed
+/// resets carry addressed instances without repeated keys, and every state
+/// member is a full root replacement.
+fn validate_reset_snapshot(
+    snapshot: &crate::chord::types::ServiceSubscriptionSnapshot,
+    service_id: &str,
+    mode: ServiceMode,
+) -> Result<(), ChordError> {
+    if snapshot.service_id != service_id
+        || snapshot.mode != mode
+        || (mode == ServiceMode::Singleton && snapshot.instances.len() > 1)
+    {
+        return Err(ChordError::Type(
+            "Remote service reset has the wrong service or mode".to_owned(),
+        ));
+    }
+    let mut keys: HashSet<&str> = HashSet::new();
+    for instance in &snapshot.instances {
+        match mode {
+            ServiceMode::Singleton if instance.instance.is_some() => {
+                return Err(ChordError::Type(
+                    "Remote service reset has an invalid instance address".to_owned(),
+                ));
+            }
+            ServiceMode::Keyed if instance.instance.is_none() => {
+                return Err(ChordError::Type(
+                    "Remote service reset has an invalid instance address".to_owned(),
+                ));
+            }
+            _ => {}
+        }
+        if let Some(address) = &instance.instance {
+            if !keys.insert(address.key.as_str()) {
+                return Err(ChordError::Type(
+                    "Remote service reset repeats an instance key".to_owned(),
+                ));
+            }
+        }
+        for member in &instance.members {
+            if let crate::chord::types::ServiceMemberSnapshot::State { ops, .. } = member {
+                let full_replacement =
+                    ops.len() == 1 && matches!(ops.first(), Some(Op::Replace(_)));
+                if !full_replacement {
+                    return Err(ChordError::Type(
+                        "Remote service reset must contain full root replacements".to_owned(),
+                    ));
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
 fn same_address(
     left: Option<&ServiceInstanceAddress>,
     right: Option<&ServiceInstanceAddress>,
@@ -999,6 +1053,51 @@ impl KeyedBinding {
             ServiceProviderUpdate::Unavailable | ServiceProviderUpdate::Replaced { .. } => Err(
                 ChordError::Type("Keyed service received a singleton lifecycle update".to_owned()),
             ),
+            ServiceProviderUpdate::Reset { snapshot } => (|| -> Result<(), ChordError> {
+                validate_reset_snapshot(snapshot, &self.service_id, ServiceMode::Keyed)?;
+                // Drop entries the reset no longer carries
+                // (`consumer.ts:374-390`).
+                let removals: Vec<(String, u64)> = {
+                    let state = self.lock();
+                    let mut removals = Vec::new();
+                    for entry in state.instances.values() {
+                        let matches = snapshot.instances.iter().any(|at| {
+                            at.instance.as_ref().is_some_and(|address| {
+                                address.key == entry.key && address.generation == entry.generation
+                            })
+                        });
+                        if !matches {
+                            removals.push((entry.key.clone(), entry.generation));
+                        }
+                    }
+                    removals
+                };
+                for (key, generation) in removals {
+                    self.lock().instances.remove(&key, generation);
+                }
+                for instance_snapshot in &snapshot.instances {
+                    let address = instance_snapshot.instance.clone().ok_or_else(|| {
+                        ChordError::Type(
+                            "Remote service reset has an invalid instance address".to_owned(),
+                        )
+                    })?;
+                    if self.lock().instances.generation_of(&address.key) == Some(address.generation)
+                    {
+                        let service = self
+                            .lock()
+                            .instances
+                            .service_of(&address.key, address.generation)
+                            .expect("generation checked above");
+                        let facade = service
+                            .downcast::<ServiceFacade>()
+                            .expect("keyed entries are facades");
+                        facade.install(instance_snapshot, context)?;
+                    } else {
+                        self.spawn(instance_snapshot, context)?;
+                    }
+                }
+                Ok(())
+            })(),
             ServiceProviderUpdate::Spawned { instance } => self.spawn(instance, context),
             ServiceProviderUpdate::Closed { instance } => {
                 let state = self.lock();
@@ -1388,6 +1487,22 @@ impl RemoteServiceBinding {
                     }
                 }
                 let result: Result<(), ChordError> = match update {
+                    ServiceProviderUpdate::Reset { snapshot } => {
+                        validate_reset_snapshot(
+                            snapshot,
+                            &shared.service_id,
+                            ServiceMode::Singleton,
+                        )?;
+                        match snapshot.instances.first() {
+                            None => {
+                                shared.facade.clear();
+                                Ok(())
+                            }
+                            Some(instance_snapshot) => {
+                                shared.facade.install(instance_snapshot, context)
+                            }
+                        }
+                    }
                     ServiceProviderUpdate::Unavailable => {
                         shared.facade.clear();
                         Ok(())

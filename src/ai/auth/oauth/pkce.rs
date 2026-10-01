@@ -54,7 +54,15 @@ pub struct Pkce {
 
 /// Upstream `crypto.getRandomValues(new Uint8Array(32))`: 32 bytes of OS
 /// entropy from the `rand` thread RNG (CryptoRng-backed, see rand 0.10).
+/// The oracle tests inject the capture's deterministic byte stream through
+/// [`super::test_entropy`].
 fn rand_bytes_32() -> [u8; 32] {
+    #[cfg(test)]
+    if let Some(bytes) = super::test_entropy::take(32) {
+        let mut array = [0u8; 32];
+        array.copy_from_slice(&bytes);
+        return array;
+    }
     let mut bytes = [0u8; 32];
     rand::fill(&mut bytes);
     bytes

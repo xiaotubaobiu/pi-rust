@@ -1,0 +1,106 @@
+{
+  "login": {
+    "requests": [
+      {
+        "url": "https://auth.meta.com/oidc/device/authorization/",
+        "method": "POST",
+        "headers": {
+          "Content-Type": "application/x-www-form-urlencoded",
+          "Accept": "application/json"
+        },
+        "body": "client_id=1031625952748946"
+      },
+      {
+        "url": "https://auth.meta.com/oidc/device/token/",
+        "method": "POST",
+        "headers": {
+          "Content-Type": "application/x-www-form-urlencoded",
+          "Accept": "application/json"
+        },
+        "body": "grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Adevice_code&device_code=device-code-123&client_id=1031625952748946"
+      },
+      {
+        "url": "https://auth.meta.com/oidc/device/token/",
+        "method": "POST",
+        "headers": {
+          "Content-Type": "application/x-www-form-urlencoded",
+          "Accept": "application/json"
+        },
+        "body": "grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Adevice_code&device_code=device-code-123&client_id=1031625952748946"
+      },
+      {
+        "url": "https://api.meta.ai/muse-code/key",
+        "method": "POST",
+        "headers": {
+          "Accept": "application/json",
+          "Authorization": "Bearer identity-token",
+          "Content-Type": "application/json",
+          "x-api-version": "1.0.0"
+        },
+        "body": "{}"
+      }
+    ],
+    "events": [
+      {
+        "type": "device_code",
+        "userCode": "ABCD-1234",
+        "verificationUri": "https://auth.meta.com/oauth/device/?code=ABCD-1234",
+        "intervalSeconds": 5,
+        "expiresInSeconds": 600
+      },
+      {
+        "type": "progress",
+        "message": "Enabling Meta Model API access..."
+      }
+    ],
+    "credential": {
+      "type": "oauth",
+      "refresh": "identity-token",
+      "access": "LLM|minted-key",
+      "expires": 1758326400000
+    },
+    "pollCount": 2
+  },
+  "refresh": {
+    "requests": [
+      {
+        "url": "https://api.meta.ai/muse-code/key",
+        "method": "POST",
+        "headers": {
+          "Accept": "application/json",
+          "Authorization": "Bearer identity-token",
+          "Content-Type": "application/json",
+          "x-api-version": "1.0.0"
+        },
+        "body": "{}"
+      }
+    ],
+    "credential": {
+      "type": "oauth",
+      "refresh": "identity-token",
+      "access": "LLM|fresh-key",
+      "expires": 1758326400000
+    }
+  },
+  "noKeySetupUrl": {
+    "error": "Meta did not issue an API key. Complete setup at https://dev.meta.ai/billing"
+  },
+  "mintErrors": {
+    "sessionExpired": "Meta session expired (status 401). Run `/login meta` to sign in again.: expired",
+    "forbiddenDetail": "Meta session expired (status 403). Run `/login meta` to sign in again.: no seats",
+    "genericFailure": "Meta API key mint failed with status 500: mint offline",
+    "invalidDeviceAuth": "Meta API key mint failed with status 503",
+    "deviceAuthFailed": "Meta device authorization failed with status 429: easy"
+  },
+  "untrustedVerificationUri": {
+    "error": "Invalid Meta device authorization response: {\"device_code\":\"d\",\"user_code\":\"U\",\"verification_uri\":\"javascript:alert(1)\",\"interval\":5,\"expires_in\":600}"
+  },
+  "pollErrors": {
+    "accessDenied": "Meta login was denied.",
+    "expired": "Meta device authorization expired. Please restart login.",
+    "unknownError": "Meta device token request failed with status 400: boom"
+  },
+  "toAuth": {
+    "apiKey": "LLM|key"
+  }
+}

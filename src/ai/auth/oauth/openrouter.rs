@@ -18,15 +18,20 @@
 //!   so tests can point the flow at a wiremock server and a custom host.
 //!   The production constructor pins the upstream values and reads
 //!   `PI_OAUTH_CALLBACK_HOST` (default `127.0.0.1`).
-//! - The upstream `sendHtml` helper also sets `cache-control: no-store`;
-//!   the shared [`write_response`] helper carries only the Content-Type
-//!   header, like the T3/T4 callback ports.
+//! - The login runs on the shared [`super::callback_server`] (upstream
+//!   `callback-server.ts`, which this delta refactored the private
+//!   `startCallbackServer` onto): the exchange runs inside the callback
+//!   handler so the browser page shows its outcome (200 success / 502
+//!   "OpenRouter sign-in failed."), the login timeout renders as
+//!   "OpenRouter sign-in timed out", and the 404/409 pages carry the shared
+//!   strings ("Callback route not found." / "This sign-in has already been
+//!   handled.").
 //! - `crypto.randomUUID()` becomes a random RFC 4122 version-4 UUID built
-//!   from 16 `rand` bytes (version/variant bits set by hand).
+//!   from 16 `rand` bytes (version/variant bits set by hand); the oracle
+//!   tests inject the capture's fixed UUID through [`super::test_entropy`].
 //! - A request line without a parseable target answers 404 (the method/path
 //!   mismatch branch — there is no pathname to match). Node itself answers
-//!   400 for malformed request lines before the handler runs; the T3/T4
-//!   ports mapped the same case to their catch-all pages.
+//!   400 for malformed request lines before the handler runs.
 //! - The token-exchange request body serializes with serde_json's map
 //!   ordering (alphabetical) instead of `JSON.stringify` insertion order;
 //!   OpenRouter's endpoint parses JSON, so the wire semantics are unchanged.
@@ -39,28 +44,26 @@
 //!   callback page with the "Login cancelled" detail, like the upstream
 //!   handler catch, before the login surfaces `Cancelled`.
 
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
 use futures::future::BoxFuture;
 use serde_json::Value;
-use tokio::net::TcpStream;
 use tokio_util::sync::CancellationToken;
 
 use crate::ai::api::azure_openai_responses::get_provider_env_value;
 use crate::ai::api::http_client;
 use crate::ai::auth::types::{
-    AuthError, AuthEvent, AuthInteraction, AuthPrompt, AuthPromptKind, ModelAuth, OAuthAuth,
-    OAuthCredential, ProviderAuthInteraction,
+    AuthError, AuthEvent, AuthInteraction, ModelAuth, OAuthAuth, OAuthCredential,
+    ProviderAuthInteraction,
 };
 
-use super::oauth_page::{oauth_error_html, oauth_success_html};
-use super::pkce::{generate_pkce, Pkce};
-use super::{
-    first_pair, parse_urlencoded_pairs, read_request_head, request_target, uuid_v4, write_response,
-    Waiter, HTML_CONTENT_TYPE,
+use super::callback_server::{
+    start_oauth_callback_server, wait_for_callback_or_manual_input, CallbackOrManual,
+    CallbackServerOptions, OAuthCallbackServer,
 };
+use super::pkce::{generate_pkce, Pkce};
+use super::{first_pair, parse_urlencoded_pairs, uuid_v4};
 
 /// Upstream `AUTHORIZE_URL` (openrouter.ts:20).
 const AUTHORIZE_URL: &str = "https://openrouter.ai/auth";
@@ -114,7 +117,7 @@ impl OpenRouterOAuth {
     /// Test constructor: point the token endpoint at a stub server and bind
     /// a fixed callback host (upstream tests stub the global `fetch`).
     #[cfg(test)]
-    fn with_endpoints(token_url: String, callback_host: String) -> Self {
+    pub(crate) fn with_endpoints(token_url: String, callback_host: String) -> Self {
         OpenRouterOAuth {
             token_url,
             callback_host,
@@ -275,320 +278,54 @@ async fn exchange_authorization_code(
     })
 }
 
-/// How the callback server settles its wait (upstream `finish` calls):
-/// a credential, an error, or the null settle that hands the login over to
-/// manual code entry.
-enum Finish {
-    Credential(OAuthCredential),
-    Failed(AuthError),
-    HandOver,
-}
-
-/// State shared by the accept loop, the handler tasks, the timeout and the
-/// abort watch (upstream `startCallbackServer`'s closure variables).
-struct CallbackShared {
-    callback_path: String,
-    token_url: String,
-    verifier: String,
-    signal: CancellationToken,
-    /// Upstream `claimed`: a callback has been accepted and its code is
-    /// being exchanged (further callbacks get 409, `cancelWait` no-ops).
-    claimed: AtomicBool,
-    /// Upstream `settled`: `finish` ran; later settles are no-ops.
-    settled: AtomicBool,
-    waiter: Waiter<Result<OAuthCredential, AuthError>>,
-    /// Stops the accept loop, the login timeout and the abort watch
-    /// (upstream `close()`).
-    shutdown: CancellationToken,
-}
-
-impl CallbackShared {
-    /// Upstream `finish`: first settle wins; the timeout, the abort watch
-    /// and the accept loop stop with it.
-    fn finish(&self, result: Finish) {
-        if self.settled.swap(true, Ordering::SeqCst) {
-            return;
-        }
-        self.shutdown.cancel();
-        match result {
-            Finish::Credential(credential) => self.waiter.settle(Some(Ok(credential))),
-            Finish::Failed(error) => self.waiter.settle(Some(Err(error))),
-            Finish::HandOver => self.waiter.settle(None),
-        }
-    }
-}
-
-/// Upstream `startCallbackServer` (openrouter.ts:135-240): a one-shot
-/// loopback server on an ephemeral port handing either the exchanged
-/// credential or the hand-over to [`CallbackServer::wait`].
-struct CallbackServer {
-    shared: Arc<CallbackShared>,
-    callback_url: String,
-    accept_loop: Option<tokio::task::JoinHandle<()>>,
-}
-
-impl CallbackServer {
-    async fn start(
-        callback_path: String,
-        token_url: String,
-        verifier: String,
-        callback_host: &str,
-        signal: CancellationToken,
-    ) -> Result<Self, AuthError> {
-        // Upstream's entry check before the server is created.
-        if signal.is_cancelled() {
-            return Err(AuthError::Cancelled);
-        }
-        // Upstream `server.listen(0, callbackHost)` — an ephemeral port.
-        let listener = tokio::net::TcpListener::bind((callback_host, 0))
-            .await
-            .map_err(|error| {
-                AuthError::Operation(format!(
-                    "Failed to start the OAuth callback server on {callback_host}: {error}"
-                ))
-            })?;
-        let port = listener
-            .local_addr()
-            .map_err(|error| AuthError::Operation(error.to_string()))?
-            .port();
-        let shared = Arc::new(CallbackShared {
-            callback_path,
-            token_url,
-            verifier,
-            signal: signal.clone(),
-            claimed: AtomicBool::new(false),
-            settled: AtomicBool::new(false),
-            waiter: Waiter::new(),
-            shutdown: CancellationToken::new(),
-        });
-
-        let loop_shared = Arc::clone(&shared);
-        let task_shutdown = shared.shutdown.clone();
-        let accept_loop = tokio::spawn(async move {
-            loop {
-                tokio::select! {
-                    _ = task_shutdown.cancelled() => break,
-                    // Transient accept errors must not kill the capture;
-                    // upstream's server keeps listening too.
-                    accepted = listener.accept() => match accepted {
-                        Ok((stream, _)) => {
-                            let shared = Arc::clone(&loop_shared);
-                            tokio::spawn(handle_connection(stream, shared));
-                        }
-                        Err(_) => continue,
-                    },
-                }
-            }
-        });
-
-        // Upstream `setTimeout(() => finish({error: "…login timed out"}),
-        // LOGIN_TIMEOUT_MS)`.
-        let timeout_shared = Arc::clone(&shared);
-        let timeout_shutdown = shared.shutdown.clone();
-        tokio::spawn(async move {
-            tokio::select! {
-                _ = timeout_shutdown.cancelled() => {}
-                _ = tokio::time::sleep(LOGIN_TIMEOUT) => timeout_shared.finish(Finish::Failed(
-                    AuthError::Operation("OpenRouter OAuth login timed out".to_string()),
-                )),
-            }
-        });
-
-        // Upstream `onAbort = () => finish({error: new Error("Login cancelled")})`.
-        let abort_shared = Arc::clone(&shared);
-        let abort_shutdown = shared.shutdown.clone();
-        tokio::spawn(async move {
-            tokio::select! {
-                _ = abort_shared.signal.cancelled() => {
-                    abort_shared.finish(Finish::Failed(AuthError::Cancelled));
-                }
-                _ = abort_shutdown.cancelled() => {}
-            }
-        });
-
-        // Upstream re-checks `signal.aborted` after registering the listener.
-        if signal.is_cancelled() {
-            shared.finish(Finish::Failed(AuthError::Cancelled));
-        }
-
-        let callback_url = format!("http://{callback_host}:{port}{}", shared.callback_path);
-        Ok(CallbackServer {
-            shared,
-            callback_url,
-            accept_loop: Some(accept_loop),
-        })
-    }
-
-    /// Upstream `waitForCredential`: `None` once the wait handed over to
-    /// manual entry, the exchanged credential, or the settle error.
-    async fn wait(&self) -> Option<Result<OAuthCredential, AuthError>> {
-        self.shared.waiter.wait().await
-    }
-
-    /// Upstream `cancelWait`: a claimed callback is already exchanging its
-    /// code — only an unclaimed wait hands over to manual entry.
-    fn cancel_wait(&self) {
-        if !self.shared.claimed.load(Ordering::SeqCst) {
-            self.shared.finish(Finish::HandOver);
-        }
-    }
-
-    /// Upstream `server.close()`: stop accepting and wait for the listener
-    /// to drop (frees the port).
-    async fn close(mut self) {
-        self.shared.shutdown.cancel();
-        if let Some(accept_loop) = self.accept_loop.take() {
-            let _ = accept_loop.await;
-        }
-    }
-}
-
-/// One handled browser request (upstream request handler,
-/// openrouter.ts:169-205). The exchange runs before the landing page is
-/// written, so the browser sees the flow's outcome.
-async fn handle_connection(mut stream: TcpStream, shared: Arc<CallbackShared>) {
-    let Some(request_line) = read_request_head(&mut stream).await else {
-        // No readable request head: nothing to answer (upstream: an
-        // abandoned browser request never completes either).
-        return;
-    };
-    let method = request_line.split_whitespace().next().unwrap_or("");
-    let target = request_target(&request_line).unwrap_or("");
-    let (path, query) = match target.split_once('?') {
-        Some((path, query)) => (path, query),
-        None => (target, ""),
-    };
-    let params = parse_urlencoded_pairs(query);
-
-    if method != "GET" || path != shared.callback_path {
-        write_response(
-            &mut stream,
-            404,
-            "Not Found",
-            HTML_CONTENT_TYPE,
-            &oauth_error_html("OAuth callback route not found.", None),
-        )
-        .await;
-        return;
-    }
-    if shared.claimed.load(Ordering::SeqCst) || shared.settled.load(Ordering::SeqCst) {
-        write_response(
-            &mut stream,
-            409,
-            "Conflict",
-            HTML_CONTENT_TYPE,
-            &oauth_error_html("This OAuth callback has already been used.", None),
-        )
-        .await;
-        return;
-    }
-
-    // `if (oauthError)` truthiness: an empty error param is not an error.
-    let oauth_error = first_pair(&params, "error").filter(|value| !value.is_empty());
-    if let Some(oauth_error) = oauth_error {
-        // `searchParams.get("error_description") ?? oauthError` — no
-        // truthiness check, an empty description stays empty.
-        let description = first_pair(&params, "error_description").unwrap_or(oauth_error);
-        write_response(
-            &mut stream,
-            400,
-            "Bad Request",
-            HTML_CONTENT_TYPE,
-            &oauth_error_html("OpenRouter authorization was denied.", Some(&description)),
-        )
-        .await;
-        shared.finish(Finish::Failed(AuthError::Operation(format!(
-            "OpenRouter authorization failed: {description}"
-        ))));
-        return;
-    }
-
-    // `if (!code)` truthiness: a missing code keeps the login waiting.
-    let Some(code) = first_pair(&params, "code").filter(|value| !value.is_empty()) else {
-        write_response(
-            &mut stream,
-            400,
-            "Bad Request",
-            HTML_CONTENT_TYPE,
-            &oauth_error_html("OpenRouter returned no authorization code.", None),
-        )
-        .await;
-        return;
-    };
-    shared.claimed.store(true, Ordering::SeqCst);
-
-    let result =
-        exchange_authorization_code(&shared.token_url, &code, &shared.verifier, &shared.signal)
-            .await;
-    match result {
-        Ok(credential) => {
-            write_response(
-                &mut stream,
-                200,
-                "OK",
-                HTML_CONTENT_TYPE,
-                &oauth_success_html("Signed in to OpenRouter. You may now close this page."),
-            )
-            .await;
-            shared.finish(Finish::Credential(credential));
-        }
-        Err(error) => {
-            // Upstream catch: `error.message` reaches the 502 page and the
-            // rejected wait (cancellation keeps its port-level distinction).
-            // The Operation message is rendered bare — not through
-            // [`AuthError`]'s Display, which adds the port-level
-            // "auth operation failed: " prefix upstream has no counterpart for.
-            let detail = match &error {
-                AuthError::Cancelled => "Login cancelled".to_string(),
-                AuthError::Operation(message) => message.clone(),
-                other => other.to_string(),
-            };
-            write_response(
-                &mut stream,
-                502,
-                "Bad Gateway",
-                HTML_CONTENT_TYPE,
-                &oauth_error_html("OpenRouter key exchange failed.", Some(&detail)),
-            )
-            .await;
-            shared.finish(Finish::Failed(error));
-        }
-    }
-}
-
-/// Upstream `loginOpenRouter` (openrouter.ts:242-299): open the callback
-/// server, publish the authorize URL, race the manual prompt against the
-/// callback, then exchange whichever code arrives first.
+/// Upstream `loginOpenRouter` (openrouter.ts:113-163): a one-shot loopback
+/// callback on an ephemeral port racing the manual paste; the exchange runs
+/// inside the callback handler so the browser page shows its outcome.
 async fn login_openrouter(
     oauth: &OpenRouterOAuth,
     interaction: ProviderAuthInteraction,
 ) -> Result<OAuthCredential, AuthError> {
-    if interaction.signal.is_cancelled() {
-        return Err(AuthError::Cancelled);
-    }
     let Pkce {
         verifier,
         challenge,
     } = generate_pkce();
-    let callback_path = format!("/oauth/callback/{}", uuid_v4());
-    let server = CallbackServer::start(
-        callback_path,
-        oauth.token_url.clone(),
-        verifier.clone(),
-        &oauth.callback_host,
-        interaction.signal.clone(),
-    )
-    .await?;
+    let verifier = Arc::new(verifier);
+    // OpenRouter sends no `state`; the random path keeps stray requests from
+    // completing the sign-in.
+    let exchange_signal = interaction.signal.clone();
+    let exchange_verifier = Arc::clone(&verifier);
+    let token_url = Arc::new(oauth.token_url.clone());
+    let callback: OAuthCallbackServer<OAuthCredential> =
+        start_oauth_callback_server(CallbackServerOptions {
+            provider_name: "OpenRouter".to_string(),
+            host: oauth.callback_host.clone(),
+            // Upstream `port: 0` — an ephemeral port.
+            port: 0,
+            path: format!("/oauth/callback/{}", uuid_v4()),
+            redirect_host: None,
+            state: None,
+            // Upstream `complete: (code) => exchangeAuthorizationCode(code,
+            // verifier, interaction.signal)`: the browser page shows the
+            // exchange outcome.
+            complete: Arc::new(move |code| {
+                let token_url = Arc::clone(&token_url);
+                let verifier = Arc::clone(&exchange_verifier);
+                let signal = exchange_signal.clone();
+                Box::pin(async move {
+                    exchange_authorization_code(&token_url, &code, &verifier, &signal).await
+                })
+            }),
+            signal: interaction.signal.clone(),
+            timeout_ms: Some(u64::try_from(LOGIN_TIMEOUT.as_millis()).expect("timeout fits u64")),
+        })
+        .await?;
 
-    // Upstream's `manualAbort` controller: aborts the pending prompt in the
-    // finally block so UIs can dismiss it once login settles.
-    let manual_token = CancellationToken::new();
     let result = async {
-        // `new URL(AUTHORIZE_URL)` + `searchParams.set` — insertion order
-        // preserved, form-urlencoded serialization. Built (and the
-        // serializer dropped) before any await: the serializer is not `Send`
-        // and the login future must be.
-        let callback_url = server.callback_url.clone();
+        let callback_url = callback.redirect_uri().to_string();
+        // `new URL(AUTHORIZE_URL)` + `search = new URLSearchParams(...)` —
+        // insertion order preserved, form-urlencoded serialization. Built
+        // (and the serializer dropped) before any await: the serializer is
+        // not `Send` and the login future must be.
         let auth_url = {
             let mut query = url::form_urlencoded::Serializer::new(String::new());
             query.append_pair("callback_url", &callback_url);
@@ -602,60 +339,23 @@ async fn login_openrouter(
         interaction.notify(AuthEvent::AuthUrl {
             url: auth_url,
             instructions: Some(
-                "Complete sign-in in your browser. If the browser is on another machine, paste \
-                 the final redirect URL here."
+                "Complete sign-in in your browser. If the browser is on another machine, paste the final redirect URL here."
                     .to_string(),
             ),
         });
 
-        let prompt = interaction.prompt(AuthPrompt {
-            signal: Some(manual_token.clone()),
-            kind: AuthPromptKind::ManualCode {
-                message: "Complete sign-in in your browser, or paste the authorization code / \
-                          redirect URL here:"
-                    .to_string(),
-                placeholder: Some(callback_url),
-            },
-        });
-        tokio::pin!(prompt);
-
-        let mut manual: Option<Result<String, AuthError>> = None;
-        // Upstream races the manual prompt (then/catch → cancelWait) against
-        // `waitForCredential`, with the abort listener finishing the wait.
-        // `biased` makes the port deterministic: cancellation, then the
-        // prompt, then the settled wait. The guard disables the prompt arm
-        // once settled so the loop can keep polling the wait without
-        // re-polling a completed future.
-        let settled = loop {
-            tokio::select! {
-                biased;
-                _ = interaction.signal.cancelled() => return Err(AuthError::Cancelled),
-                outcome = &mut prompt, if manual.is_none() => {
-                    manual = Some(outcome);
-                    server.cancel_wait();
-                }
-                settled = server.wait() => break settled,
-            }
-        };
-
-        // Upstream: a waitForCredential rejection propagates as-is (the
-        // manual error is never consulted); a delivered credential wins over
-        // nothing but a manual error; the null settle falls through to the
-        // manual input, whose error (if any) always wins.
-        match settled {
-            Some(Err(error)) => Err(error),
-            Some(Ok(credential)) => {
-                if let Some(Err(error)) = &manual {
-                    return Err(error.clone());
-                }
-                Ok(credential)
-            }
-            None => {
-                // `cancelWait` only settles after the prompt returned, so the
-                // manual outcome is present here.
-                let input = manual.expect("manual prompt must have settled before the hand-over");
-                let input = input?;
-                let code = parse_authorization_input(&input).filter(|code| !code.is_empty());
+        match wait_for_callback_or_manual_input(
+            &interaction,
+            Some(&callback),
+            "Complete sign-in in your browser, or paste the authorization code / redirect URL here:",
+            callback.redirect_uri(),
+        )
+        .await?
+        {
+            // The exchange already ran inside the callback handler.
+            CallbackOrManual::Callback(credential) => Ok(credential),
+            CallbackOrManual::Manual(input) => {
+                let code = parse_authorization_input(&input);
                 let Some(code) = code else {
                     return Err(AuthError::Operation(
                         "Missing authorization code".to_string(),
@@ -664,16 +364,20 @@ async fn login_openrouter(
                 interaction.notify(AuthEvent::Progress {
                     message: "Exchanging authorization code for an API key...".to_string(),
                 });
-                exchange_authorization_code(&oauth.token_url, &code, &verifier, &interaction.signal)
-                    .await
+                exchange_authorization_code(
+                    &oauth.token_url,
+                    &code,
+                    &verifier,
+                    &interaction.signal,
+                )
+                .await
             }
         }
     }
     .await;
 
-    // Upstream `finally`: abort the pending prompt and close the server.
-    manual_token.cancel();
-    server.close().await;
+    // Upstream `finally { callback.close() }`.
+    callback.close().await;
     result
 }
 
@@ -736,6 +440,7 @@ mod tests {
     use super::*;
     use crate::ai::auth::oauth::pkce::base64url_encode;
     use crate::ai::auth::types::{AuthInteraction, AuthOperationOptions};
+    use crate::ai::auth::types::{AuthPrompt, AuthPromptKind};
 
     type Respond =
         Box<dyn Fn(AuthPrompt) -> BoxFuture<'static, Result<String, AuthError>> + Send + Sync>;
@@ -1039,7 +744,9 @@ mod tests {
             )
         );
         assert!(response.starts_with("HTTP/1.1 502 Bad Gateway\r\n"));
-        assert!(response.contains("OpenRouter key exchange failed."));
+        // The shared server's page header is `{providerName} sign-in failed.`
+        // (callback-server.ts); the exchange error text arrives as the detail.
+        assert!(response.contains("OpenRouter sign-in failed."));
         assert!(response.contains("invalid code"));
         // Upstream `error.message`: the bare message reaches the page, never
         // the port's AuthError Display prefix.
@@ -1075,7 +782,7 @@ mod tests {
         let second = http_get_callback(Arc::clone(&fake.auth_url), "second-code").await;
 
         assert!(second.starts_with("HTTP/1.1 409 Conflict\r\n"));
-        assert!(second.contains("This OAuth callback has already been used."));
+        assert!(second.contains("This sign-in has already been handled."));
 
         let credential = tokio::time::timeout(Duration::from_secs(10), login)
             .await

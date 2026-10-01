@@ -779,7 +779,10 @@ mod tests {
     // ---- fixtures ----
 
     fn model(base_url: &str) -> Model {
-        Model {r#type: None, prompt_cache: None, input_limits: None, 
+        Model {
+            r#type: None,
+            prompt_cache: None,
+            input_limits: None,
             id: "gpt-4o-mini".to_string(),
             name: "GPT-4o mini".to_string(),
             api: API.to_string(),

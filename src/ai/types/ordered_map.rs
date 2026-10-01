@@ -35,7 +35,10 @@ impl<V> OrderedMap<V> {
     }
 
     pub fn get(&self, key: &str) -> Option<&V> {
-        self.0.iter().find(|(existing, _)| existing == key).map(|(_, value)| value)
+        self.0
+            .iter()
+            .find(|(existing, _)| existing == key)
+            .map(|(_, value)| value)
     }
 
     pub fn insert(&mut self, key: impl Into<String>, value: V) {
@@ -119,6 +122,8 @@ impl<'de, V: Deserialize<'de>> Deserialize<'de> for OrderedMap<V> {
 
 impl<V: fmt::Debug> fmt::Debug for OrderedMap<V> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_map().entries(self.0.iter().map(|(k, v)| (k, v))).finish()
+        f.debug_map()
+            .entries(self.0.iter().map(|(k, v)| (k, v)))
+            .finish()
     }
 }

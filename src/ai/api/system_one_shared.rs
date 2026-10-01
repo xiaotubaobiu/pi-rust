@@ -28,20 +28,19 @@
 
 use std::collections::BTreeMap;
 
-
 use serde_json::{json, Value};
 
 use crate::ai::cost::calculate_cost_any;
 use crate::ai::retry::{retry_provider_request, ProviderError};
-use crate::ai::types::model::ClassifierModel;
 use crate::ai::types::classifier::{
     ClassifierAnswer, ClassifierBoolAnswer, ClassifierChoiceAnswer, ClassifierContext,
     ClassifierOptions, ClassifierQuestion, ClassifierResult, ClassifierScoreAnswer,
     ClassifierStopReason,
 };
-use crate::ai::types::ordered_map::OrderedMap;
-use crate::ai::types::options::ProviderHeaders;
+use crate::ai::types::model::ClassifierModel;
 use crate::ai::types::model::ModelInput;
+use crate::ai::types::options::ProviderHeaders;
+use crate::ai::types::ordered_map::OrderedMap;
 use crate::ai::types::primitives::{ModelCost, Usage};
 use crate::ai::types::request_callbacks::ProviderResponse;
 use crate::ai::types::Model;
@@ -100,15 +99,9 @@ fn required_number(label: &str, value: &Value, field: &str) -> Result<f64, Strin
 }
 
 /// Upstream `probabilities`: every entry a finite number.
-fn probabilities(
-    label: &str,
-    value: &Value,
-    id: &str,
-) -> Result<BTreeMap<String, f64>, String> {
+fn probabilities(label: &str, value: &Value, id: &str) -> Result<BTreeMap<String, f64>, String> {
     let Some(map) = value.as_object() else {
-        return Err(format!(
-            "{label} returned invalid probabilities for {id}"
-        ));
+        return Err(format!("{label} returned invalid probabilities for {id}"));
     };
     map.iter()
         .map(|(key, probability)| {
@@ -141,17 +134,15 @@ fn parse_answers(
                 if answer.get("type").and_then(Value::as_str) != Some("choice")
                     || answer.get("choice").and_then(Value::as_str).is_none()
                 {
-                    return Err(format!(
-                        "{label} did not return a choice answer for {id}"
-                    ));
+                    return Err(format!("{label} did not return a choice answer for {id}"));
                 }
                 answers.insert(
                     id.clone(),
                     ClassifierAnswer::Choice(ClassifierChoiceAnswer {
                         choice: answer["choice"].as_str().unwrap_or_default().to_string(),
                         probabilities: probabilities(label, &answer["probabilities"], id)?
-                    .into_iter()
-                    .collect(),
+                            .into_iter()
+                            .collect(),
                         confidence: required_number(
                             label,
                             &answer["confidence"],
@@ -167,7 +158,11 @@ fn parse_answers(
                 answers.insert(
                     id.clone(),
                     ClassifierAnswer::Score(ClassifierScoreAnswer {
-                        score: required_number(label, &answer["score"], &format!("score for {id}"))?,
+                        score: required_number(
+                            label,
+                            &answer["score"],
+                            &format!("score for {id}"),
+                        )?,
                         confidence: required_number(
                             label,
                             &answer["confidence"],
@@ -226,7 +221,10 @@ fn parse_usage(value: &Value, model: &ClassifierModel) -> Option<Usage> {
         total_tokens: input + output,
         cost: Default::default(),
     };
-    calculate_cost_any(&crate::ai::types::AnyModel::Classifier(model.clone()), &mut usage);
+    calculate_cost_any(
+        &crate::ai::types::AnyModel::Classifier(model.clone()),
+        &mut usage,
+    );
     Some(usage)
 }
 
@@ -281,8 +279,14 @@ pub(crate) fn request_headers(
     options_headers: Option<&ProviderHeaders>,
 ) -> ProviderHeaders {
     let defaults: ProviderHeaders = [
-        ("authorization".to_string(), Some(format!("Bearer {api_key}"))),
-        ("content-type".to_string(), Some("application/json".to_string())),
+        (
+            "authorization".to_string(),
+            Some(format!("Bearer {api_key}")),
+        ),
+        (
+            "content-type".to_string(),
+            Some("application/json".to_string()),
+        ),
     ]
     .into_iter()
     .collect();
@@ -392,8 +396,11 @@ pub async fn classify_system_one(
                         headers
                             .iter()
                             .filter_map(|(name, value)| {
-                                let name = reqwest::header::HeaderName::try_from(name.as_str()).ok()?;
-                                let value = reqwest::header::HeaderValue::from_str(value.as_deref()?).ok()?;
+                                let name =
+                                    reqwest::header::HeaderName::try_from(name.as_str()).ok()?;
+                                let value =
+                                    reqwest::header::HeaderValue::from_str(value.as_deref()?)
+                                        .ok()?;
                                 Some((name, value))
                             })
                             .collect::<reqwest::header::HeaderMap>(),
@@ -444,9 +451,13 @@ pub async fn classify_system_one(
             }
         };
 
-        let (status, response_headers, body) =
-            retry_provider_request(max_retries, options.max_retry_delay_ms, options.signal.as_ref(), send)
-                .await?;
+        let (status, response_headers, body) = retry_provider_request(
+            max_retries,
+            options.max_retry_delay_ms,
+            options.signal.as_ref(),
+            send,
+        )
+        .await?;
         // options.onResponse: the response-status observer.
         options
             .callbacks
@@ -467,9 +478,7 @@ pub async fn classify_system_one(
             )
             .await
             .map_err(|error| ProviderError::transport(error.to_string()))?;
-        let result = transport
-            .output(&body)
-            .map_err(ProviderError::transport)?;
+        let result = transport.output(&body).map_err(ProviderError::transport)?;
         // Set before parsing answers: a request with malformed answers was
         // still billed.
         if let Some(usage) = result.get("usage") {
@@ -488,7 +497,11 @@ pub async fn classify_system_one(
     .await;
 
     if let Err(error) = run {
-        output.stop_reason = if options.signal.as_ref().is_some_and(|token| token.is_cancelled()) {
+        output.stop_reason = if options
+            .signal
+            .as_ref()
+            .is_some_and(|token| token.is_cancelled())
+        {
             ClassifierStopReason::Aborted
         } else {
             ClassifierStopReason::Error

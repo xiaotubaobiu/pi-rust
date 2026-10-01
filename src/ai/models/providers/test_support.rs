@@ -138,7 +138,10 @@ pub(crate) fn env_credential(env: &[(&str, &str)]) -> Credential {
 /// A minimal catalog-shaped [`Model`] with the given base URL (stand-in for
 /// the generated Cloudflare entries with placeholder URLs).
 pub(crate) fn gateway_model(base_url: &str) -> crate::ai::types::Model {
-    crate::ai::types::Model {r#type: None, prompt_cache: None, input_limits: None, 
+    crate::ai::types::Model {
+        r#type: None,
+        prompt_cache: None,
+        input_limits: None,
         id: "gateway-model".to_string(),
         name: "Gateway Model".to_string(),
         api: "openai-completions".to_string(),
@@ -158,7 +161,10 @@ pub(crate) fn gateway_model(base_url: &str) -> crate::ai::types::Model {
 
 /// A minimal catalog-shaped [`Model`] with the given provider and api.
 pub(crate) fn api_model(provider: &str, api: &str) -> crate::ai::types::Model {
-    crate::ai::types::Model {r#type: None, prompt_cache: None, input_limits: None, 
+    crate::ai::types::Model {
+        r#type: None,
+        prompt_cache: None,
+        input_limits: None,
         provider: provider.to_string(),
         api: api.to_string(),
         ..gateway_model("https://example.test")

@@ -1539,7 +1539,12 @@ pub fn faux_provider(options: FauxProviderOptions) -> FauxProviderHandle {
             api_key: Some(Arc::new(FauxAuth)),
             oauth: None,
         },
-        models: core.models().to_vec().into_iter().map(crate::ai::types::AnyModel::Chat).collect(),
+        models: core
+            .models()
+            .to_vec()
+            .into_iter()
+            .map(crate::ai::types::AnyModel::Chat)
+            .collect(),
         fetch_models: None,
         filter_models: None,
         filter_all_models: None,

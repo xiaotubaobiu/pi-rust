@@ -9431,7 +9431,10 @@ mod upper_oracle {
     // -- cycling + toggles + working indicator ---------------------------------------
 
     fn harness_model(name: &str, id: &str, provider: &str) -> crate::ai::types::model::Model {
-        crate::ai::types::model::Model {r#type: None, prompt_cache: None, input_limits: None, 
+        crate::ai::types::model::Model {
+            r#type: None,
+            prompt_cache: None,
+            input_limits: None,
             id: id.to_string(),
             name: name.to_string(),
             api: String::new(),

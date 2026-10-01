@@ -11,12 +11,11 @@
 //! `Record<string, T>` (JS insertion order is not representable; the model
 //! set and values are identical).
 
-
 use serde::{Deserialize, Serialize};
 use tokio_util::sync::CancellationToken;
 
-use super::ordered_map::OrderedMap;
 use super::options::{ProviderEnv, ProviderHeaders};
+use super::ordered_map::OrderedMap;
 use super::primitives::Usage;
 
 /// Upstream `ClassifierChoiceQuestion` (types.ts): pick one of the criteria
@@ -230,10 +229,7 @@ mod js_number_map {
         with_js_numbers.serialize(serializer)
     }
 
-    pub(crate) fn deserialize<
-        'de: 'de,
-        D: Deserializer<'de>,
-    >(
+    pub(crate) fn deserialize<'de: 'de, D: Deserializer<'de>>(
         deserializer: D,
     ) -> Result<OrderedMap<f64>, D::Error> {
         let raw = BTreeMap::<String, f64>::deserialize(deserializer)?;

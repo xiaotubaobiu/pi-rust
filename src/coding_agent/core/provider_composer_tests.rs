@@ -107,7 +107,10 @@ fn base_model(provider: &str, id: &str, extra: serde_json::Value) -> Model {
             tiers: None,
         },
     };
-    Model {r#type: None, prompt_cache: None, input_limits: None, 
+    Model {
+        r#type: None,
+        prompt_cache: None,
+        input_limits: None,
         id: id.to_string(),
         name: string("name").unwrap_or_else(|| id.to_string()),
         api: string("api").unwrap_or_else(|| "openai-completions".to_string()),

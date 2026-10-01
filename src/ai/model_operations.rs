@@ -8,8 +8,7 @@ use crate::ai::models_error::{ModelsError, ModelsErrorCode};
 use crate::ai::types::images::{AssistantImages, ImagesStopReason};
 use crate::ai::types::ordered_map::OrderedMap;
 use crate::ai::types::{
-    AnyModel, ClassifierModel, ClassifierResult, ClassifierStopReason, ImageModel, Model,
-    ModelType,
+    AnyModel, ClassifierModel, ClassifierResult, ClassifierStopReason, ImageModel, Model, ModelType,
 };
 
 /// Upstream `getModelType` (utils/model-operations.ts): the type of a model.
@@ -30,7 +29,11 @@ pub fn assert_chat_model(model: &AnyModel) -> Result<&Model, ModelsError> {
     model.as_chat().ok_or_else(|| {
         ModelsError::new(
             ModelsErrorCode::Provider,
-            format!("Model {}/{} is not a chat model", model.provider(), model.id()),
+            format!(
+                "Model {}/{} is not a chat model",
+                model.provider(),
+                model.id()
+            ),
         )
     })
 }
@@ -40,7 +43,11 @@ pub fn assert_image_model(model: &AnyModel) -> Result<&ImageModel, ModelsError> 
     model.as_image().ok_or_else(|| {
         ModelsError::new(
             ModelsErrorCode::Provider,
-            format!("Model {}/{} is not an image model", model.provider(), model.id()),
+            format!(
+                "Model {}/{} is not an image model",
+                model.provider(),
+                model.id()
+            ),
         )
     })
 }

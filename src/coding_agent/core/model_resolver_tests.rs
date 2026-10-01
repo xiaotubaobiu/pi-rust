@@ -20,7 +20,8 @@ use crate::coding_agent::core::model_resolver::{
 
 /// Upstream model-resolver capture (real upstream module under node;
 /// generator `tests/fixtures/core_oracle_model/oracle_model_resolver.mjs`).
-const ORACLE: &str = include_str!("../../../tests/fixtures/core_oracle_model/model_resolver.oracle.json");
+const ORACLE: &str =
+    include_str!("../../../tests/fixtures/core_oracle_model/model_resolver.oracle.json");
 
 fn oracle() -> serde_json::Value {
     serde_json::from_str(ORACLE).unwrap()
@@ -28,7 +29,10 @@ fn oracle() -> serde_json::Value {
 
 /// The oracle script's `model()` fixture factory (upstream test battery).
 fn model(provider: &str, id: &str) -> Model {
-    Model {r#type: None, prompt_cache: None, input_limits: None, 
+    Model {
+        r#type: None,
+        prompt_cache: None,
+        input_limits: None,
         id: id.to_string(),
         name: id.to_string(),
         api: "anthropic-messages".to_string(),

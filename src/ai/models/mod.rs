@@ -585,7 +585,11 @@ impl Models {
 
     /// Upstream `Models.getModelsOfType` (models.ts): last-known models of
     /// one type.
-    pub fn get_models_of_type(&self, model_type: ModelType, provider: Option<&str>) -> Vec<AnyModel> {
+    pub fn get_models_of_type(
+        &self,
+        model_type: ModelType,
+        provider: Option<&str>,
+    ) -> Vec<AnyModel> {
         self.get_all_models(provider)
             .into_iter()
             .filter(|model| is_model_type(model, model_type))
@@ -1059,25 +1063,21 @@ impl Models {
         let result: Result<AssistantImages, ModelsError> = async {
             let any = AnyModel::Image(model.clone());
             assert_image_model(&any)?;
-            let provider = self
-                .get_provider(&model.provider)
-                .ok_or_else(|| {
-                    ModelsError::new(
-                        ModelsErrorCode::Provider,
-                        format!("Unknown provider: {}", model.provider),
-                    )
-                })?;
-            let implementation = provider
-                .images_for(&model.api)
-                .ok_or_else(|| {
-                    ModelsError::new(
-                        ModelsErrorCode::Provider,
-                        format!(
-                            "Provider {} does not support image generation",
-                            model.provider
-                        ),
-                    )
-                })?;
+            let provider = self.get_provider(&model.provider).ok_or_else(|| {
+                ModelsError::new(
+                    ModelsErrorCode::Provider,
+                    format!("Unknown provider: {}", model.provider),
+                )
+            })?;
+            let implementation = provider.images_for(&model.api).ok_or_else(|| {
+                ModelsError::new(
+                    ModelsErrorCode::Provider,
+                    format!(
+                        "Provider {} does not support image generation",
+                        model.provider
+                    ),
+                )
+            })?;
             let applied = apply_auth_one_shot(
                 provider.as_ref(),
                 &any,
@@ -1105,7 +1105,11 @@ impl Models {
         .await;
         match result {
             Ok(images) => images,
-            Err(error) => image_error_result(model, error, options.images.signal.is_some_and(|s| s.is_cancelled())),
+            Err(error) => image_error_result(
+                model,
+                error,
+                options.images.signal.is_some_and(|s| s.is_cancelled()),
+            ),
         }
     }
 
@@ -1122,25 +1126,21 @@ impl Models {
         let result: Result<ClassifierResult, ModelsError> = async {
             let any = AnyModel::Classifier(model.clone());
             assert_classifier_model(&any)?;
-            let provider = self
-                .get_provider(&model.provider)
-                .ok_or_else(|| {
-                    ModelsError::new(
-                        ModelsErrorCode::Provider,
-                        format!("Unknown provider: {}", model.provider),
-                    )
-                })?;
-            let implementation = provider
-                .classifiers_for(&model.api)
-                .ok_or_else(|| {
-                    ModelsError::new(
-                        ModelsErrorCode::Provider,
-                        format!(
-                            "Provider {} does not support classification",
-                            model.provider
-                        ),
-                    )
-                })?;
+            let provider = self.get_provider(&model.provider).ok_or_else(|| {
+                ModelsError::new(
+                    ModelsErrorCode::Provider,
+                    format!("Unknown provider: {}", model.provider),
+                )
+            })?;
+            let implementation = provider.classifiers_for(&model.api).ok_or_else(|| {
+                ModelsError::new(
+                    ModelsErrorCode::Provider,
+                    format!(
+                        "Provider {} does not support classification",
+                        model.provider
+                    ),
+                )
+            })?;
             let applied = apply_auth_one_shot(
                 provider.as_ref(),
                 &any,
@@ -1168,9 +1168,11 @@ impl Models {
         .await;
         match result {
             Ok(result) => result,
-            Err(error) => {
-                classifier_error_result(model, error, options.classifier.signal.is_some_and(|s| s.is_cancelled()))
-            }
+            Err(error) => classifier_error_result(
+                model,
+                error,
+                options.classifier.signal.is_some_and(|s| s.is_cancelled()),
+            ),
         }
     }
 
@@ -2027,7 +2029,10 @@ mod tests {
     /// Upstream `testModel` fixture (models-runtime.test.ts:9-22): api
     /// "test-api".
     fn test_model(provider: &str, id: &str) -> Model {
-        Model {r#type: None, prompt_cache: None, input_limits: None, 
+        Model {
+            r#type: None,
+            prompt_cache: None,
+            input_limits: None,
             id: id.to_string(),
             name: id.to_string(),
             api: "test-api".to_string(),
@@ -2128,7 +2133,10 @@ mod tests {
             base_url: None,
             headers: None,
             auth,
-            models: models.into_iter().map(crate::ai::types::AnyModel::Chat).collect(),
+            models: models
+                .into_iter()
+                .map(crate::ai::types::AnyModel::Chat)
+                .collect(),
             fetch_models: None,
             filter_models: None,
             api,
@@ -3132,16 +3140,17 @@ mod tests {
     #[tokio::test]
     async fn stream_produces_error_events_for_routing_failures() {
         let mut models = create_models(CreateModelsOptions::default());
-            // Upstream rejects an EMPTY api map at createProvider (the delta:
-            // at least one of api/images/classifiers is required); a map keyed
-            // by a different api reproduces the routing-miss error path.
+        // Upstream rejects an EMPTY api map at createProvider (the delta:
+        // at least one of api/images/classifiers is required); a map keyed
+        // by a different api reproduces the routing-miss error path.
         models.set_provider(test_provider_with_auth_and_api(
             "p1",
             vec![test_model("p1", "model-a")],
             auth_with(EnvKeyAuthFixture::missing()),
-            ApiImpls::PerApi(BTreeMap::from([
-                ("other-api".to_string(), Arc::new(StubApi) as Arc<dyn ApiImpl>),
-            ])),
+            ApiImpls::PerApi(BTreeMap::from([(
+                "other-api".to_string(),
+                Arc::new(StubApi) as Arc<dyn ApiImpl>,
+            )])),
         ));
         let context = user_context();
 
@@ -3175,9 +3184,10 @@ mod tests {
             "p1",
             vec![test_model("p1", "model-a")],
             auth_with(EnvKeyAuthFixture::env("key")),
-            ApiImpls::PerApi(BTreeMap::from([
-                ("other-api".to_string(), Arc::new(StubApi) as Arc<dyn ApiImpl>),
-            ])),
+            ApiImpls::PerApi(BTreeMap::from([(
+                "other-api".to_string(),
+                Arc::new(StubApi) as Arc<dyn ApiImpl>,
+            )])),
         ));
         let message = configured
             .complete_simple(&test_model("p1", "model-a"), &context, None)
@@ -3418,7 +3428,10 @@ mod tests {
         auth: ProviderAuth,
         fetch_models: Option<FetchModelsFn>,
     ) -> Arc<dyn Provider> {
-        create_provider(CreateProviderOptions {filter_all_models: None, images: crate::ai::models::provider::ImagesImpls::new(), classifiers: crate::ai::models::provider::ClassifiersImpls::new(), 
+        create_provider(CreateProviderOptions {
+            filter_all_models: None,
+            images: crate::ai::models::provider::ImagesImpls::new(),
+            classifiers: crate::ai::models::provider::ClassifiersImpls::new(),
             id: id.to_string(),
             name: None,
             base_url: None,
@@ -3761,7 +3774,9 @@ mod tests {
             .write(
                 "dynamic",
                 ModelsStoreEntry {
-                    models: vec![crate::ai::types::AnyModel::Chat(test_model("dynamic", "cached"))],
+                    models: vec![crate::ai::types::AnyModel::Chat(test_model(
+                        "dynamic", "cached",
+                    ))],
                     ..ModelsStoreEntry::default()
                 },
                 &StoreOptions::NONE,
@@ -3825,7 +3840,9 @@ mod tests {
     #[tokio::test]
     async fn refresh_deletes_persistently_and_publishes_ephemerally_atomically() {
         let state = Arc::new(std::sync::Mutex::new(Some(ModelsStoreEntry {
-            models: vec![crate::ai::types::AnyModel::Chat(test_model("dynamic", "stored"))],
+            models: vec![crate::ai::types::AnyModel::Chat(test_model(
+                "dynamic", "stored",
+            ))],
             ..ModelsStoreEntry::default()
         })));
         let store = SharedStateStore {
@@ -3914,9 +3931,7 @@ mod tests {
         let fetched = test_model("dynamic", "fetched");
         let fetch_models: FetchModelsFn = Arc::new(move |_context| {
             let fetched = fetched.clone();
-            Box::pin(async move {
-                Ok(vec![crate::ai::types::AnyModel::Chat(fetched)])
-            })
+            Box::pin(async move { Ok(vec![crate::ai::types::AnyModel::Chat(fetched)]) })
         });
         let mut online = create_models(CreateModelsOptions {
             credentials: Some(Arc::clone(&credentials) as Arc<dyn CredentialStore>),
@@ -4165,7 +4180,9 @@ mod tests {
                 context
                     .publish(ModelsPublication {
                         persist: Some(Some(ModelsStoreEntry {
-                            models: vec![crate::ai::types::AnyModel::Chat(test_model("dynamic", "fresh"))],
+                            models: vec![crate::ai::types::AnyModel::Chat(test_model(
+                                "dynamic", "fresh",
+                            ))],
                             ..ModelsStoreEntry::default()
                         })),
                         update: None,

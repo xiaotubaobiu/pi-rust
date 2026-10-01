@@ -27,10 +27,12 @@ pub const KEYBINDINGS_DARWIN: &str =
     include_str!("../../../tests/fixtures/core_oracle/keybindings_darwin.oracle.json");
 
 /// Upstream event-bus dispatch trace.
-pub const EVENT_BUS: &str = include_str!("../../../tests/fixtures/core_oracle/event_bus.oracle.json");
+pub const EVENT_BUS: &str =
+    include_str!("../../../tests/fixtures/core_oracle/event_bus.oracle.json");
 
 /// Upstream cache-stats results over the scenario battery.
-pub const CACHE_STATS: &str = include_str!("../../../tests/fixtures/core_oracle/cache_stats.oracle.json");
+pub const CACHE_STATS: &str =
+    include_str!("../../../tests/fixtures/core_oracle/cache_stats.oracle.json");
 
 /// Upstream message constructors, `bashExecutionToText`, and `convertToLlm`.
 pub const MESSAGES: &str = include_str!("../../../tests/fixtures/core_oracle/messages.oracle.json");

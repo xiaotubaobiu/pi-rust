@@ -951,7 +951,10 @@ mod tests {
     // ---- fixtures ----
 
     fn google_model(id: &str, provider: &str, input: &[ModelInput]) -> Model {
-        Model {r#type: None, prompt_cache: None, input_limits: None, 
+        Model {
+            r#type: None,
+            prompt_cache: None,
+            input_limits: None,
             id: id.to_string(),
             name: id.to_string(),
             api: "google-generative-ai".to_string(),
@@ -970,14 +973,20 @@ mod tests {
     }
 
     fn vertex_model(id: &str, provider: &str) -> Model {
-        Model {r#type: None, prompt_cache: None, input_limits: None, 
+        Model {
+            r#type: None,
+            prompt_cache: None,
+            input_limits: None,
             api: "google-vertex".to_string(),
             ..google_model(id, provider, &[ModelInput::Text])
         }
     }
 
     fn google_model_with_map(id: &str, provider: &str, map: ThinkingLevelMap) -> Model {
-        Model {r#type: None, prompt_cache: None, input_limits: None, 
+        Model {
+            r#type: None,
+            prompt_cache: None,
+            input_limits: None,
             thinking_level_map: Some(map),
             ..google_model(id, provider, &[ModelInput::Text])
         }

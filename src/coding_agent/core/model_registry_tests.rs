@@ -258,7 +258,10 @@ async fn facade_registers_native_providers() {
         fn get_models(
             &self,
         ) -> Result<Vec<crate::ai::types::Model>, crate::ai::auth::resolve::ModelsError> {
-            Ok(vec![crate::ai::types::Model {r#type: None, prompt_cache: None, input_limits: None, 
+            Ok(vec![crate::ai::types::Model {
+                r#type: None,
+                prompt_cache: None,
+                input_limits: None,
                 id: "native-model".to_string(),
                 name: "Native Model".to_string(),
                 api: "openai-completions".to_string(),

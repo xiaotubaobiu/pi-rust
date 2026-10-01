@@ -1307,7 +1307,10 @@ fn convert_tools(
             Some(is_anthropic_strict_unsupported_keyword),
         )?;
         let parameters = if strict == Some(true) {
-            make_strict_json_schema(&tool.parameters, Some(is_anthropic_strict_unsupported_keyword))?
+            make_strict_json_schema(
+                &tool.parameters,
+                Some(is_anthropic_strict_unsupported_keyword),
+            )?
         } else {
             tool.parameters.clone()
         };
@@ -1677,7 +1680,10 @@ mod tests {
     // ---- fixtures ----
 
     fn make_model(compat: Value) -> Model {
-        Model {r#type: None, prompt_cache: None, input_limits: None, 
+        Model {
+            r#type: None,
+            prompt_cache: None,
+            input_limits: None,
             id: "claude-test".to_string(),
             name: "Claude Test".to_string(),
             api: "anthropic-messages".to_string(),

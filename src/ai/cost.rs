@@ -44,12 +44,7 @@ fn calculate_cost_with_rates(cost: &crate::ai::types::ModelCost, usage: &mut Usa
     }
     let (input_rate, output_rate, cache_read_rate, cache_write_rate) = match matched {
         Some(tier) => (tier.input, tier.output, tier.cache_read, tier.cache_write),
-        None => (
-            cost.input,
-            cost.output,
-            cost.cache_read,
-            cost.cache_write,
-        ),
+        None => (cost.input, cost.output, cost.cache_read, cost.cache_write),
     };
 
     // Anthropic charges 2x base input for 1h cache writes (upstream comment).
@@ -73,7 +68,10 @@ mod tests {
     use crate::ai::types::{Model, ModelCost, ModelCostTier, ModelInput, Usage, UsageCost};
 
     fn model_with_cost(cost: ModelCost) -> Model {
-        Model {r#type: None, prompt_cache: None, input_limits: None, 
+        Model {
+            r#type: None,
+            prompt_cache: None,
+            input_limits: None,
             id: "test-model".to_string(),
             name: "Test Model".to_string(),
             api: "openai-completions".to_string(),

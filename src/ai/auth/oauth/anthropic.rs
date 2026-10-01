@@ -21,36 +21,36 @@
 //! - `formatErrorDetails` (upstream lines 82-97) cannot see Node-only error
 //!   fields (`code`/`errno`/`stack`); the port formats `Error: <display>`
 //!   plus the `cause=<display>` chain of [`std::error::Error::source`].
-//! - The upstream request-handler catch-all (500 "Internal error") covers
-//!   throwing `URL` parses; the Rust router has no fallible step after the
-//!   request target is read, so a malformed request line maps to the same
-//!   500 response (disclosed: Node answers 400 before the handler there).
-//! - A failed callback-server bind wraps the OS error in "Failed to start
-//!   the OAuth callback server on host:port: …" instead of surfacing the raw
-//!   Node `EADDRINUSE` error text.
+//! - The flow keeps the port-wide pre-flight cancellation guard
+//!   (`Err(Cancelled)` before any work when the interaction signal already
+//!   fired). Upstream instead starts the callback server (whose entry check
+//!   throws "Login cancelled", swallowed by `.catch(() => undefined)`) and
+//!   continues into a manual prompt that an aborted interaction can never
+//!   answer.
 //! - The token response parse is stricter than upstream: a 200 response
 //!   missing `access_token`/`refresh_token`/`expires_in` errors as invalid
 //!   JSON, where upstream would silently build a credential with `undefined`
 //!   fields. (Deliberate: the port never stores a corrupt credential.)
 
+use std::sync::Arc;
+
 use futures::future::BoxFuture;
-use tokio::net::TcpStream;
 use tokio_util::sync::CancellationToken;
 
 use crate::ai::api::azure_openai_responses::get_provider_env_value;
 use crate::ai::api::http_client;
 use crate::ai::auth::types::{
-    AuthError, AuthEvent, AuthInteraction, AuthPrompt, AuthPromptKind, ModelAuth, OAuthAuth,
-    OAuthCredential, ProviderAuthInteraction,
+    AuthError, AuthEvent, AuthInteraction, ModelAuth, OAuthAuth, OAuthCredential,
+    ProviderAuthInteraction,
 };
 use crate::ai::now_ms;
 
-use super::oauth_page::{oauth_error_html, oauth_success_html};
-use super::pkce::{generate_pkce, Pkce};
-use super::{
-    first_pair, parse_authorization_input, parse_urlencoded_pairs, read_request_head,
-    request_target, write_response, Waiter, HTML_CONTENT_TYPE,
+use super::callback_server::{
+    start_oauth_callback_server, wait_for_callback_or_manual_input, CallbackOrManual,
+    CallbackServerOptions, OAuthCallbackServer,
 };
+use super::parse_authorization_input;
+use super::pkce::{generate_pkce, Pkce};
 
 /// Upstream `CLIENT_ID` (anthropic.ts:29): upstream decodes
 /// `atob("OWQxYzI1MGEtZTYxYi00NGQ5LTg4ZWQtNTk0NGQxOTYyZjVl")` at module load;
@@ -123,7 +123,11 @@ impl AnthropicOAuth {
     /// port that does not collide with other tests (upstream tests stub the
     /// global `fetch` and keep port 53692 because they run sequentially).
     #[cfg(test)]
-    fn with_endpoints(token_url: String, callback_host: String, callback_port: u16) -> Self {
+    pub(crate) fn with_endpoints(
+        token_url: String,
+        callback_host: String,
+        callback_port: u16,
+    ) -> Self {
         AnthropicOAuth {
             token_url,
             callback_host,
@@ -304,15 +308,17 @@ async fn refresh_anthropic_token(
     }
 }
 
-/// Upstream `loginAnthropic` (anthropic.ts:234-312): open the callback
-/// server, publish the authorize URL, race the manual prompt against the
-/// callback (and the interaction signal), then exchange the code.
+/// Upstream `loginAnthropic` (anthropic.ts:134-191): open the shared
+/// callback server (a failed bind degrades to manual-only login through
+/// `.catch(() => undefined)`), publish the authorize URL, race the manual
+/// paste against the callback, then exchange the code.
 async fn login_anthropic(
     token_url: &str,
     callback_host: &str,
     callback_port: u16,
     interaction: ProviderAuthInteraction,
 ) -> Result<OAuthCredential, AuthError> {
+    // Port divergence (module port notes): the pre-flight cancellation guard.
     if interaction.signal.is_cancelled() {
         return Err(AuthError::Cancelled);
     }
@@ -321,11 +327,28 @@ async fn login_anthropic(
         verifier,
         challenge,
     } = generate_pkce();
-    let server = CallbackServer::start(verifier.clone(), callback_host, callback_port).await?;
+    // `.catch(() => undefined)`: a taken port means manual-paste-only
+    // sign-in, not a failed login.
+    let callback: Option<OAuthCallbackServer<String>> =
+        start_oauth_callback_server(CallbackServerOptions {
+            provider_name: "Anthropic".to_string(),
+            host: callback_host.to_string(),
+            port: callback_port,
+            path: CALLBACK_PATH.to_string(),
+            // The shared server's redirectUri is unused here: the flow keeps
+            // its own `localhost` REDIRECT_URI for the authorize URL and the
+            // exchange (upstream anthropic.ts:35).
+            redirect_host: None,
+            state: Some(verifier.clone()),
+            // Upstream `complete: async (code) => code`: the page reports
+            // success immediately and the exchange happens after the wait.
+            complete: Arc::new(|code| Box::pin(async move { Ok(code) })),
+            signal: interaction.signal.clone(),
+            timeout_ms: None,
+        })
+        .await
+        .ok();
 
-    // Upstream's `manualAbort` controller: aborts the pending prompt in the
-    // finally block so UIs can dismiss it once login settles.
-    let manual_token = CancellationToken::new();
     let result = async {
         // `new URLSearchParams({...}).toString()` — insertion order preserved,
         // form-urlencoded serialization (spaces become `+`). Built (and the
@@ -352,76 +375,41 @@ async fn login_anthropic(
             ),
         });
 
-        let prompt = interaction.prompt(AuthPrompt {
-            signal: Some(manual_token.clone()),
-            kind: AuthPromptKind::ManualCode {
-                message: "Complete login in your browser, or paste the authorization code / \
-                          redirect URL here:"
-                    .to_string(),
-                placeholder: Some(redirect_uri.clone()),
-            },
-        });
-        tokio::pin!(prompt);
-
-        let mut manual: Option<Result<String, AuthError>> = None;
-        // Upstream races the manual prompt against `server.waitForCode()` —
-        // the prompt's then/catch cancels the wait, and the abort listener
-        // cancels the wait when the interaction signal fires. `biased` makes
-        // the port deterministic: cancellation, then the prompt, then the
-        // delivered callback. The guard disables the prompt arm once settled
-        // so the loop can keep polling the wait without re-polling a
-        // completed future.
-        let delivered = loop {
-            tokio::select! {
-                biased;
-                _ = interaction.signal.cancelled() => return Err(AuthError::Cancelled),
-                settled = &mut prompt, if manual.is_none() => {
-                    manual = Some(settled);
-                    server.cancel_wait();
+        let result = wait_for_callback_or_manual_input(
+            &interaction,
+            callback.as_ref(),
+            "Complete login in your browser, or paste the authorization code / redirect URL here:",
+            &redirect_uri,
+        )
+        .await?;
+        let (code, state) = match result {
+            // The callback server validated the state against the verifier.
+            CallbackOrManual::Callback(code) => (code, verifier.clone()),
+            CallbackOrManual::Manual(input) => {
+                let parsed = parse_authorization_input(&input);
+                // `if (parsed.state && parsed.state !== verifier)` — JS
+                // truthiness on the state, then a mismatch.
+                if parsed
+                    .state
+                    .as_deref()
+                    .is_some_and(|state| !state.is_empty() && state != verifier)
+                {
+                    return Err(AuthError::Operation("OAuth state mismatch".to_string()));
                 }
-                value = server.wait() => break value,
+                // `state = parsed.state ?? verifier` — nullish, so an empty
+                // pasted state is kept.
+                let state = parsed.state.unwrap_or_else(|| verifier.clone());
+                (parsed.code.unwrap_or_default(), state)
             }
         };
 
-        // Upstream throws the manual rejection before looking at any result.
-        if let Some(Err(error)) = &manual {
-            return Err(error.clone());
-        }
-
-        let code;
-        let state;
-        if let Some((delivered_code, delivered_state)) = delivered {
-            code = delivered_code;
-            state = delivered_state;
-        } else if let Some(Ok(input)) = &manual {
-            let parsed = parse_authorization_input(input);
-            if let Some(parsed_state) = parsed.state.as_deref().filter(|state| !state.is_empty()) {
-                if parsed_state != verifier {
-                    return Err(AuthError::Operation("OAuth state mismatch".to_string()));
-                }
-            }
-            code = parsed.code.unwrap_or_default();
-            state = parsed.state.unwrap_or_else(|| verifier.clone());
-        } else {
-            // The wait can only return empty through a cancelled prompt or a
-            // cancelled signal, both handled above.
-            code = String::new();
-            state = String::new();
-        }
-
-        // Upstream truthiness checks (`if (!code)`, `if (!state)`).
-        let code = if code.is_empty() {
+        // Upstream truthiness check (`if (!code)`); the old "Missing OAuth
+        // state" error is gone with the refactor.
+        if code.is_empty() {
             return Err(AuthError::Operation(
                 "Missing authorization code".to_string(),
             ));
-        } else {
-            code
-        };
-        let state = if state.is_empty() {
-            return Err(AuthError::Operation("Missing OAuth state".to_string()));
-        } else {
-            state
-        };
+        }
 
         interaction.notify(AuthEvent::Progress {
             message: "Exchanging authorization code for tokens...".to_string(),
@@ -438,183 +426,11 @@ async fn login_anthropic(
     }
     .await;
 
-    // Upstream `finally`: abort the manual prompt and close the server.
-    manual_token.cancel();
-    server.close().await;
+    // Upstream `finally { callback?.close() }`.
+    if let Some(callback) = callback {
+        callback.close().await;
+    }
     result
-}
-
-/// The code/state pair a successful callback delivers.
-type DeliveredCode = (String, String);
-
-/// The local redirect-capture server (upstream `startCallbackServer`,
-/// anthropic.ts:99-168, plus the `server.server.close()` teardown): a minimal
-/// HTTP/1.1 responder that settles exactly once with `{ code, state }` — or
-/// with `None` when cancelled. The once-only settle slot is the shared
-/// [`Waiter`].
-struct CallbackServer {
-    waiter: Waiter<DeliveredCode>,
-    shutdown: CancellationToken,
-    accept_loop: Option<tokio::task::JoinHandle<()>>,
-}
-
-impl CallbackServer {
-    async fn start(
-        expected_state: String,
-        callback_host: &str,
-        callback_port: u16,
-    ) -> Result<Self, AuthError> {
-        let listener = tokio::net::TcpListener::bind((callback_host, callback_port))
-            .await
-            .map_err(|error| {
-                AuthError::Operation(format!(
-                    "Failed to start the OAuth callback server on \
-                     {callback_host}:{callback_port}: {error}"
-                ))
-            })?;
-        let waiter = Waiter::new();
-        let shutdown = CancellationToken::new();
-        let task_shutdown = shutdown.clone();
-        let loop_waiter = waiter.clone();
-        let loop_state = expected_state;
-        let accept_loop = tokio::spawn(async move {
-            loop {
-                tokio::select! {
-                    _ = task_shutdown.cancelled() => break,
-                    // Transient accept errors must not kill the capture;
-                    // upstream's server keeps listening too.
-                    accepted = listener.accept() => match accepted {
-                        Ok((stream, _)) => {
-                            let waiter = loop_waiter.clone();
-                            let expected_state = loop_state.clone();
-                            tokio::spawn(handle_connection(stream, expected_state, waiter));
-                        }
-                        Err(_) => continue,
-                    },
-                }
-            }
-        });
-        Ok(CallbackServer {
-            waiter,
-            shutdown,
-            accept_loop: Some(accept_loop),
-        })
-    }
-
-    /// Upstream `waitForCode()`: resolves with the first settle.
-    async fn wait(&self) -> Option<DeliveredCode> {
-        self.waiter.wait().await
-    }
-
-    /// Upstream `cancelWait()`: settles with `None` unless a code landed.
-    fn cancel_wait(&self) {
-        self.waiter.settle(None);
-    }
-
-    /// Upstream `server.close()`: stop accepting and wait for the listener
-    /// to drop (frees the port for the next login).
-    async fn close(mut self) {
-        self.shutdown.cancel();
-        if let Some(accept_loop) = self.accept_loop.take() {
-            let _ = accept_loop.await;
-        }
-    }
-}
-
-const TEXT_CONTENT_TYPE: &str = "text/plain; charset=utf-8";
-
-/// One handled browser request (upstream request handler, anthropic.ts:113-151
-/// plus the catch-all mapping described in the module notes).
-async fn handle_connection(
-    mut stream: TcpStream,
-    expected_state: String,
-    waiter: Waiter<DeliveredCode>,
-) {
-    let Some(request_line) = read_request_head(&mut stream).await else {
-        // No readable request head: nothing to answer (upstream: an
-        // abandoned browser request never completes either).
-        return;
-    };
-    let route = route_callback(&request_line, &expected_state);
-    let (status, reason, content_type, body): (u16, &str, &str, &str) = match &route {
-        CallbackRoute::Success { body, .. } => (200, "OK", HTML_CONTENT_TYPE, body),
-        CallbackRoute::Rejected(status, reason, body) => (*status, reason, HTML_CONTENT_TYPE, body),
-        CallbackRoute::Malformed => (
-            500,
-            "Internal Server Error",
-            TEXT_CONTENT_TYPE,
-            "Internal error",
-        ),
-    };
-    write_response(&mut stream, status, reason, content_type, body).await;
-    if let CallbackRoute::Success { code, state, .. } = route {
-        waiter.settle(Some((code, state)));
-    }
-}
-
-enum CallbackRoute {
-    /// 200 + the success page; the waiter settles with the pair afterwards.
-    Success {
-        body: String,
-        code: String,
-        state: String,
-    },
-    /// A rendered error page with status/reason.
-    Rejected(u16, &'static str, String),
-    /// The upstream catch-all: 500 "Internal error".
-    Malformed,
-}
-
-/// The upstream router (anthropic.ts:113-151) as a pure mapper: the request
-/// line's target picks the response, and a valid `/callback` hit carries the
-/// code/state to settle.
-fn route_callback(request_line: &str, expected_state: &str) -> CallbackRoute {
-    let Some(target) = request_target(request_line) else {
-        return CallbackRoute::Malformed;
-    };
-    let (path, query) = match target.split_once('?') {
-        Some((path, query)) => (path, query),
-        None => (target, ""),
-    };
-    if path != CALLBACK_PATH {
-        return CallbackRoute::Rejected(
-            404,
-            "Not Found",
-            oauth_error_html("Callback route not found.", None),
-        );
-    }
-    let params = parse_urlencoded_pairs(query);
-    let get = |name: &str| first_pair(&params, name).filter(|value| !value.is_empty());
-    if let Some(error) = get("error") {
-        return CallbackRoute::Rejected(
-            400,
-            "Bad Request",
-            oauth_error_html(
-                "Anthropic authentication did not complete.",
-                Some(&format!("Error: {error}")),
-            ),
-        );
-    }
-    // `if (!code || !state)` truthiness.
-    let (Some(code), Some(state)) = (get("code"), get("state")) else {
-        return CallbackRoute::Rejected(
-            400,
-            "Bad Request",
-            oauth_error_html("Missing code or state parameter.", None),
-        );
-    };
-    if state != expected_state {
-        return CallbackRoute::Rejected(
-            400,
-            "Bad Request",
-            oauth_error_html("State mismatch.", None),
-        );
-    }
-    CallbackRoute::Success {
-        body: oauth_success_html("Anthropic authentication completed. You can close this window."),
-        code,
-        state,
-    }
 }
 
 impl OAuthAuth for AnthropicOAuth {
@@ -682,7 +498,9 @@ mod tests {
 
     use super::*;
     use crate::ai::auth::oauth::pkce::base64url_encode;
-    use crate::ai::auth::types::{AuthInteraction, AuthOperationOptions};
+    use crate::ai::auth::types::{
+        AuthInteraction, AuthOperationOptions, AuthPrompt, AuthPromptKind,
+    };
 
     type Respond =
         Box<dyn Fn(AuthPrompt) -> BoxFuture<'static, Result<String, AuthError>> + Send + Sync>;
@@ -715,10 +533,6 @@ mod tests {
         }
     }
 
-    fn fake_interaction(respond: Respond) -> (Arc<FakeInteraction>, ProviderAuthInteraction) {
-        fake_interaction_with_slot(Arc::new(Mutex::new(None)), respond)
-    }
-
     fn fake_interaction_with_slot(
         auth_url: Arc<Mutex<Option<String>>>,
         respond: Respond,
@@ -740,20 +554,24 @@ mod tests {
     fn instant_interaction(
         answer: &'static str,
     ) -> (Arc<FakeInteraction>, ProviderAuthInteraction) {
-        fake_interaction(Box::new(move |_prompt| {
-            Box::pin(async move { Ok(answer.to_string()) })
-        }))
+        fake_interaction_with_slot(
+            Arc::new(Mutex::new(None)),
+            Box::new(move |_prompt| Box::pin(async move { Ok(answer.to_string()) })),
+        )
     }
 
     /// Never answers; blocks on its prompt signal like a real pending UI
     /// prompt, so the callback-server path can win the race.
     fn hanging_interaction() -> (Arc<FakeInteraction>, ProviderAuthInteraction) {
-        fake_interaction(Box::new(|prompt| {
-            Box::pin(async move {
-                prompt.signal.unwrap_or_default().cancelled().await;
-                Err(AuthError::Cancelled)
-            })
-        }))
+        fake_interaction_with_slot(
+            Arc::new(Mutex::new(None)),
+            Box::new(|prompt| {
+                Box::pin(async move {
+                    prompt.signal.unwrap_or_default().cancelled().await;
+                    Err(AuthError::Cancelled)
+                })
+            }),
+        )
     }
 
     /// Answers with `{redirect_uri}?{query(state)}`, reading the state and the
@@ -860,6 +678,16 @@ mod tests {
 
     fn token_body(access: &str, refresh: &str) -> String {
         format!(r#"{{"access_token":"{access}","refresh_token":"{refresh}","expires_in":3600}}"#)
+    }
+
+    /// Waits for the emitted authorize URL.
+    async fn wait_for_auth_url(slot: Arc<Mutex<Option<String>>>) -> String {
+        loop {
+            if let Some(auth_url) = slot.lock().unwrap().clone() {
+                return auth_url;
+            }
+            tokio::time::sleep(Duration::from_millis(5)).await;
+        }
     }
 
     // ---- Oracle ports (packages/ai/test/anthropic-oauth.test.ts) ----
@@ -1100,6 +928,26 @@ mod tests {
         assert_eq!(fake.prompts.lock().unwrap().len(), 1);
     }
 
+    /// An empty pasted state is not a mismatch (JS truthiness) and is sent
+    /// verbatim as the exchange state (nullish coalescing keeps `""`).
+    #[tokio::test]
+    async fn empty_pasted_state_is_kept_verbatim() {
+        let server = MockServer::start().await;
+        mount_token_endpoint(&server, &token_body("a", "r"), 200, 1).await;
+        let port = free_callback_port();
+        let oauth = flow_with(&server, port);
+        let (fake, interaction) =
+            redirect_url_interaction(port, Arc::new(|_state| "code=bare-code&state=".to_string()));
+
+        let credential = oauth.login(interaction).await.unwrap();
+        assert_eq!(credential.access, "a");
+        let requests = server.received_requests().await.unwrap();
+        let body: serde_json::Value = serde_json::from_slice(&requests[0].body).unwrap();
+        assert_eq!(body["code"], "bare-code");
+        assert_eq!(body["state"], "");
+        let _ = auth_url_of(&fake);
+    }
+
     #[tokio::test]
     async fn manual_input_state_defaults_to_the_verifier() {
         let server = MockServer::start().await;
@@ -1140,15 +988,9 @@ mod tests {
         let auth_url_slot = Arc::clone(&fake.auth_url);
 
         let driver = tokio::spawn(async move {
-            let auth_url = loop {
-                if let Some(auth_url) = auth_url_slot.lock().unwrap().clone() {
-                    break auth_url;
-                }
-                tokio::time::sleep(Duration::from_millis(10)).await;
-            };
+            let auth_url = wait_for_auth_url(auth_url_slot).await;
             let state = auth_url_param(&auth_url, "state");
-            let response = http_get(port, &format!("/callback?code=cb-code&state={state}")).await;
-            response
+            http_get(port, &format!("/callback?code=cb-code&state={state}")).await
         });
 
         let credential = tokio::time::timeout(Duration::from_secs(10), oauth.login(interaction))
@@ -1159,10 +1001,13 @@ mod tests {
 
         assert_eq!(credential.access, "cb-access");
         assert_eq!(credential.refresh, "cb-refresh");
+        // The shared server's success page (page bytes pinned against the
+        // oracle fixture).
         assert!(response.starts_with("HTTP/1.1 200 OK\r\n"));
         assert!(response.contains("Content-Type: text/html; charset=utf-8"));
+        assert!(response.contains("Cache-Control: no-store"));
         assert!(response.contains("<h1>Authentication successful</h1>"));
-        assert!(response.contains("Anthropic authentication completed."));
+        assert!(response.contains("Signed in to Anthropic. You may now close this page."));
         let requests = server.received_requests().await.unwrap();
         let body: serde_json::Value = serde_json::from_slice(&requests[0].body).unwrap();
         assert_eq!(body["code"], "cb-code");
@@ -1172,6 +1017,64 @@ mod tests {
             .as_ref()
             .unwrap()
             .is_cancelled());
+    }
+
+    /// A provider-reported redirect error fails the login with the upstream
+    /// message (the shared server settles the wait with the error).
+    #[tokio::test]
+    async fn provider_error_redirect_fails_the_login() {
+        let server = MockServer::start().await;
+        mount_token_endpoint(&server, "{}", 200, 0).await;
+        let port = free_callback_port();
+        let oauth = flow_with(&server, port);
+        let (fake, interaction) = hanging_interaction();
+        let auth_url_slot = Arc::clone(&fake.auth_url);
+
+        let driver = tokio::spawn(async move {
+            let auth_url = wait_for_auth_url(auth_url_slot).await;
+            let state = auth_url_param(&auth_url, "state");
+            http_get(
+                port,
+                &format!(
+                    "/callback?error=access_denied&error_description=User%20said%20no&state={state}"
+                ),
+            )
+            .await
+        });
+
+        let error = tokio::time::timeout(Duration::from_secs(10), oauth.login(interaction))
+            .await
+            .unwrap()
+            .unwrap_err();
+        let response = driver.await.unwrap();
+
+        assert_eq!(
+            error,
+            AuthError::Operation("Anthropic authorization failed: User said no".to_string())
+        );
+        assert!(response.contains("Anthropic authorization failed."));
+        assert!(response.contains("User said no"));
+        assert_eq!(server.received_requests().await.unwrap().len(), 0);
+    }
+
+    /// A failed callback-server bind degrades to manual-only login (upstream
+    /// `.catch(() => undefined)`), pinning the old bind failure is an error.
+    #[tokio::test]
+    async fn taken_callback_port_degrades_to_manual_only_login() {
+        let server = MockServer::start().await;
+        mount_token_endpoint(&server, &token_body("a", "r"), 200, 1).await;
+        let blocker = std::net::TcpListener::bind(("127.0.0.1", 0)).unwrap();
+        let port = blocker.local_addr().unwrap().port();
+        let oauth = flow_with(&server, port);
+        let (fake, interaction) = instant_interaction("the-code");
+
+        let credential = tokio::time::timeout(Duration::from_secs(5), oauth.login(interaction))
+            .await
+            .unwrap()
+            .unwrap();
+        drop(blocker);
+        assert_eq!(credential.access, "a");
+        assert_eq!(fake.prompts.lock().unwrap().len(), 1);
     }
 
     #[tokio::test]
@@ -1360,123 +1263,5 @@ mod tests {
                 base_url: None,
             }
         );
-    }
-
-    // ---- Callback server ----
-
-    async fn started_server() -> (CallbackServer, u16) {
-        let port = free_callback_port();
-        let server = CallbackServer::start("expected-state".to_string(), "127.0.0.1", port)
-            .await
-            .unwrap();
-        (server, port)
-    }
-
-    async fn settle_within(server: &CallbackServer) -> Option<DeliveredCode> {
-        tokio::time::timeout(Duration::from_secs(5), server.wait())
-            .await
-            .unwrap()
-    }
-
-    async fn stays_pending(server: &CallbackServer) {
-        assert!(
-            tokio::time::timeout(Duration::from_millis(200), server.wait())
-                .await
-                .is_err()
-        );
-    }
-
-    #[tokio::test]
-    async fn callback_delivers_the_code_with_the_success_page() {
-        let (server, port) = started_server().await;
-        let response = http_get(port, "/callback?code=cb&state=expected-state").await;
-        assert!(response.starts_with("HTTP/1.1 200 OK\r\n"));
-        assert!(response.contains("<h1>Authentication successful</h1>"));
-        assert_eq!(
-            settle_within(&server).await,
-            Some(("cb".to_string(), "expected-state".to_string()))
-        );
-        server.close().await;
-    }
-
-    #[tokio::test]
-    async fn callback_rejects_unknown_routes_errors_missing_params_and_state_mismatch() {
-        let (server, port) = started_server().await;
-
-        // Unknown route.
-        let response = http_get(port, "/nope?code=cb&state=expected-state").await;
-        assert!(response.starts_with("HTTP/1.1 404 Not Found\r\n"));
-        assert!(response.contains("Callback route not found."));
-        stays_pending(&server).await;
-
-        // Provider-reported error.
-        let response = http_get(port, "/callback?error=access_denied").await;
-        assert!(response.starts_with("HTTP/1.1 400 Bad Request\r\n"));
-        assert!(response.contains("Anthropic authentication did not complete."));
-        assert!(response.contains("Error: access_denied"));
-        stays_pending(&server).await;
-
-        // Missing code.
-        let response = http_get(port, "/callback?state=expected-state").await;
-        assert!(response.starts_with("HTTP/1.1 400 Bad Request\r\n"));
-        assert!(response.contains("Missing code or state parameter."));
-        stays_pending(&server).await;
-
-        // Missing state.
-        let response = http_get(port, "/callback?code=cb").await;
-        assert!(response.contains("Missing code or state parameter."));
-        stays_pending(&server).await;
-
-        // Empty params count as missing (upstream truthiness).
-        let response = http_get(port, "/callback?code=&state=").await;
-        assert!(response.contains("Missing code or state parameter."));
-
-        // State mismatch.
-        let response = http_get(port, "/callback?code=cb&state=wrong").await;
-        assert!(response.starts_with("HTTP/1.1 400 Bad Request\r\n"));
-        assert!(response.contains("State mismatch."));
-        stays_pending(&server).await;
-
-        server.close().await;
-    }
-
-    #[tokio::test]
-    async fn callback_malformed_request_line_gets_the_internal_error_page() {
-        let (server, port) = started_server().await;
-        let mut stream = tokio::net::TcpStream::connect(("127.0.0.1", port))
-            .await
-            .unwrap();
-        stream.write_all(b"NOREQUESTTARGET\r\n\r\n").await.unwrap();
-        let mut response = Vec::new();
-        tokio::time::timeout(Duration::from_secs(5), stream.read_to_end(&mut response))
-            .await
-            .unwrap()
-            .unwrap();
-        let response = String::from_utf8_lossy(&response);
-        assert!(response.starts_with("HTTP/1.1 500 Internal Server Error\r\n"));
-        assert!(response.contains("Internal error"));
-        stays_pending(&server).await;
-        server.close().await;
-    }
-
-    #[tokio::test]
-    async fn cancel_wait_wins_over_a_later_code() {
-        let (server, port) = started_server().await;
-        server.cancel_wait();
-        assert_eq!(settle_within(&server).await, None);
-        // A browser arriving late cannot overwrite the cancel (upstream's
-        // `settled` flag).
-        let _ = http_get(port, "/callback?code=late&state=expected-state").await;
-        assert_eq!(settle_within(&server).await, None);
-        server.close().await;
-    }
-
-    #[tokio::test]
-    async fn close_releases_the_port() {
-        let (server, port) = started_server().await;
-        server.close().await;
-        // The listener is gone: rebinding succeeds.
-        let rebound = std::net::TcpListener::bind(("127.0.0.1", port));
-        assert!(rebound.is_ok(), "port {port} must be released after close");
     }
 }

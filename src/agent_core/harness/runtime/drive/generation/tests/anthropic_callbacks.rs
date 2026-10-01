@@ -15,7 +15,10 @@ fn provider(base_url: &str) -> (Model, Arc<dyn Provider>) {
     model.provider = "local-anthropic".into();
     model.api = "anthropic-messages".into();
     model.base_url = base_url.into();
-    let provider = create_provider(CreateProviderOptions {filter_all_models: None, images: crate::ai::models::provider::ImagesImpls::new(), classifiers: crate::ai::models::provider::ClassifiersImpls::new(), 
+    let provider = create_provider(CreateProviderOptions {
+        filter_all_models: None,
+        images: crate::ai::models::provider::ImagesImpls::new(),
+        classifiers: crate::ai::models::provider::ClassifiersImpls::new(),
         id: model.provider.clone(),
         name: None,
         base_url: None,

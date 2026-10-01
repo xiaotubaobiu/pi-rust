@@ -13,10 +13,16 @@
 //! server is flow-owned infrastructure, like upstream's `http.createServer`.
 //!
 //! Port notes (disclosed divergences):
-//! - Upstream starts the callback server through `node:http`, imported
-//!   lazily to stay out of browser bundles; the port owns a tokio TCP
-//!   listener like the T3/T4 callback ports, so the Node-only import guard
-//!   has no analog.
+//! - The browser login runs on the shared [`super::callback_server`]
+//!   (upstream `callback-server.ts`, which this delta refactored the private
+//!   `startOAuthCallbackServer` onto). The token exchange moved INSIDE the
+//!   callback handler (`complete`), so the browser page shows its outcome:
+//!   200 "Signed in to Radius. You may now close this page." or 502
+//!   "Radius sign-in failed." with the exchange error. A provider-reported
+//!   redirect error now fails the login with "Radius authorization failed:
+//!   {description}", and a bind failure propagates (upstream awaited the
+//!   server promise) instead of degrading to a "OAuth callback did not
+//!   complete." error.
 //! - The callback port is a field on [`RadiusOAuth`] (upstream constant
 //!   1456) so tests can bind a free port; the production constructor pins
 //!   the upstream value.
@@ -29,16 +35,16 @@
 //!   positive numeric `expires_in` (same missing-fields error).
 //! - `new URL(authorizationEndpoint)` on a discovery endpoint that is not a
 //!   URL throws `Invalid URL` upstream; the port surfaces `Invalid Radius
-//!   OAuth authorization endpoint: {raw}`. A callback request line without
-//!   a parseable target answers the 404 page (upstream's `new URL` throw
-//!   surfaces as a Node 500; see the openrouter port note).
+//!   OAuth authorization endpoint: {raw}`.
 //! - Cancellation maps to [`AuthError::Cancelled`] everywhere upstream
 //!   throws `Error("Login cancelled")` (port contract: interaction-signal
 //!   aborts are never wrapped).
 //! - `crypto.randomUUID()` becomes a random RFC 4122 version-4 UUID built
-//!   from 16 `rand` bytes (see [`super::uuid_v4`]).
+//!   from 16 `rand` bytes (see [`super::uuid_v4`]); the oracle tests inject
+//!   the capture's fixed UUID through [`super::test_entropy`].
 
 use std::collections::BTreeMap;
+use std::sync::Arc;
 
 use futures::future::BoxFuture;
 use serde_json::Value;
@@ -51,10 +57,10 @@ use crate::ai::auth::types::{
 };
 use crate::ai::now_ms;
 
+use super::callback_server::{start_oauth_callback_server, CallbackServerOptions};
 use super::device_code::{poll_device_code_flow, PollOutcome};
-use super::oauth_page::{oauth_error_html, oauth_success_html};
 use super::pkce::{generate_pkce, Pkce};
-use super::{first_pair, read_request_head, request_target, uuid_v4, Waiter, HTML_CONTENT_TYPE};
+use super::uuid_v4;
 
 /// Upstream `CALLBACK_HOST` (radius.ts:26).
 const CALLBACK_HOST: &str = "127.0.0.1";
@@ -128,7 +134,7 @@ impl RadiusOAuth {
     /// Test constructor: bind a specific callback port (upstream tests never
     /// exercise the browser path; the port tests need a free port).
     #[cfg(test)]
-    fn with_callback_port(name: String, gateway: String, callback_port: u16) -> Self {
+    pub(crate) fn with_callback_port(name: String, gateway: String, callback_port: u16) -> Self {
         RadiusOAuth {
             name,
             gateway: normalize_radius_gateway_url(&gateway),
@@ -357,211 +363,9 @@ async fn load_radius_oauth_discovery(
         .ok_or_else(|| AuthError::Operation(format!("Invalid Radius OAuth config from {gateway}")))
 }
 
-/// State shared by the callback accept loop, its handler tasks and the abort
-/// watch (upstream `startOAuthCallbackServer`'s closure variables).
-struct CallbackShared {
-    expected_state: String,
-    /// `new URL(request.url ?? "/", REDIRECT_URI)` base.
-    callback_base: url::Url,
-    waiter: Waiter<String>,
-}
-
-/// Upstream `OAuthCallbackServer` (radius.ts:142-218): a loopback listener
-/// settling its wait once with the authorization code, or `None` on abort /
-/// error / close.
-struct CallbackServer {
-    shared: std::sync::Arc<CallbackShared>,
-    shutdown: CancellationToken,
-    accept_loop: Option<tokio::task::JoinHandle<()>>,
-}
-
-impl CallbackServer {
-    async fn start(
-        expected_state: String,
-        callback_base: url::Url,
-        callback_port: u16,
-        signal: CancellationToken,
-    ) -> CallbackServer {
-        let waiter: Waiter<String> = Waiter::new();
-        let shutdown = CancellationToken::new();
-        let listener = match tokio::net::TcpListener::bind((CALLBACK_HOST, callback_port)).await {
-            Ok(listener) => listener,
-            // Upstream `once("error")`: resolve a degenerate server whose
-            // wait is already settled null and whose close is a no-op.
-            Err(_) => {
-                waiter.settle(None);
-                return CallbackServer {
-                    shared: std::sync::Arc::new(CallbackShared {
-                        expected_state,
-                        callback_base,
-                        waiter,
-                    }),
-                    shutdown,
-                    accept_loop: None,
-                };
-            }
-        };
-        let shared = std::sync::Arc::new(CallbackShared {
-            expected_state,
-            callback_base,
-            waiter,
-        });
-
-        let loop_shared = std::sync::Arc::clone(&shared);
-        let loop_shutdown = shutdown.clone();
-        let accept_loop = tokio::spawn(async move {
-            loop {
-                tokio::select! {
-                    _ = loop_shutdown.cancelled() => break,
-                    // Transient accept errors must not kill the capture;
-                    // upstream's server keeps listening too.
-                    accepted = listener.accept() => match accepted {
-                        Ok((stream, _)) => {
-                            let shared = std::sync::Arc::clone(&loop_shared);
-                            tokio::spawn(handle_connection(stream, shared));
-                        }
-                        Err(_) => continue,
-                    },
-                }
-            }
-        });
-
-        // Upstream `onAbort = () => finish(null)`.
-        let abort_shared = std::sync::Arc::clone(&shared);
-        let aborted = signal.is_cancelled();
-        tokio::spawn(async move {
-            signal.cancelled().await;
-            abort_shared.waiter.settle(None);
-        });
-        // An already-aborted signal fires the `once` abort listener on
-        // registration.
-        if aborted {
-            shared.waiter.settle(None);
-        }
-
-        CallbackServer {
-            shared,
-            shutdown,
-            accept_loop: Some(accept_loop),
-        }
-    }
-
-    /// Upstream `waitForCode()`: `None` once cancelled/errored/closed.
-    async fn wait_for_code(&self) -> Option<String> {
-        self.shared.waiter.wait().await
-    }
-
-    /// Upstream `close()`: `finish(null)` (a no-op when already settled) and
-    /// stop accepting.
-    async fn close(mut self) {
-        self.shared.waiter.settle(None);
-        self.shutdown.cancel();
-        if let Some(accept_loop) = self.accept_loop.take() {
-            let _ = accept_loop.await;
-        }
-    }
-}
-
-/// One handled browser request (upstream request handler, radius.ts:174-200).
-async fn handle_connection(
-    mut stream: tokio::net::TcpStream,
-    shared: std::sync::Arc<CallbackShared>,
-) {
-    let Some(request_line) = read_request_head(&mut stream).await else {
-        // No readable request head: nothing to answer (an abandoned browser
-        // request never completes upstream either).
-        return;
-    };
-    let target = request_target(&request_line).unwrap_or("/");
-    let Ok(url) = url::Url::options()
-        .base_url(Some(&shared.callback_base))
-        .parse(target)
-    else {
-        // Upstream's `new URL` throw surfaces as a Node handler error; the
-        // port answers the route-not-found page (openrouter precedent).
-        write_page(
-            &mut stream,
-            404,
-            "Not Found",
-            &oauth_error_html("Callback route not found.", None),
-        )
-        .await;
-        return;
-    };
-    if url.path() != CALLBACK_PATH {
-        write_page(
-            &mut stream,
-            404,
-            "Not Found",
-            &oauth_error_html("Callback route not found.", None),
-        )
-        .await;
-        return;
-    }
-    let pairs: Vec<(String, String)> = url
-        .query_pairs()
-        .map(|(name, value)| (name.into_owned(), value.into_owned()))
-        .collect();
-
-    // `searchParams.get("state") !== expectedState` (a missing state reads
-    // as null and mismatches).
-    if first_pair(&pairs, "state").as_deref() != Some(shared.expected_state.as_str()) {
-        write_page(
-            &mut stream,
-            400,
-            "Bad Request",
-            &oauth_error_html("OAuth state mismatch.", None),
-        )
-        .await;
-        return;
-    }
-
-    // `const error = searchParams.get("error"); if (error)` — truthiness: an
-    // empty error param is not an error.
-    if let Some(error) = first_pair(&pairs, "error").filter(|value| !value.is_empty()) {
-        // `searchParams.get("error_description") ?? error` — no truthiness
-        // check, an empty description stays empty.
-        let description = first_pair(&pairs, "error_description").unwrap_or(error);
-        write_page(
-            &mut stream,
-            400,
-            "Bad Request",
-            &oauth_error_html(&description, None),
-        )
-        .await;
-        shared.waiter.settle(None);
-        return;
-    }
-
-    // `if (!code)` truthiness: a missing code keeps the login waiting.
-    let Some(code) = first_pair(&pairs, "code").filter(|value| !value.is_empty()) else {
-        write_page(
-            &mut stream,
-            400,
-            "Bad Request",
-            &oauth_error_html("Missing authorization code.", None),
-        )
-        .await;
-        return;
-    };
-
-    write_page(
-        &mut stream,
-        200,
-        "OK",
-        &oauth_success_html("Signed in to Radius. You may now close this page."),
-    )
-    .await;
-    shared.waiter.settle(Some(code));
-}
-
-/// `sendPage`: one HTML response with the shared landing-page content type.
-async fn write_page(stream: &mut tokio::net::TcpStream, status: u16, reason: &str, body: &str) {
-    super::write_response(stream, status, reason, HTML_CONTENT_TYPE, body).await;
-}
-
-/// Upstream `loginWithBrowser` (radius.ts:220-269): PKCE against the
-/// discovered authorization endpoint, waiting for the loopback callback.
+/// Upstream `loginWithBrowser` (radius.ts:148-190): PKCE against the
+/// discovered authorization endpoint, with the token exchange running inside
+/// the shared callback handler so the browser page shows its outcome.
 async fn login_with_browser(
     oauth: &RadiusOAuth,
     authorization_endpoint: &str,
@@ -594,15 +398,43 @@ async fn login_with_browser(
         url.set_query(Some(&query));
         url.to_string()
     };
-    let callback_base = url::Url::parse(&redirect_uri).expect("redirect URI must parse");
 
-    let server = CallbackServer::start(
-        state,
-        callback_base,
-        oauth.callback_port,
-        interaction.signal.clone(),
-    )
-    .await;
+    // Upstream `complete: (code) => requestOAuthToken(gateway,
+    // new URLSearchParams({ grant_type: "authorization_code", ... }),
+    // interaction.signal)` — the browser page shows the exchange outcome.
+    let exchange_gateway = Arc::new(oauth.gateway.clone());
+    let exchange_verifier = Arc::new(verifier.clone());
+    let exchange_redirect = Arc::new(redirect_uri.clone());
+    let exchange_signal = interaction.signal.clone();
+    let callback = start_oauth_callback_server(CallbackServerOptions {
+        provider_name: "Radius".to_string(),
+        host: CALLBACK_HOST.to_string(),
+        port: oauth.callback_port,
+        path: CALLBACK_PATH.to_string(),
+        redirect_host: None,
+        state: Some(state),
+        complete: Arc::new(move |code| {
+            let gateway = Arc::clone(&exchange_gateway);
+            let verifier = Arc::clone(&exchange_verifier);
+            let redirect = Arc::clone(&exchange_redirect);
+            let signal = exchange_signal.clone();
+            Box::pin(async move {
+                let body = form_body(&[
+                    ("grant_type", "authorization_code"),
+                    ("client_id", OAUTH_CLIENT_ID),
+                    ("redirect_uri", &redirect),
+                    ("code", &code),
+                    ("code_verifier", &verifier),
+                ]);
+                request_oauth_token(&gateway, body, &signal)
+                    .await
+                    .map_err(AuthError::from)
+            })
+        }),
+        signal: interaction.signal.clone(),
+        timeout_ms: None,
+    })
+    .await?;
     interaction.notify(AuthEvent::Progress {
         message: format!("Listening for OAuth callback on {redirect_uri}"),
     });
@@ -612,29 +444,24 @@ async fn login_with_browser(
     });
 
     let result = async {
-        match server.wait_for_code().await {
-            Some(code) => {
-                let body = form_body(&[
-                    ("grant_type", "authorization_code"),
-                    ("client_id", OAUTH_CLIENT_ID),
-                    ("redirect_uri", &redirect_uri),
-                    ("code", &code),
-                    ("code_verifier", &verifier),
-                ]);
-                request_oauth_token(&oauth.gateway, body, &interaction.signal)
-                    .await
-                    .map_err(AuthError::from)
-            }
-            None if interaction.signal.is_cancelled() => Err(AuthError::Cancelled),
-            None => Err(AuthError::Operation(
-                "OAuth callback did not complete.".to_string(),
-            )),
+        // Upstream `const credential = await callback.wait(); if (!credential)
+        // throw new Error("OAuth callback did not complete.")` — the null
+        // settle is unreachable through this flow (nothing calls `cancel`).
+        let credential = callback.wait().await;
+        match credential {
+            // The null settle cannot happen here; a cancelled interaction
+            // signal surfaces as the cancellation (upstream: the "Login
+            // cancelled" rejection).
+            Ok(Some(credential)) => Ok(credential),
+            Ok(None) | Err(AuthError::Cancelled) => Err(AuthError::Cancelled),
+            Err(AuthError::Operation(message)) => Err(AuthError::Operation(message)),
+            Err(error) => Err(error),
         }
     }
     .await;
 
-    // Upstream `finally { callbackServer.close() }`.
-    server.close().await;
+    // Upstream `finally { callback.close() }`.
+    callback.close().await;
     result
 }
 
@@ -1318,7 +1145,7 @@ mod tests {
         )
         .await;
         assert!(response.starts_with("HTTP/1.1 400 Bad Request\r\n"));
-        assert!(response.contains("OAuth state mismatch."));
+        assert!(response.contains("State mismatch."));
 
         // Still waiting: only cancellation settles the login.
         signal.cancel();
@@ -1361,7 +1188,7 @@ mod tests {
             .unwrap();
         assert_eq!(
             result.unwrap_err(),
-            AuthError::Operation("OAuth callback did not complete.".to_string())
+            AuthError::Operation("Radius authorization failed: nope".to_string())
         );
     }
 
@@ -1408,11 +1235,11 @@ mod tests {
         );
     }
 
-    /// Upstream `once("error")`: a callback port that cannot be bound
-    /// degenerates into an immediately-null wait ("OAuth callback did not
-    /// complete.").
+    /// A bind failure now propagates (this delta's refactor: upstream
+    /// awaits `startOAuthCallbackServer`, whose listen promise rejects —
+    /// the old degenerate-server behavior is gone).
     #[tokio::test]
-    async fn occupied_callback_port_fails_without_completing() {
+    async fn occupied_callback_port_fails_the_login() {
         let server = MockServer::start().await;
         mount_discovery(
             &server,
@@ -1428,11 +1255,9 @@ mod tests {
         let result = tokio::time::timeout(Duration::from_secs(10), oauth.login(interaction))
             .await
             .unwrap();
-        assert_eq!(
-            result.unwrap_err(),
-            AuthError::Operation("OAuth callback did not complete.".to_string())
-        );
-        assert!(fake.auth_url.lock().unwrap().is_some());
+        assert!(matches!(result.unwrap_err(), AuthError::Operation(_)));
+        // The failure happens before the authorize URL is emitted.
+        assert!(fake.auth_url.lock().unwrap().is_none());
     }
 
     // ---- Device-code poll branches ----

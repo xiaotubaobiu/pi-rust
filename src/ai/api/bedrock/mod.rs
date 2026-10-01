@@ -2351,7 +2351,10 @@ mod tests {
     }
 
     fn model(id: &str, name: &str) -> Model {
-        Model {r#type: None, prompt_cache: None, input_limits: None, 
+        Model {
+            r#type: None,
+            prompt_cache: None,
+            input_limits: None,
             id: id.to_string(),
             name: name.to_string(),
             api: API.to_string(),

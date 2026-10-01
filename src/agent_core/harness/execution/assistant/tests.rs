@@ -55,9 +55,9 @@ fn model() -> Model {
         sampling_params: None,
         headers: None,
         compat: None,
-            r#type: None,
-            prompt_cache: None,
-            input_limits: None,
+        r#type: None,
+        prompt_cache: None,
+        input_limits: None,
     }
 }
 

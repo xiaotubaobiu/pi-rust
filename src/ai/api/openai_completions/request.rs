@@ -2192,7 +2192,10 @@ mod tests {
         reasoning: bool,
         compat: Value,
     ) -> Model {
-        Model {r#type: None, prompt_cache: None, input_limits: None, 
+        Model {
+            r#type: None,
+            prompt_cache: None,
+            input_limits: None,
             id: id.to_string(),
             name: "Test Model".to_string(),
             api: "openai-completions".to_string(),
@@ -3712,7 +3715,10 @@ mod tests {
     // ---- 10. thinking token budget ----
 
     fn vllm_model(compat: Value) -> Model {
-        Model {r#type: None, prompt_cache: None, input_limits: None, 
+        Model {
+            r#type: None,
+            prompt_cache: None,
+            input_limits: None,
             id: "zai-org/glm-5.2".to_string(),
             name: "GLM 5.2 (local vLLM)".to_string(),
             api: "openai-completions".to_string(),

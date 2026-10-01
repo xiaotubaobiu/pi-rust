@@ -1,36 +1,36 @@
-//! Remote service provider: hosts implementations for one remote consumer and
-//! owns that consumer's subscriptions. Port of
+//! Remote service provider: hosts implementations for one remote consumer
+//! and owns that consumer's subscriptions. Port of
 //! `packages/chord/src/services/provider.ts` (upstream sha256
-//! `fe810eaa1eb8418025b2dd0d16bb049c8641fd1b864fbd31c8f8de031c563fcc`).
+//! `47ca6cd540079906cff962e58a86961ee52f82ef8949fe4674e964bcfaf12100`).
 //!
 //! # Implementation members
 //!
 //! Upstream `provide` receives a plain object and *classifies* it: own data
 //! properties (sorted by name) become methods when functions and replicated
-//! states when they are `MutableReplicatedState` instances
-//! (`provider.ts:544-570`). The port's [`InstanceMember`] enum is that
-//! classification expressed in the type system: a [`BTreeMap`] of members
-//! plays the role of the plain object (BTreeMap iteration is the upstream's
-//! `Object.keys(...).sort()`), and the data-property / `not remotely
-//! exposable` checks are unrepresentable — a member is either a method or a
-//! state by construction.
+//! states when they are `MutableReplicatedState` instances. The port's
+//! [`InstanceMember`] enum is that classification expressed in the type
+//! system: a [`BTreeMap`] of members plays the role of the plain object
+//! (BTreeMap iteration is the upstream's `Object.keys(...).sort()`), and the
+//! data-property / `not remotely exposable` checks are unrepresentable — a
+//! member is either a method or a state by construction.
 //!
 //! # Threading and delivery
 //!
-//! Provider state sits behind a mutex shared through `Arc`. Each state member
-//! registers a source listener (`state-internals.ts`) that routes published
-//! operation batches to [`RemoteServiceProvider::emit_update`]; the mutex is
-//! never held while state members publish, which reproduces the upstream
-//! event-loop reentrancy without reentrant locks. Subscriber listeners return
-//! `Result`, standing in for the upstream `try`/`catch` collection of
-//! listener failures; buffered updates replay on activation.
+//! Provider state sits behind a mutex shared through `Arc`. Each state
+//! member registers a source listener (`state-internals.ts`) that routes
+//! published operation batches to the emit path; the mutex is never held
+//! while state members publish, which reproduces the upstream event-loop
+//! reentrancy without reentrant locks. Updates queue for every subscriber
+//! before any listener runs (upstream `#emit`), listeners report failures
+//! through `Result`, and overflow at 100 buffered updates rebaselines the
+//! subscriber with a full `reset` snapshot.
 //!
 //! Async method execution and the consumer-side binding
-//! (`services/consumer.ts`) are a deferred seam (M6 report, S1): methods here
-//! are synchronous closures, which is sufficient for the deterministic
+//! (`services/consumer.ts`) are flattened to the synchronous closure
+//! convention (divergence D2), which is sufficient for the deterministic
 //! provider/endpoint surface the server package consumes.
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::sync::{Arc, Mutex, Weak};
 
 use crate::chord::context::Context;
@@ -79,30 +79,33 @@ struct ProviderInstance {
     remove_member_tokens: Vec<Box<dyn Fn() + Send + Sync>>,
 }
 
-#[derive(Debug)]
-enum SubscriberState {
-    /// Buffering until `activate` (upstream `active: false`).
-    Buffering(Vec<(ServiceProviderUpdate, Context)>),
-    /// Delivering as updates arrive (upstream `active: true`).
-    Active,
-    /// Closed; receives nothing (upstream `closed`).
-    Closed,
-}
-
+/// Port of `ProviderSubscriber` (`provider.ts:44-51`).
 struct Subscriber {
     listener: Arc<UpdateListener>,
-    state: SubscriberState,
-    /// Upstream `terminated`: disposed while buffering; a later `activate`
-    /// still replays the buffer and then closes.
+    buffer: VecDeque<(ServiceProviderUpdate, Context)>,
+    /// Last-delivered snapshot sequences per state member, used to drop
+    /// updates already covered by the subscription snapshot
+    /// (`snapshotSequences`).
+    snapshot_sequences: HashMap<String, u64>,
+    active: bool,
+    /// A reentrant publish while a listener runs only queues.
+    draining: bool,
+    /// Disposed while buffering; a later activate still replays the buffer
+    /// and then closes.
     terminated: bool,
+    closed: bool,
 }
 
 impl Subscriber {
     fn new(listener: Arc<UpdateListener>) -> Subscriber {
         Subscriber {
             listener,
-            state: SubscriberState::Buffering(Vec::new()),
+            buffer: VecDeque::new(),
+            snapshot_sequences: HashMap::new(),
+            active: false,
+            draining: false,
             terminated: false,
+            closed: false,
         }
     }
 }
@@ -159,8 +162,7 @@ impl ProviderEntry {
     }
 
     /// Build a catalogue definition from a [`Service`]; `local: true`
-    /// services are rejected by [`RemoteServiceProvider::new`]
-    /// (`provider.ts:86-90`).
+    /// services are rejected by [`RemoteServiceProvider::new`].
     pub fn from_service(
         service: &crate::chord::types::Service,
         mode: ServiceMode,
@@ -173,13 +175,17 @@ impl ProviderEntry {
     }
 }
 
-/// The upstream `RemoteServiceProvider` (`provider.ts:77-500`).
+/// The upstream `RemoteServiceProvider` (`provider.ts:79-545`).
 pub struct RemoteServiceProvider {
     inner: Mutex<ProviderInner>,
 }
 
+/// Buffered updates rebaseline with a full reset at this depth
+/// (`provider.ts:459-467`).
+const MAX_BUFFERED_UPDATES: usize = 100;
+
 impl RemoteServiceProvider {
-    /// `new RemoteServiceProvider(entries)` (`provider.ts:82-105`).
+    /// `new RemoteServiceProvider(entries)` (`provider.ts:84-107`).
     pub fn new(entries: &[ProviderEntry]) -> Result<Arc<Self>, ChordError> {
         let mut registrations = BTreeMap::new();
         for entry in entries {
@@ -232,7 +238,7 @@ impl RemoteServiceProvider {
         Ok(())
     }
 
-    /// `get catalogue` (`provider.ts:107-109`).
+    /// `get catalogue` (`provider.ts:109-111`).
     pub fn catalogue(&self) -> Vec<ServiceCatalogueEntry> {
         self.lock()
             .registrations
@@ -244,7 +250,7 @@ impl RemoteServiceProvider {
             .collect()
     }
 
-    /// `#registration` (`provider.ts:327-339`).
+    /// `#registration` (`provider.ts:341-353`).
     fn registration<'a>(
         inner: &'a mut ProviderInner,
         service_id: &str,
@@ -269,7 +275,7 @@ impl RemoteServiceProvider {
         Ok(registration)
     }
 
-    /// `#assertRemotable` (`provider.ts:487-489`).
+    /// `#assertRemotable` (`provider.ts:533-535`).
     fn assert_remotable(service: &crate::chord::types::Service) -> Result<(), ChordError> {
         if service.local {
             return Err(ChordError::remote(
@@ -280,7 +286,7 @@ impl RemoteServiceProvider {
         Ok(())
     }
 
-    /// `#assertAllowed` (`provider.ts:491-495`).
+    /// `#assertAllowed` (`provider.ts:537-541`).
     fn assert_allowed(inner: &ProviderInner, service_id: &str) -> Result<(), ChordError> {
         if !inner.registrations.contains_key(service_id) {
             return Err(ChordError::remote(
@@ -291,7 +297,7 @@ impl RemoteServiceProvider {
         Ok(())
     }
 
-    /// `provide` (`provider.ts:111-124`).
+    /// `provide` (`provider.ts:113-126`).
     pub fn provide(
         self: &Arc<Self>,
         service: &crate::chord::types::Service,
@@ -316,7 +322,7 @@ impl RemoteServiceProvider {
         Ok(())
     }
 
-    /// `withdraw` (`provider.ts:127-138`): disconnect one singleton while
+    /// `withdraw` (`provider.ts:129-140`): disconnect one singleton while
     /// preserving active subscriptions and remote facades.
     pub fn withdraw(&self, service: &crate::chord::types::Service) -> Result<(), ChordError> {
         let mut inner = self.lock();
@@ -343,7 +349,7 @@ impl RemoteServiceProvider {
         )
     }
 
-    /// `validateReplacement` (`provider.ts:141-148`).
+    /// `validateReplacement` (`provider.ts:143-150`).
     pub fn validate_replacement(
         &self,
         service: &crate::chord::types::Service,
@@ -359,7 +365,7 @@ impl RemoteServiceProvider {
         assert_singleton_shape(registration, &shape)
     }
 
-    /// `replace` (`provider.ts:151-168`): replace one singleton without
+    /// `replace` (`provider.ts:153-170`): replace one singleton without
     /// making its stable remote facade unavailable.
     pub fn replace(
         self: &Arc<Self>,
@@ -396,7 +402,7 @@ impl RemoteServiceProvider {
         )
     }
 
-    /// `spawn` (`provider.ts:181-210`): returns the close handle (upstream
+    /// `spawn` (`provider.ts:183-212`): returns the close handle (upstream
     /// returns `() => void`).
     pub fn spawn(
         self: &Arc<Self>,
@@ -456,7 +462,7 @@ impl RemoteServiceProvider {
         })
     }
 
-    /// `invoke` (`provider.ts:212-235`).
+    /// `invoke` (`provider.ts:214-237`).
     pub fn invoke(
         &self,
         call: &ServiceCall,
@@ -492,13 +498,14 @@ impl RemoteServiceProvider {
         drop(inner);
         // Upstream awaits the method with no provider state held; the port
         // releases the mutex so a method that publishes state (routing back
-        // through `emit_update`) cannot deadlock.
+        // through the emit path) cannot deadlock.
         method(&call.args, context)
     }
 
-    /// `subscribe` (`provider.ts:237-284`): flushes the registration's state
-    /// members, attaches the (initially buffering) subscriber, and returns the
-    /// subscription whose snapshot hydrates the consumer.
+    /// `subscribe` (`provider.ts:239-286`): attaches the (initially
+    /// buffering) subscriber, records the snapshot's sequences, and returns
+    /// the subscription whose snapshot hydrates the consumer. There is no
+    /// flush pass — the snapshot itself carries the full root replacements.
     pub fn subscribe<F>(
         self: &Arc<Self>,
         service_id: &str,
@@ -518,47 +525,16 @@ impl RemoteServiceProvider {
                 format!("Remote service {service_id} has no provider"),
             ));
         }
-        // `#publishPending` runs before the subscriber is attached, so the
-        // flush reaches only the subscribers that already exist. The state
-        // members publish outside the provider lock because their source
-        // listeners route back into `emit_update`.
-        let states: Vec<Arc<MutableReplicatedState>> = match registration.mode {
-            ServiceMode::Singleton => registration
-                .singleton
-                .iter()
-                .flat_map(|instance| instance.members.values())
-                .filter_map(|member| match member {
-                    InstanceMember::State(state) => Some(state.clone()),
-                    InstanceMember::Method(_) => None,
-                })
-                .collect(),
-            ServiceMode::Keyed => registration
-                .instances
-                .values()
-                .flat_map(|instance| instance.members.values())
-                .filter_map(|member| match member {
-                    InstanceMember::State(state) => Some(state.clone()),
-                    InstanceMember::Method(_) => None,
-                })
-                .collect(),
-        };
-        drop(inner);
-        for state in &states {
-            state.publish(&service_delivery_context());
-        }
-
-        let mut inner = self.lock();
         let token = inner.next_subscriber;
         inner.next_subscriber += 1;
         let registration = inner
             .registrations
             .get_mut(service_id)
             .expect("checked above");
-        registration
-            .subscribers
-            .push((token, Subscriber::new(Arc::new(listener))));
+        let mut subscriber = Subscriber::new(Arc::new(listener));
         let snapshot = snapshot(registration);
-        drop(inner);
+        record_snapshot_sequences(&mut subscriber.snapshot_sequences, &snapshot.instances);
+        registration.subscribers.push((token, subscriber));
         Ok(ServiceSubscription {
             provider: Arc::downgrade(self),
             service_id: service_id.to_owned(),
@@ -567,7 +543,7 @@ impl RemoteServiceProvider {
         })
     }
 
-    /// `dispose` (`provider.ts:286-325`).
+    /// `dispose` (`provider.ts:288-327`).
     pub fn dispose(&self) -> Result<(), ChordError> {
         let mut inner = self.lock();
         if inner.disposed {
@@ -614,16 +590,15 @@ impl RemoteServiceProvider {
                 continue;
             };
             for (at, subscriber) in std::mem::take(&mut registration.subscribers) {
-                match subscriber.state {
-                    // Active subscribers close with their buffer dropped
-                    // (provider.ts:312-315); buffering ones terminate and
-                    // stay replayable through their subscription handle.
-                    SubscriberState::Active | SubscriberState::Closed => {}
-                    SubscriberState::Buffering(_) => {
-                        let mut terminated = subscriber;
-                        terminated.terminated = true;
-                        inner.detached.push((service_id.clone(), at, terminated));
-                    }
+                // Active subscribers close with their buffer dropped
+                // (`provider.ts:314-317`); buffering ones terminate and stay
+                // replayable through their subscription handle.
+                if subscriber.active && !subscriber.draining {
+                    // closed with the buffer dropped
+                } else {
+                    let mut terminated = subscriber;
+                    terminated.terminated = true;
+                    inner.detached.push((service_id.clone(), at, terminated));
                 }
             }
         }
@@ -640,8 +615,7 @@ impl RemoteServiceProvider {
         Ok(())
     }
 
-    /// `#emit` equivalent used by state source listeners
-    /// (`provider.ts:467-485`).
+    /// The emit path used by state source listeners (`provider.ts:448-476`).
     fn emit_update(
         &self,
         service_id: &str,
@@ -677,41 +651,15 @@ impl RemoteServiceProvider {
         Ok(())
     }
 
-    /// The `activate` closure (`provider.ts:260-276`): replay every buffered
+    /// The `activate` closure (`provider.ts:272-278`): drain every buffered
     /// update, collecting listener failures, then report them.
     fn activate_one(subscriber: &mut Subscriber) -> Result<(), ChordError> {
-        if matches!(
-            subscriber.state,
-            SubscriberState::Closed | SubscriberState::Active
-        ) {
+        if subscriber.closed || subscriber.active {
             return Ok(());
         }
-        let SubscriberState::Buffering(buffer) =
-            std::mem::replace(&mut subscriber.state, SubscriberState::Active)
-        else {
-            unreachable!("checked above");
-        };
-        let listener = subscriber.listener.clone();
-        let terminated = subscriber.terminated;
-        let mut errors: Vec<ChordError> = Vec::new();
-        for (update, context) in buffer {
-            if let Err(error) = listener(&update, &context) {
-                errors.push(error);
-            }
-        }
-        if terminated {
-            subscriber.state = SubscriberState::Closed;
-        }
-        if errors.is_empty() {
-            return Ok(());
-        }
-        if errors.len() == 1 {
-            return Err(errors.remove(0));
-        }
-        Err(ChordError::Aggregate {
-            message: "Failed to activate remote service subscription".to_owned(),
-            errors,
-        })
+        subscriber.active = true;
+        let errors = drain_subscriber(subscriber);
+        throw_collected_errors(errors, "Failed to activate remote service subscription")
     }
 
     fn close_subscription(&self, service_id: &str, token: u64) {
@@ -723,8 +671,141 @@ impl RemoteServiceProvider {
     }
 }
 
-/// A keyed instance close handle (the closure returned by upstream `spawn`,
-/// `provider.ts:200-209`).
+/// `drainSubscriber` (`provider.ts:482-504`): replay the buffer while the
+/// listener does not close the subscriber; reentrant publishes only queue.
+fn drain_subscriber(subscriber: &mut Subscriber) -> Vec<ChordError> {
+    if !subscriber.active || subscriber.closed || subscriber.draining {
+        return Vec::new();
+    }
+    let mut errors: Vec<ChordError> = Vec::new();
+    subscriber.draining = true;
+    let mut drained: VecDeque<(ServiceProviderUpdate, Context)> = VecDeque::new();
+    std::mem::swap(&mut drained, &mut subscriber.buffer);
+    for (update, context) in drained {
+        if subscriber.closed {
+            break;
+        }
+        match (subscriber.listener)(&update, &context) {
+            Ok(()) => {}
+            Err(error) => errors.push(error),
+        }
+    }
+    subscriber.draining = false;
+    if subscriber.terminated {
+        subscriber.closed = true;
+    }
+    errors
+}
+
+/// `recordSnapshotSequences` (`provider.ts:506-514`).
+fn record_snapshot_sequences(
+    sequences: &mut HashMap<String, u64>,
+    instances: &[ServiceInstanceSnapshot],
+) {
+    for instance in instances {
+        for member in &instance.members {
+            if let ServiceMemberSnapshot::State { name, sequence, .. } = member {
+                sequences.insert(
+                    state_member_key(instance.instance.as_ref(), name),
+                    *sequence,
+                );
+            }
+        }
+    }
+}
+
+/// `updateCoveredBySnapshot` (`provider.ts:516-545`).
+fn update_covered_by_snapshot(
+    sequences: &mut HashMap<String, u64>,
+    update: &ServiceProviderUpdate,
+) -> bool {
+    match update {
+        ServiceProviderUpdate::State {
+            instance,
+            member,
+            sequence,
+            ..
+        } => {
+            let key = state_member_key(instance.as_ref(), member);
+            let Some(snapshot_sequence) = sequences.get(&key).copied() else {
+                return false;
+            };
+            if *sequence <= snapshot_sequence {
+                return true;
+            }
+            sequences.remove(&key);
+            false
+        }
+        ServiceProviderUpdate::Reset { snapshot } => {
+            sequences.clear();
+            record_snapshot_sequences(sequences, &snapshot.instances);
+            false
+        }
+        ServiceProviderUpdate::Replaced { snapshot } => {
+            sequences.clear();
+            record_snapshot_sequences(sequences, std::slice::from_ref(snapshot));
+            false
+        }
+        ServiceProviderUpdate::Spawned { instance } => {
+            record_snapshot_sequences(sequences, std::slice::from_ref(instance));
+            false
+        }
+        ServiceProviderUpdate::Unavailable => {
+            sequences.clear();
+            false
+        }
+        ServiceProviderUpdate::Closed { instance } => {
+            let prefix = format!(
+                "{},",
+                serde_json::to_string(&[
+                    serde_json::Value::String(instance.key.clone()),
+                    serde_json::Value::Number(serde_json::Number::from(instance.generation))
+                ])
+                .expect("JSON serialization cannot fail")
+                .trim_end_matches(']')
+            );
+            let stale: Vec<String> = sequences
+                .keys()
+                .filter(|key| key.starts_with(&prefix))
+                .cloned()
+                .collect();
+            for key in stale {
+                sequences.remove(&key);
+            }
+            false
+        }
+    }
+}
+
+/// `stateMemberKey` (`provider.ts:547-551`): `JSON.stringify` of the
+/// `[key, generation, member]` (or bare `[member]`) tuple.
+fn state_member_key(instance: Option<&ServiceInstanceAddress>, member: &str) -> String {
+    let tuple: Vec<serde_json::Value> = match instance {
+        None => vec![serde_json::Value::String(member.to_owned())],
+        Some(address) => vec![
+            serde_json::Value::String(address.key.clone()),
+            serde_json::Number::from(address.generation).into(),
+            serde_json::Value::String(member.to_owned()),
+        ],
+    };
+    serde_json::to_string(&tuple).expect("JSON serialization cannot fail")
+}
+
+/// `throwCollectedErrors` (`provider.ts:553-558`).
+fn throw_collected_errors(errors: Vec<ChordError>, message: &str) -> Result<(), ChordError> {
+    if errors.len() == 1 {
+        return Err(errors.into_iter().next().expect("checked above"));
+    }
+    if errors.len() > 1 {
+        return Err(ChordError::Aggregate {
+            message: message.to_owned(),
+            errors,
+        });
+    }
+    Ok(())
+}
+
+/// A keyed instance close handle (the closure returned by upstream `spawn`).
 #[derive(Debug)]
 pub struct SpawnHandle {
     provider: Weak<RemoteServiceProvider>,
@@ -776,7 +857,8 @@ impl SpawnHandle {
     }
 }
 
-/// The upstream `ServiceSubscription` (`types.ts:170-174`).
+/// The upstream `ServiceSubscription` (`types.ts:170-174` plus the
+/// single-use `activate` contract of `types.ts:236-240`).
 #[derive(Debug)]
 pub struct ServiceSubscription {
     provider: Weak<RemoteServiceProvider>,
@@ -791,7 +873,7 @@ impl ServiceSubscription {
         &self.snapshot
     }
 
-    /// `activate()` (`provider.ts:260-276`).
+    /// `activate()` (`provider.ts:272-278`).
     pub fn activate(&self) -> Result<(), ChordError> {
         let Some(provider) = self.provider.upgrade() else {
             return Ok(());
@@ -799,7 +881,7 @@ impl ServiceSubscription {
         provider.activate_subscription(&self.service_id, self.token)
     }
 
-    /// `close(context?)` (`provider.ts:277-282`).
+    /// `close(context?)` (`provider.ts:279-284`).
     pub fn close(&self) {
         let Some(provider) = self.provider.upgrade() else {
             return;
@@ -823,8 +905,11 @@ impl std::fmt::Debug for ProviderInstance {
 impl std::fmt::Debug for Subscriber {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Subscriber")
-            .field("state", &self.state)
+            .field("buffered", &self.buffer.len())
+            .field("active", &self.active)
+            .field("draining", &self.draining)
             .field("terminated", &self.terminated)
+            .field("closed", &self.closed)
             .finish()
     }
 }
@@ -907,8 +992,8 @@ fn assert_singleton_shape(
     ))
 }
 
-/// `#createInstance` (`provider.ts:341-374`): wire each state member's source
-/// listener so publications flow to subscribers.
+/// `#createInstance` (`provider.ts:355-388`): wire each state member's
+/// source listener so publications flow to subscribers.
 fn create_instance(
     provider: &Arc<RemoteServiceProvider>,
     service_id: String,
@@ -931,7 +1016,7 @@ fn create_instance(
         let provider_weak = provider_weak.clone();
         let token = state.subscribe_source(move |ops: &[Op], sequence: u64, context: &Context| {
             let Some(provider) = provider_weak.upgrade() else {
-                return;
+                return Ok(());
             };
             let update = ServiceProviderUpdate::State {
                 instance: instance_address.clone(),
@@ -941,7 +1026,7 @@ fn create_instance(
             };
             // `instance.active` upstream; the token removal keeps this from
             // firing after deactivation.
-            let _ = provider.emit_update(&service_id, update, context);
+            provider.emit_update(&service_id, update, context)
         });
         instance.remove_member_tokens.push(token);
     }
@@ -998,7 +1083,7 @@ fn resolve_instance<'a>(
     Ok(instance)
 }
 
-/// `#snapshot` (`provider.ts:435-445`).
+/// `#snapshot` (`provider.ts:429-439`).
 fn snapshot(registration: &Registration) -> ServiceSubscriptionSnapshot {
     let instances: Vec<ServiceInstanceSnapshot> = match registration.mode {
         ServiceMode::Singleton => match &registration.singleton {
@@ -1019,18 +1104,22 @@ fn snapshot(registration: &Registration) -> ServiceSubscriptionSnapshot {
     }
 }
 
-/// `#snapshotInstance` (`provider.ts:447-465`).
+/// `#snapshotInstance` (`provider.ts:441-459`): state members read through
+/// the state's atomic `snapshot()` pair.
 fn snapshot_instance(instance: &ProviderInstance) -> ServiceInstanceSnapshot {
     let members = instance
         .members
         .iter()
         .map(|(name, member)| match member {
             InstanceMember::Method(_) => ServiceMemberSnapshot::Method { name: name.clone() },
-            InstanceMember::State(state) => ServiceMemberSnapshot::State {
-                name: name.clone(),
-                sequence: state.sequence(),
-                ops: vec![Op::Replace(state.value())],
-            },
+            InstanceMember::State(state) => {
+                let (value, sequence) = state.snapshot();
+                ServiceMemberSnapshot::State {
+                    name: name.clone(),
+                    sequence,
+                    ops: vec![Op::Replace(value)],
+                }
+            }
         })
         .collect();
     ServiceInstanceSnapshot {
@@ -1039,6 +1128,9 @@ fn snapshot_instance(instance: &ProviderInstance) -> ServiceInstanceSnapshot {
     }
 }
 
+/// `#emit` (`provider.ts:448-476`): queue for everyone before invoking user
+/// code, including reentrant publications; overflow at 100 rebaselines the
+/// subscriber with a full reset snapshot.
 fn emit(
     inner: &mut ProviderInner,
     service_id: &str,
@@ -1052,35 +1144,52 @@ fn emit(
         return Ok(());
     }
     let delivery_context = context.clone();
+    let subscriber_count = registration.subscribers.len();
     let mut errors: Vec<ChordError> = Vec::new();
-    let mut listeners: Vec<Arc<UpdateListener>> = Vec::new();
-    for (_, subscriber) in &mut registration.subscribers {
-        match &mut subscriber.state {
-            SubscriberState::Closed => continue,
-            SubscriberState::Buffering(buffer) => {
-                buffer.push((update.clone(), delivery_context.clone()));
+    for position in 0..subscriber_count {
+        let (skip, reset) = {
+            let (_, subscriber) = &mut registration.subscribers[position];
+            if subscriber.closed
+                || update_covered_by_snapshot(&mut subscriber.snapshot_sequences, &update)
+            {
+                (true, false)
+            } else if subscriber.buffer.len() == MAX_BUFFERED_UPDATES {
+                (false, true)
+            } else {
+                (false, false)
             }
-            SubscriberState::Active => listeners.push(subscriber.listener.clone()),
+        };
+        if skip {
+            continue;
+        }
+        if reset {
+            let snapshot = snapshot(registration);
+            let (_, subscriber) = &mut registration.subscribers[position];
+            subscriber.buffer.clear();
+            subscriber.snapshot_sequences.clear();
+            record_snapshot_sequences(&mut subscriber.snapshot_sequences, &snapshot.instances);
+            subscriber.buffer.push_back((
+                ServiceProviderUpdate::Reset { snapshot },
+                delivery_context.clone(),
+            ));
+        } else {
+            let (_, subscriber) = &mut registration.subscribers[position];
+            subscriber
+                .buffer
+                .push_back((update.clone(), delivery_context.clone()));
         }
     }
-    for listener in listeners {
-        if let Err(error) = listener(&update, &delivery_context) {
-            errors.push(error);
-        }
+    for position in 0..subscriber_count {
+        let (_, subscriber) = &mut registration.subscribers[position];
+        errors.extend(drain_subscriber(subscriber));
     }
-    if errors.len() == 1 {
-        return Err(errors.remove(0));
-    }
-    if errors.len() > 1 {
-        return Err(ChordError::Aggregate {
-            message: format!("Failed to publish remote service {service_id} update"),
-            errors,
-        });
-    }
-    Ok(())
+    throw_collected_errors(
+        errors,
+        &format!("Failed to publish remote service {service_id} update"),
+    )
 }
 
-/// `validateRemoteServiceImplementation` (`provider.ts:540-542`).
+/// `validateRemoteServiceImplementation` (`provider.ts:586-588`).
 pub fn validate_remote_service_implementation(
     service_id: &str,
     implementation: &Implementation,
@@ -1088,7 +1197,7 @@ pub fn validate_remote_service_implementation(
     classify_implementation(service_id, implementation.clone()).map(|_| ())
 }
 
-/// `createRemoteServiceEndpoint` (`provider.ts:502-538`): hosts one provider
+/// `createRemoteServiceEndpoint` (`provider.ts:548-584`): hosts one provider
 /// for one remote consumer and owns that consumer's control-channel
 /// subscriptions.
 pub struct RemoteServiceEndpoint {
@@ -1103,10 +1212,10 @@ struct EndpointInner {
 }
 
 /// The endpoint's update publisher (`ServiceUpdatePublisher`,
-/// `provider.ts:65-69`); publish failures are swallowed by the endpoint.
+/// `provider.ts:67-71`); publish failures are swallowed by the endpoint.
 type Publisher = Arc<dyn Fn(&str, &ServiceProviderUpdate, &Context) + Send + Sync>;
 
-/// `createRemoteServiceEndpoint(provider)` (`provider.ts:502-506`).
+/// `createRemoteServiceEndpoint(provider)` (`provider.ts:548-552`).
 pub fn create_remote_service_endpoint(
     provider: Arc<RemoteServiceProvider>,
 ) -> RemoteServiceEndpoint {
@@ -1121,7 +1230,7 @@ impl RemoteServiceEndpoint {
         }
     }
 
-    /// `invoke(call, publish, context)` (`provider.ts:507-530`). The
+    /// `invoke(call, publish, context)` (`provider.ts:553-576`). The
     /// publisher receives subscription updates; failures to publish are
     /// swallowed upstream (`Promise.resolve(...).catch(() => {})`), so the
     /// publisher here returns nothing.
@@ -1194,7 +1303,7 @@ impl RemoteServiceEndpoint {
         self.provider.invoke(call, context)
     }
 
-    /// `dispose()` (`provider.ts:531-537`).
+    /// `dispose()` (`provider.ts:577-583`).
     pub fn dispose(&self) {
         let mut inner = self.lock();
         if inner.disposed {

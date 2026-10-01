@@ -213,6 +213,22 @@ impl InstanceDirectory {
         self.lock().observers.len()
     }
 
+    //` values() (`instances.ts:34-36` at the delta): iterate the live
+    //` entries. Upstream returns the `#entries` map's value iterator; the
+    //` port snapshots them under the lock.
+    pub fn values(&self) -> Vec<InstanceDirectoryEntry> {
+        self.lock()
+            .entries
+            .values()
+            .map(|entry| InstanceDirectoryEntry {
+                key: entry.key.clone(),
+                generation: entry.generation,
+                service: Arc::clone(&entry.service),
+                deactivate: Box::new(|| {}),
+            })
+            .collect()
+    }
+
     /// `get(key)` (`instances.ts:34-36`), reduced to the identity the keyed
     /// binding routes by (`generation` comparisons).
     pub fn generation_of(&self, key: &str) -> Option<u64> {

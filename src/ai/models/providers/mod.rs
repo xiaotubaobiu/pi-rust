@@ -62,8 +62,8 @@ use crate::ai::api::mistral::MistralConversations;
 use crate::ai::api::openai_codex_responses::OpenAiCodexResponses;
 use crate::ai::api::openai_completions::OpenAiCompletions;
 use crate::ai::api::openai_responses::OpenAiResponses;
-use crate::ai::auth::helpers::{env_api_key_auth, lazy_oauth, OAuthLoader};
 use crate::ai::api::typesafe_system_one::TypeSafeSystemOneApi;
+use crate::ai::auth::helpers::{env_api_key_auth, lazy_oauth, OAuthLoader};
 use crate::ai::auth::oauth::load::{
     load_kimi_coding_oauth, load_openai_codex_oauth, load_openrouter_oauth, load_xai_oauth,
 };
@@ -296,7 +296,10 @@ fn catalog_with_classifiers(id: &str) -> Vec<crate::ai::types::AnyModel> {
 
 /// One classifier-implementation map (upstream `classifiers: { ... }`).
 fn classifiers(
-    entries: &[(&str, Arc<dyn crate::ai::models::provider::ClassifierApiImpl>)],
+    entries: &[(
+        &str,
+        Arc<dyn crate::ai::models::provider::ClassifierApiImpl>,
+    )],
 ) -> crate::ai::models::provider::ClassifiersImpls {
     entries
         .iter()
@@ -531,8 +534,8 @@ pub fn openai_provider() -> Arc<dyn Provider> {
             "OpenAI (ChatGPT subscription)".to_string(),
             true,
             Some("Sign in with ChatGPT".to_string()),
-            Arc::new(|| {
-                match crate::ai::auth::oauth::load::load_openai_chatgpt_oauth() {
+            Arc::new(
+                || match crate::ai::auth::oauth::load::load_openai_chatgpt_oauth() {
                     Ok(flow) => {
                         let flow: Arc<dyn crate::ai::auth::types::OAuthAuth> = flow;
                         Box::pin(async move { Ok(flow) })
@@ -546,8 +549,8 @@ pub fn openai_provider() -> Arc<dyn Provider> {
                             'static,
                             Result<Arc<dyn crate::ai::auth::types::OAuthAuth>, AuthError>,
                         >,
-                }
-            }) as Arc<OAuthLoader>,
+                },
+            ) as Arc<OAuthLoader>,
         ),
         single(OpenAiResponses),
     )
@@ -570,7 +573,10 @@ pub fn openai_codex_provider() -> Arc<dyn Provider> {
                 load_openai_codex_oauth,
             ))),
         },
-        models: embedded_provider_catalog("openai-codex").into_iter().map(crate::ai::types::AnyModel::Chat).collect(),
+        models: embedded_provider_catalog("openai-codex")
+            .into_iter()
+            .map(crate::ai::types::AnyModel::Chat)
+            .collect(),
         fetch_models: None,
         filter_models: None,
         filter_all_models: None,
@@ -612,7 +618,10 @@ pub fn openrouter_provider() -> Arc<dyn Provider> {
         base_url: Some("https://openrouter.ai/api/v1".to_string()),
         headers: None,
         auth: ProviderAuth {
-            api_key: Some(env_api_key_auth("OpenRouter API key", &["OPENROUTER_API_KEY"])),
+            api_key: Some(env_api_key_auth(
+                "OpenRouter API key",
+                &["OPENROUTER_API_KEY"],
+            )),
             oauth: Some(Arc::new(lazy_flow(
                 "OpenRouter OAuth",
                 false,
@@ -815,22 +824,20 @@ pub fn meta_provider() -> Arc<dyn Provider> {
             "Meta (Muse subscription)".to_string(),
             true,
             Some("Sign in with Meta".to_string()),
-            Arc::new(|| {
-                match crate::ai::auth::oauth::load::load_meta_oauth() {
-                    Ok(flow) => {
-                        let flow: Arc<dyn crate::ai::auth::types::OAuthAuth> = flow;
-                        Box::pin(async move { Ok(flow) })
-                            as BoxFuture<
-                                'static,
-                                Result<Arc<dyn crate::ai::auth::types::OAuthAuth>, AuthError>,
-                            >
-                    }
-                    Err(message) => Box::pin(async move { Err(AuthError::Operation(message)) })
+            Arc::new(|| match crate::ai::auth::oauth::load::load_meta_oauth() {
+                Ok(flow) => {
+                    let flow: Arc<dyn crate::ai::auth::types::OAuthAuth> = flow;
+                    Box::pin(async move { Ok(flow) })
                         as BoxFuture<
                             'static,
                             Result<Arc<dyn crate::ai::auth::types::OAuthAuth>, AuthError>,
-                        >,
+                        >
                 }
+                Err(message) => Box::pin(async move { Err(AuthError::Operation(message)) })
+                    as BoxFuture<
+                        'static,
+                        Result<Arc<dyn crate::ai::auth::types::OAuthAuth>, AuthError>,
+                    >,
             }) as Arc<OAuthLoader>,
         ),
         single(OpenAiResponses),

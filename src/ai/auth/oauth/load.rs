@@ -15,6 +15,8 @@ use std::sync::Arc;
 use super::anthropic::AnthropicOAuth;
 use super::github_copilot::GitHubCopilotOAuth;
 use super::kimi_coding::KimiCodingOAuth;
+use super::meta::MetaOAuth;
+use super::openai_chatgpt::OpenAIChatGptOAuth;
 use super::openai_codex::OpenAICodexOAuth;
 use super::openrouter::OpenRouterOAuth;
 use super::radius::{create_radius_oauth, RadiusOAuthOptions};
@@ -31,24 +33,15 @@ pub fn load_openai_codex_oauth() -> Arc<dyn OAuthAuth> {
     Arc::new(OpenAICodexOAuth::new())
 }
 
-/// Upstream `loadOpenAIChatGPTOAuth` (load.ts, the Sign-in-with-ChatGPT
-/// delta): the flow module `auth/oauth/openai-chatgpt.ts` is a separate
-/// porting slice (auth/oauth/**); until it lands this loader reports the
-/// login unavailable, so provider wiring and the loader seam exist now.
+/// Upstream `loadOpenAIChatGPTOAuth` (load.ts:43-47, the Sign-in-with-
+/// ChatGPT delta): the flow constructs like its sibling loaders.
 pub fn load_openai_chatgpt_oauth() -> Result<Arc<dyn OAuthAuth>, String> {
-    Err(
-        "OpenAI (ChatGPT subscription) login is not available in this build: the openai-chatgpt OAuth flow is ported separately"
-            .to_string(),
-    )
+    Ok(Arc::new(OpenAIChatGptOAuth::new()))
 }
 
-/// Upstream `loadMetaOAuth` (load.ts, the Meta Muse delta): the flow module
-/// `auth/oauth/meta.ts` is ported in that same separate slice.
+/// Upstream `loadMetaOAuth` (load.ts:63-67, the Meta Muse delta).
 pub fn load_meta_oauth() -> Result<Arc<dyn OAuthAuth>, String> {
-    Err(
-        "Meta (Muse subscription) login is not available in this build: the meta OAuth flow is ported separately"
-            .to_string(),
-    )
+    Ok(Arc::new(MetaOAuth::new()))
 }
 
 /// Upstream `loadGitHubCopilotOAuth` (load.ts:41-44).
@@ -101,16 +94,8 @@ pub const OAUTH_LOGIN_PROVIDERS: &[&str] = &[
 pub fn oauth_flow_for(provider_id: &str) -> Option<Arc<dyn OAuthAuth>> {
     match provider_id {
         "anthropic" => Some(load_anthropic_oauth()),
-        // openai/meta land with the auth/oauth slice; their loaders currently
-        // report the login unavailable (see above).
-        "openai" | "meta" => {
-            let unavailable = if provider_id == "openai" {
-                load_openai_chatgpt_oauth()
-            } else {
-                load_meta_oauth()
-            };
-            unavailable.ok()
-        }
+        "openai" => load_openai_chatgpt_oauth().ok(),
+        "meta" => load_meta_oauth().ok(),
         "openai-codex" => Some(load_openai_codex_oauth()),
         "github-copilot" => Some(load_github_copilot_oauth()),
         "openrouter" => Some(load_openrouter_oauth()),
@@ -138,6 +123,14 @@ mod tests {
             load_openai_codex_oauth().name(),
             "OpenAI (ChatGPT Plus/Pro)"
         );
+        assert_eq!(
+            load_openai_chatgpt_oauth().unwrap().name(),
+            "OpenAI (ChatGPT subscription)"
+        );
+        assert_eq!(
+            load_meta_oauth().unwrap().name(),
+            "Meta (Muse subscription)"
+        );
         assert_eq!(load_github_copilot_oauth().name(), "GitHub Copilot");
         assert_eq!(load_openrouter_oauth().name(), "OpenRouter OAuth");
         assert_eq!(load_kimi_coding_oauth().name(), "Kimi Code (subscription)");
@@ -154,15 +147,9 @@ mod tests {
 
     /// The login registry covers exactly the advertised ids and rejects
     /// everything else (upstream cli.ts `PROVIDERS.some(...) == providerId`).
-    /// openai/meta are advertised (upstream providers carry their flows) but
-    /// their flow modules are a separate slice — the dispatch matches while
-    /// the loader reports unavailable, so the check here skips them.
     #[test]
     fn oauth_flow_registry_matches_the_advertised_providers() {
         for provider in OAUTH_LOGIN_PROVIDERS {
-            if *provider == "openai" || *provider == "meta" {
-                continue;
-            }
             assert!(
                 oauth_flow_for(provider).is_some(),
                 "{provider} should dispatch"

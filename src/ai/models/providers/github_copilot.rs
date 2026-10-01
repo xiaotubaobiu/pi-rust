@@ -65,7 +65,10 @@ pub fn github_copilot_provider() -> Arc<dyn Provider> {
             )),
             oauth: Some(Arc::new(copilot_oauth())),
         },
-        models: embedded_provider_catalog("github-copilot").into_iter().map(crate::ai::types::AnyModel::Chat).collect(),
+        models: embedded_provider_catalog("github-copilot")
+            .into_iter()
+            .map(crate::ai::types::AnyModel::Chat)
+            .collect(),
         fetch_models: None,
         filter_models: Some(filter),
         filter_all_models: None,
