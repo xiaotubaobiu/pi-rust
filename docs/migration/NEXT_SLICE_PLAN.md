@@ -75,3 +75,28 @@ baseline migration; the open work is the upstream delta
   Any new color math must run on tui's u8 pipeline, not floats.
 - NO_PROXY=127.0.0.1,localhost for any wiremock/loopback test on Windows.
 - Toolchain: rustc/cargo 1.94.1 local; CI pinned 1.98.1.
+
+
+## Status update 2026-10-01 ~18:00
+
+**CI double-green on the restructured tree** (run 36843940634, ubuntu 5226/0 +
+windows full pass). Landed since the list above:
+
+- `a8ac15c` usage-totals module (canonical combineUsage + breakdown; TODO
+  marked for the `usage` session-entry kind landing with session-manager
+  delta).
+- `4c09157` nested-tool-calls RECORDER half (limits, byte accounting, snapshot
+  semantics; complete defaults TRUE like upstream's field initializer).
+  Runner half still pends on agent-session.
+- `49945e2` CI platform replays: r20 oracle JSON + live windows paths moved to
+  tests/fixtures; terminal_image detection replay pins the win32 capture bit.
+- `3be565d` `.gitattributes`: blanket `tests/fixtures/** -text` — the
+  scratch-era per-file eol guard was silently lost in the rename and CRLF
+  checkouts broke byte compares (evals report_formatted + system_theme
+  oracle SHAs). Whole fixture tree is now byte-pinned.
+- CI infra: `[profile.test] debug = line-tables-only` (LLVM OOM on 7GB
+  runners), clippy 1.98 question_mark drift fix.
+
+Next up (unchanged order): theme tail -> virtual-models/cache-warmer/bug-
+report -> core modifications (agent-session +1118 is the big one) ->
+interactive/components -> extensions -> pi-mcp -> pi-codemode -> pi-durable.
