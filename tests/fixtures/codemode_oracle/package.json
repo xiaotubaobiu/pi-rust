@@ -1,0 +1,9 @@
+{
+  "name": "codemode-oracle-fixture",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "quickjs-wasi": "3.6.2",
+    "typebox": "1.3.27"
+  }
+}

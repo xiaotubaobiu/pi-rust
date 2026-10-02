@@ -1,0 +1,853 @@
+{
+  "meta": {
+    "upstream": "pi @ 2bbfcca43",
+    "piCodemode": "0.99.1",
+    "node": "v25.8.2",
+    "quickjsWasmSha256": "see codemode_oracle.manifest.json",
+    "durationMsPinnedTo": 0
+  },
+  "partA": [
+    {
+      "name": "simple_call",
+      "input": {
+        "code": "const r = await tools.add({ a: 2, b: 40 });\nreturn r;"
+      },
+      "ok": true,
+      "valueJson": "{\"sum\":42}",
+      "output": [],
+      "calls": [
+        {
+          "name": "add",
+          "status": "ok",
+          "durationMs": 0
+        }
+      ],
+      "callNamesPinned": true,
+      "storeWrites": {
+        "set": {},
+        "delete": []
+      }
+    },
+    {
+      "name": "await_all_and_echo",
+      "input": {
+        "code": "const [a, b] = await Promise.all([tools.add({ a: 1, b: 1 }), tools.echo({ x: [1, 2, { y: null }] })]);\nreturn [a.sum, b.x];"
+      },
+      "ok": true,
+      "valueJson": "[2,[1,2,{\"y\":null}]]",
+      "output": [],
+      "calls": [
+        {
+          "name": "add",
+          "status": "ok",
+          "durationMs": 0
+        },
+        {
+          "name": "echo",
+          "status": "ok",
+          "durationMs": 0
+        }
+      ],
+      "callNamesPinned": true,
+      "storeWrites": {
+        "set": {},
+        "delete": []
+      }
+    },
+    {
+      "name": "console_and_text",
+      "input": {
+        "code": "console.log(\"hi\", 42, true, undefined, null);\nconsole.error(\"to-stderr\");\ntext(\"plain\");\ntext(3.14);\ntext([1, \"two\"]);\ntext({ key: \"value\", nested: { n: 1 } });\nimage(\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==\");\nimage({ image_url: \"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==\" });\nreturn \"done\";"
+      },
+      "ok": true,
+      "valueJson": "\"done\"",
+      "output": [
+        {
+          "type": "text",
+          "text": "hi 42 true undefined null"
+        },
+        {
+          "type": "text",
+          "text": "to-stderr"
+        },
+        {
+          "type": "text",
+          "text": "plain"
+        },
+        {
+          "type": "text",
+          "text": "3.14"
+        },
+        {
+          "type": "text",
+          "text": "[1,\"two\"]"
+        },
+        {
+          "type": "text",
+          "text": "{\"key\":\"value\",\"nested\":{\"n\":1}}"
+        },
+        {
+          "type": "image",
+          "data": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
+          "mimeType": "image/png"
+        },
+        {
+          "type": "image",
+          "data": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
+          "mimeType": "image/png"
+        }
+      ],
+      "calls": [],
+      "callNamesPinned": true,
+      "storeWrites": {
+        "set": {},
+        "delete": []
+      }
+    },
+    {
+      "name": "all_tools_metadata",
+      "input": {
+        "code": "return ALL_TOOLS.map((entry) => ({ name: entry.name, description: entry.description }));"
+      },
+      "ok": true,
+      "valueJson": "[{\"name\":\"add\",\"description\":\"Adds two numbers.\"},{\"name\":\"echo\",\"description\":\"Returns the arguments unchanged.\"},{\"name\":\"fail\",\"description\":\"Always throws.\"},{\"name\":\"fail_string\",\"description\":\"Throws a non-Error value.\"},{\"name\":\"pending\",\"description\":\"Never settles.\"},{\"name\":\"slow_add\",\"description\":\"Adds after a short delay.\"}]",
+      "output": [],
+      "calls": [],
+      "callNamesPinned": true,
+      "storeWrites": {
+        "set": {},
+        "delete": []
+      }
+    },
+    {
+      "name": "globals_and_namespaces",
+      "input": {
+        "code": "const h = await helper({ v: 5 });\nconst m = await ns.member({ v: 6 });\nconst s = await spread_all(1, \"two\", true);\nreturn [h, m, s];"
+      },
+      "ok": true,
+      "valueJson": "[{\"wrapped\":{\"v\":5}},\"member:{\\\"v\\\":6}\",[1,\"two\",true]]",
+      "output": [],
+      "calls": [],
+      "callNamesPinned": true,
+      "storeWrites": {
+        "set": {},
+        "delete": []
+      }
+    },
+    {
+      "name": "tool_error_script",
+      "input": {
+        "code": "const before = await tools.add({ a: 1, b: 2 });\ntext(before.sum);\nawait tools.fail({});"
+      },
+      "ok": false,
+      "output": [
+        {
+          "type": "text",
+          "text": "3"
+        }
+      ],
+      "calls": [
+        {
+          "name": "add",
+          "status": "ok",
+          "durationMs": 0
+        },
+        {
+          "name": "fail",
+          "status": "error",
+          "durationMs": 0
+        }
+      ],
+      "callNamesPinned": true,
+      "error": {
+        "kind": "script",
+        "name": "Error",
+        "message": "tool boom",
+        "stack": "Error: tool boom"
+      }
+    },
+    {
+      "name": "tool_error_non_error_throw",
+      "input": {
+        "code": "await tools.fail_string({});"
+      },
+      "ok": false,
+      "output": [],
+      "calls": [
+        {
+          "name": "fail_string",
+          "status": "error",
+          "durationMs": 0
+        }
+      ],
+      "callNamesPinned": true,
+      "error": {
+        "kind": "script",
+        "name": "Error",
+        "message": "plain string throw",
+        "stack": "Error: plain string throw"
+      }
+    },
+    {
+      "name": "unknown_tool",
+      "input": {
+        "code": "await tools.nope({});"
+      },
+      "ok": false,
+      "output": [],
+      "calls": [],
+      "callNamesPinned": true,
+      "error": {
+        "kind": "script",
+        "name": "TypeError",
+        "message": "not a function",
+        "stack": "TypeError: not a function\n    at <anonymous> (codemode.js:1:40)"
+      }
+    },
+    {
+      "name": "store_load_roundtrip",
+      "input": {
+        "code": "store(\"k\", [1, \"two\", null]);\nstore(\"gone\", undefined);\nconst seed = load(\"seed\");\nconst missing = load(\"absent\");\nreturn { seed, missing };",
+        "store": {
+          "seed": {
+            "n": 1,
+            "tags": [
+              "a",
+              "b"
+            ]
+          }
+        }
+      },
+      "ok": true,
+      "valueJson": "{\"seed\":{\"n\":1,\"tags\":[\"a\",\"b\"]}}",
+      "output": [],
+      "calls": [],
+      "callNamesPinned": true,
+      "storeWrites": {
+        "set": {
+          "k": [
+            1,
+            "two",
+            null
+          ]
+        },
+        "delete": [
+          "gone"
+        ]
+      }
+    },
+    {
+      "name": "store_value_over_limit",
+      "input": {
+        "code": "try {\n  store(\"big\", \"x\".repeat(256 * 1024 + 1));\n  return \"stored\";\n} catch (error) {\n  return { name: error.name, message: error.message };\n}"
+      },
+      "ok": true,
+      "valueJson": "{\"name\":\"RangeError\",\"message\":\"store(\\\"big\\\") value exceeds 262144 characters of JSON\"}",
+      "output": [],
+      "calls": [],
+      "callNamesPinned": true,
+      "storeWrites": {
+        "set": {},
+        "delete": []
+      }
+    },
+    {
+      "name": "parse_error",
+      "input": {
+        "code": "const x = ;"
+      },
+      "ok": false,
+      "output": [],
+      "calls": [],
+      "callNamesPinned": true,
+      "error": {
+        "kind": "script",
+        "name": "SyntaxError",
+        "message": "unexpected token in expression: ';'",
+        "stack": "SyntaxError: unexpected token in expression: ';'\n    at codemode.js:1:39"
+      }
+    },
+    {
+      "name": "runtime_type_error",
+      "input": {
+        "code": "const value = null;\nreturn value.foo;"
+      },
+      "ok": false,
+      "output": [],
+      "calls": [],
+      "callNamesPinned": true,
+      "error": {
+        "kind": "script",
+        "name": "TypeError",
+        "message": "cannot read property 'foo' of null",
+        "stack": "TypeError: cannot read property 'foo' of null\n    at <anonymous> (codemode.js:2:8)"
+      }
+    },
+    {
+      "name": "stalled_script",
+      "input": {
+        "code": "text(\"waiting\");\nawait new Promise(() => {});"
+      },
+      "ok": false,
+      "output": [
+        {
+          "type": "text",
+          "text": "waiting"
+        }
+      ],
+      "calls": [],
+      "callNamesPinned": true,
+      "error": {
+        "kind": "script",
+        "name": "Error",
+        "message": "The script is waiting on a promise that can never settle: no tool call is pending, and timers do not exist here."
+      }
+    },
+    {
+      "name": "exit_early",
+      "input": {
+        "code": "text(\"before\");\nexit();\ntext(\"after\");"
+      },
+      "ok": true,
+      "output": [
+        {
+          "type": "text",
+          "text": "before"
+        }
+      ],
+      "calls": [],
+      "callNamesPinned": true,
+      "storeWrites": {
+        "set": {},
+        "delete": []
+      }
+    },
+    {
+      "name": "exit_with_value",
+      "input": {
+        "code": "exit({ early: true, reason: null });"
+      },
+      "ok": true,
+      "output": [],
+      "calls": [],
+      "callNamesPinned": true,
+      "storeWrites": {
+        "set": {},
+        "delete": []
+      }
+    },
+    {
+      "name": "unawaited_call_cancelled",
+      "input": {
+        "code": "tools.pending({});\ntext(\"returned anyway\");"
+      },
+      "ok": true,
+      "output": [
+        {
+          "type": "text",
+          "text": "returned anyway"
+        }
+      ],
+      "calls": [
+        {
+          "name": "pending",
+          "status": "cancelled",
+          "durationMs": 0
+        }
+      ],
+      "callNamesPinned": true,
+      "storeWrites": {
+        "set": {},
+        "delete": []
+      }
+    },
+    {
+      "name": "timeout_loop",
+      "input": {
+        "code": "while (true) {}",
+        "timeoutMs": 120
+      },
+      "ok": false,
+      "output": [],
+      "calls": [],
+      "callNamesPinned": true,
+      "error": {
+        "kind": "timeout",
+        "message": "Execution timed out after 120 ms"
+      }
+    },
+    {
+      "name": "json_number_formatting",
+      "input": {
+        "code": "return {\n  s: JSON.stringify({ b: 1, a: [1, 2, null, \"x\\u0000\"] }),\n  f: 0.1 + 0.2,\n  big: 1e21,\n  safe: 2 ** 53,\n  special: [NaN, Infinity].map(String),\n  date: new Date(0).toISOString(),\n  negative: JSON.stringify(-0),\n};"
+      },
+      "ok": true,
+      "valueJson": "{\"s\":\"{\\\"b\\\":1,\\\"a\\\":[1,2,null,\\\"x\\\\u0000\\\"]}\",\"f\":0.30000000000000004,\"big\":1e+21,\"safe\":9007199254740992,\"special\":[\"NaN\",\"Infinity\"],\"date\":\"1970-01-01T00:00:00.000Z\",\"negative\":\"0\"}",
+      "output": [],
+      "calls": [],
+      "callNamesPinned": true,
+      "storeWrites": {
+        "set": {},
+        "delete": []
+      }
+    },
+    {
+      "name": "bigint_text_fails",
+      "input": {
+        "code": "text(1n);"
+      },
+      "ok": true,
+      "output": [
+        {
+          "type": "text",
+          "text": "1"
+        }
+      ],
+      "calls": [],
+      "callNamesPinned": true,
+      "storeWrites": {
+        "set": {},
+        "delete": []
+      }
+    },
+    {
+      "name": "throw_non_error_value",
+      "input": {
+        "code": "throw \"plain\";"
+      },
+      "ok": false,
+      "output": [],
+      "calls": [],
+      "callNamesPinned": true,
+      "error": {
+        "kind": "script",
+        "message": "plain"
+      }
+    },
+    {
+      "name": "deep_recursion_range_error",
+      "input": {
+        "code": "(function f() { f(); })();"
+      },
+      "ok": false,
+      "output": [],
+      "calls": [],
+      "callNamesPinned": true,
+      "error": {
+        "kind": "script",
+        "name": "RangeError",
+        "message": "Maximum call stack size exceeded",
+        "stack": "RangeError: Maximum call stack size exceeded\n    at f (codemode.js:1:44)\n    at f (codemode.js:1:44)\n    at f (codemode.js:1:44)\n    at f (codemode.js:1:44)\n    at f (codemode.js:1:44)\n    at f (codemode.js:1:44)\n    at f (codemode.js:1:44)\n    at f (codemode.js:1:44)\n    at f (codemode.js:1:44)\n    at f (codemode.js:1:44)"
+      }
+    },
+    {
+      "name": "memory_limit",
+      "input": {
+        "code": "const chunks = [];\nwhile (true) chunks.push(\"x\".repeat(1024));",
+        "memoryLimitBytes": 1048576
+      },
+      "ok": false,
+      "output": [],
+      "calls": [],
+      "callNamesPinned": true,
+      "error": {
+        "kind": "script",
+        "name": "InternalError",
+        "message": "out of memory",
+        "stack": "InternalError: out of memory\n    at <anonymous> (codemode.js:2:30)"
+      }
+    },
+    {
+      "name": "nested_promises_and_catch",
+      "input": {
+        "code": "try {\n  await tools.fail({});\n} catch (error) {\n  text(`caught: ${error.message}`);\n}\nconst slow = await Promise.allSettled([tools.add({ a: 3, b: 4 }), tools.fail({ z: 1 })]);\nreturn slow.map((entry) => (entry.status === \"fulfilled\" ? entry.value : entry.reason.message));"
+      },
+      "ok": true,
+      "valueJson": "[{\"sum\":7},\"tool boom\"]",
+      "output": [
+        {
+          "type": "text",
+          "text": "caught: tool boom"
+        }
+      ],
+      "calls": [
+        {
+          "name": "fail",
+          "status": "error",
+          "durationMs": 0
+        },
+        {
+          "name": "add",
+          "status": "ok",
+          "durationMs": 0
+        },
+        {
+          "name": "fail",
+          "status": "error",
+          "durationMs": 0
+        }
+      ],
+      "callNamesPinned": true,
+      "storeWrites": {
+        "set": {},
+        "delete": []
+      }
+    }
+  ],
+  "partB": {
+    "empty": {
+      "options": {},
+      "description": "Run JavaScript code to orchestrate/compose tool calls\n- Evaluates the provided JavaScript code in a fresh QuickJS sandbox as the body of an async function: top-level `await` and `return` work.\n- All nested tools are available on the global `tools` object, for example `await tools.read(...)`. Tool names are exposed as normalized JavaScript identifiers, for example `await tools.mcp__ologs__get_profile(...)`.\n- Nested tool methods take an object as their input argument.\n- Nested tools return either an object or a string, based on the description.\n- A nested tool call that fails, is blocked, or gets invalid arguments rejects with an Error carrying the tool's error text.\n- Runs raw JavaScript -- no Node, no file system, no network access, no timers.\n- Accepts raw JavaScript source text, not JSON, quoted strings, or markdown code fences.\n- You may optionally start the tool input with a first line like `// @options: {\"max_output_tokens\": 1000, \"timeout_ms\": 60000}`.\n- `max_output_tokens` sets the token budget for the script's output. Defaults to 10000 tokens.\n- `timeout_ms` sets a hard deadline for the whole script. By default there is none.\n- When the JS code is fully evaluated, calls that are still running are cancelled and unawaited promises are silently discarded.\n- Tool calls are real and have side effects. If the script fails partway, earlier calls are not undone.\n- Scripts have a 256 MB memory limit; exceeding it throws `InternalError: out of memory`. Filter or aggregate large data instead of accumulating it.\n\n- Global helpers:\n- `exit()`: Immediately ends the current script successfully (like an early return from the top level).\n- `text(value: string | number | boolean | undefined | null)`: Appends a text item. Non-string values are stringified with `JSON.stringify(...)` when possible.\n- `image(imageUrlOrItem: string | { image_url: string } | ImageContent)`: Appends an image item. `image_url` should be a base64-encoded `data:` URL. To forward an MCP tool image, pass an individual `ImageContent` block from `result.content`, for example `image(result.content[0])`.\n- `store(key: string, value: any)`: stores a serializable value under a string key for later `codemode` calls in the same session. Storing `undefined` deletes the key. Writes are kept only if the script succeeds.\n- `load(key: string)`: returns the stored value for a string key, or `undefined` if it is missing.\n- `ALL_TOOLS`: metadata for the enabled nested tools as `{ name, description }` entries.\n- `searchTools(query: string, options?: { limit?: number; namespace?: string })`: resolves to the nested tools that best match the query (BM25, default limit 8), as `{ name, description }` entries like `ALL_TOOLS`.\n- `describeTool(name: string)`: resolves to the description and declaration of a nested tool, or `undefined`.\n- `describeNamespace(name: string)`: resolves to `{ name, description?, instructions?, tools }` for a namespace of nested tools, such as an MCP server: its usage instructions and the names of its tools, or `undefined`.\n- `console.log(...)` and the other `console` methods append a text item like `text()`.\n- `return value` at the top level appends the value like `text()`."
+    },
+    "models_only": {
+      "options": {
+        "models": true
+      },
+      "description": "Run JavaScript code to orchestrate/compose tool calls\n- Evaluates the provided JavaScript code in a fresh QuickJS sandbox as the body of an async function: top-level `await` and `return` work.\n- All nested tools are available on the global `tools` object, for example `await tools.read(...)`. Tool names are exposed as normalized JavaScript identifiers, for example `await tools.mcp__ologs__get_profile(...)`.\n- Nested tool methods take an object as their input argument.\n- Nested tools return either an object or a string, based on the description.\n- A nested tool call that fails, is blocked, or gets invalid arguments rejects with an Error carrying the tool's error text.\n- Runs raw JavaScript -- no Node, no file system, no network access, no timers.\n- Accepts raw JavaScript source text, not JSON, quoted strings, or markdown code fences.\n- You may optionally start the tool input with a first line like `// @options: {\"max_output_tokens\": 1000, \"timeout_ms\": 60000}`.\n- `max_output_tokens` sets the token budget for the script's output. Defaults to 10000 tokens.\n- `timeout_ms` sets a hard deadline for the whole script. By default there is none.\n- When the JS code is fully evaluated, calls that are still running are cancelled and unawaited promises are silently discarded.\n- Tool calls are real and have side effects. If the script fails partway, earlier calls are not undone.\n- Scripts have a 256 MB memory limit; exceeding it throws `InternalError: out of memory`. Filter or aggregate large data instead of accumulating it.\n\n- Global helpers:\n- `exit()`: Immediately ends the current script successfully (like an early return from the top level).\n- `text(value: string | number | boolean | undefined | null)`: Appends a text item. Non-string values are stringified with `JSON.stringify(...)` when possible.\n- `image(imageUrlOrItem: string | { image_url: string } | ImageContent)`: Appends an image item. `image_url` should be a base64-encoded `data:` URL. To forward an MCP tool image, pass an individual `ImageContent` block from `result.content`, for example `image(result.content[0])`.\n- `store(key: string, value: any)`: stores a serializable value under a string key for later `codemode` calls in the same session. Storing `undefined` deletes the key. Writes are kept only if the script succeeds.\n- `load(key: string)`: returns the stored value for a string key, or `undefined` if it is missing.\n- `ALL_TOOLS`: metadata for the enabled nested tools as `{ name, description }` entries.\n- `searchTools(query: string, options?: { limit?: number; namespace?: string })`: resolves to the nested tools that best match the query (BM25, default limit 8), as `{ name, description }` entries like `ALL_TOOLS`.\n- `describeTool(name: string)`: resolves to the description and declaration of a nested tool, or `undefined`.\n- `describeNamespace(name: string)`: resolves to `{ name, description?, instructions?, tools }` for a namespace of nested tools, such as an MCP server: its usage instructions and the names of its tools, or `undefined`.\n- `console.log(...)` and the other `console` methods append a text item like `text()`.\n- `return value` at the top level appends the value like `text()`.\n\nModel API:\n```ts\ntype ModelType = \"chat\" | \"image\" | \"classifier\";\n/** A model catalog entry. `provider` and `id` identify it; the other fields depend on the type. */\ninterface ModelInfo {\n  type?: ModelType;\n  provider: string;\n  id: string;\n  name: string;\n  api: string;\n  input: (\"text\" | \"image\")[];\n  contextWindow?: number;\n  [key: string]: unknown;\n}\ntype ClassifierQuestion =\n  | { type: \"choice\"; instructions: string; criteria: Record<string, string> }\n  | { type: \"score\"; instructions: string; criteria: string[] }\n  | { type: \"bool\"; instructions: string; criteria: { true: string; false: string } };\ntype ClassifierAnswer =\n  | { type: \"choice\"; choice: string; probabilities: Record<string, number>; confidence: number }\n  | { type: \"score\"; score: number; confidence: number }\n  | { type: \"bool\"; probability: number };\ninterface ClassifierContext {\n  state: Record<string, unknown>;\n  questions: Record<string, ClassifierQuestion>;\n}\ninterface ClassifierResult {\n  api: string;\n  provider: string;\n  model: string;\n  answers: Record<string, ClassifierAnswer>;\n  /** Set when the service reports token counts. Cost is in USD. */\n  usage?: { input: number; output: number; totalTokens: number; cost: { total: number } };\n  stopReason: \"stop\" | \"error\" | \"aborted\";\n  errorMessage?: string;\n  timestamp: number;\n}\n\ndeclare const models: {\n  /** Every known model of a type, optionally for one provider. */\n  getModelsOfType(type: ModelType, provider?: string): Promise<ModelInfo[]>;\n  /** Models of a type whose provider has working credentials. */\n  getAvailableOfType(type: ModelType, provider?: string): Promise<ModelInfo[]>;\n  /** One catalog entry, or undefined. */\n  getModelOfType(type: ModelType, provider: string, id: string): Promise<ModelInfo | undefined>;\n  /** Run a classifier model on one state. Only `provider` and `id` of `model` are used. Provider errors do not throw: check `stopReason` and `errorMessage`. */\n  classify(model: ModelInfo, context: ClassifierContext): Promise<ClassifierResult>;\n};\n```"
+    },
+    "full": {
+      "options": {
+        "models": true,
+        "namespaces": {
+          "mcp__docs__search": {
+            "name": "mcp__docs",
+            "description": "Documentation tools",
+            "instructions": "Presearch first."
+          },
+          "mcp__docs__fetch_page": {
+            "name": "mcp__docs",
+            "description": "Documentation tools",
+            "instructions": "Presearch first."
+          },
+          "mcp__docs__call_tool_result": {
+            "name": "mcp__docs",
+            "description": "Documentation tools",
+            "instructions": "Presearch first."
+          }
+        }
+      },
+      "description": "Run JavaScript code to orchestrate/compose tool calls\n- Evaluates the provided JavaScript code in a fresh QuickJS sandbox as the body of an async function: top-level `await` and `return` work.\n- All nested tools are available on the global `tools` object, for example `await tools.read(...)`. Tool names are exposed as normalized JavaScript identifiers, for example `await tools.mcp__ologs__get_profile(...)`.\n- Nested tool methods take an object as their input argument.\n- Nested tools return either an object or a string, based on the description.\n- A nested tool call that fails, is blocked, or gets invalid arguments rejects with an Error carrying the tool's error text.\n- Runs raw JavaScript -- no Node, no file system, no network access, no timers.\n- Accepts raw JavaScript source text, not JSON, quoted strings, or markdown code fences.\n- You may optionally start the tool input with a first line like `// @options: {\"max_output_tokens\": 1000, \"timeout_ms\": 60000}`.\n- `max_output_tokens` sets the token budget for the script's output. Defaults to 10000 tokens.\n- `timeout_ms` sets a hard deadline for the whole script. By default there is none.\n- When the JS code is fully evaluated, calls that are still running are cancelled and unawaited promises are silently discarded.\n- Tool calls are real and have side effects. If the script fails partway, earlier calls are not undone.\n- Scripts have a 256 MB memory limit; exceeding it throws `InternalError: out of memory`. Filter or aggregate large data instead of accumulating it.\n\n- Global helpers:\n- `exit()`: Immediately ends the current script successfully (like an early return from the top level).\n- `text(value: string | number | boolean | undefined | null)`: Appends a text item. Non-string values are stringified with `JSON.stringify(...)` when possible.\n- `image(imageUrlOrItem: string | { image_url: string } | ImageContent)`: Appends an image item. `image_url` should be a base64-encoded `data:` URL. To forward an MCP tool image, pass an individual `ImageContent` block from `result.content`, for example `image(result.content[0])`.\n- `store(key: string, value: any)`: stores a serializable value under a string key for later `codemode` calls in the same session. Storing `undefined` deletes the key. Writes are kept only if the script succeeds.\n- `load(key: string)`: returns the stored value for a string key, or `undefined` if it is missing.\n- `ALL_TOOLS`: metadata for the enabled nested tools as `{ name, description }` entries.\n- `searchTools(query: string, options?: { limit?: number; namespace?: string })`: resolves to the nested tools that best match the query (BM25, default limit 8), as `{ name, description }` entries like `ALL_TOOLS`.\n- `describeTool(name: string)`: resolves to the description and declaration of a nested tool, or `undefined`.\n- `describeNamespace(name: string)`: resolves to `{ name, description?, instructions?, tools }` for a namespace of nested tools, such as an MCP server: its usage instructions and the names of its tools, or `undefined`.\n- `console.log(...)` and the other `console` methods append a text item like `text()`.\n- `return value` at the top level appends the value like `text()`.\n\nShared MCP Types:\n```ts\ntype Role = \"user\" | \"assistant\";\ntype MetaObject = Record<string, unknown>;\ntype Annotations = {\n  audience?: Role[];\n  priority?: number;\n  lastModified?: string;\n};\ntype Icon = {\n  src: string;\n  mimeType?: string;\n  sizes?: string[];\n  theme?: \"light\" | \"dark\";\n};\ntype TextResourceContents = {\n  uri: string;\n  mimeType?: string;\n  _meta?: MetaObject;\n  text: string;\n};\ntype BlobResourceContents = {\n  uri: string;\n  mimeType?: string;\n  _meta?: MetaObject;\n  blob: string;\n};\ntype TextContent = {\n  type: \"text\";\n  text: string;\n  annotations?: Annotations;\n  _meta?: MetaObject;\n};\ntype ImageContent = {\n  type: \"image\";\n  data: string;\n  mimeType: string;\n  annotations?: Annotations;\n  _meta?: MetaObject;\n};\ntype AudioContent = {\n  type: \"audio\";\n  data: string;\n  mimeType: string;\n  annotations?: Annotations;\n  _meta?: MetaObject;\n};\ntype ResourceLink = {\n  icons?: Icon[];\n  name: string;\n  title?: string;\n  uri: string;\n  description?: string;\n  mimeType?: string;\n  annotations?: Annotations;\n  size?: number;\n  _meta?: MetaObject;\n  type: \"resource_link\";\n};\ntype EmbeddedResource = {\n  type: \"resource\";\n  resource: TextResourceContents | BlobResourceContents;\n  annotations?: Annotations;\n  _meta?: MetaObject;\n};\ntype ContentBlock =\n  | TextContent\n  | ImageContent\n  | AudioContent\n  | ResourceLink\n  | EmbeddedResource;\ntype CallToolResult<TStructured = { [key: string]: unknown }> = {\n  _meta?: MetaObject;\n  content: ContentBlock[];\n  isError?: boolean;\n  structuredContent?: TStructured;\n  [key: string]: unknown;\n};\n```\n\nModel API:\n```ts\ntype ModelType = \"chat\" | \"image\" | \"classifier\";\n/** A model catalog entry. `provider` and `id` identify it; the other fields depend on the type. */\ninterface ModelInfo {\n  type?: ModelType;\n  provider: string;\n  id: string;\n  name: string;\n  api: string;\n  input: (\"text\" | \"image\")[];\n  contextWindow?: number;\n  [key: string]: unknown;\n}\ntype ClassifierQuestion =\n  | { type: \"choice\"; instructions: string; criteria: Record<string, string> }\n  | { type: \"score\"; instructions: string; criteria: string[] }\n  | { type: \"bool\"; instructions: string; criteria: { true: string; false: string } };\ntype ClassifierAnswer =\n  | { type: \"choice\"; choice: string; probabilities: Record<string, number>; confidence: number }\n  | { type: \"score\"; score: number; confidence: number }\n  | { type: \"bool\"; probability: number };\ninterface ClassifierContext {\n  state: Record<string, unknown>;\n  questions: Record<string, ClassifierQuestion>;\n}\ninterface ClassifierResult {\n  api: string;\n  provider: string;\n  model: string;\n  answers: Record<string, ClassifierAnswer>;\n  /** Set when the service reports token counts. Cost is in USD. */\n  usage?: { input: number; output: number; totalTokens: number; cost: { total: number } };\n  stopReason: \"stop\" | \"error\" | \"aborted\";\n  errorMessage?: string;\n  timestamp: number;\n}\n\ndeclare const models: {\n  /** Every known model of a type, optionally for one provider. */\n  getModelsOfType(type: ModelType, provider?: string): Promise<ModelInfo[]>;\n  /** Models of a type whose provider has working credentials. */\n  getAvailableOfType(type: ModelType, provider?: string): Promise<ModelInfo[]>;\n  /** One catalog entry, or undefined. */\n  getModelOfType(type: ModelType, provider: string, id: string): Promise<ModelInfo | undefined>;\n  /** Run a classifier model on one state. Only `provider` and `id` of `model` are used. Provider errors do not throw: check `stopReason` and `errorMessage`. */\n  classify(model: ModelInfo, context: ClassifierContext): Promise<ClassifierResult>;\n};\n```\n\nNested tools: COMPLETE list.\n\n### `read`\nRead a file from disk.\nSupports offsets and line ranges.\n\ncodemode tool declaration:\n```ts\ndeclare const tools: { read(args: {\n  limit?: number;\n  // 1-based line to start from\n  offset?: number;\n  // The file path\n  path: string;\n}): Promise<string>; };\n```\n\n### `bash`\nRun a shell command.\n\ncodemode tool declaration:\n```ts\ndeclare const tools: { bash(args: { command: string; }): Promise<string>; };\n```\n\n### `my_tool` (`my-tool`)\nName needs identifier normalization.\n\ncodemode tool declaration:\n```ts\ndeclare const tools: { my_tool(args: string): Promise<string>; };\n```\n\n## mcp__docs\nDocumentation tools\n\n### `mcp__docs__search`\nSearch the docs.\n\ncodemode tool declaration:\n```ts\ndeclare const tools: { mcp__docs__search(args: { query: string; }): Promise<string>; };\n```\n\n### `mcp__docs__fetch_page`\nFetch one docs page.\n\ncodemode tool declaration:\n```ts\ndeclare const tools: { mcp__docs__fetch_page(args: { url: string; }): Promise<string>; };\n```\n\n### `mcp__docs__call_tool_result`\nReturns a full MCP CallToolResult.\n\ncodemode tool declaration:\n```ts\ndeclare const tools: { mcp__docs__call_tool_result(args: { [key: string]: unknown; }): Promise<CallToolResult<{ answer: string; }>>; };\n```"
+    },
+    "no_namespaces": {
+      "options": {},
+      "description": "Run JavaScript code to orchestrate/compose tool calls\n- Evaluates the provided JavaScript code in a fresh QuickJS sandbox as the body of an async function: top-level `await` and `return` work.\n- All nested tools are available on the global `tools` object, for example `await tools.read(...)`. Tool names are exposed as normalized JavaScript identifiers, for example `await tools.mcp__ologs__get_profile(...)`.\n- Nested tool methods take an object as their input argument.\n- Nested tools return either an object or a string, based on the description.\n- A nested tool call that fails, is blocked, or gets invalid arguments rejects with an Error carrying the tool's error text.\n- Runs raw JavaScript -- no Node, no file system, no network access, no timers.\n- Accepts raw JavaScript source text, not JSON, quoted strings, or markdown code fences.\n- You may optionally start the tool input with a first line like `// @options: {\"max_output_tokens\": 1000, \"timeout_ms\": 60000}`.\n- `max_output_tokens` sets the token budget for the script's output. Defaults to 10000 tokens.\n- `timeout_ms` sets a hard deadline for the whole script. By default there is none.\n- When the JS code is fully evaluated, calls that are still running are cancelled and unawaited promises are silently discarded.\n- Tool calls are real and have side effects. If the script fails partway, earlier calls are not undone.\n- Scripts have a 256 MB memory limit; exceeding it throws `InternalError: out of memory`. Filter or aggregate large data instead of accumulating it.\n\n- Global helpers:\n- `exit()`: Immediately ends the current script successfully (like an early return from the top level).\n- `text(value: string | number | boolean | undefined | null)`: Appends a text item. Non-string values are stringified with `JSON.stringify(...)` when possible.\n- `image(imageUrlOrItem: string | { image_url: string } | ImageContent)`: Appends an image item. `image_url` should be a base64-encoded `data:` URL. To forward an MCP tool image, pass an individual `ImageContent` block from `result.content`, for example `image(result.content[0])`.\n- `store(key: string, value: any)`: stores a serializable value under a string key for later `codemode` calls in the same session. Storing `undefined` deletes the key. Writes are kept only if the script succeeds.\n- `load(key: string)`: returns the stored value for a string key, or `undefined` if it is missing.\n- `ALL_TOOLS`: metadata for the enabled nested tools as `{ name, description }` entries.\n- `searchTools(query: string, options?: { limit?: number; namespace?: string })`: resolves to the nested tools that best match the query (BM25, default limit 8), as `{ name, description }` entries like `ALL_TOOLS`.\n- `describeTool(name: string)`: resolves to the description and declaration of a nested tool, or `undefined`.\n- `describeNamespace(name: string)`: resolves to `{ name, description?, instructions?, tools }` for a namespace of nested tools, such as an MCP server: its usage instructions and the names of its tools, or `undefined`.\n- `console.log(...)` and the other `console` methods append a text item like `text()`.\n- `return value` at the top level appends the value like `text()`.\n\nShared MCP Types:\n```ts\ntype Role = \"user\" | \"assistant\";\ntype MetaObject = Record<string, unknown>;\ntype Annotations = {\n  audience?: Role[];\n  priority?: number;\n  lastModified?: string;\n};\ntype Icon = {\n  src: string;\n  mimeType?: string;\n  sizes?: string[];\n  theme?: \"light\" | \"dark\";\n};\ntype TextResourceContents = {\n  uri: string;\n  mimeType?: string;\n  _meta?: MetaObject;\n  text: string;\n};\ntype BlobResourceContents = {\n  uri: string;\n  mimeType?: string;\n  _meta?: MetaObject;\n  blob: string;\n};\ntype TextContent = {\n  type: \"text\";\n  text: string;\n  annotations?: Annotations;\n  _meta?: MetaObject;\n};\ntype ImageContent = {\n  type: \"image\";\n  data: string;\n  mimeType: string;\n  annotations?: Annotations;\n  _meta?: MetaObject;\n};\ntype AudioContent = {\n  type: \"audio\";\n  data: string;\n  mimeType: string;\n  annotations?: Annotations;\n  _meta?: MetaObject;\n};\ntype ResourceLink = {\n  icons?: Icon[];\n  name: string;\n  title?: string;\n  uri: string;\n  description?: string;\n  mimeType?: string;\n  annotations?: Annotations;\n  size?: number;\n  _meta?: MetaObject;\n  type: \"resource_link\";\n};\ntype EmbeddedResource = {\n  type: \"resource\";\n  resource: TextResourceContents | BlobResourceContents;\n  annotations?: Annotations;\n  _meta?: MetaObject;\n};\ntype ContentBlock =\n  | TextContent\n  | ImageContent\n  | AudioContent\n  | ResourceLink\n  | EmbeddedResource;\ntype CallToolResult<TStructured = { [key: string]: unknown }> = {\n  _meta?: MetaObject;\n  content: ContentBlock[];\n  isError?: boolean;\n  structuredContent?: TStructured;\n  [key: string]: unknown;\n};\n```\n\nNested tools: COMPLETE list.\n\n### `read`\nRead a file from disk.\nSupports offsets and line ranges.\n\ncodemode tool declaration:\n```ts\ndeclare const tools: { read(args: {\n  limit?: number;\n  // 1-based line to start from\n  offset?: number;\n  // The file path\n  path: string;\n}): Promise<string>; };\n```\n\n### `bash`\nRun a shell command.\n\ncodemode tool declaration:\n```ts\ndeclare const tools: { bash(args: { command: string; }): Promise<string>; };\n```\n\n### `mcp__docs__search`\nSearch the docs.\n\ncodemode tool declaration:\n```ts\ndeclare const tools: { mcp__docs__search(args: { query: string; }): Promise<string>; };\n```\n\n### `mcp__docs__fetch_page`\nFetch one docs page.\n\ncodemode tool declaration:\n```ts\ndeclare const tools: { mcp__docs__fetch_page(args: { url: string; }): Promise<string>; };\n```\n\n### `mcp__docs__call_tool_result`\nReturns a full MCP CallToolResult.\n\ncodemode tool declaration:\n```ts\ndeclare const tools: { mcp__docs__call_tool_result(args: { [key: string]: unknown; }): Promise<CallToolResult<{ answer: string; }>>; };\n```\n\n### `my_tool` (`my-tool`)\nName needs identifier normalization.\n\ncodemode tool declaration:\n```ts\ndeclare const tools: { my_tool(args: string): Promise<string>; };\n```"
+    },
+    "deferred": {
+      "options": {
+        "namespaces": {
+          "mcp__docs__search": {
+            "name": "mcp__docs",
+            "description": "Documentation tools",
+            "instructions": "Presearch first."
+          },
+          "mcp__docs__fetch_page": {
+            "name": "mcp__docs",
+            "description": "Documentation tools",
+            "instructions": "Presearch first."
+          },
+          "mcp__docs__call_tool_result": {
+            "name": "mcp__docs",
+            "description": "Documentation tools",
+            "instructions": "Presearch first."
+          }
+        },
+        "deferred": [
+          "mcp__docs__fetch_page"
+        ]
+      },
+      "description": "Run JavaScript code to orchestrate/compose tool calls\n- Evaluates the provided JavaScript code in a fresh QuickJS sandbox as the body of an async function: top-level `await` and `return` work.\n- All nested tools are available on the global `tools` object, for example `await tools.read(...)`. Tool names are exposed as normalized JavaScript identifiers, for example `await tools.mcp__ologs__get_profile(...)`.\n- Nested tool methods take an object as their input argument.\n- Nested tools return either an object or a string, based on the description.\n- A nested tool call that fails, is blocked, or gets invalid arguments rejects with an Error carrying the tool's error text.\n- Runs raw JavaScript -- no Node, no file system, no network access, no timers.\n- Accepts raw JavaScript source text, not JSON, quoted strings, or markdown code fences.\n- You may optionally start the tool input with a first line like `// @options: {\"max_output_tokens\": 1000, \"timeout_ms\": 60000}`.\n- `max_output_tokens` sets the token budget for the script's output. Defaults to 10000 tokens.\n- `timeout_ms` sets a hard deadline for the whole script. By default there is none.\n- When the JS code is fully evaluated, calls that are still running are cancelled and unawaited promises are silently discarded.\n- Tool calls are real and have side effects. If the script fails partway, earlier calls are not undone.\n- Scripts have a 256 MB memory limit; exceeding it throws `InternalError: out of memory`. Filter or aggregate large data instead of accumulating it.\n\n- Global helpers:\n- `exit()`: Immediately ends the current script successfully (like an early return from the top level).\n- `text(value: string | number | boolean | undefined | null)`: Appends a text item. Non-string values are stringified with `JSON.stringify(...)` when possible.\n- `image(imageUrlOrItem: string | { image_url: string } | ImageContent)`: Appends an image item. `image_url` should be a base64-encoded `data:` URL. To forward an MCP tool image, pass an individual `ImageContent` block from `result.content`, for example `image(result.content[0])`.\n- `store(key: string, value: any)`: stores a serializable value under a string key for later `codemode` calls in the same session. Storing `undefined` deletes the key. Writes are kept only if the script succeeds.\n- `load(key: string)`: returns the stored value for a string key, or `undefined` if it is missing.\n- `ALL_TOOLS`: metadata for the enabled nested tools as `{ name, description }` entries.\n- `searchTools(query: string, options?: { limit?: number; namespace?: string })`: resolves to the nested tools that best match the query (BM25, default limit 8), as `{ name, description }` entries like `ALL_TOOLS`.\n- `describeTool(name: string)`: resolves to the description and declaration of a nested tool, or `undefined`.\n- `describeNamespace(name: string)`: resolves to `{ name, description?, instructions?, tools }` for a namespace of nested tools, such as an MCP server: its usage instructions and the names of its tools, or `undefined`.\n- `console.log(...)` and the other `console` methods append a text item like `text()`.\n- `return value` at the top level appends the value like `text()`.\n\nSome deferred nested tools may be omitted from this description. They are still available on the global `tools` object and listed in `ALL_TOOLS`.\nTo find one, call `await searchTools(query)` (pass `{ namespace }` to search one namespace), or filter `ALL_TOOLS` by `name` and `description`. `await describeNamespace(name)` returns a namespace's usage instructions and the names of its tools.\n\nShared MCP Types:\n```ts\ntype Role = \"user\" | \"assistant\";\ntype MetaObject = Record<string, unknown>;\ntype Annotations = {\n  audience?: Role[];\n  priority?: number;\n  lastModified?: string;\n};\ntype Icon = {\n  src: string;\n  mimeType?: string;\n  sizes?: string[];\n  theme?: \"light\" | \"dark\";\n};\ntype TextResourceContents = {\n  uri: string;\n  mimeType?: string;\n  _meta?: MetaObject;\n  text: string;\n};\ntype BlobResourceContents = {\n  uri: string;\n  mimeType?: string;\n  _meta?: MetaObject;\n  blob: string;\n};\ntype TextContent = {\n  type: \"text\";\n  text: string;\n  annotations?: Annotations;\n  _meta?: MetaObject;\n};\ntype ImageContent = {\n  type: \"image\";\n  data: string;\n  mimeType: string;\n  annotations?: Annotations;\n  _meta?: MetaObject;\n};\ntype AudioContent = {\n  type: \"audio\";\n  data: string;\n  mimeType: string;\n  annotations?: Annotations;\n  _meta?: MetaObject;\n};\ntype ResourceLink = {\n  icons?: Icon[];\n  name: string;\n  title?: string;\n  uri: string;\n  description?: string;\n  mimeType?: string;\n  annotations?: Annotations;\n  size?: number;\n  _meta?: MetaObject;\n  type: \"resource_link\";\n};\ntype EmbeddedResource = {\n  type: \"resource\";\n  resource: TextResourceContents | BlobResourceContents;\n  annotations?: Annotations;\n  _meta?: MetaObject;\n};\ntype ContentBlock =\n  | TextContent\n  | ImageContent\n  | AudioContent\n  | ResourceLink\n  | EmbeddedResource;\ntype CallToolResult<TStructured = { [key: string]: unknown }> = {\n  _meta?: MetaObject;\n  content: ContentBlock[];\n  isError?: boolean;\n  structuredContent?: TStructured;\n  [key: string]: unknown;\n};\n```\n\nNested tools: PARTIAL list. Find the tools that are not listed with `searchTools()`.\n\n### `read`\nRead a file from disk.\nSupports offsets and line ranges.\n\ncodemode tool declaration:\n```ts\ndeclare const tools: { read(args: {\n  limit?: number;\n  // 1-based line to start from\n  offset?: number;\n  // The file path\n  path: string;\n}): Promise<string>; };\n```\n\n### `bash`\nRun a shell command.\n\ncodemode tool declaration:\n```ts\ndeclare const tools: { bash(args: { command: string; }): Promise<string>; };\n```\n\n### `my_tool` (`my-tool`)\nName needs identifier normalization.\n\ncodemode tool declaration:\n```ts\ndeclare const tools: { my_tool(args: string): Promise<string>; };\n```\n\n## mcp__docs (some tools not listed)\nDocumentation tools\n\n### `mcp__docs__search`\nSearch the docs.\n\ncodemode tool declaration:\n```ts\ndeclare const tools: { mcp__docs__search(args: { query: string; }): Promise<string>; };\n```\n\n### `mcp__docs__call_tool_result`\nReturns a full MCP CallToolResult.\n\ncodemode tool declaration:\n```ts\ndeclare const tools: { mcp__docs__call_tool_result(args: { [key: string]: unknown; }): Promise<CallToolResult<{ answer: string; }>>; };\n```"
+    },
+    "budget_tight": {
+      "options": {
+        "models": true,
+        "namespaces": {
+          "mcp__docs__search": {
+            "name": "mcp__docs",
+            "description": "Documentation tools",
+            "instructions": "Presearch first."
+          },
+          "mcp__docs__fetch_page": {
+            "name": "mcp__docs",
+            "description": "Documentation tools",
+            "instructions": "Presearch first."
+          },
+          "mcp__docs__call_tool_result": {
+            "name": "mcp__docs",
+            "description": "Documentation tools",
+            "instructions": "Presearch first."
+          }
+        },
+        "inlineBudget": 220
+      },
+      "description": "Run JavaScript code to orchestrate/compose tool calls\n- Evaluates the provided JavaScript code in a fresh QuickJS sandbox as the body of an async function: top-level `await` and `return` work.\n- All nested tools are available on the global `tools` object, for example `await tools.read(...)`. Tool names are exposed as normalized JavaScript identifiers, for example `await tools.mcp__ologs__get_profile(...)`.\n- Nested tool methods take an object as their input argument.\n- Nested tools return either an object or a string, based on the description.\n- A nested tool call that fails, is blocked, or gets invalid arguments rejects with an Error carrying the tool's error text.\n- Runs raw JavaScript -- no Node, no file system, no network access, no timers.\n- Accepts raw JavaScript source text, not JSON, quoted strings, or markdown code fences.\n- You may optionally start the tool input with a first line like `// @options: {\"max_output_tokens\": 1000, \"timeout_ms\": 60000}`.\n- `max_output_tokens` sets the token budget for the script's output. Defaults to 10000 tokens.\n- `timeout_ms` sets a hard deadline for the whole script. By default there is none.\n- When the JS code is fully evaluated, calls that are still running are cancelled and unawaited promises are silently discarded.\n- Tool calls are real and have side effects. If the script fails partway, earlier calls are not undone.\n- Scripts have a 256 MB memory limit; exceeding it throws `InternalError: out of memory`. Filter or aggregate large data instead of accumulating it.\n\n- Global helpers:\n- `exit()`: Immediately ends the current script successfully (like an early return from the top level).\n- `text(value: string | number | boolean | undefined | null)`: Appends a text item. Non-string values are stringified with `JSON.stringify(...)` when possible.\n- `image(imageUrlOrItem: string | { image_url: string } | ImageContent)`: Appends an image item. `image_url` should be a base64-encoded `data:` URL. To forward an MCP tool image, pass an individual `ImageContent` block from `result.content`, for example `image(result.content[0])`.\n- `store(key: string, value: any)`: stores a serializable value under a string key for later `codemode` calls in the same session. Storing `undefined` deletes the key. Writes are kept only if the script succeeds.\n- `load(key: string)`: returns the stored value for a string key, or `undefined` if it is missing.\n- `ALL_TOOLS`: metadata for the enabled nested tools as `{ name, description }` entries.\n- `searchTools(query: string, options?: { limit?: number; namespace?: string })`: resolves to the nested tools that best match the query (BM25, default limit 8), as `{ name, description }` entries like `ALL_TOOLS`.\n- `describeTool(name: string)`: resolves to the description and declaration of a nested tool, or `undefined`.\n- `describeNamespace(name: string)`: resolves to `{ name, description?, instructions?, tools }` for a namespace of nested tools, such as an MCP server: its usage instructions and the names of its tools, or `undefined`.\n- `console.log(...)` and the other `console` methods append a text item like `text()`.\n- `return value` at the top level appends the value like `text()`.\n\nSome deferred nested tools may be omitted from this description. They are still available on the global `tools` object and listed in `ALL_TOOLS`.\nTo find one, call `await searchTools(query)` (pass `{ namespace }` to search one namespace), or filter `ALL_TOOLS` by `name` and `description`. `await describeNamespace(name)` returns a namespace's usage instructions and the names of its tools.\n\nShared MCP Types:\n```ts\ntype Role = \"user\" | \"assistant\";\ntype MetaObject = Record<string, unknown>;\ntype Annotations = {\n  audience?: Role[];\n  priority?: number;\n  lastModified?: string;\n};\ntype Icon = {\n  src: string;\n  mimeType?: string;\n  sizes?: string[];\n  theme?: \"light\" | \"dark\";\n};\ntype TextResourceContents = {\n  uri: string;\n  mimeType?: string;\n  _meta?: MetaObject;\n  text: string;\n};\ntype BlobResourceContents = {\n  uri: string;\n  mimeType?: string;\n  _meta?: MetaObject;\n  blob: string;\n};\ntype TextContent = {\n  type: \"text\";\n  text: string;\n  annotations?: Annotations;\n  _meta?: MetaObject;\n};\ntype ImageContent = {\n  type: \"image\";\n  data: string;\n  mimeType: string;\n  annotations?: Annotations;\n  _meta?: MetaObject;\n};\ntype AudioContent = {\n  type: \"audio\";\n  data: string;\n  mimeType: string;\n  annotations?: Annotations;\n  _meta?: MetaObject;\n};\ntype ResourceLink = {\n  icons?: Icon[];\n  name: string;\n  title?: string;\n  uri: string;\n  description?: string;\n  mimeType?: string;\n  annotations?: Annotations;\n  size?: number;\n  _meta?: MetaObject;\n  type: \"resource_link\";\n};\ntype EmbeddedResource = {\n  type: \"resource\";\n  resource: TextResourceContents | BlobResourceContents;\n  annotations?: Annotations;\n  _meta?: MetaObject;\n};\ntype ContentBlock =\n  | TextContent\n  | ImageContent\n  | AudioContent\n  | ResourceLink\n  | EmbeddedResource;\ntype CallToolResult<TStructured = { [key: string]: unknown }> = {\n  _meta?: MetaObject;\n  content: ContentBlock[];\n  isError?: boolean;\n  structuredContent?: TStructured;\n  [key: string]: unknown;\n};\n```\n\nModel API:\n```ts\ntype ModelType = \"chat\" | \"image\" | \"classifier\";\n/** A model catalog entry. `provider` and `id` identify it; the other fields depend on the type. */\ninterface ModelInfo {\n  type?: ModelType;\n  provider: string;\n  id: string;\n  name: string;\n  api: string;\n  input: (\"text\" | \"image\")[];\n  contextWindow?: number;\n  [key: string]: unknown;\n}\ntype ClassifierQuestion =\n  | { type: \"choice\"; instructions: string; criteria: Record<string, string> }\n  | { type: \"score\"; instructions: string; criteria: string[] }\n  | { type: \"bool\"; instructions: string; criteria: { true: string; false: string } };\ntype ClassifierAnswer =\n  | { type: \"choice\"; choice: string; probabilities: Record<string, number>; confidence: number }\n  | { type: \"score\"; score: number; confidence: number }\n  | { type: \"bool\"; probability: number };\ninterface ClassifierContext {\n  state: Record<string, unknown>;\n  questions: Record<string, ClassifierQuestion>;\n}\ninterface ClassifierResult {\n  api: string;\n  provider: string;\n  model: string;\n  answers: Record<string, ClassifierAnswer>;\n  /** Set when the service reports token counts. Cost is in USD. */\n  usage?: { input: number; output: number; totalTokens: number; cost: { total: number } };\n  stopReason: \"stop\" | \"error\" | \"aborted\";\n  errorMessage?: string;\n  timestamp: number;\n}\n\ndeclare const models: {\n  /** Every known model of a type, optionally for one provider. */\n  getModelsOfType(type: ModelType, provider?: string): Promise<ModelInfo[]>;\n  /** Models of a type whose provider has working credentials. */\n  getAvailableOfType(type: ModelType, provider?: string): Promise<ModelInfo[]>;\n  /** One catalog entry, or undefined. */\n  getModelOfType(type: ModelType, provider: string, id: string): Promise<ModelInfo | undefined>;\n  /** Run a classifier model on one state. Only `provider` and `id` of `model` are used. Provider errors do not throw: check `stopReason` and `errorMessage`. */\n  classify(model: ModelInfo, context: ClassifierContext): Promise<ClassifierResult>;\n};\n```\n\nNested tools: PARTIAL list. Find the tools that are not listed with `searchTools()`.\n\n### `bash`\nRun a shell command.\n\ncodemode tool declaration:\n```ts\ndeclare const tools: { bash(args: { command: string; }): Promise<string>; };\n```\n\n### `my_tool` (`my-tool`)\nName needs identifier normalization.\n\ncodemode tool declaration:\n```ts\ndeclare const tools: { my_tool(args: string): Promise<string>; };\n```\n\n## mcp__docs (some tools not listed)\nDocumentation tools\n\n### `mcp__docs__search`\nSearch the docs.\n\ncodemode tool declaration:\n```ts\ndeclare const tools: { mcp__docs__search(args: { query: string; }): Promise<string>; };\n```\n\n### `mcp__docs__fetch_page`\nFetch one docs page.\n\ncodemode tool declaration:\n```ts\ndeclare const tools: { mcp__docs__fetch_page(args: { url: string; }): Promise<string>; };\n```"
+    },
+    "budget_partial": {
+      "options": {
+        "namespaces": {
+          "mcp__docs__search": {
+            "name": "mcp__docs",
+            "description": "Documentation tools",
+            "instructions": "Presearch first."
+          },
+          "mcp__docs__fetch_page": {
+            "name": "mcp__docs",
+            "description": "Documentation tools",
+            "instructions": "Presearch first."
+          },
+          "mcp__docs__call_tool_result": {
+            "name": "mcp__docs",
+            "description": "Documentation tools",
+            "instructions": "Presearch first."
+          }
+        },
+        "inlineBudget": 90
+      },
+      "description": "Run JavaScript code to orchestrate/compose tool calls\n- Evaluates the provided JavaScript code in a fresh QuickJS sandbox as the body of an async function: top-level `await` and `return` work.\n- All nested tools are available on the global `tools` object, for example `await tools.read(...)`. Tool names are exposed as normalized JavaScript identifiers, for example `await tools.mcp__ologs__get_profile(...)`.\n- Nested tool methods take an object as their input argument.\n- Nested tools return either an object or a string, based on the description.\n- A nested tool call that fails, is blocked, or gets invalid arguments rejects with an Error carrying the tool's error text.\n- Runs raw JavaScript -- no Node, no file system, no network access, no timers.\n- Accepts raw JavaScript source text, not JSON, quoted strings, or markdown code fences.\n- You may optionally start the tool input with a first line like `// @options: {\"max_output_tokens\": 1000, \"timeout_ms\": 60000}`.\n- `max_output_tokens` sets the token budget for the script's output. Defaults to 10000 tokens.\n- `timeout_ms` sets a hard deadline for the whole script. By default there is none.\n- When the JS code is fully evaluated, calls that are still running are cancelled and unawaited promises are silently discarded.\n- Tool calls are real and have side effects. If the script fails partway, earlier calls are not undone.\n- Scripts have a 256 MB memory limit; exceeding it throws `InternalError: out of memory`. Filter or aggregate large data instead of accumulating it.\n\n- Global helpers:\n- `exit()`: Immediately ends the current script successfully (like an early return from the top level).\n- `text(value: string | number | boolean | undefined | null)`: Appends a text item. Non-string values are stringified with `JSON.stringify(...)` when possible.\n- `image(imageUrlOrItem: string | { image_url: string } | ImageContent)`: Appends an image item. `image_url` should be a base64-encoded `data:` URL. To forward an MCP tool image, pass an individual `ImageContent` block from `result.content`, for example `image(result.content[0])`.\n- `store(key: string, value: any)`: stores a serializable value under a string key for later `codemode` calls in the same session. Storing `undefined` deletes the key. Writes are kept only if the script succeeds.\n- `load(key: string)`: returns the stored value for a string key, or `undefined` if it is missing.\n- `ALL_TOOLS`: metadata for the enabled nested tools as `{ name, description }` entries.\n- `searchTools(query: string, options?: { limit?: number; namespace?: string })`: resolves to the nested tools that best match the query (BM25, default limit 8), as `{ name, description }` entries like `ALL_TOOLS`.\n- `describeTool(name: string)`: resolves to the description and declaration of a nested tool, or `undefined`.\n- `describeNamespace(name: string)`: resolves to `{ name, description?, instructions?, tools }` for a namespace of nested tools, such as an MCP server: its usage instructions and the names of its tools, or `undefined`.\n- `console.log(...)` and the other `console` methods append a text item like `text()`.\n- `return value` at the top level appends the value like `text()`.\n\nSome deferred nested tools may be omitted from this description. They are still available on the global `tools` object and listed in `ALL_TOOLS`.\nTo find one, call `await searchTools(query)` (pass `{ namespace }` to search one namespace), or filter `ALL_TOOLS` by `name` and `description`. `await describeNamespace(name)` returns a namespace's usage instructions and the names of its tools.\n\nShared MCP Types:\n```ts\ntype Role = \"user\" | \"assistant\";\ntype MetaObject = Record<string, unknown>;\ntype Annotations = {\n  audience?: Role[];\n  priority?: number;\n  lastModified?: string;\n};\ntype Icon = {\n  src: string;\n  mimeType?: string;\n  sizes?: string[];\n  theme?: \"light\" | \"dark\";\n};\ntype TextResourceContents = {\n  uri: string;\n  mimeType?: string;\n  _meta?: MetaObject;\n  text: string;\n};\ntype BlobResourceContents = {\n  uri: string;\n  mimeType?: string;\n  _meta?: MetaObject;\n  blob: string;\n};\ntype TextContent = {\n  type: \"text\";\n  text: string;\n  annotations?: Annotations;\n  _meta?: MetaObject;\n};\ntype ImageContent = {\n  type: \"image\";\n  data: string;\n  mimeType: string;\n  annotations?: Annotations;\n  _meta?: MetaObject;\n};\ntype AudioContent = {\n  type: \"audio\";\n  data: string;\n  mimeType: string;\n  annotations?: Annotations;\n  _meta?: MetaObject;\n};\ntype ResourceLink = {\n  icons?: Icon[];\n  name: string;\n  title?: string;\n  uri: string;\n  description?: string;\n  mimeType?: string;\n  annotations?: Annotations;\n  size?: number;\n  _meta?: MetaObject;\n  type: \"resource_link\";\n};\ntype EmbeddedResource = {\n  type: \"resource\";\n  resource: TextResourceContents | BlobResourceContents;\n  annotations?: Annotations;\n  _meta?: MetaObject;\n};\ntype ContentBlock =\n  | TextContent\n  | ImageContent\n  | AudioContent\n  | ResourceLink\n  | EmbeddedResource;\ntype CallToolResult<TStructured = { [key: string]: unknown }> = {\n  _meta?: MetaObject;\n  content: ContentBlock[];\n  isError?: boolean;\n  structuredContent?: TStructured;\n  [key: string]: unknown;\n};\n```\n\nNested tools: PARTIAL list. Find the tools that are not listed with `searchTools()`.\n\n### `bash`\nRun a shell command.\n\ncodemode tool declaration:\n```ts\ndeclare const tools: { bash(args: { command: string; }): Promise<string>; };\n```\n\n## mcp__docs (some tools not listed)\nDocumentation tools\n\n### `mcp__docs__search`\nSearch the docs.\n\ncodemode tool declaration:\n```ts\ndeclare const tools: { mcp__docs__search(args: { query: string; }): Promise<string>; };\n```"
+    },
+    "extension_tools_json": [
+      {
+        "name": "read",
+        "description": "Read a file from disk.\nSupports offsets and line ranges.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "The file path"
+            },
+            "offset": {
+              "type": "number",
+              "description": "1-based line to start from"
+            },
+            "limit": {
+              "type": "number"
+            }
+          },
+          "required": [
+            "path"
+          ],
+          "additionalProperties": false
+        }
+      },
+      {
+        "name": "bash",
+        "description": "Run a shell command.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "command": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "command"
+          ]
+        }
+      },
+      {
+        "name": "mcp__docs__search",
+        "description": "Search the docs.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "query"
+          ]
+        }
+      },
+      {
+        "name": "mcp__docs__fetch_page",
+        "description": "Fetch one docs page.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "url": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "url"
+          ]
+        }
+      },
+      {
+        "name": "mcp__docs__call_tool_result",
+        "description": "Returns a full MCP CallToolResult.",
+        "parameters": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": true
+        },
+        "outputSchema": {
+          "type": "object",
+          "properties": {
+            "content": {
+              "type": "array",
+              "items": {
+                "type": "object"
+              }
+            },
+            "isError": {
+              "type": "boolean"
+            },
+            "_meta": {
+              "type": "object"
+            },
+            "structuredContent": {
+              "type": "object",
+              "properties": {
+                "answer": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "answer"
+              ]
+            }
+          },
+          "required": [
+            "content",
+            "isError",
+            "_meta"
+          ]
+        }
+      },
+      {
+        "name": "my-tool",
+        "description": "Name needs identifier normalization.",
+        "parameters": {
+          "type": "string"
+        }
+      }
+    ],
+    "samples": {
+      "read": "Read a file from disk.\nSupports offsets and line ranges.\n\ncodemode tool declaration:\n```ts\ndeclare const tools: { read(args: {\n  limit?: number;\n  // 1-based line to start from\n  offset?: number;\n  // The file path\n  path: string;\n}): Promise<string>; };\n```",
+      "bash": "Run a shell command.\n\ncodemode tool declaration:\n```ts\ndeclare const tools: { bash(args: { command: string; }): Promise<string>; };\n```",
+      "mcp__docs__search": "Search the docs.\n\ncodemode tool declaration:\n```ts\ndeclare const tools: { mcp__docs__search(args: { query: string; }): Promise<string>; };\n```",
+      "mcp__docs__fetch_page": "Fetch one docs page.\n\ncodemode tool declaration:\n```ts\ndeclare const tools: { mcp__docs__fetch_page(args: { url: string; }): Promise<string>; };\n```",
+      "mcp__docs__call_tool_result": "Returns a full MCP CallToolResult.\n\ncodemode tool declaration:\n```ts\ndeclare const tools: { mcp__docs__call_tool_result(args: { [key: string]: unknown; }): Promise<CallToolResult<{ answer: string; }>>; };\n```",
+      "my-tool": "Name needs identifier normalization.\n\ncodemode tool declaration:\n```ts\ndeclare const tools: { my_tool(args: string): Promise<string>; };\n```"
+    },
+    "codemode_schema_json": "{\"type\":\"object\",\"required\":[\"code\"],\"properties\":{\"code\":{\"type\":\"string\",\"description\":\"Raw JavaScript source. Top-level await and return work. May start with a `// @options: {\\\"max_output_tokens\\\": 1000}` line.\"}}}",
+    "model_global_declarations_json": "[{\"name\":\"models.getModelsOfType\",\"description\":\"Every known model of a type, optionally for one provider.\",\"signature\":\"(type: ModelType, provider?: string): Promise<ModelInfo[]>\"},{\"name\":\"models.getAvailableOfType\",\"description\":\"Models of a type whose provider has working credentials.\",\"signature\":\"(type: ModelType, provider?: string): Promise<ModelInfo[]>\"},{\"name\":\"models.getModelOfType\",\"description\":\"One catalog entry, or undefined.\",\"signature\":\"(type: ModelType, provider: string, id: string): Promise<ModelInfo | undefined>\"},{\"name\":\"models.classify\",\"description\":\"Run a classifier model on one state. Only `provider` and `id` of `model` are used. Provider errors do not throw: check `stopReason` and `errorMessage`.\",\"signature\":\"(model: ModelInfo, context: ClassifierContext): Promise<ClassifierResult>\"}]"
+  },
+  "partC": {
+    "plain": {
+      "ok": true,
+      "code": "return 1;\n",
+      "options": {}
+    },
+    "options": {
+      "ok": true,
+      "code": "\nreturn 1;",
+      "options": {
+        "maxOutputTokens": 2000,
+        "timeoutMs": 30000
+      }
+    },
+    "options_no_space": {
+      "ok": true,
+      "code": "\nreturn 1;",
+      "options": {
+        "timeoutMs": 5
+      }
+    },
+    "options_indent": {
+      "ok": true,
+      "code": "\nreturn 1;",
+      "options": {
+        "maxOutputTokens": 0
+      }
+    },
+    "empty_input": {
+      "ok": false,
+      "name": "CodemodeSourceError",
+      "message": "Expected JavaScript source text (non-empty). Provide JS only, optionally with a first line `// @options: {\"max_output_tokens\": 1000}`.",
+      "isCodemodeSourceError": true
+    },
+    "only_options": {
+      "ok": false,
+      "name": "CodemodeSourceError",
+      "message": "The @options line must be followed by JavaScript source on subsequent lines",
+      "isCodemodeSourceError": true
+    },
+    "options_with_body_whitespace": {
+      "ok": false,
+      "name": "CodemodeSourceError",
+      "message": "The @options line must be followed by JavaScript source on subsequent lines",
+      "isCodemodeSourceError": true
+    },
+    "unknown_field": {
+      "ok": false,
+      "name": "CodemodeSourceError",
+      "message": "@options only supports `max_output_tokens` and `timeout_ms`; got `nope`",
+      "isCodemodeSourceError": true
+    },
+    "zero_timeout": {
+      "ok": false,
+      "name": "CodemodeSourceError",
+      "message": "@options field `timeout_ms` must be a positive integer up to 2147483647",
+      "isCodemodeSourceError": true
+    },
+    "huge_timeout": {
+      "ok": false,
+      "name": "CodemodeSourceError",
+      "message": "@options field `timeout_ms` must be a positive integer up to 2147483647",
+      "isCodemodeSourceError": true
+    },
+    "boundary_timeout": {
+      "ok": true,
+      "code": "\nreturn 1;",
+      "options": {
+        "timeoutMs": 2147483647
+      }
+    },
+    "negative_tokens": {
+      "ok": false,
+      "name": "CodemodeSourceError",
+      "message": "@options field `max_output_tokens` must be a non-negative safe integer",
+      "isCodemodeSourceError": true
+    },
+    "float_tokens": {
+      "ok": false,
+      "name": "CodemodeSourceError",
+      "message": "@options field `max_output_tokens` must be a non-negative safe integer",
+      "isCodemodeSourceError": true
+    },
+    "array_options": {
+      "ok": false,
+      "name": "CodemodeSourceError",
+      "message": "@options must be a JSON object with supported fields `max_output_tokens` and `timeout_ms`",
+      "isCodemodeSourceError": true
+    },
+    "invalid_json": {
+      "ok": false,
+      "name": "CodemodeSourceError",
+      "message": "@options must be valid JSON with supported fields `max_output_tokens` and `timeout_ms`: Expected property name or '}' in JSON at position 1 (line 1 column 2)",
+      "isCodemodeSourceError": true
+    },
+    "crlf_first_line": {
+      "ok": true,
+      "code": "\nreturn 1;",
+      "options": {
+        "maxOutputTokens": 7
+      }
+    },
+    "no_newline_after_prefix": {
+      "ok": false,
+      "name": "CodemodeSourceError",
+      "message": "The @options line must be followed by JavaScript source on subsequent lines",
+      "isCodemodeSourceError": true
+    },
+    "non_object_tokens": {
+      "ok": false,
+      "name": "CodemodeSourceError",
+      "message": "@options must be a JSON object with supported fields `max_output_tokens` and `timeout_ms`",
+      "isCodemodeSourceError": true
+    }
+  }
+}

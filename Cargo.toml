@@ -76,6 +76,13 @@ yaml-rust2 = { version = "=0.13.0", default-features = false }
 ignore = "=0.4.33"
 regex = "=1.13.1"
 
+# Codemode sandbox engine (codemode slice): embedded quickjs-ng via rquickjs,
+# pinned exact. Replaces upstream's `quickjs-wasi` 3.6.2 (the same quickjs-ng
+# core compiled to WASM and driven from a Node worker); the engine port keeps
+# the upstream worker/bridge/settle architecture (see the
+# `src/codemode::runtime::engine` module docs for the disclosed divergences).
+rquickjs = "=0.14.0"
+
 # Harness tool path NFD / edit NFKC; already transitive through idna.
 icu_normalizer = { version = "=2.3.0", default-features = false, features = ["compiled_data"] }
 

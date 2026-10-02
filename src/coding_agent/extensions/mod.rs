@@ -145,6 +145,8 @@ pub mod tool_search;
 #[path = "types.rs"]
 pub mod types;
 
+pub mod codemode;
+
 #[cfg(test)]
 #[path = "oracle_data.rs"]
 pub mod oracle_data;
@@ -188,17 +190,26 @@ pub struct BuiltInExtension {
     pub builtin: bool,
 }
 
-/// Upstream `builtInExtensions`. The port carries the `tool-search` factory;
-/// `llama.cpp` stays cropped (see the module docs: it needs the llama bridge,
-/// pi-ai provider/stream surface, and the TUI), and the `codemode` / `mcp`
-/// factories belong to their own slices.
+/// Upstream `builtInExtensions`. The port carries the `codemode` and
+/// `tool-search` factories (in the upstream table's relative order —
+/// `llama.cpp` stays cropped: it needs the llama bridge, pi-ai
+/// provider/stream surface, and the TUI — and the `mcp` factory belongs to
+/// its own slice).
 pub fn built_in_extensions() -> Vec<BuiltInExtension> {
-    vec![BuiltInExtension {
-        name: "tool-search",
-        factory: tool_search::create_tool_search_extension(),
-        replaceable: true,
-        builtin: true,
-    }]
+    vec![
+        BuiltInExtension {
+            name: "codemode",
+            factory: codemode::create_codemode_extension(),
+            replaceable: true,
+            builtin: true,
+        },
+        BuiltInExtension {
+            name: "tool-search",
+            factory: tool_search::create_tool_search_extension(),
+            replaceable: true,
+            builtin: true,
+        },
+    ]
 }
 
 /// Port of upstream `wrapper.ts`: tool wrappers for extension-registered
