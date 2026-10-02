@@ -67,11 +67,15 @@
 
 pub mod documents;
 pub mod entries;
+pub mod env;
 pub mod errors;
+pub mod harness;
 pub mod ids;
 pub mod json;
 pub mod session;
 pub mod storage;
+pub mod tasks;
+pub mod truncate;
 pub mod types;
 pub mod util;
 
@@ -80,20 +84,63 @@ pub mod util;
 pub use documents::{define_doc, define_doc_family, DocDefinition, DocToken};
 pub use entries::{
     assistant_entry, define_entry, reset_entry, system_entry, tool_result_entry, user_entry, Entry,
-    ASSISTANT_ENTRY_KIND, RESET_ENTRY_KIND, SYSTEM_ENTRY_KIND, TOOL_RESULT_ENTRY_KIND, USER_ENTRY_ENTRY_KIND,
+    ASSISTANT_ENTRY_KIND, RESET_ENTRY_KIND, SYSTEM_ENTRY_KIND, TOOL_RESULT_ENTRY_KIND,
+    USER_ENTRY_ENTRY_KIND,
 };
 pub use errors::{ConversationBusy, ReadAfterWrite, StorageRejected};
+pub use ids::ROOT_CONVERSATION_ID;
 pub use session::session::{create_session, Session, SessionHooks};
 pub use session::transaction::{LoadedDocument, Transaction, TransactionScope};
-pub use storage::memory::MemoryStorage;
 pub use storage::jsonl::{JsonlStorage, JsonlStorageOptions};
+pub use storage::memory::MemoryStorage;
 pub use types::{
-    CheckpointInfo, CommitChange, CommitPublication, ConversationOwnership, ConversationQuery, ConversationRecord,
-    ContextEdit, Cursor, DocumentAddress, DocumentCommitChange, DocumentContent, DocumentCopySource, DocumentCreate,
-    DocumentHistory, DocumentFork, DocumentPoint, DocumentQuery, DocumentRecord, DocumentScope, EntryDraft,
-    EntryQuery, EntryRecord, JoinPolicy, JsonObject, JsonValue, Page, StorageWrite, StoredDocument, SubmissionRecord,
-    SubmissionSettlement, TableCommitChange, TaskOptions, TaskOutcome, TaskOutcomeError, TaskOwnership, TaskQuery,
-    TaskRecord, TaskState, TaskStatus,
+    CheckpointInfo, CommitChange, CommitPublication, ContextEdit, ConversationOwnership,
+    ConversationQuery, ConversationRecord, Cursor, DocumentAddress, DocumentCommitChange,
+    DocumentContent, DocumentCopySource, DocumentCreate, DocumentFork, DocumentHistory,
+    DocumentPoint, DocumentQuery, DocumentRecord, DocumentScope, EntryDraft, EntryQuery,
+    EntryRecord, JoinPolicy, JsonObject, JsonValue, Page, StorageWrite, StoredDocument,
+    SubmissionRecord, SubmissionSettlement, TableCommitChange, TaskOptions, TaskOutcome,
+    TaskOutcomeError, TaskOwnership, TaskQuery, TaskRecord, TaskState, TaskStatus,
 };
 pub use util::{closed_error, scan_all, Waiters};
-pub use ids::ROOT_CONVERSATION_ID;
+
+// Facade re-exports for the env / tasks / truncate slices.
+pub use env::node::{NodeExecutionEnv, NodeExecutionEnvOptions};
+pub use env::{
+    ExecutionEnv, ExecutionError, ExecutionErrorCode, FileContent, FileError, FileErrorCode,
+    FileInfo, FileKind, Shell, ShellExecOptions, ShellExecResult, ShellSpillOptions, TextLine,
+    TextLineReader,
+};
+pub use tasks::{define_task, TaskDefinition, TaskToken};
+pub use truncate::{
+    format_size, truncate_head, utf8_byte_length, TruncatedBy, TruncationOptions, TruncationResult,
+    DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES,
+};
+
+// Harness slice re-exports over the modules that exist.
+pub use harness::config::{default_retry_policy, ConversationConfigState};
+pub use harness::context::{
+    active_entries, capture_context_bounds, derive_context, read_context, ContextBounds,
+};
+pub use harness::inbox::{
+    apply_boundary, is_stale, prepare_boundary, remove_inbox_item, withdraw_queued_inputs, At,
+    Boundary, BoundaryResult, InboxItem, InputMode,
+};
+pub use harness::live::{
+    clear_progress, end_run, finish_slot, read_live, tool_slot, tools_of, SlotStatus, ToolSlot,
+};
+pub use harness::output::{
+    bound_output, sanitize_output, BoundedOutput, OutputBuffer, OutputLimits, OutputSlice,
+    Progress, MIN_PROGRESS_INTERVAL_MS, PROGRESS_BYTES_PER_SECOND,
+};
+pub use harness::prompt::{desired_tools, plan_system_entries, render_sections, replay_sections};
+pub use harness::types::{
+    AbortResult, AbortSubmissionResult, AbortTaskResult, BlockedReason, ContextView,
+    ConversationAbortOptions, ConversationHandle, ConversationRetryPolicy,
+    ConversationStreamOptions, EntryQueryFilter, HarnessInspection, HookApi, HookRegistration,
+    HookScope, ModelRef, QueueMode, RegistryFailure, RegistryFailureKind, SchedulingState,
+    SubmissionDraft, TaskInspection, TaskInspectionState, ToolControl, ToolDiagnostic,
+    ToolDiagnosticSeverity, ToolExecutionApiLike, ToolExecutionMode, ToolExecutionResult,
+    ToolRegistration, WhenBusy,
+};
+pub use harness::usage::{add_usage, add_usage_state, record_usage, UsageState};

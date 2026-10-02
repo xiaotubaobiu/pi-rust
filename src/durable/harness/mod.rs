@@ -1,0 +1,30 @@
+//! Port of `src/harness/**`: the durable agent harness over one Session —
+//! conversation documents (`config`, `usage`, `inbox`, `live`), prompt
+//! planning (`prompt`), the shared type surface (`types`), and (later
+//! slices of this phase) the registry, scheduler, generation, tool, events,
+//! submissions, view, and facade modules.
+//!
+//! Ported here so far, dependency-first:
+//!
+//! - [`types`] — the harness type surface (`harness/types.ts`).
+//! - [`prompt`] — section replay/render and `pi.system` entry planning
+//!   (`harness/prompt.ts`).
+//! - [`config`], [`usage`], [`inbox`], [`live`] — the built-in conversation
+//!   documents and their boundary / ledger logic.
+//!
+//! Remaining upstream files (context.ts, events.ts, generation.ts,
+//! harness.ts facade, output.ts, registry.ts, scheduler.ts, submissions.ts,
+//! tool.ts, view.ts) are ported in later steps of this slice; re-exports
+//! cover only what exists.
+
+pub mod config;
+pub mod context;
+pub mod inbox;
+pub mod live;
+pub mod output;
+pub mod prompt;
+pub mod types;
+pub mod usage;
+
+#[cfg(test)]
+mod oracle_tests;

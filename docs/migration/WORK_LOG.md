@@ -2652,3 +2652,8 @@ WORK_LOG追加前缀：386287 bytes / cadeaf51fe906e35a1531ffc26058289e7d44c061d
 - Oracle: tests/fixtures/durable_oracle (86 SHA-pinned upstream files; commit_bytes + document_bytes byte-for-byte + read_after_write error text). 15 tests.
 - Remaining (disclosed): env, tasks, harness/ (17 files), Session.documentState wiring; optional sqlite/tools/testing/truncate.
 - Gates: durable 15/0, clippy 0 (lib+tests), fmt clean, cargo check green at every file boundary.
+
+## 2026-10-02 wave-9b: pi-durable phase 2 (env/tasks/truncate/harness part 1)
+- D4 landed env seam (ExecutionEnv trait + NodeExecutionEnv ~1000L: spill exec, bash discovery, taskkill tree-kill), tasks, truncate (phase-1 deferral closed), harness/{types,prompt,config,usage,inbox,live,context,output}. Harness oracles extended (harness_docs/prompt_plan/output_bound scenarios; 6 new tests; fixture c0cd48b2...). D10-D15 disclosed (io error text source, no pre_exec on unix, win32 prefix strip, generics erased, literal wire orders, ModelsHandle seam).
+- durable suite 25/0; clippy 0; fmt clean; every boundary compiled.
+- Remaining: harness/{view,registry,scheduler,generation,tool,submissions,events}.rs + harness.rs facade + live.settle_scheduler_outcome + documentState wiring; optional sqlite/tools/testing.

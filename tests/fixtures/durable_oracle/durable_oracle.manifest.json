@@ -173,6 +173,14 @@
       "sha256": "7ba150d4dc2030e0a7b6771cf4c34dcc8b6f0e4e16e1d624a1facf0962579823"
     },
     {
+      "file": "packages/ai/src/utils/text.ts",
+      "sha256": "d37c1825855c7fc71669a545b5b266810242c1c7e58d57228c0c143f29c1c544"
+    },
+    {
+      "file": "packages/ai/src/utils/transcript.ts",
+      "sha256": "cad0c126cdfadc1b4f430cc5a95b1c9285ecd1ee9957642d7773b1357bbc9ac5"
+    },
+    {
       "file": "services/consumer.ts",
       "sha256": "e628903661564561ec647434d3e6d3ad5b70b97d829fccfc97821584584bb052"
     },
@@ -384,5 +392,5 @@
     "tools/read.ts": "workspace specifier rewritten to staged file URL",
     "types.ts": "workspace specifier rewritten to staged file URL"
   },
-  "stagedCount": 86
+  "stagedCount": 88
 }
