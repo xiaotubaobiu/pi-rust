@@ -210,10 +210,32 @@ pub fn parse_args(args: &[String]) -> Args {
             result.help = Some(true);
         } else if arg == "--version" || arg == "-v" {
             result.version = Some(true);
-        } else if arg == "--mode" && i + 1 < args.len() {
-            i += 1;
-            if let Some(mode) = Mode::parse(&args[i]) {
-                result.mode = Some(mode);
+        } else if arg == "--mode" {
+            let mode = args.get(i + 1);
+            match mode {
+                None => result.diagnostics.push(Diagnostic {
+                    kind: DiagnosticType::Error,
+                    message: "--mode requires text, json, or rpc".to_string(),
+                }),
+                Some(mode) if mode.starts_with('-') => {
+                    result.diagnostics.push(Diagnostic {
+                        kind: DiagnosticType::Error,
+                        message: "--mode requires text, json, or rpc".to_string(),
+                    });
+                }
+                Some(mode) => {
+                    i += 1;
+                    if mode != "text" && mode != "json" && mode != "rpc" {
+                        result.diagnostics.push(Diagnostic {
+                            kind: DiagnosticType::Error,
+                            message: format!(
+                                "Invalid mode \"{mode}\". Valid values: text, json, rpc"
+                            ),
+                        });
+                    } else {
+                        result.mode = Mode::parse(mode);
+                    }
+                }
             }
         } else if arg == "--continue" || arg == "-c" {
             result.r#continue = Some(true);
@@ -478,7 +500,8 @@ Commands:
   {APP_NAME} list                      List installed extensions from settings
   {APP_NAME} config [-l]               Open TUI to enable/disable package resources (Tab switches scope)
   {APP_NAME} auth <command>            Print credentials or check provider readiness
-  {APP_NAME} <command> --help          Show help for install/remove/uninstall/update/list/config/auth
+  {APP_NAME} mcp <command>             Check MCP servers, sign in to or out of OAuth servers
+  {APP_NAME} <command> --help          Show help for install/remove/uninstall/update/list/config/auth/mcp
 
 Options:
   --provider <name>              Provider name (default: google)
@@ -505,8 +528,8 @@ Options:
   --exclude-tools, -xt <tools>   Comma-separated denylist of tool names to disable
                                  Applies to built-in, extension, and custom tools
   --thinking <level>             Set thinking level: off, minimal, low, medium, high, xhigh, max
-  --extension, -e <path>         Load an extension file (can be used multiple times)
-  --no-extensions, -ne           Disable extension discovery (explicit -e paths still work)
+  --extension, -e <path>         Load an extension file or builtin:<name> (can be used multiple times)
+  --no-extensions, -ne           Disable extension discovery and built-in extensions (explicit -e paths still work)
   --skill <path>                 Load a skill file or directory (can be used multiple times)
   --no-skills, -ns               Disable skills discovery and loading
   --prompt-template <path>       Load a prompt template file or directory (can be used multiple times)
@@ -619,6 +642,7 @@ Environment Variables:
   MOONSHOT_API_KEY                 - Moonshot AI API key
   OPENCODE_API_KEY                 - OpenCode Zen/OpenCode Go API key
   KIMI_API_KEY                     - Kimi For Coding API key
+  META_API_KEY                     - Meta Model API key
   CLOUDFLARE_API_KEY               - Cloudflare API token (Workers AI and AI Gateway)
   CLOUDFLARE_ACCOUNT_ID            - Cloudflare account id (required for both)
   CLOUDFLARE_GATEWAY_ID            - Cloudflare AI Gateway slug (required for AI Gateway)

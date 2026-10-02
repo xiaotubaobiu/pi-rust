@@ -189,7 +189,10 @@
           "id": "shutdown",
           "type": "response",
           "command": "prompt",
-          "success": true
+          "success": true,
+          "data": {
+            "disposition": "handled"
+          }
         }
       ],
       "disposeCalls": 1,

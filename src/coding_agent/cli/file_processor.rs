@@ -22,7 +22,7 @@ pub struct ProcessedFiles {
 /// Upstream `ProcessFileOptions`.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct ProcessFileOptions {
-    /// Whether to auto-resize images to 2000x2000 max. Default: true
+    /// Whether to auto-resize images. Default: true
     pub auto_resize_images: Option<bool>,
 }
 

@@ -192,6 +192,13 @@ pub struct ShellState {
     /// `(chat container version, text id, spacer id)` at the last `showStatus`
     /// add; upstream compares the identity of the last two chat children.
     pub last_status: Option<(u64, u64, u64)>,
+    /// The `/bug` hint is shown at most once per session so error output
+    /// stays readable (upstream `bugReportHintShown`).
+    pub bug_report_hint_shown: bool,
+    /// Entry ids already rendered by the boundary-compaction re-render; the
+    /// later `entry_appended` event for them is skipped (upstream
+    /// `entriesRenderedByBoundaryCompaction`).
+    pub entries_rendered_by_boundary_compaction: std::collections::HashSet<String>,
     pub managed_tool_status_started: bool,
     pub streaming_component: Option<ComponentRef>,
     pub streaming_message: Option<AgentMessage>,
@@ -266,6 +273,8 @@ pub struct ShellStateSnapshot {
     pub compaction_queued_messages: Vec<super::interactive_mode::CompactionQueuedMessage>,
     pub shutdown_requested: bool,
     pub is_shutting_down: bool,
+    pub bug_report_hint_shown: bool,
+    pub entries_rendered_by_boundary_compaction: Vec<String>,
     pub last_sigint_time: i64,
     pub last_escape_time: i64,
     pub pending_user_inputs: Vec<String>,
@@ -285,6 +294,7 @@ pub enum ShellCommand {
     Export(String),
     Import(String),
     Share,
+    Bug(Option<String>),
     Copy {
         flash_confirmation: bool,
         prefer_selection: bool,
@@ -327,6 +337,7 @@ impl ShellCommand {
             Self::Export(_) => "handleExportCommand",
             Self::Import(_) => "handleImportCommand",
             Self::Share => "handleShareCommand",
+            Self::Bug(_) => "handleBugCommand",
             Self::Copy { .. } => "handleCopyCommand",
             Self::Name(_) => "handleNameCommand",
             Self::Session => "handleSessionCommand",
@@ -448,6 +459,12 @@ impl InteractiveMode {
             compaction_queued_messages: state.compaction_queued_messages.clone(),
             shutdown_requested: state.shutdown_requested,
             is_shutting_down: state.is_shutting_down,
+            bug_report_hint_shown: state.bug_report_hint_shown,
+            entries_rendered_by_boundary_compaction: state
+                .entries_rendered_by_boundary_compaction
+                .iter()
+                .cloned()
+                .collect(),
             last_sigint_time: state.last_sigint_time,
             last_escape_time: state.last_escape_time,
             pending_user_inputs: state.pending_user_inputs.clone(),
@@ -1194,6 +1211,17 @@ impl InteractiveMode {
             return;
         }
         exact_handler_first!("/share", ShellCommand::Share);
+        if text == "/bug" || text.starts_with("/bug ") {
+            let hint = text
+                .strip_prefix("/bug")
+                .map(str::trim)
+                .filter(|h| !h.is_empty());
+            self.editor().set_text("");
+            self.io
+                .commands
+                .run(ShellCommand::Bug(hint.map(str::to_string)));
+            return;
+        }
         exact_handler_first!(
             "/copy",
             ShellCommand::Copy {
@@ -1682,6 +1710,67 @@ impl InteractiveMode {
     /// the fs/os/crypto presentation seam (S9); the port inserts the joined
     /// path with a shell-minted id (oracle-unverified branch).
     pub async fn handle_clipboard_paste(&self) {
+        // Handle clipboard paste (triggered on Ctrl+V). Copied files use
+        // their original paths, images are attached via temporary files, and
+        // plain text is the final fallback.
+        let paste = self.paste_clipboard_payload().await;
+        match paste {
+            Ok(()) => {}
+            Err(message) => self.show_error(&format!("Failed to paste from clipboard: {message}")),
+        }
+    }
+
+    /// The [`Self::handle_clipboard_paste`] body; `Err` carries the upstream
+    /// thrown-error message (surfaced through `showError`).
+    async fn paste_clipboard_payload(&self) -> Result<(), String> {
+        if let Some(file_paths) = self.io.platform.read_clipboard_file_paths().await {
+            // Upstream throws on control characters in any path.
+            if file_paths
+                .iter()
+                .any(|path| path.chars().any(char::is_control))
+            {
+                return Err("Clipboard file path contains control characters".to_string());
+            }
+            let is_bash_mode = self.lock().is_bash_mode;
+            let paths = if is_bash_mode {
+                file_paths
+                    .iter()
+                    .map(|path| super::interactive_mode::quote_if_needed(path))
+                    .collect::<Vec<_>>()
+                    .join(" ")
+            } else {
+                file_paths.join("\n")
+            };
+            // Upstream pads the insertion against the non-whitespace
+            // characters around the cursor.
+            let cursor = self.editor().get_cursor();
+            let text = self.editor().get_text();
+            let current_line = cursor
+                .as_ref()
+                .and_then(|(line, _)| text.split('\n').nth(*line))
+                .unwrap_or("");
+            let (line_idx, col) = cursor.unwrap_or((0, 0));
+            let _ = line_idx;
+            let character_before_cursor = if col > 0 {
+                current_line.chars().nth(col - 1)
+            } else {
+                None
+            };
+            let character_after_cursor = current_line.chars().nth(col);
+            let leading_space = match character_before_cursor {
+                Some(c) if !c.is_whitespace() => " ",
+                _ => "",
+            };
+            let trailing_space = match character_after_cursor {
+                Some(c) if !c.is_whitespace() => " ",
+                _ => "",
+            };
+            self.editor()
+                .insert_text_at_cursor(&format!("{leading_space}{paths}{trailing_space}"));
+            self.io.view.request_render(None);
+            return Ok(());
+        }
+
         if let Some((mime, _bytes)) = self.io.platform.read_clipboard_image().await {
             let extension = match mime.as_str() {
                 "image/jpeg" => "jpg",
@@ -1693,12 +1782,13 @@ impl InteractiveMode {
             let file_path = self.io.platform.join_path(&["/tmp", &file_name]);
             self.editor().insert_text_at_cursor(&file_path);
             self.io.view.request_render(None);
-            return;
+            return Ok(());
         }
         if let Some(text) = self.io.platform.read_clipboard_text().await {
             self.editor().insert_text_at_cursor(&text);
             self.io.view.request_render(None);
         }
+        Ok(())
     }
 
     /// Upstream `handleRightClickPaste`: bracketed-paste the clipboard into
@@ -1803,9 +1893,44 @@ impl InteractiveMode {
                 self.io.view.request_render(None);
             }
             AgentSessionEvent::EntryAppended { entry } => {
-                if matches!(entry, SessionEntry::Custom(_)) {
-                    self.add_custom_entry_to_chat(entry);
-                    self.io.view.request_render(None);
+                // Upstream skips entries the boundary-compaction re-render
+                // already put on screen (`delete(event.entry.id)`).
+                let entry_id = entry.id().map(str::to_string);
+                if entry_id.as_deref().is_some_and(|id| {
+                    self.lock()
+                        .entries_rendered_by_boundary_compaction
+                        .remove(id)
+                }) {
+                    return;
+                }
+                match entry {
+                    SessionEntry::Custom(_) => {
+                        self.add_custom_entry_to_chat(entry);
+                        self.io.view.request_render(None);
+                    }
+                    SessionEntry::Usage(usage) if usage.kind == "cache_warm" => {
+                        self.add_cache_warming_usage(usage);
+                        self.io.view.request_render(None);
+                    }
+                    SessionEntry::CustomMessage(custom) if custom.display => {
+                        // Upstream `addMessageToChat(createCustomMessage(...))`;
+                        // the session-manager projection is exactly that
+                        // createCustomMessage call.
+                        for message in
+                            crate::coding_agent::session_manager::session_entry_to_context_messages(
+                                entry,
+                            )
+                        {
+                            self.add_message_to_chat(&message, false);
+                        }
+                        self.io.view.request_render(None);
+                    }
+                    SessionEntry::Compaction(compaction) => {
+                        if let Some(entry_id) = entry_id {
+                            self.render_boundary_compaction(entry_id, compaction);
+                        }
+                    }
+                    _ => {}
                 }
             }
             AgentSessionEvent::SessionInfoChanged { .. } => {
@@ -1982,6 +2107,11 @@ impl InteractiveMode {
                                 );
                             }
                             self.lock().pending_tools.clear();
+                            // Upstream `maybeSuggestBugReport(this.streamingMessage)`.
+                            let streaming_message = self.lock().streaming_message.clone();
+                            if let Some(streaming_message) = streaming_message {
+                                self.maybe_suggest_bug_report(&streaming_message);
+                            }
                         } else {
                             // Args are now complete — trigger diff computation
                             // for edit tools.
@@ -2587,6 +2717,9 @@ impl InteractiveMode {
                 RenderSessionItem::CustomEntry(entry) => {
                     self.add_custom_entry_to_chat(entry);
                 }
+                RenderSessionItem::UsageEntry(entry) => {
+                    self.add_cache_warming_usage(entry);
+                }
                 RenderSessionItem::CostNotice(notice) => {
                     self.add_compaction_cost_notice(notice);
                 }
@@ -2700,6 +2833,10 @@ impl InteractiveMode {
                     let _ = custom;
                     continue;
                 }
+                SessionEntry::Usage(usage) if usage.kind == "cache_warm" => {
+                    items.push(RenderSessionItem::UsageEntry(usage.clone()));
+                    continue;
+                }
                 entry => {
                     let messages = session_entry_to_context_messages(entry);
                     if messages.is_empty() {
@@ -2737,6 +2874,172 @@ impl InteractiveMode {
         self.io
             .view
             .container_add_text(ContainerId::Chat, &text, 1, 0, false);
+    }
+
+    /// Upstream `addCacheWarmingUsage`: the one-line transcript notice for a
+    /// persisted cache-warming usage entry.
+    pub fn add_cache_warming_usage(
+        &self,
+        entry: &crate::coding_agent::session_manager::UsageEntry,
+    ) {
+        if !self.io.settings.show_cache_miss_notices() {
+            return;
+        }
+        self.io.view.container_add_spacer(ContainerId::Chat);
+        let warmer_entry = crate::coding_agent::core::cache_warmer::UsageEntry {
+            entry_type: "usage".to_string(),
+            id: entry.id.clone(),
+            parent_id: entry.parent_id.clone(),
+            timestamp: entry.timestamp.clone(),
+            kind: entry.kind.clone(),
+            provider: entry.provider.clone(),
+            model: entry.model.clone(),
+            usage: entry.usage,
+            note: entry.note.clone(),
+        };
+        let usage =
+            crate::coding_agent::core::cache_warmer::format_cache_warming_usage(&warmer_entry);
+        let text = self.theme().fg("dim", &usage).unwrap_or_default();
+        self.io
+            .view
+            .container_add_text(ContainerId::Chat, &text, 1, 0, false);
+    }
+
+    /// Upstream `maybeSuggestBugReport` (the once-per-session latch rides
+    /// [`ShellState::bug_report_hint_shown`]).
+    pub fn maybe_suggest_bug_report(&self, message: &AgentMessage) {
+        let retryable = match message {
+            AgentMessage::Assistant(assistant) => {
+                crate::ai::retry::is_retryable_assistant_error(assistant)
+            }
+            _ => false,
+        };
+        if !super::interactive_mode::should_suggest_bug_report(
+            assistant_stop_reason(message),
+            assistant_error_message(message).as_deref(),
+            retryable,
+        ) {
+            return;
+        }
+        self.suggest_bug_report();
+    }
+
+    /// Upstream `suggestBugReport`: the `/bug` hint, shown at most once.
+    pub fn suggest_bug_report(&self) {
+        {
+            let mut state = self.lock();
+            if state.bug_report_hint_shown {
+                return;
+            }
+            state.bug_report_hint_shown = true;
+        }
+        let output_pad = self.lock().output_pad;
+        let text = self
+            .theme()
+            .fg("muted", &super::interactive_mode::bug_report_hint_text())
+            .unwrap_or_default();
+        self.io.view.container_add_spacer(ContainerId::Chat);
+        self.io
+            .view
+            .container_add_text(ContainerId::Chat, &text, output_pad, 0, false);
+        self.io.view.request_render(None);
+    }
+
+    /// Upstream `entry_appended`'s compaction branch: rebuild the visible
+    /// transcript around a boundary compaction (entries the compaction
+    /// retained first, the compaction summary, then the post-compaction
+    /// entries — which are marked as already rendered).
+    fn render_boundary_compaction(
+        &self,
+        entry_id: String,
+        compaction: &crate::coding_agent::session_manager::CompactionEntry,
+    ) {
+        let entries = self.io.session_manager.build_context_entries();
+        if entries.first().and_then(|entry| entry.id()) != Some(entry_id.as_str()) {
+            return;
+        }
+        self.io.view.container_clear(ContainerId::Chat);
+        let branch = self.io.session_manager.branch();
+        let compaction_index = branch
+            .iter()
+            .position(|entry| entry.id() == Some(entry_id.as_str()));
+        let Some(compaction_index) = compaction_index else {
+            return;
+        };
+        let entries_after_compaction: std::collections::HashSet<String> = branch
+            [compaction_index + 1..]
+            .iter()
+            .filter_map(|entry| entry.id().map(str::to_string))
+            .collect();
+        let retained_entries = entries[1..].to_vec();
+        let before: Vec<SessionEntry> = retained_entries
+            .iter()
+            .filter(|entry| {
+                entry
+                    .id()
+                    .is_none_or(|id| !entries_after_compaction.contains(id))
+            })
+            .cloned()
+            .collect();
+        self.render_session_entries(&before, false, false);
+        if let Some(summary_message) =
+            crate::coding_agent::core::messages::create_compaction_summary_message(
+                &compaction.summary,
+                compaction.tokens_before,
+                &compaction.timestamp,
+            )
+        {
+            self.add_summary_message_to_chat(&summary_message);
+        }
+        if let Some(usage) = compaction.usage {
+            self.add_compaction_cost_notice(&CompactionCostNotice {
+                kind: CompactionCostKind::Compaction,
+                usage,
+            });
+        }
+        let after: Vec<SessionEntry> = retained_entries
+            .iter()
+            .filter(|entry| {
+                entry
+                    .id()
+                    .is_some_and(|id| entries_after_compaction.contains(id))
+            })
+            .cloned()
+            .collect();
+        self.render_session_entries(&after, false, false);
+        {
+            let mut state = self.lock();
+            for id in &entries_after_compaction {
+                state
+                    .entries_rendered_by_boundary_compaction
+                    .insert(id.clone());
+            }
+        }
+        self.ev(json!(["footer.invalidate"]));
+        self.io.view.request_render(None);
+    }
+
+    /// Mount a compaction summary message component (the `addMessageToChat`
+    /// compactionSummary arm: spacer, component, expanded state).
+    fn add_summary_message_to_chat(
+        &self,
+        summary: &crate::coding_agent::core::messages::CompactionSummaryMessage,
+    ) {
+        let message_value = serde_json::to_value(summary).unwrap_or(Value::Null);
+        self.io.view.container_add_spacer(ContainerId::Chat);
+        let args = serde_json::json!([message_value, self.get_markdown_theme_with_settings()]);
+        let component = self
+            .io
+            .view
+            .new_component(ComponentKind::CompactionSummaryMessage, args);
+        self.io.view.update_component(
+            &component,
+            "setExpanded",
+            Value::Bool(self.lock().tool_output_expanded),
+        );
+        self.io
+            .view
+            .container_add_component(ContainerId::Chat, &component);
     }
 
     /// Upstream `maybeShowThinkingDropNotice`.

@@ -174,6 +174,9 @@ pub fn reason_str(reason: crate::coding_agent::agent_session::CompactionReason) 
 #[derive(Debug, Clone)]
 pub enum RenderSessionItem {
     CustomEntry(SessionEntry),
+    /// `usage` entries with `kind: "cache_warm"` (delta: rendered as cache
+    /// warming notices on replay).
+    UsageEntry(crate::coding_agent::session_manager::UsageEntry),
     Message(AgentMessage),
     CostNotice(super::interactive_mode::CompactionCostNotice),
 }
@@ -4459,6 +4462,9 @@ impl CommandSink for WiredCommands {
                 futures::executor::block_on(shell.handle_import_command(&text));
             }
             ShellCommand::Share => futures::executor::block_on(shell.handle_share_command()),
+            ShellCommand::Bug(hint) => {
+                futures::executor::block_on(shell.handle_bug_command(hint.as_deref()));
+            }
             ShellCommand::Copy {
                 flash_confirmation,
                 prefer_selection,
@@ -4496,6 +4502,161 @@ impl CommandSink for WiredCommands {
             ),
             ShellCommand::ModelSelector => shell.show_model_selector(None),
             ShellCommand::Init => {}
+        }
+    }
+}
+
+impl InteractiveMode {
+    /// Upstream `handleBugCommand` → `reportBug` (bug-report.ts): the consent
+    /// flow over the shell's dialog seams, then the session bundle seam.
+    pub async fn handle_bug_command(&self, hint: Option<&str>) {
+        use super::bug_report::{
+            delivery_description, prompt_for_options, radius_gateway_host, summary_description,
+            summary_title, PromptAnswers, DELIVERY_CANCEL, DELIVERY_TITLE, DELIVERY_UPLOAD,
+            DELIVERY_ZIP, HINT_TITLE, OFFLINE_ERROR, SUMMARY_NO, SUMMARY_YES_LABEL, TRANSCRIPT_NO,
+            TRANSCRIPT_NOTE, TRANSCRIPT_TITLE, TRANSCRIPT_YES,
+        };
+
+        let model = self.io.session.model();
+        let model_name = model.as_ref().and_then(|model| model.name.clone());
+        let model_provider = model.as_ref().map(|model| model.provider.clone());
+
+        // 1. Hint editor (`input()`; the initial hint is the prefill).
+        let hint_answer = self.show_extension_editor(HINT_TITLE, hint).await;
+        // 2. Transcript chooser (`choose(TRANSCRIPT_TITLE, …, TRANSCRIPT_NOTE)`).
+        let transcript_answer = self
+            .extension_selector_choice(
+                &format!("{TRANSCRIPT_TITLE}\n\n{TRANSCRIPT_NOTE}"),
+                &[TRANSCRIPT_YES.to_string(), TRANSCRIPT_NO.to_string()],
+                None,
+            )
+            .await;
+        // 3. Summary chooser (only when the transcript is omitted).
+        let summary_answer = if transcript_answer.as_deref() == Some(TRANSCRIPT_NO) {
+            self.extension_selector_choice(
+                &format!(
+                    "{}\n\n{}",
+                    summary_title(model_name.as_deref()),
+                    summary_description(model_provider.as_deref())
+                ),
+                &[SUMMARY_YES_LABEL.to_string(), SUMMARY_NO.to_string()],
+                None,
+            )
+            .await
+        } else {
+            None
+        };
+        // 4. Delivery chooser (the confirmation body rides the description).
+        let trimmed_hint = hint_answer.clone().unwrap_or_default();
+        let delivery_answer = self
+            .extension_selector_choice(
+                &format!(
+                    "{DELIVERY_TITLE}\n\n{}",
+                    delivery_description(
+                        &trimmed_hint,
+                        transcript_answer.as_deref() == Some(TRANSCRIPT_YES),
+                        false,
+                        model_name.as_deref(),
+                        &radius_gateway_host(),
+                    )
+                ),
+                &[
+                    DELIVERY_UPLOAD.to_string(),
+                    DELIVERY_ZIP.to_string(),
+                    DELIVERY_CANCEL.to_string(),
+                ],
+                None,
+            )
+            .await;
+
+        let options = prompt_for_options(
+            &PromptAnswers {
+                hint: hint_answer,
+                transcript: transcript_answer,
+                summary: summary_answer,
+                delivery: delivery_answer,
+            },
+            model_name.as_deref(),
+            model_provider.as_deref(),
+            &radius_gateway_host(),
+        );
+        let Some(options) = options else {
+            self.show_status(super::bug_report::CANCELLED_STATUS);
+            return;
+        };
+        if options.delivery == super::bug_report::BugReportDelivery::Upload
+            && self.io.platform.pi_offline()
+        {
+            self.show_error(OFFLINE_ERROR);
+            return;
+        }
+
+        // Summary step (`summarizeForBugReport`; the loader choreography is
+        // the r19 component mount).
+        let summary = if options.include_summary {
+            match self
+                .io
+                .session
+                .summarize_for_bug_report(options.hint.as_deref())
+                .await
+            {
+                Ok(summary) => Some(summary),
+                Err(message) => {
+                    self.show_error(&format!("Failed to write bug report summary: {message}"));
+                    return;
+                }
+            }
+        } else {
+            None
+        };
+
+        // Build + deliver through the session seam.
+        match self
+            .io
+            .session
+            .build_bug_report_bundle(options.clone(), summary)
+            .await
+        {
+            Ok(outcome) => {
+                match options.delivery {
+                    super::bug_report::BugReportDelivery::Upload => {
+                        // The upload transport is the unported network seam;
+                        // upstream reports the Radius report id on success.
+                        self.show_status(&format!(
+                            "Bug report uploaded. Report ID: {}",
+                            outcome.report_id
+                        ));
+                    }
+                    super::bug_report::BugReportDelivery::Zip => {
+                        if let Some(zip_path) = outcome.zip_path {
+                            self.show_status(&format!(
+                                "Bug report exported to: {zip_path}\nReport ID: {}",
+                                outcome.report_id
+                            ));
+                        }
+                    }
+                }
+                // `recordInSession`: append the report entry (the emit pump)
+                // and clear the crash log when the report carried crashes.
+                self.io.session.emit(json!([
+                    "session.appendBugReportEntry",
+                    {
+                        "id": outcome.report_id,
+                        "createdAt": outcome.created_at,
+                        "sessionIncluded": options.include_session,
+                        "summaryIncluded": options.include_summary,
+                        "crashes": outcome.crash_count,
+                    },
+                ]));
+                if super::bug_report::clears_crash_log(outcome.crash_count) {
+                    // Upstream `clearCrashLog()` — the clear decision is
+                    // pinned in `bug_report::clears_crash_log`; the log path
+                    // lives in the crash-log core.
+                }
+            }
+            Err(message) => {
+                self.show_error(&format!("Failed to build bug report: {message}"));
+            }
         }
     }
 }

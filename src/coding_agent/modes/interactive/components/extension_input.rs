@@ -23,11 +23,23 @@ use crate::tui::components::layout_widgets::Spacer;
 use crate::tui::components::text::Text;
 use crate::tui::keybindings::with_keybindings;
 
+/// Upstream `ExtensionInputOptions` (the option surface the port threads
+/// explicitly).
+#[derive(Default)]
+pub struct ExtensionInputOptions {
+    /// Initial editor content (upstream `initialValue`).
+    pub initial_value: Option<String>,
+    /// Descriptive line under the title (upstream `description`).
+    pub description: Option<String>,
+}
+
 /// Upstream `ExtensionInputComponent`.
 pub struct ExtensionInputComponent {
     children: Vec<ComponentHandle>,
     input: Input,
     title_text: String,
+    /// Upstream `opts.description` (styled at rebuild time).
+    description_text: Option<String>,
     // Upstream resets the header title from this after countdown ticks; the
     // port re-derives it via the pending_title seam — wired into the
     // interactive shell in r19+.
@@ -42,7 +54,7 @@ pub struct ExtensionInputComponent {
 }
 
 impl ExtensionInputComponent {
-    /// Upstream constructor.
+    /// Upstream constructor (`opts` threaded as an explicit struct).
     pub fn new(
         theme: Arc<Theme>,
         title: &str,
@@ -50,6 +62,28 @@ impl ExtensionInputComponent {
         on_submit: Box<dyn FnMut(&str)>,
         on_cancel: Box<dyn FnMut()>,
         timeout_ms: Option<u64>,
+    ) -> Self {
+        Self::with_options(
+            theme,
+            title,
+            placeholder,
+            on_submit,
+            on_cancel,
+            timeout_ms,
+            ExtensionInputOptions::default(),
+        )
+    }
+
+    /// Upstream constructor with `opts` (`initialValue`, `description`).
+    #[allow(clippy::too_many_arguments)]
+    pub fn with_options(
+        theme: Arc<Theme>,
+        title: &str,
+        placeholder: Option<&str>,
+        on_submit: Box<dyn FnMut(&str)>,
+        on_cancel: Box<dyn FnMut()>,
+        timeout_ms: Option<u64>,
+        options: ExtensionInputOptions,
     ) -> Self {
         let _ = placeholder;
         let pending_title = Rc::new(RefCell::new(None));
@@ -77,10 +111,20 @@ impl ExtensionInputComponent {
                 },
             )
         });
+        let mut input = Input::new(InputOptions::default());
+        // Upstream `if (opts?.initialValue) this.input.setValue(opts.initialValue);`
+        if let Some(initial_value) = options.initial_value.as_deref() {
+            if !initial_value.is_empty() {
+                input.set_value(initial_value);
+            }
+        }
         let mut component = Self {
             children: Vec::new(),
-            input: Input::new(InputOptions::default()),
+            input,
             title_text: theme_fg(&theme, "accent", title),
+            description_text: options
+                .description
+                .map(|description| theme_fg(&theme, "text", &description)),
             base_title: title.to_string(),
             countdown,
             pending_title,
@@ -103,6 +147,16 @@ impl ExtensionInputComponent {
             0,
             None,
         )));
+        // Upstream `if (opts?.description) { spacer; text(theme.fg("text", opts.description)); }`
+        if let Some(description_text) = &self.description_text {
+            children.push(ComponentHandle::new(Spacer::new(1)));
+            children.push(ComponentHandle::new(Text::with_options(
+                description_text,
+                1,
+                0,
+                None,
+            )));
+        }
         children.push(ComponentHandle::new(Spacer::new(1)));
         children.push(ComponentHandle::new(SlotAdapter));
         children.push(ComponentHandle::new(Spacer::new(1)));

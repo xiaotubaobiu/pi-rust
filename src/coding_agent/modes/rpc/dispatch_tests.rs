@@ -449,9 +449,16 @@ async fn prompt_ack_waits_for_preflight_without_blocking_other_commands() {
     assert!(f.responses.lock().unwrap().is_empty());
     assert!(f.call(RpcCommandKind::GetState).await.success);
     release.add_permits(1);
+    // Upstream rpc-mode.ts answers the prompt ACK with the preflight
+    // disposition (`success(id, "prompt", { disposition })`); the extension
+    // input handler reported handled.
     assert_eq!(
         f.response().await,
-        RpcResponse::success(Some("prompt-id".into()), "prompt", None)
+        RpcResponse::success(
+            Some("prompt-id".into()),
+            "prompt",
+            Some(json!({"disposition": "handled"}))
+        )
     );
     assert!(f.responses.lock().unwrap().is_empty());
     f.close().await;
@@ -500,9 +507,15 @@ async fn prompt_ack_precedes_provider_completion_and_does_not_duplicate_late_err
         let f = Fixture::new(Some(&faux), vec![]).await;
         f.runtime.session().set_auto_retry_enabled(false);
         f.prompt("run").await;
+        // Upstream rpc-mode.ts answers the prompt ACK with the preflight
+        // disposition; no extension input handler ran, so the prompt started.
         assert_eq!(
             f.response().await,
-            RpcResponse::success(Some("prompt-id".into()), "prompt", None)
+            RpcResponse::success(
+                Some("prompt-id".into()),
+                "prompt",
+                Some(json!({"disposition": "started"}))
+            )
         );
         bounded(started.notified()).await;
         assert_eq!(
@@ -992,9 +1005,15 @@ async fn real_extension_ui_preflight_can_wait_for_client_while_rpc_state_remains
     assert!(ui.respond(
         json!({"type":"extension_ui_response","id":request["id"],"value":"client answer"})
     ));
+    // Upstream rpc-mode.ts answers the prompt ACK with the preflight
+    // disposition; the extension input handler reported handled.
     assert_eq!(
         f.response().await,
-        RpcResponse::success(Some("prompt-id".into()), "prompt", None)
+        RpcResponse::success(
+            Some("prompt-id".into()),
+            "prompt",
+            Some(json!({"disposition": "handled"}))
+        )
     );
     assert_eq!(*answers.lock().unwrap(), vec![json!("client answer")]);
     assert_eq!(ui.pending_count(), 0);

@@ -26,11 +26,14 @@ use crate::tui::components::layout_widgets::Spacer;
 use crate::tui::components::text::Text;
 use crate::tui::keybindings::with_keybindings;
 
-/// Upstream `ExtensionSelectorOptions` (the toggle hook + timer surface).
+/// Upstream `ExtensionSelectorOptions` (the toggle hook + timer surface +
+/// the delta `description`).
 pub struct ExtensionSelectorCallbacks {
     pub on_select: Box<dyn FnMut(&str)>,
     pub on_cancel: Box<dyn FnMut()>,
     pub on_toggle_tools_expanded: Option<Box<dyn FnMut()>>,
+    /// Descriptive line under the title (upstream `opts.description`).
+    pub description: Option<String>,
 }
 
 /// Upstream `ExtensionSelectorComponent`.
@@ -40,6 +43,8 @@ pub struct ExtensionSelectorComponent {
     selected_index: usize,
     list_container: Container,
     title_text: String,
+    /// Upstream `opts.description` (styled at rebuild time).
+    description_text: Option<String>,
     // Upstream resets the header title from this after countdown ticks; the
     // port re-derives it via the pending_title seam — wired into the
     // interactive shell in r19+.
@@ -92,6 +97,10 @@ impl ExtensionSelectorComponent {
             selected_index: 0,
             list_container: Container::default(),
             title_text: theme_fg(&theme, "accent", &theme.bold(title)),
+            description_text: callbacks
+                .description
+                .as_deref()
+                .map(|description| theme_fg(&theme, "text", description)),
             base_title: title.to_string(),
             countdown,
             pending_title,
@@ -116,6 +125,16 @@ impl ExtensionSelectorComponent {
             0,
             None,
         )));
+        // Upstream `if (opts?.description) { spacer; text(theme.fg("text", opts.description)); }`
+        if let Some(description_text) = &self.description_text {
+            children.push(ComponentHandle::new(Spacer::new(1)));
+            children.push(ComponentHandle::new(Text::with_options(
+                description_text,
+                1,
+                0,
+                None,
+            )));
+        }
         children.push(ComponentHandle::new(Spacer::new(1)));
         children.push(ComponentHandle::new(SlotAdapter));
         children.push(ComponentHandle::new(Spacer::new(1)));
@@ -259,6 +278,7 @@ mod tests {
                 on_toggle_tools_expanded: Some(Box::new(move || {
                     toggles_handle.set(toggles_handle.get() + 1)
                 })),
+                description: None,
             },
             Some(1500),
         );

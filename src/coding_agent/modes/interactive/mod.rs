@@ -87,6 +87,7 @@
 //!   background query would delay the return. Tests model both queries
 //!   resolving.
 
+pub mod bug_report;
 pub mod external_editor;
 pub mod model_catalog_refresh;
 pub mod model_search;
@@ -103,6 +104,9 @@ mod tests;
 #[path = "system_theme_oracle_tests.rs"]
 mod system_theme_oracle_tests;
 
+#[cfg(test)]
+#[path = "interactive_delta_oracle_tests.rs"]
+mod interactive_delta_oracle_tests;
 #[cfg(test)]
 #[path = "shell_oracle_tests.rs"]
 mod shell_oracle_tests;

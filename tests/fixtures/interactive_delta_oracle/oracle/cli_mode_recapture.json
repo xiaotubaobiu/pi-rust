@@ -1,0 +1,96 @@
+{
+	"scenario": "cli_mode_diagnostics",
+	"cases": [
+		{
+			"name": "missing value",
+			"argv": [
+				"--mode"
+			],
+			"result": {
+				"messages": [],
+				"fileArgs": [],
+				"unknownFlags": {},
+				"diagnostics": [
+					{
+						"type": "error",
+						"message": "--mode requires text, json, or rpc"
+					}
+				]
+			}
+		},
+		{
+			"name": "flag-like value",
+			"argv": [
+				"--mode",
+				"-x"
+			],
+			"result": {
+				"messages": [],
+				"fileArgs": [],
+				"unknownFlags": {},
+				"diagnostics": [
+					{
+						"type": "error",
+						"message": "--mode requires text, json, or rpc"
+					},
+					{
+						"type": "error",
+						"message": "Unknown option: -x"
+					}
+				]
+			}
+		},
+		{
+			"name": "invalid value",
+			"argv": [
+				"--mode",
+				"bogus"
+			],
+			"result": {
+				"messages": [],
+				"fileArgs": [],
+				"unknownFlags": {},
+				"diagnostics": [
+					{
+						"type": "error",
+						"message": "Invalid mode \"bogus\". Valid values: text, json, rpc"
+					}
+				]
+			}
+		},
+		{
+			"name": "rpc",
+			"argv": [
+				"--mode",
+				"rpc"
+			],
+			"result": {
+				"messages": [],
+				"fileArgs": [],
+				"unknownFlags": {},
+				"diagnostics": [],
+				"mode": "rpc"
+			}
+		},
+		{
+			"name": "text then extra",
+			"argv": [
+				"--mode",
+				"text",
+				"extra"
+			],
+			"result": {
+				"messages": [
+					"extra"
+				],
+				"fileArgs": [],
+				"unknownFlags": {},
+				"diagnostics": [],
+				"mode": "text"
+			}
+		}
+	],
+	"manifest": {
+		"cli/args.ts": "f5d9a107ee96b10c70a506532b2243064fbae9ad36a805d789081d1d88d62966"
+	}
+}

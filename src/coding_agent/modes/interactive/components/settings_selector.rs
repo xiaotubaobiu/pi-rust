@@ -34,6 +34,7 @@ use crate::ai::types::Model;
 use crate::coding_agent::core::http_dispatcher::{
     format_http_idle_timeout_ms, HTTP_IDLE_TIMEOUT_CHOICES,
 };
+use crate::coding_agent::modes::interactive::system_theme::SYSTEM_THEME_NAME;
 use crate::coding_agent::modes::interactive::theme::{parse_auto_theme_setting, Theme};
 use crate::tui::component::Component;
 use crate::tui::components::input::{Input, InputOptions};
@@ -72,6 +73,25 @@ const DEFAULT_PROJECT_TRUST_LABELS: [(&str, &str); 3] = [
 const CLEAR_OVERRIDE_VALUE: &str = "__clear__";
 const AUTOMATIC_THEME_VALUE: &str = "/";
 
+/// Upstream `CACHE_WARMING_MODES` (settings-manager.ts).
+const CACHE_WARMING_MODES: [&str; 3] = ["off", "streaming", "idle"];
+
+/// The fullscreen wheel-scroll-lines choice list (upstream builds it from
+/// `["auto", ...new Set([1, 2, 3, 5, 10, current])]` — `"auto"` first, then
+/// the base set plus the current numeric value, deduped, ascending).
+fn wheel_scroll_line_values(current: &str) -> Vec<String> {
+    let mut lines: Vec<u64> = vec![1, 2, 3, 5, 10];
+    if let Ok(parsed) = current.parse::<u64>() {
+        if !lines.contains(&parsed) {
+            lines.push(parsed);
+        }
+    }
+    lines.sort_unstable();
+    let mut values = vec!["auto".to_string()];
+    values.extend(lines.iter().map(|line| line.to_string()));
+    values
+}
+
 fn model_setting_key(model: &Model) -> String {
     format!("{}/{}", model.provider, model.id)
 }
@@ -97,25 +117,41 @@ fn model_item_label(theme: &Theme, model: &Model) -> String {
     )
 }
 
-fn theme_items(available_themes: &[String], current_theme: &str) -> Vec<SelectItem> {
+pub(crate) fn theme_items(available_themes: &[String], current_theme: &str) -> Vec<SelectItem> {
     available_themes
         .iter()
         .map(|name| SelectItem {
             value: name.clone(),
             label: format!("{}{name}", if name == current_theme { "✓ " } else { "  " }),
-            description: None,
+            description: if name == SYSTEM_THEME_NAME {
+                Some("Theme created from your terminal's colors".to_string())
+            } else {
+                None
+            },
         })
         .collect()
 }
 
-fn single_mode_theme_items(available_themes: &[String], current_theme: &str) -> Vec<SelectItem> {
-    let mut items = vec![SelectItem {
+/// The system theme comes first, then automatic mode, then the remaining
+/// themes.
+pub(crate) fn single_mode_theme_items(
+    available_themes: &[String],
+    current_theme: &str,
+) -> Vec<SelectItem> {
+    let mut items = theme_items(available_themes, current_theme);
+    let system_index = items
+        .iter()
+        .position(|item| item.value == SYSTEM_THEME_NAME);
+    let system = system_index.map(|index| items.remove(index));
+    let mut out = Vec::new();
+    out.extend(system);
+    out.push(SelectItem {
         value: AUTOMATIC_THEME_VALUE.to_string(),
-        label: "  Automatic".to_string(),
+        label: "  automatic".to_string(),
         description: Some("Use separate themes for light and dark terminal appearance".to_string()),
-    }];
-    items.extend(theme_items(available_themes, current_theme));
-    items
+    });
+    out.extend(items);
+    out
 }
 
 fn preferred_theme(available_themes: &[String], preferred: Option<&str>, fallback: &str) -> String {
@@ -145,7 +181,7 @@ fn default_automatic_themes(
     } else {
         Some(current_theme_setting)
     };
-    let theme_name = preferred_theme(available_themes, current_fixed_theme, "dark");
+    let theme_name = preferred_theme(available_themes, current_fixed_theme, SYSTEM_THEME_NAME);
     (theme_name.clone(), theme_name)
 }
 
@@ -178,6 +214,8 @@ pub struct SettingsConfig {
     pub follow_up_mode: String,
     pub transport: String,
     pub http_idle_timeout_ms: u64,
+    /// Upstream `CacheWarmingMode` (`"off" | "streaming" | "idle"`).
+    pub cache_warming_mode: String,
     pub thinking_level: String,
     pub available_thinking_levels: Vec<String>,
     pub model_thinking_levels: Vec<(String, String)>,
@@ -203,6 +241,8 @@ pub struct SettingsConfig {
     pub fullscreen_exit_output: String,
     pub fullscreen_scrollbar: String,
     pub fullscreen_copy_on_select: bool,
+    /// Upstream `WheelScrollLines` (`"auto"` or a line count).
+    pub fullscreen_wheel_scroll_lines: String,
     pub warnings: WarningSettings,
 }
 
@@ -219,6 +259,7 @@ pub struct SettingsCallbacks {
     pub on_follow_up_mode_change: Box<dyn FnMut(&str) + Send>,
     pub on_transport_change: Box<dyn FnMut(&str) + Send>,
     pub on_http_idle_timeout_ms_change: Box<dyn FnMut(u64) + Send>,
+    pub on_cache_warming_mode_change: Box<dyn FnMut(&str) + Send>,
     pub on_model_thinking_level_change: Box<dyn FnMut(&str, &str, &str) + Send>,
     pub on_model_thinking_level_remove: Box<dyn FnMut(&str, &str) + Send>,
     pub on_theme_change: Box<dyn FnMut(&str) + Send>,
@@ -242,6 +283,7 @@ pub struct SettingsCallbacks {
     pub on_fullscreen_exit_output_change: Box<dyn FnMut(&str) + Send>,
     pub on_fullscreen_scrollbar_change: Box<dyn FnMut(&str) + Send>,
     pub on_fullscreen_copy_on_select_change: Box<dyn FnMut(bool) + Send>,
+    pub on_fullscreen_wheel_scroll_lines_change: Box<dyn FnMut(&str) + Send>,
     pub on_warnings_change: Box<dyn FnMut(WarningSettings) + Send>,
     pub on_cancel: Box<dyn FnMut() + Send>,
 }
@@ -1330,7 +1372,7 @@ impl ThemeSubmenu {
             } else {
                 None
             }),
-            "dark",
+            SYSTEM_THEME_NAME,
         );
 
         let commands: Rc<RefCell<Vec<ThemeCommand>>> = Rc::new(RefCell::new(Vec::new()));
@@ -1407,7 +1449,7 @@ impl ThemeSubmenu {
         let select = SelectSubmenu::new(
             Arc::clone(&self.theme),
             "Theme",
-            "Select a theme, or choose Automatic to follow terminal appearance.",
+            "Select a theme, or choose automatic to follow terminal appearance.",
             items,
             &single_theme,
             Box::new(move |value: &str| {
@@ -1826,6 +1868,16 @@ impl SettingsSelectorComponent {
             submenu: None,
         });
         items.push(SelectorItem {
+            id: "cache-warming-mode".into(),
+            label: "Cache warming".into(),
+            description: Some(
+                "off; streaming while the agent runs; idle also between runs while continuation stays profitable".into(),
+            ),
+            current_value: config.cache_warming_mode.clone(),
+            values: CACHE_WARMING_MODES.iter().map(|mode| mode.to_string()).collect(),
+            submenu: None,
+        });
+        items.push(SelectorItem {
             id: "hide-thinking".into(),
             label: "Hide thinking".into(),
             description: Some("Hide thinking blocks in assistant responses".into()),
@@ -2047,6 +2099,16 @@ impl SettingsSelectorComponent {
             description: Some("Automatically copy selected text in fullscreen mode; disable to copy selections with Ctrl+X".into()),
             current_value: bool_str(config.fullscreen_copy_on_select),
             values: vec!["true".into(), "false".into()],
+            submenu: None,
+        });
+        items.push(SelectorItem {
+            id: "fullscreen-wheel-scroll-lines".into(),
+            label: "Fullscreen wheel scrolling".into(),
+            description: Some(
+                "Lines per mouse-wheel event in fullscreen mode; 'auto' speeds up fast wheel spins where the terminal does not".into(),
+            ),
+            current_value: config.fullscreen_wheel_scroll_lines.clone(),
+            values: wheel_scroll_line_values(&config.fullscreen_wheel_scroll_lines),
             submenu: None,
         });
         let on_theme_preview: Rc<RefCell<Option<Box<dyn FnMut(&str) + Send>>>> =
@@ -2341,6 +2403,10 @@ fn build_dispatch_on_change(mut callbacks: SettingsCallbacks) -> Box<dyn FnMut(&
         "fullscreen-scrollbar" => (callbacks.on_fullscreen_scrollbar_change)(new_value),
         "fullscreen-copy-on-select" => {
             (callbacks.on_fullscreen_copy_on_select_change)(new_value == "true")
+        }
+        "cache-warming-mode" => (callbacks.on_cache_warming_mode_change)(new_value),
+        "fullscreen-wheel-scroll-lines" => {
+            (callbacks.on_fullscreen_wheel_scroll_lines_change)(new_value)
         }
         "theme" => (callbacks.on_theme_change)(new_value),
         _ => {}

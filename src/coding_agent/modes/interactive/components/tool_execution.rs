@@ -33,6 +33,9 @@ use crate::tui::terminal_image::{get_capabilities, image_fallback};
 
 const FALLBACK_PREVIEW_LINES: usize = 10;
 
+/// Upstream `COLLAPSED_ARGS_CHARS` (core/tools/render-utils.ts).
+const COLLAPSED_ARGS_CHARS: usize = 100;
+
 /// Upstream `ToolExecutionOptions`.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct ToolExecutionOptions {
@@ -133,12 +136,23 @@ pub struct ToolExecutionComponent {
     execution_started: bool,
     args_complete: bool,
     result: Option<ToolResultPayload>,
-    // Populated by the image-conversion path; wired into the interactive
-    // shell in r19+.
+    /// Upstream `convertedImages`: keyed by result index, each record carries
+    /// the source data/mime the conversion came from so a changed result
+    /// block never renders a stale conversion.
     #[allow(dead_code)]
-    converted_images: std::collections::BTreeMap<usize, (String, String)>,
+    converted_images: std::collections::BTreeMap<usize, ConvertedImage>,
     hide_component: bool,
     theme: Arc<Theme>,
+}
+
+/// One converted image record (upstream `{ sourceData, sourceMimeType, data, mimeType }`).
+#[derive(Clone, Debug)]
+#[allow(dead_code)]
+struct ConvertedImage {
+    source_data: String,
+    source_mime_type: String,
+    data: String,
+    mime_type: String,
 }
 
 impl ToolExecutionComponent {
@@ -212,7 +226,7 @@ impl ToolExecutionComponent {
 
     fn call_fallback(&self) -> Text {
         Text::with_options(
-            &theme_fg(&self.theme, "toolTitle", &self.theme.bold(&self.tool_name)),
+            &format_tool_call_with_args(&self.theme, &self.tool_name, &self.args, self.expanded),
             0,
             0,
             None,
@@ -498,6 +512,101 @@ impl ToolExecutionComponent {
             text += &format!("\n{output}");
         }
         text
+    }
+}
+
+/// JS string `length`/`slice` operate on UTF-16 code units; the collapsed
+/// preview cut must count the same units for non-ASCII arguments.
+fn utf16_len(text: &str) -> usize {
+    text.chars().map(|c| c.len_utf16()).sum()
+}
+
+/// JS `String.prototype.slice(0, n)` over UTF-16 code units. A cut that
+/// splits a surrogate pair leaves the high half in the JS string (upstream),
+/// which renders as the replacement character; the port emits U+FFFD for it
+/// (Rust strings cannot hold a lone surrogate) — the oracle canonicalizes the
+/// captured bytes the same way.
+fn utf16_slice(text: &str, end: usize) -> String {
+    const REPLACEMENT: char = '\u{FFFD}';
+    let mut units = 0usize;
+    let mut out = String::new();
+    for c in text.chars() {
+        let len = c.len_utf16();
+        if units + len > end {
+            if len == 2 && units + 1 == end {
+                out.push(REPLACEMENT);
+            }
+            break;
+        }
+        units += len;
+        out.push(c);
+    }
+    out
+}
+
+/// Upstream `replaceTabs` (core/tools/render-utils.ts): tabs become 3 spaces.
+fn replace_tabs(text: &str) -> String {
+    text.replace('\t', "   ")
+}
+
+/// Upstream `formatToolCallWithArgs` (core/tools/render-utils.ts): the generic
+/// tool call header — the title followed by the arguments. Collapsed, they
+/// are `key=value` pairs on the title line, cut to [`COLLAPSED_ARGS_CHARS`].
+/// Expanded, each is a `key: value` line below the title, with strings shown
+/// raw and continuation lines indented.
+pub fn format_tool_call_with_args(
+    theme: &Theme,
+    title: &str,
+    args: &serde_json::Value,
+    expanded: bool,
+) -> String {
+    let header = theme_fg(theme, "toolTitle", &theme.bold(title));
+    if args.is_null() {
+        return header;
+    }
+    // `typeof args === "object" && !Array.isArray(args) ? Object.entries(args)
+    // : [["args", args]]`.
+    let entries: Vec<(String, &serde_json::Value)> = match args {
+        serde_json::Value::Object(map) => map.iter().map(|(k, v)| (k.clone(), v)).collect(),
+        other => vec![("args".to_string(), other)],
+    };
+    if entries.is_empty() {
+        return header;
+    }
+    if expanded {
+        let lines = entries
+            .iter()
+            .map(|(key, value)| {
+                let text = match value {
+                    serde_json::Value::String(text) => text.clone(),
+                    other => {
+                        serde_json::to_string_pretty(other).unwrap_or_else(|_| other.to_string())
+                    }
+                };
+                let text = replace_tabs(&text).replace('\r', "");
+                format!(
+                    "  {key}: {}",
+                    text.split('\n').collect::<Vec<_>>().join("\n    ")
+                )
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+        format!("{header}\n{}", theme_fg(theme, "muted", &lines))
+    } else {
+        let pairs = entries
+            .iter()
+            .map(|(key, value)| {
+                let text = serde_json::to_string(value).unwrap_or_else(|_| value.to_string());
+                format!("{key}={text}")
+            })
+            .collect::<Vec<_>>()
+            .join(" ");
+        let preview = if utf16_len(&pairs) > COLLAPSED_ARGS_CHARS {
+            format!("{}...", utf16_slice(&pairs, COLLAPSED_ARGS_CHARS - 3))
+        } else {
+            pairs
+        };
+        format!("{header} {}", theme_fg(theme, "muted", &preview))
     }
 }
 

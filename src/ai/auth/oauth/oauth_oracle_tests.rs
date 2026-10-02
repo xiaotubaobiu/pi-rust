@@ -933,10 +933,21 @@ mod openai_chatgpt {
     fn flow_with(
         token_server: &MockServer,
     ) -> crate::ai::auth::oauth::openai_chatgpt::OpenAIChatGptOAuth {
+        flow_with_callback_port(token_server, 1455)
+    }
+
+    /// The pinned redirect URI always says `127.0.0.1:1455` (the capture's
+    /// bytes live in the flow's constant redirect URI); only the test-only
+    /// listener moves, so the browser-driving tests do not fight a foreign
+    /// process holding 1455.
+    fn flow_with_callback_port(
+        token_server: &MockServer,
+        callback_port: u16,
+    ) -> crate::ai::auth::oauth::openai_chatgpt::OpenAIChatGptOAuth {
         crate::ai::auth::oauth::openai_chatgpt::OpenAIChatGptOAuth::with_endpoints(
             format!("{}/api/accounts/oauth/token", token_server.uri()),
             "127.0.0.1".to_string(),
-            1455,
+            callback_port,
         )
     }
 
@@ -985,7 +996,8 @@ mod openai_chatgpt {
 
         let server = MockServer::start().await;
         mount_token(&server, token_body(), 200).await;
-        let oauth = flow_with(&server);
+        let callback_port = free_port();
+        let oauth = flow_with_callback_port(&server, callback_port);
         let (fake, interaction) = oracle_interaction_with_device_id(hanging_respond());
 
         let login = tokio::spawn(async move { oauth.login(interaction).await });
@@ -1001,7 +1013,7 @@ mod openai_chatgpt {
         let callback_target =
             format!("/auth/callback?code=authorization-code&state={state}&client_id=oaiapp_issued");
         expect_page(
-            1455,
+            callback_port,
             &callback_target,
             &fixture["callbackResponse"],
             "callback",
@@ -1061,7 +1073,8 @@ mod openai_chatgpt {
         seed_entropy(&[&draw(1), &draw(2)]);
         let server = MockServer::start().await;
         mount_token(&server, token_body(), 200).await;
-        let oauth = flow_with(&server);
+        let callback_port = free_port();
+        let oauth = flow_with_callback_port(&server, callback_port);
         let (fake, interaction) = oracle_interaction_with_device_id(hanging_respond());
         let signal = interaction.signal.clone();
 
@@ -1069,7 +1082,7 @@ mod openai_chatgpt {
         let auth_url = wait_for_auth_url(Arc::clone(&fake.auth_url)).await;
         let state = auth_url_param(&auth_url, "state");
         let (status, _, _, body) = http_get(
-            1455,
+            callback_port,
             &format!("/auth/callback?code=authorization-code&state={state}"),
         )
         .await;
@@ -2116,12 +2129,16 @@ mod openai_codex {
             .to_string(),
         )
         .await;
+        // The pinned redirect URI keeps `localhost:1455` (the capture's
+        // bytes); only the test-only listener moves off the well-known port
+        // so a foreign holder of 1455 cannot starve the oracle.
+        let callback_port = free_port();
         let oauth = crate::ai::auth::oauth::openai_codex::OpenAICodexOAuth::with_endpoints(
             format!("{}/oauth/token", server.uri()),
             format!("{}/api/accounts/deviceauth/usercode", server.uri()),
             format!("{}/api/accounts/deviceauth/token", server.uri()),
             "127.0.0.1".to_string(),
-            1455,
+            callback_port,
         );
         let (fake, interaction) = oracle_interaction(select_browser_then(hanging_respond()));
 
@@ -2135,7 +2152,7 @@ mod openai_codex {
 
         let state = auth_url_param(&auth_url, "state");
         expect_page(
-            1455,
+            callback_port,
             &format!("/auth/callback?code=cb-code&state={state}"),
             &fixture["success"],
             "success",
@@ -2188,12 +2205,16 @@ mod openai_codex {
             .to_string(),
         )
         .await;
+        // The pinned redirect URI keeps `localhost:1455` (the capture's
+        // bytes); only the test-only listener moves off the well-known port
+        // so a foreign holder of 1455 cannot starve the oracle.
+        let callback_port = free_port();
         let oauth = crate::ai::auth::oauth::openai_codex::OpenAICodexOAuth::with_endpoints(
             format!("{}/oauth/token", server.uri()),
             format!("{}/api/accounts/deviceauth/usercode", server.uri()),
             format!("{}/api/accounts/deviceauth/token", server.uri()),
             "127.0.0.1".to_string(),
-            1455,
+            callback_port,
         );
         let (fake, interaction) = oracle_interaction(select_browser_then(hanging_respond()));
 
@@ -2201,21 +2222,21 @@ mod openai_codex {
         let auth_url = wait_for_auth_url(Arc::clone(&fake.auth_url)).await;
         let state = auth_url_param(&auth_url, "state");
         expect_page(
-            1455,
+            callback_port,
             "/auth/callback?code=cb&state=wrong",
             &fixture["mismatch"],
             "mismatch",
         )
         .await;
         expect_page(
-            1455,
+            callback_port,
             &format!("/auth/callback?state={state}"),
             &fixture["missingCode"],
             "missing code",
         )
         .await;
         expect_page(
-            1455,
+            callback_port,
             &format!("/auth/callback?error=access_denied&error_description=nope&state={state}"),
             &fixture["failure"],
             "provider failure",
@@ -2229,7 +2250,7 @@ mod openai_codex {
         assert_upstream_error(&error, fixture["loginError"].as_str().unwrap());
     }
 
-    /// Oracle: a taken port 1455 degrades to manual-paste-only login.
+    /// Oracle: a taken callback port degrades to manual-paste-only login.
     #[tokio::test]
     async fn bind_failure_degrades_to_manual_paste() {
         let fixture = &oracle("openai_codex")["bindFailureManualPaste"];
@@ -2246,13 +2267,18 @@ mod openai_codex {
             .to_string(),
         )
         .await;
-        let blocker = std::net::TcpListener::bind(("127.0.0.1", 1455)).unwrap();
+        // The blocker takes a fresh ephemeral port (the capture's pinned
+        // `localhost:1455` lives in the flow's constant redirect URI, not the
+        // test-only listener), and the flow's bind of the same port then
+        // fails with `AddrInUse`.
+        let blocker = std::net::TcpListener::bind(("127.0.0.1", 0)).unwrap();
+        let callback_port = blocker.local_addr().unwrap().port();
         let oauth = crate::ai::auth::oauth::openai_codex::OpenAICodexOAuth::with_endpoints(
             format!("{}/oauth/token", server.uri()),
             format!("{}/api/accounts/deviceauth/usercode", server.uri()),
             format!("{}/api/accounts/deviceauth/token", server.uri()),
             "127.0.0.1".to_string(),
-            1455,
+            callback_port,
         );
         let auth_url_slot = Arc::new(Mutex::new(None));
         let paste_slot = Arc::clone(&auth_url_slot);

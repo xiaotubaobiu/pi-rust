@@ -40,6 +40,10 @@ use crate::tui::utils::{truncate_to_width, visible_width};
 
 use super::model_selector::{key_hint, raw_key_hint, spacer_lines, theme_fg, DynamicBorder};
 
+/// Upstream `BUILTIN_PATH_PREFIX` (core/source-info.ts). The core constant
+/// lives in the report-only ripple set; the selector keeps a local copy.
+const BUILTIN_PATH_PREFIX: &str = "builtin:";
+
 /// Upstream `ResourceType`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum ResourceType {
@@ -289,6 +293,13 @@ fn get_group_label(metadata: &PathMetadata, agent_dir: &str) -> String {
     if metadata.origin == PathMetadataOrigin::Package {
         return format!("{} ({})", metadata.source, scope_str(metadata.scope));
     }
+    if metadata.source == "builtin" {
+        return if metadata.scope == SourceScope::User {
+            "Built-in".to_string()
+        } else {
+            "Built-in (project override)".to_string()
+        };
+    }
     if metadata.source == "auto" {
         if let Some(base_dir) = &metadata.base_dir {
             return if metadata.scope == SourceScope::User {
@@ -396,14 +407,19 @@ pub fn build_groups(resolved: &ResolvedPaths, agent_dir: &str) -> Vec<ResourceGr
 
             let file_name = host_basename(&res.path);
             let parent_folder = host_basename(&host_dirname(&res.path));
-            let display_name =
-                if resource_type == ResourceType::Extensions && parent_folder != "extensions" {
-                    format!("{parent_folder}/{file_name}")
-                } else if resource_type == ResourceType::Skills && file_name == "SKILL.md" {
-                    parent_folder
-                } else {
-                    file_name
-                };
+            let display_name = if metadata.source == "builtin" {
+                // Upstream `path.slice(BUILTIN_PATH_PREFIX.length)`.
+                res.path
+                    .strip_prefix(BUILTIN_PATH_PREFIX)
+                    .unwrap_or(&res.path)
+                    .to_string()
+            } else if resource_type == ResourceType::Extensions && parent_folder != "extensions" {
+                format!("{parent_folder}/{file_name}")
+            } else if resource_type == ResourceType::Skills && file_name == "SKILL.md" {
+                parent_folder
+            } else {
+                file_name
+            };
             subgroup.items.push(ResourceItem {
                 path: res.path.clone(),
                 enabled: res.enabled,
@@ -1328,7 +1344,12 @@ impl ResourceList {
             .collect();
         let mut updated = updated;
         if state != ProjectOverrideState::Inherit {
-            if self.is_inherited_global_item(item) && !updated.contains(&pattern) {
+            // Project entries name inherited files to override them. Built-in
+            // paths need no entry.
+            if self.is_inherited_global_item(item)
+                && item.metadata.source != "builtin"
+                && !updated.contains(&pattern)
+            {
                 updated.push(pattern.clone());
             }
             updated.push(format!(
@@ -1581,7 +1602,7 @@ impl ResourceList {
 
     fn get_resource_pattern_for_scope(&self, item: &ResourceItem, scope: SettingsScope) -> String {
         let source_scope = self.get_item_scope(item);
-        if scope != source_scope {
+        if scope != source_scope || item.metadata.source == "builtin" {
             return item.path.clone();
         }
         let base_dir = item
@@ -1673,6 +1694,9 @@ impl ResourceList {
     }
 
     fn get_resource_pattern(&self, item: &ResourceItem) -> String {
+        if item.metadata.source == "builtin" {
+            return item.path.clone();
+        }
         let scope = self.get_item_scope(item);
         let base_dir = item
             .metadata

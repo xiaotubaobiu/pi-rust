@@ -1636,6 +1636,22 @@ impl ShellSession for RecSession {
             }
         }
     }
+    fn build_bug_report_bundle(
+        &self,
+        options: super::bug_report::BugReportOptions,
+        summary: Option<String>,
+    ) -> futures::future::BoxFuture<'_, Result<super::interactive_mode::BugReportOutcome, String>>
+    {
+        let _ = (options, summary);
+        Box::pin(async {
+            Ok(super::interactive_mode::BugReportOutcome {
+                report_id: "bug-1".to_string(),
+                created_at: "2026-01-01T00:00:00.000Z".to_string(),
+                zip_path: Some("pi-bug-report-bug-1.zip".to_string()),
+                crash_count: 0,
+            })
+        })
+    }
     fn export_to_jsonl(&self, path: &str) -> Result<String, String> {
         let error = self.export_jsonl_error.lock().expect("export").clone();
         match error {
@@ -5422,6 +5438,10 @@ mod upper_oracle {
                 ShellCommand::Export(text) => json!(["cmd.handleExportCommand", text]),
                 ShellCommand::Import(text) => json!(["cmd.handleImportCommand", text]),
                 ShellCommand::Share => json!(["cmd.handleShareCommand"]),
+                ShellCommand::Bug(arg) => json!([
+                    "cmd.handleBugCommand",
+                    arg.clone().map(Value::String).unwrap_or(undefined.clone())
+                ]),
                 ShellCommand::Copy { .. } => json!(["cmd.handleCopyCommand"]),
                 ShellCommand::Name(text) => json!(["cmd.handleNameCommand", text]),
                 ShellCommand::Session => json!(["cmd.handleSessionCommand"]),
@@ -5842,6 +5862,29 @@ mod upper_oracle {
         }
         fn export_to_jsonl(&self, path: &str) -> Result<String, String> {
             Ok(path.to_string())
+        }
+        fn build_bug_report_bundle(
+            &self,
+            options: crate::coding_agent::modes::interactive::bug_report::BugReportOptions,
+            summary: Option<String>,
+        ) -> futures::future::BoxFuture<
+            '_,
+            Result<
+                crate::coding_agent::modes::interactive::interactive_mode::BugReportOutcome,
+                String,
+            >,
+        > {
+            let _ = (options, summary);
+            Box::pin(async {
+                Ok(
+                    crate::coding_agent::modes::interactive::interactive_mode::BugReportOutcome {
+                        report_id: "bug-1".to_string(),
+                        created_at: "2026-01-01T00:00:00.000Z".to_string(),
+                        zip_path: Some("pi-bug-report-bug-1.zip".to_string()),
+                        crash_count: 0,
+                    },
+                )
+            })
         }
         fn export_to_html(
             &self,

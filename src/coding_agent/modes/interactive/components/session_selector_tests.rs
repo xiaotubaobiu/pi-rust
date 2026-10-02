@@ -214,6 +214,7 @@ fn header_and_threaded_matches_oracle() {
         }),
         None,
     );
+    run_pending(&mut selector);
     assert_eq!(selector.render(120), oracle_lines(&expected["initial"]));
 
     // scope: current -> all. The oracle renders the LOADING state right after
@@ -745,6 +746,7 @@ fn scope_deferred_matches_oracle() {
     selector.set_clock(fixed_now);
     futures::executor::block_on(selector.initial_load());
 
+    run_pending(&mut selector);
     assert_eq!(selector.render(120), oracle_lines(&expected["initial"]));
     selector.handle_input(TAB); // current -> all (load starts)
     poll_once(&mut selector); // the load starts (loading header) and stays pending

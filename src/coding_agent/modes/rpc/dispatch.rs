@@ -119,12 +119,14 @@ impl RpcDispatcher {
                                 }),
                                 streaming_behavior,
                                 source: Some(InputSource::Rpc),
-                                preflight_result: Some(Arc::new(move |_disposition| {
+                                preflight_result: Some(Arc::new(move |disposition| {
                                     accept.store(true, Ordering::SeqCst);
                                     callback_output(RpcResponse::success(
                                         callback_id.clone(),
                                         "prompt",
-                                        None,
+                                        Some(json!({
+                                            "disposition": disposition.as_str(),
+                                        })),
                                     ));
                                 })),
                                 ..Default::default()
@@ -146,7 +148,7 @@ impl RpcDispatcher {
                 return Ok(None);
             }
             RpcCommandKind::Steer { message, images } => {
-                session
+                let disposition = session
                     .steer(
                         message,
                         images.map(|items| {
@@ -158,10 +160,10 @@ impl RpcDispatcher {
                         Some(InputSource::Rpc),
                     )
                     .await?;
-                None
+                Some(json!({ "disposition": disposition.as_str() }))
             }
             RpcCommandKind::FollowUp { message, images } => {
-                session
+                let disposition = session
                     .follow_up(
                         message,
                         images.map(|items| {
@@ -173,7 +175,7 @@ impl RpcDispatcher {
                         Some(InputSource::Rpc),
                     )
                     .await?;
-                None
+                Some(json!({ "disposition": disposition.as_str() }))
             }
             RpcCommandKind::Abort => {
                 session.abort().await;

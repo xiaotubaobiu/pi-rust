@@ -1,0 +1,273 @@
+{
+	"scenarios": {
+		"pi_logo_truecolor": {
+			"colorMode": "truecolor",
+			"theme": "dark",
+			"lines": [
+				"\u001b[38;2;228;138;122m\u001b[48;2;79;142;179m▀\u001b[0m\u001b[38;2;228;138;122m▀█\u001b[0m ",
+				"\u001b[38;2;79;142;179m█▀\u001b[0m \u001b[38;2;234;182;93m█\u001b[0m"
+			]
+		},
+		"pi_logo_256color": {
+			"colorMode": "256color",
+			"theme": "dark",
+			"lines": [
+				"\u001b[38;5;174m\u001b[48;5;67m▀\u001b[0m\u001b[38;5;174m▀█\u001b[0m ",
+				"\u001b[38;5;67m█▀\u001b[0m \u001b[38;5;179m█\u001b[0m"
+			]
+		},
+		"themed_text_recolor": {
+			"dark": [
+				" \u001b[38;2;167;152;215mhello world\u001b[39m                                                                    "
+			],
+			"stale_after_theme_change": [
+				" \u001b[38;2;167;152;215mhello world\u001b[39m                                                                    "
+			],
+			"light_after_invalidate": [
+				" \u001b[38;2;116;89;180mhello world\u001b[39m                                                                    "
+			]
+		},
+		"format_tool_call_with_args": {
+			"collapsed_args_chars": 100,
+			"cases": [
+				{
+					"name": "null args",
+					"value": "\u001b[38;2;222;224;225m\u001b[1mgrep\u001b[22m\u001b[39m"
+				},
+				{
+					"name": "null args expanded",
+					"value": "\u001b[38;2;222;224;225m\u001b[1mgrep\u001b[22m\u001b[39m"
+				},
+				{
+					"name": "empty object",
+					"value": "\u001b[38;2;222;224;225m\u001b[1mls\u001b[22m\u001b[39m"
+				},
+				{
+					"name": "string arg collapsed",
+					"value": "\u001b[38;2;222;224;225m\u001b[1mread\u001b[22m\u001b[39m \u001b[38;2;157;165;169margs=\"src/main.ts\"\u001b[39m"
+				},
+				{
+					"name": "string arg expanded",
+					"value": "\u001b[38;2;222;224;225m\u001b[1mread\u001b[22m\u001b[39m\n\u001b[38;2;157;165;169m  args: src/main.ts\u001b[39m"
+				},
+				{
+					"name": "object collapsed",
+					"value": "\u001b[38;2;222;224;225m\u001b[1medit\u001b[22m\u001b[39m \u001b[38;2;157;165;169mpath=\"src/a.rs\" line=3\u001b[39m"
+				},
+				{
+					"name": "object expanded",
+					"value": "\u001b[38;2;222;224;225m\u001b[1medit\u001b[22m\u001b[39m\n\u001b[38;2;157;165;169m  path: src/a.rs\n  line: 3\u001b[39m"
+				},
+				{
+					"name": "nested expanded",
+					"value": "\u001b[38;2;222;224;225m\u001b[1mrun\u001b[22m\u001b[39m\n\u001b[38;2;157;165;169m  cmd: x\n  env: {\n      \"A\": 1,\n      \"B\": [\n        1,\n        2\n      ]\n    }\u001b[39m"
+				},
+				{
+					"name": "array arg collapsed",
+					"value": "\u001b[38;2;222;224;225m\u001b[1mrun\u001b[22m\u001b[39m \u001b[38;2;157;165;169margs=[\"a\",\"b\"]\u001b[39m"
+				},
+				{
+					"name": "multiline string expanded",
+					"value": "\u001b[38;2;222;224;225m\u001b[1mwrite\u001b[22m\u001b[39m\n\u001b[38;2;157;165;169m  args: one\n    two   three\n    four\u001b[39m"
+				},
+				{
+					"name": "long string cut",
+					"value": "\u001b[38;2;222;224;225m\u001b[1mbash\u001b[22m\u001b[39m \u001b[38;2;157;165;169margs=\"yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy...\u001b[39m"
+				},
+				{
+					"name": "unicode cut",
+					"value": "\u001b[38;2;222;224;225m\u001b[1mbash\u001b[22m\u001b[39m \u001b[38;2;157;165;169margs=\"😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀�...\u001b[39m"
+				}
+			]
+		},
+		"crash_texts": {
+			"hints": {
+				"single": "A stack frame came from loaded extension `ext-a`, which may be involved. Try disabling it with `pi config`, or run `pi -ne` to confirm.",
+				"pair": "A stack frame came from loaded extensions `ext-a` and `ext-b`, which may be involved. Try disabling them with `pi config`, or run `pi -ne` to confirm.",
+				"triple": "A stack frame came from loaded extensions `ext-a`, `ext-b`, and `ext-c`, which may be involved. Try disabling them with `pi config`, or run `pi -ne` to confirm.",
+				"empty strings filtered": "A stack frame came from loaded extension `real`, which may be involved. Try disabling it with `pi config`, or run `pi -ne` to confirm."
+			},
+			"instructions": {
+				"with_session": "To report this crash: run `pi -r` to resume the session, then run /bug. The crash details are attached automatically.",
+				"without_session": "To report this crash: start pi and run /bug. The crash details are attached automatically."
+			},
+			"suggest_render": [
+				" \u001b[38;2;157;165;169mIf this looks like a pi bug, /bug sends a report to the developers.\u001b[39m            "
+			],
+			"abort_cancel_regex": {
+				"source": "\\b(?:abort(?:ed)?|cancel(?:l?ed)?)\\b",
+				"inputs": {
+					"Operation aborted": true,
+					"aborted by user": true,
+					"Request cancelled": true,
+					"canceled": true,
+					"ABORTED": true,
+					"abortive attempt": false,
+					"precanceled!": false,
+					"canvass": false,
+					"timeout after 30s": false
+				}
+			}
+		},
+		"footer_routed_and_usage": {
+			"routed_with_level": [
+				"\u001b[38;2;126;136;142m~\\proj\u001b[39m",
+				"\u001b[38;2;126;136;142m↑1.5k ↓255 R100 W50 $0.550 10.0%/200k (auto)\u001b[39m\u001b[38;2;126;136;142m                                         pi-virtual → claude-sonnet-4 • high\u001b[39m"
+			],
+			"routed_without_level": [
+				"\u001b[38;2;126;136;142m~\\proj\u001b[39m",
+				"\u001b[38;2;126;136;142m↑1.5k ↓255 R100 W50 $0.550 10.0%/200k (auto)\u001b[39m\u001b[38;2;126;136;142m                                                pi-virtual → claude-sonnet-4\u001b[39m"
+			],
+			"not_routed": [
+				"\u001b[38;2;126;136;142m~\\proj\u001b[39m",
+				"\u001b[38;2;126;136;142m↑1.5k ↓255 R100 W50 $0.550 10.0%/200k (auto)\u001b[39m\u001b[38;2;126;136;142m                                                                  pi-virtual\u001b[39m"
+			]
+		},
+		"settings_theme_items": {
+			"system_theme_name": "system",
+			"automatic_value": "/",
+			"system_first_current_system": [
+				{
+					"value": "system",
+					"label": "✓ system",
+					"description": "Theme created from your terminal's colors"
+				},
+				{
+					"value": "/",
+					"label": "  automatic",
+					"description": "Use separate themes for light and dark terminal appearance"
+				},
+				{
+					"value": "dark",
+					"label": "  dark"
+				},
+				{
+					"value": "light",
+					"label": "  light"
+				}
+			],
+			"system_first_current_dark": [
+				{
+					"value": "system",
+					"label": "  system",
+					"description": "Theme created from your terminal's colors"
+				},
+				{
+					"value": "/",
+					"label": "  automatic",
+					"description": "Use separate themes for light and dark terminal appearance"
+				},
+				{
+					"value": "dark",
+					"label": "✓ dark"
+				},
+				{
+					"value": "light",
+					"label": "  light"
+				}
+			],
+			"theme_items_description": [
+				{
+					"value": "system",
+					"label": "  system",
+					"description": "Theme created from your terminal's colors"
+				},
+				{
+					"value": "dark",
+					"label": "✓ dark"
+				}
+			]
+		},
+		"cli_mode_diagnostics": {
+			"cases": [
+				{
+					"name": "missing value",
+					"argv": [
+						"--mode"
+					],
+					"result": {
+						"diagnostics": [
+							{
+								"type": "error",
+								"message": "--mode requires text, json, or rpc"
+							}
+						]
+					}
+				},
+				{
+					"name": "flag-like value",
+					"argv": [
+						"--mode",
+						"-x"
+					],
+					"result": {
+						"diagnostics": [
+							{
+								"type": "error",
+								"message": "--mode requires text, json, or rpc"
+							},
+							{
+								"type": "error",
+								"message": "Unknown option: -x"
+							}
+						]
+					}
+				},
+				{
+					"name": "invalid value",
+					"argv": [
+						"--mode",
+						"bogus"
+					],
+					"result": {
+						"diagnostics": [
+							{
+								"type": "error",
+								"message": "Invalid mode \"bogus\". Valid values: text, json, rpc"
+							}
+						]
+					}
+				},
+				{
+					"name": "rpc",
+					"argv": [
+						"--mode",
+						"rpc"
+					],
+					"result": {
+						"diagnostics": [],
+						"mode": "rpc"
+					}
+				},
+				{
+					"name": "text then extra",
+					"argv": [
+						"--mode",
+						"text",
+						"extra"
+					],
+					"result": {
+						"diagnostics": [],
+						"mode": "text"
+					}
+				}
+			]
+		},
+		"rpc_dispositions": {
+			"prompt_started": "{\"id\":\"p1\",\"type\":\"response\",\"command\":\"prompt\",\"success\":true,\"data\":{\"disposition\":\"started\"}}",
+			"prompt_handled": "{\"id\":\"p2\",\"type\":\"response\",\"command\":\"prompt\",\"success\":true,\"data\":{\"disposition\":\"handled\"}}",
+			"prompt_queued": "{\"id\":\"p3\",\"type\":\"response\",\"command\":\"prompt\",\"success\":true,\"data\":{\"disposition\":\"queued\"}}",
+			"steer": "{\"id\":\"s1\",\"type\":\"response\",\"command\":\"steer\",\"success\":true,\"data\":{\"disposition\":\"queued\"}}",
+			"follow_up": "{\"id\":\"f1\",\"type\":\"response\",\"command\":\"follow_up\",\"success\":true,\"data\":{\"disposition\":\"queued\"}}"
+		}
+	},
+	"pins": {
+		"components/pi-logo.ts": "120664ae4e5982b4b1325da5cfffd35ea8ffd201cde6ce566d9383b9a6813c4e",
+		"components/themed-text.ts": "7003c90ab15dc37c1a10e744bbf24c597e91fe7415d59b75c085b2e5c1749817",
+		"components/footer.ts": "494c5dca212af8d895e20810269fd9d46b3b4f8e12435c803ae93049d6eb4ad4",
+		"core/tools/render-utils.ts": "6bd0f21d1c1cefcf6bb1de023de46ad1250e096d36327b4d42fbb71a06414956",
+		"modes/interactive/interactive-mode.ts": "444b21cb8677d061807d92562b3ac4ef7ea703dba186e08ea6b343d9f99d690f",
+		"modes/interactive/components/settings-selector.ts": "38ca12e5c1409769751eecbf2129231dc6197efebc3ac40dae54609a16b25300",
+		"cli/args.ts": "f5d9a107ee96b10c70a506532b2243064fbae9ad36a805d789081d1d88d62966"
+	}
+}

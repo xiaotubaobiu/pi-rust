@@ -36,7 +36,19 @@ pub struct ExtensionEditorComponent {
     #[allow(dead_code)]
     on_submit: Box<dyn FnMut(&str)>,
     on_cancel: Box<dyn FnMut()>,
+    /// Upstream `opts.description` (styled at rebuild time).
+    description_text: Option<String>,
     theme: Arc<Theme>,
+}
+
+/// Upstream `ExtensionEditorOptions` (delta: the editor options gain the
+/// `description` line; the description is threaded separately here).
+#[derive(Default)]
+pub struct ExtensionEditorOptions {
+    /// The upstream `EditorOptions` surface.
+    pub editor: EditorOptions,
+    /// Descriptive line under the title (upstream `description`).
+    pub description: Option<String>,
 }
 
 impl ExtensionEditorComponent {
@@ -53,6 +65,39 @@ impl ExtensionEditorComponent {
         external_editor_command: Option<&str>,
         keybindings_matches: Box<dyn Fn(&str, &str) -> bool>,
     ) -> Self {
+        Self::with_options(
+            theme,
+            _title,
+            prefill,
+            on_submit,
+            on_cancel,
+            options.map(|editor| ExtensionEditorOptions {
+                editor,
+                description: None,
+            }),
+            external_editor_command,
+            keybindings_matches,
+        )
+    }
+
+    /// Upstream constructor carrying `ExtensionEditorOptions` (the
+    /// `{ description, ...editorOptions }` destructure upstream).
+    #[allow(clippy::too_many_arguments)]
+    pub fn with_options(
+        theme: Arc<Theme>,
+        _title: &str,
+        prefill: Option<&str>,
+        on_submit: Box<dyn FnMut(&str)>,
+        on_cancel: Box<dyn FnMut()>,
+        options: Option<ExtensionEditorOptions>,
+        external_editor_command: Option<&str>,
+        keybindings_matches: Box<dyn Fn(&str, &str) -> bool>,
+    ) -> Self {
+        let description_text = options
+            .as_ref()
+            .and_then(|options| options.description.as_deref())
+            .map(|description| theme_fg(&theme, "text", description));
+        let editor_options = options.map(|options| options.editor).unwrap_or_default();
         let external_editor_command = external_editor_command
             .map(str::to_string)
             .or_else(|| std::env::var("VISUAL").ok())
@@ -69,7 +114,7 @@ impl ExtensionEditorComponent {
                 let border_theme = Arc::clone(&theme);
                 Arc::new(move |text: &str| theme_fg(&border_theme, "borderMuted", text))
             }),
-            options.unwrap_or_default(),
+            editor_options,
         );
         if let Some(prefill) = prefill {
             editor.set_text(prefill);
@@ -81,6 +126,7 @@ impl ExtensionEditorComponent {
             external_editor_command,
             on_submit,
             on_cancel,
+            description_text,
             theme,
         };
         component.rebuild();
@@ -91,6 +137,17 @@ impl ExtensionEditorComponent {
         let mut children: Vec<ComponentHandle> = Vec::new();
         children.push(ComponentHandle::new(Border::new(None)));
         children.push(ComponentHandle::new(Spacer::new(1)));
+        // Upstream `if (description) { spacer; text(theme.fg("text", description)); }`
+        // (positioned between the title and the editor).
+        if let Some(description_text) = &self.description_text {
+            children.push(ComponentHandle::new(Spacer::new(1)));
+            children.push(ComponentHandle::new(Text::with_options(
+                description_text,
+                1,
+                0,
+                None,
+            )));
+        }
         children.push(ComponentHandle::new(SlotAdapter));
         children.push(ComponentHandle::new(Spacer::new(1)));
         children.push(ComponentHandle::new(Text::with_options(

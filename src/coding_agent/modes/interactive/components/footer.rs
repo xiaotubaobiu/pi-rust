@@ -173,6 +173,9 @@ pub enum FooterEntry {
     ToolResultMessage(FooterUsage),
     BranchSummary(FooterUsage),
     Compaction(FooterUsage),
+    /// `usage` entries (model-attributed usage outside the LLM context, e.g.
+    /// cache warming). Counted toward the totals like every other usage.
+    Usage(FooterUsage),
     Other,
 }
 
@@ -183,6 +186,13 @@ pub struct FooterModel {
     pub provider: String,
     pub context_window: u64,
     pub reasoning: bool,
+}
+
+/// Upstream `session.routedModel` slice (`{ model, thinkingLevel? }`).
+#[derive(Clone, Debug)]
+pub struct FooterRoutedModel {
+    pub model: FooterModel,
+    pub thinking_level: Option<String>,
 }
 
 /// The `AgentSession` reads the footer performs (upstream accesses the fields
@@ -196,6 +206,15 @@ pub trait FooterSession {
     fn session_name(&self) -> Option<String>;
     fn entries(&self) -> Vec<FooterEntry>;
     fn is_using_subscription(&self, provider: &str) -> bool;
+    /// `sessionManager.getSessionId()`.
+    fn session_id(&self) -> String;
+    /// `sessionManager.getLeafId()`.
+    fn leaf_id(&self) -> Option<String>;
+    /// `sessionManager.getEntryCount()`.
+    fn entry_count(&self) -> usize;
+    /// `session.routedModel` — the physical model of the latest response
+    /// under a virtual selection.
+    fn routed_model(&self) -> Option<FooterRoutedModel>;
 }
 
 /// The `ReadonlyFooterDataProvider` reads.
@@ -215,11 +234,28 @@ pub struct UsageTotals {
     pub cost: f64,
 }
 
+/// Upstream `SessionStats` — the per-render scan result of
+/// `getSessionStats()`.
+#[derive(Clone, Debug)]
+struct SessionStats {
+    usage_totals: UsageTotals,
+    latest_cache_hit_rate: Option<f64>,
+    context_usage: Option<(u64, Option<f64>)>,
+    session_id: String,
+    leaf_id: Option<String>,
+    entry_count: usize,
+    /// The cache key (upstream compares `sessionId`, `leafId`, `entryCount`,
+    /// and `limitsModel` identity; the port compares the model's value
+    /// tuple, which is behaviorally equivalent for the footer's reads).
+    limits_model_key: Option<(String, String, u64, bool)>,
+}
+
 /// Upstream `FooterComponent`.
 pub struct FooterComponent<'a> {
     auto_compact_enabled: bool,
     session: &'a dyn FooterSession,
     footer_data: &'a dyn FooterDataProvider,
+    session_stats: std::cell::RefCell<Option<SessionStats>>,
 }
 
 impl<'a> FooterComponent<'a> {
@@ -229,6 +265,7 @@ impl<'a> FooterComponent<'a> {
             auto_compact_enabled: true,
             session,
             footer_data,
+            session_stats: std::cell::RefCell::new(None),
         }
     }
 
@@ -237,14 +274,49 @@ impl<'a> FooterComponent<'a> {
         self.auto_compact_enabled = enabled;
     }
 
-    /// Upstream `render`.
-    pub fn render_footer(&self, width: usize, theme: &Theme) -> Vec<String> {
+    /// Upstream `getSessionStats`: usage totals and context usage scan the
+    /// whole session, and the footer renders on every frame. Entries are
+    /// append-only and every append moves the leaf, so the results only
+    /// change with the session, leaf, entry count, or the model whose
+    /// context window applies.
+    fn get_session_stats(&self) -> SessionStats {
+        let entry_count = self.session.entry_count();
+        let session_id = self.session.session_id();
+        let leaf_id = self.session.leaf_id();
+        // Upstream `this.session.routedModel?.model ?? this.session.model`.
+        let limits_model_key = self
+            .session
+            .routed_model()
+            .map(|routed| {
+                (
+                    routed.model.provider,
+                    routed.model.id,
+                    routed.model.context_window,
+                    routed.model.reasoning,
+                )
+            })
+            .or_else(|| {
+                self.session
+                    .state_model()
+                    .map(|m| (m.provider, m.id, m.context_window, m.reasoning))
+            });
+        if let Some(cached) = self.session_stats.borrow().as_ref() {
+            if cached.session_id == session_id
+                && cached.leaf_id == leaf_id
+                && cached.entry_count == entry_count
+                && cached.limits_model_key == limits_model_key
+            {
+                return cached.clone();
+            }
+        }
+
         // Calculate cumulative usage from ALL session entries.
         let mut usage_totals = UsageTotals::default();
         let mut latest_cache_hit_rate: Option<f64> = None;
 
         for entry in self.session.entries() {
             match entry {
+                FooterEntry::Usage(usage) => add_usage(&mut usage_totals, &usage),
                 FooterEntry::AssistantMessage(usage) => {
                     add_usage(&mut usage_totals, &usage);
                     let latest_prompt_tokens = usage.input + usage.cache_read + usage.cache_write;
@@ -264,6 +336,26 @@ impl<'a> FooterComponent<'a> {
 
         // Context usage (handles compaction correctly).
         let context_usage = self.session.context_usage();
+        let stats = SessionStats {
+            usage_totals,
+            latest_cache_hit_rate,
+            context_usage,
+            limits_model_key,
+            session_id,
+            leaf_id,
+            entry_count,
+        };
+        *self.session_stats.borrow_mut() = Some(stats.clone());
+        stats
+    }
+
+    /// Upstream `render`.
+    pub fn render_footer(&self, width: usize, theme: &Theme) -> Vec<String> {
+        let stats = self.get_session_stats();
+        let usage_totals = stats.usage_totals;
+        let latest_cache_hit_rate = stats.latest_cache_hit_rate;
+
+        let context_usage = stats.context_usage;
         let model = self.session.state_model();
         let context_window = context_usage
             .map(|(w, _)| w)
@@ -383,6 +475,15 @@ impl<'a> FooterComponent<'a> {
                 format!("{model_name} • {thinking_level}")
             };
         }
+        // A virtual model routes each request; show where the latest response went.
+        if let Some(routed) = self.session.routed_model() {
+            let level = routed
+                .thinking_level
+                .as_deref()
+                .map(|level| format!(" • {level}"))
+                .unwrap_or_default();
+            right_side_without_provider.push_str(&format!(" → {}{level}", routed.model.id));
+        }
 
         let mut right_side = right_side_without_provider.clone();
         if self.footer_data.available_provider_count() > 1 {
@@ -476,6 +577,8 @@ mod tests {
         session_name: Option<String>,
         entries: Vec<FooterEntry>,
         subscription_providers: Vec<String>,
+        routed: Option<FooterRoutedModel>,
+        entry_count: usize,
     }
 
     impl FooterSession for FixedSession {
@@ -499,6 +602,18 @@ mod tests {
         }
         fn is_using_subscription(&self, provider: &str) -> bool {
             self.subscription_providers.iter().any(|p| p == provider)
+        }
+        fn session_id(&self) -> String {
+            "session-1".to_string()
+        }
+        fn leaf_id(&self) -> Option<String> {
+            Some("leaf-1".to_string())
+        }
+        fn entry_count(&self) -> usize {
+            self.entry_count
+        }
+        fn routed_model(&self) -> Option<FooterRoutedModel> {
+            self.routed.clone()
         }
     }
 
@@ -618,6 +733,8 @@ mod tests {
                 FooterEntry::BranchSummary(usage(100, 10, 0, 0, 0.01)),
             ],
             subscription_providers: Vec::new(),
+            routed: None,
+            entry_count: 3,
         };
         let provider = FixedProvider {
             branch: Some("main".to_string()),
@@ -666,6 +783,8 @@ mod tests {
             session_name: None,
             entries: Vec::new(),
             subscription_providers: Vec::new(),
+            routed: None,
+            entry_count: 0,
         };
         let over90 = FixedSession {
             thinking_level: base.thinking_level.clone(),
@@ -675,6 +794,8 @@ mod tests {
             entries: base.entries.clone(),
             subscription_providers: Vec::new(),
             model: base.model.clone(),
+            routed: None,
+            entry_count: 0,
         };
         let footer = FooterComponent::new(&over90, &provider);
         let lines = footer.render_footer(80, &theme);
@@ -709,5 +830,77 @@ mod tests {
         assert_eq!(sanitize_status_text("first\tstatus"), "first status");
         assert_eq!(sanitize_status_text("a\n\nb"), "a b");
         assert_eq!(sanitize_status_text("  x   y  "), "x y");
+    }
+
+    /// Delta oracle: `usage` entries count toward the totals (without
+    /// touching the cache-hit rate) and a routed model appends
+    /// `" → <physical id>[ • <level>]"` after the model/thinking segment.
+    #[test]
+    fn footer_usage_entries_and_routed_model() {
+        let theme = dark();
+        let provider = FixedProvider {
+            branch: None,
+            statuses: BTreeMap::new(),
+            provider_count: 1,
+        };
+        let session = FixedSession {
+            model: Some(FooterModel {
+                id: "pi-virtual".to_string(),
+                provider: "pi".to_string(),
+                context_window: 100_000,
+                reasoning: false,
+            }),
+            thinking_level: None,
+            context_usage: Some((200_000, Some(10.0))),
+            cwd: "C:\\Users\\n\\proj".to_string(),
+            session_name: None,
+            entries: vec![
+                FooterEntry::Usage(usage(1500, 250, 100, 50, 0.5)),
+                FooterEntry::Usage(usage(10, 5, 0, 0, 0.05)),
+            ],
+            subscription_providers: Vec::new(),
+            routed: Some(FooterRoutedModel {
+                model: FooterModel {
+                    id: "claude-sonnet-4".to_string(),
+                    provider: "anthropic".to_string(),
+                    context_window: 200_000,
+                    reasoning: true,
+                },
+                thinking_level: Some("high".to_string()),
+            }),
+            entry_count: 2,
+        };
+        let footer = FooterComponent::new(&session, &provider);
+        let lines = footer.render_footer(120, &theme);
+        // Totals include the usage entries (delta oracle footer_routed_and_usage:
+        // the two entries sum to 1510/255 → "1.5k"/"255"); no CH part (usage
+        // entries never set the cache-hit rate).
+        assert!(
+            lines[1].contains("↑1.5k ↓255 R100 W50 $0.550"),
+            "{}",
+            lines[1]
+        );
+        // The routed physical model renders where the latest response went.
+        assert!(
+            lines[1].contains("pi-virtual → claude-sonnet-4 • high"),
+            "{}",
+            lines[1]
+        );
+
+        // A routed model without a thinking level omits the level segment.
+        let mut no_level = session.clone();
+        no_level.routed = Some(FooterRoutedModel {
+            thinking_level: None,
+            ..no_level.routed.clone().unwrap()
+        });
+        let footer = FooterComponent::new(&no_level, &provider);
+        // Delta oracle routed_without_level: the right-aligned row ends at
+        // the model id (no trailing space) and omits the "• <level>" segment.
+        let lines = footer.render_footer(120, &theme);
+        let line = &lines[1];
+        // Delta oracle routed_without_level: the right-aligned row ends at
+        // the model id (then the dim reset) and omits "• <level>".
+        assert!(line.contains("pi-virtual → claude-sonnet-4"), "{}", line);
+        assert!(!line.contains("•"), "{}", line);
     }
 }

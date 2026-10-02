@@ -544,6 +544,9 @@ pub struct SessionList {
     all_sessions: Vec<SessionInfo>,
     filtered_sessions: Vec<FlatSessionNode>,
     selected_index: usize,
+    /// Upstream `selectionTouched`: set on the first navigation key; before
+    /// that, fresh session lists reset the selection to the top.
+    selection_touched: bool,
     search_input: Input,
     show_cwd: bool,
     sort_mode: SortMode,
@@ -585,6 +588,7 @@ impl SessionList {
             all_sessions: sessions,
             filtered_sessions: Vec::new(),
             selected_index: 0,
+            selection_touched: false,
             search_input: Input::new(InputOptions::default()),
             show_cwd,
             sort_mode,
@@ -638,10 +642,26 @@ impl SessionList {
     }
 
     pub fn set_sessions(&mut self, sessions: Vec<SessionInfo>, show_cwd: bool) {
+        let selected_path = if self.selection_touched {
+            self.get_selected_session_path().map(str::to_string)
+        } else {
+            None
+        };
         self.all_sessions = sessions;
         self.show_cwd = show_cwd;
         let query = self.search_input.value().to_string();
         self.filter_sessions(&query);
+        if !self.selection_touched {
+            self.selected_index = 0;
+        } else if let Some(selected_path) = selected_path {
+            let selected_index = self
+                .filtered_sessions
+                .iter()
+                .position(|node| node.session.path == selected_path);
+            if let Some(selected_index) = selected_index {
+                self.selected_index = selected_index;
+            }
+        }
     }
 
     /// Upstream `filterSessions`.
@@ -983,6 +1003,7 @@ impl SessionList {
             return;
         }
 
+        self.selection_touched = true;
         // Up arrow
         if keybindings_match(data, "tui.select.up") {
             self.selected_index = self.selected_index.saturating_sub(1);
@@ -1175,7 +1196,7 @@ pub(crate) enum PendingWork {
 struct ActiveLoad {
     scope: SessionScope,
     reason: LoadReason,
-    seq: Option<usize>,
+    token: u64,
     future: Pin<Box<dyn Future<Output = Result<Vec<SessionInfo>, String>> + Send>>,
     progress_cell: Arc<Mutex<Option<(usize, usize)>>>,
 }
@@ -1201,9 +1222,12 @@ pub struct SessionSelectorComponent {
     all_sessions_loader: SessionsLoader,
     request_render: RenderFn,
     rename_session: Option<RenameSessionFn>,
-    current_loading: bool,
-    all_loading: bool,
-    all_load_seq: usize,
+    /// Upstream `currentLoad`/`allLoad` (an `AbortController | null`): a
+    /// `Some(token)` marks an in-flight load for the scope. The token pins
+    /// the load so a result completing after `cancelLoads` is discarded.
+    current_load: Option<u64>,
+    all_load: Option<u64>,
+    load_generation: u64,
     mode: BodyMode,
     rename_input: Input,
     rename_target_path: Option<String>,
@@ -1383,9 +1407,9 @@ impl SessionSelectorComponent {
             all_sessions_loader,
             request_render,
             rename_session,
-            current_loading: false,
-            all_loading: false,
-            all_load_seq: 0,
+            current_load: None,
+            all_load: None,
+            load_generation: 0,
             mode: BodyMode::List,
             rename_input,
             rename_target_path: None,
@@ -1449,18 +1473,21 @@ impl SessionSelectorComponent {
             match event {
                 SessionSelectorEvent::Select(path) => {
                     self.header.set_status_message(None, None);
+                    self.cancel_loads();
                     if let Some(on_select) = &mut self.on_select {
                         on_select(&path);
                     }
                 }
                 SessionSelectorEvent::Cancel => {
                     self.header.set_status_message(None, None);
+                    self.cancel_loads();
                     if let Some(on_cancel) = &mut self.on_cancel {
                         on_cancel();
                     }
                 }
                 SessionSelectorEvent::Exit => {
                     self.header.set_status_message(None, None);
+                    self.cancel_loads();
                     if let Some(on_exit) = &mut self.on_exit {
                         on_exit();
                     }
@@ -1565,10 +1592,14 @@ impl SessionSelectorComponent {
             if !self.can_rename {
                 continue;
             }
-            if self.scope == SessionScope::Current && self.current_loading {
-                continue;
-            }
-            if self.scope == SessionScope::All && self.all_loading {
+            // Upstream: `if (this.scope === "current" ? this.currentLoad :
+            // this.allLoad) return;`
+            let load_in_flight = if self.scope == SessionScope::Current {
+                self.current_load
+            } else {
+                self.all_load
+            };
+            if load_in_flight.is_some() {
                 continue;
             }
 
@@ -1655,32 +1686,35 @@ impl SessionSelectorComponent {
         }
     }
 
-    /// The synchronous half of `loadScope` upstream: mark loading, bump the
-    /// All-load sequence, sync the header, call the loader (the returned
-    /// future is stored on the component — see [`Self::poll_active_load`]).
-    fn start_load(&mut self, scope: SessionScope, reason: LoadReason) -> Option<usize> {
+    /// The synchronous half of `loadScope` upstream: mark loading, mint the
+    /// load token, sync the header, call the loader (the returned future is
+    /// stored on the component — see [`Self::poll_active_load`]).
+    fn start_load(&mut self, scope: SessionScope, reason: LoadReason) -> Option<u64> {
+        // Upstream `if (scope === "current" ? this.currentLoad : this.allLoad) return;`
+        let slot_in_use = match scope {
+            SessionScope::Current => self.current_load,
+            SessionScope::All => self.all_load,
+        };
+        if slot_in_use.is_some() {
+            return None;
+        }
         let show_cwd = scope == SessionScope::All;
         let _ = show_cwd;
 
-        // Mark loading
+        // Mark loading (the token is the port's `AbortController` identity).
+        self.load_generation += 1;
+        let token = self.load_generation;
         match scope {
-            SessionScope::Current => self.current_loading = true,
-            SessionScope::All => self.all_loading = true,
+            SessionScope::Current => self.current_load = Some(token),
+            SessionScope::All => self.all_load = Some(token),
         }
-
-        let seq = if scope == SessionScope::All {
-            self.all_load_seq += 1;
-            Some(self.all_load_seq)
-        } else {
-            None
-        };
         self.header.set_scope(scope);
         self.header.set_loading(true);
         (self.request_render.lock().expect("render fn"))();
 
         // The progress callback fires during the load; the port stages the
         // values in a shared cell that `apply_progress` flushes into the
-        // header under the same scope/seq guards (S20.1 explicit progress
+        // header under the same scope/token guards (S20.1 explicit progress
         // drain).
         let progress_cell: Arc<Mutex<Option<(usize, usize)>>> = Arc::new(Mutex::new(None));
         let on_progress: SessionListProgress = {
@@ -1697,11 +1731,34 @@ impl SessionSelectorComponent {
         self.active_load = Some(ActiveLoad {
             scope,
             reason,
-            seq,
+            token,
             future,
             progress_cell,
         });
-        seq
+        Some(token)
+    }
+
+    /// Upstream `cancelLoads`: abort both loads and drop their cached
+    /// sessions. The port aborts by dropping the in-flight future and
+    /// clearing the scope slots; a load polled afterwards is discarded by
+    /// the token check.
+    fn cancel_loads(&mut self) {
+        if self.current_load.take().is_some() {
+            self.current_sessions = None;
+        }
+        if self.all_load.take().is_some() {
+            self.all_sessions = None;
+        }
+        self.active_load = None;
+    }
+
+    /// Whether the load carrying `token` for `scope` is still the scope's
+    /// active load (upstream `isActive()`).
+    fn load_is_active(&self, scope: SessionScope, token: u64) -> bool {
+        match scope {
+            SessionScope::Current => self.current_load == Some(token),
+            SessionScope::All => self.all_load == Some(token),
+        }
     }
 
     /// Poll the stored load once, re-storing it when still pending (upstream:
@@ -1712,7 +1769,7 @@ impl SessionSelectorComponent {
     ) -> Option<(
         SessionScope,
         LoadReason,
-        Option<usize>,
+        u64,
         Result<Vec<SessionInfo>, String>,
     )> {
         let mut active = self.active_load.take()?;
@@ -1720,7 +1777,7 @@ impl SessionSelectorComponent {
         let mut cx = std::task::Context::from_waker(&waker);
         match active.future.as_mut().poll(&mut cx) {
             std::task::Poll::Ready(result) => {
-                Some((active.scope, active.reason, active.seq, result))
+                Some((active.scope, active.reason, active.token, result))
             }
             std::task::Poll::Pending => {
                 self.active_load = Some(active);
@@ -1735,30 +1792,30 @@ impl SessionSelectorComponent {
         &mut self,
         scope: SessionScope,
         reason: LoadReason,
-        seq: Option<usize>,
+        token: u64,
         result: Result<Vec<SessionInfo>, String>,
     ) {
+        let _ = reason;
         let show_cwd = scope == SessionScope::All;
+        if !self.load_is_active(scope, token) {
+            // Upstream `if (!isActive()) return;` — the load was cancelled.
+            return;
+        }
         match result {
             Ok(sessions) => {
                 match scope {
                     SessionScope::Current => {
                         self.current_sessions = Some(sessions.clone());
-                        self.current_loading = false;
+                        self.current_load = None;
                     }
                     SessionScope::All => {
                         self.all_sessions = Some(sessions.clone());
-                        self.all_loading = false;
+                        self.all_load = None;
                     }
                 }
 
                 if scope != self.scope {
                     return;
-                }
-                if let Some(seq) = seq {
-                    if seq != self.all_load_seq {
-                        return;
-                    }
                 }
 
                 self.header.set_loading(false);
@@ -1767,17 +1824,18 @@ impl SessionSelectorComponent {
             }
             Err(message) => {
                 match scope {
-                    SessionScope::Current => self.current_loading = false,
-                    SessionScope::All => self.all_loading = false,
+                    SessionScope::Current => {
+                        self.current_load = None;
+                        self.current_sessions = None;
+                    }
+                    SessionScope::All => {
+                        self.all_load = None;
+                        self.all_sessions = None;
+                    }
                 }
 
                 if scope != self.scope {
                     return;
-                }
-                if let Some(seq) = seq {
-                    if seq != self.all_load_seq {
-                        return;
-                    }
                 }
 
                 self.header.set_loading(false);
@@ -1789,9 +1847,7 @@ impl SessionSelectorComponent {
                     Some(4000),
                 );
 
-                if reason == LoadReason::Initial {
-                    self.session_list.set_sessions(Vec::new(), show_cwd);
-                }
+                self.session_list.set_sessions(Vec::new(), show_cwd);
                 (self.request_render.lock().expect("render fn"))();
             }
         }
@@ -1809,8 +1865,8 @@ impl SessionSelectorComponent {
             return false;
         };
         let scope_unchanged = active.scope == self.scope;
-        let seq_current = active.seq.is_none_or(|seq| seq == self.all_load_seq);
-        if scope_unchanged && seq_current {
+        let token_current = self.load_is_active(active.scope, active.token);
+        if scope_unchanged && token_current {
             self.header.set_progress(loaded, total);
             (self.request_render.lock().expect("render fn"))();
             return true;
@@ -1844,34 +1900,41 @@ impl SessionSelectorComponent {
 
     /// Upstream `refreshSessionsAfterMutation`.
     async fn refresh_sessions_after_mutation(&mut self) {
+        self.cancel_loads();
+        self.current_sessions = None;
+        self.all_sessions = None;
         self.load_scope(self.scope, LoadReason::Refresh).await;
     }
 
-    /// Upstream `toggleScope`.
+    /// Upstream `toggleScope` (capture-verbatim: current→all with a cached
+    /// all list swaps it in and clears loading; without a cache the list
+    /// keeps showing the previous scope's rows under the loading header and
+    /// the toggle load is started only when one is not already in flight).
     fn toggle_scope(&mut self) {
         if self.scope == SessionScope::Current {
             self.scope = SessionScope::All;
             self.header.set_scope(self.scope);
 
-            if let Some(all_sessions) = self.all_sessions.clone() {
+            if let Some(sessions) = self.all_sessions.clone() {
                 self.header.set_loading(false);
-                self.session_list.set_sessions(all_sessions, true);
+                self.session_list.set_sessions(sessions, true);
                 (self.request_render.lock().expect("render fn"))();
                 return;
             }
 
-            if !self.all_loading {
+            if self.all_load.is_none() {
                 // Upstream fires `void this.loadScope("all", "toggle")`; the
                 // started load is stored and polled through
                 // `run_pending_work` (S20.1).
-                self.start_load(SessionScope::All, LoadReason::Toggle);
+                self.start_load(self.scope, LoadReason::Toggle);
             }
             return;
         }
 
         self.scope = SessionScope::Current;
         self.header.set_scope(self.scope);
-        self.header.set_loading(self.current_loading);
+        let loading = self.current_load.is_some();
+        self.header.set_loading(loading);
         let sessions = self.current_sessions.clone().unwrap_or_default();
         self.session_list.set_sessions(sessions, false);
         (self.request_render.lock().expect("render fn"))();

@@ -675,6 +675,11 @@ impl TreeList {
                 // join the filtered view.
                 continue;
             };
+            // Upstream hides `usage` entries from every filter mode before
+            // any other check.
+            if matches!(arena_node.entry, SessionEntry::Usage(_)) {
+                continue;
+            }
             let is_current_leaf = Some(entry_id) == self.current_leaf_id.as_deref();
 
             // Skip assistant messages with only tool calls (no text) unless
@@ -701,6 +706,7 @@ impl TreeList {
             let is_settings_entry = matches!(
                 arena_node.entry,
                 SessionEntry::Label(_)
+                    | SessionEntry::ContextEdit(_)
                     | SessionEntry::Custom(_)
                     | SessionEntry::ModelChange(_)
                     | SessionEntry::ThinkingLevelChange(_)
@@ -990,9 +996,20 @@ impl TreeList {
                 parts.push("label".to_string());
                 parts.push(label.label.clone().unwrap_or_default());
             }
-            // State-only entries (usage) and append-only edits carry no
-            // searchable display text.
-            SessionEntry::Usage(_) | SessionEntry::ContextEdit(_) => {}
+            SessionEntry::ContextEdit(edit) => {
+                parts.push("context edit".to_string());
+                parts.push(
+                    if edit.replacement.is_none() {
+                        "omit"
+                    } else {
+                        "replace"
+                    }
+                    .to_string(),
+                );
+                parts.push(edit.target_id.clone());
+            }
+            // State-only entries (usage) carry no searchable display text.
+            SessionEntry::Usage(_) => {}
             SessionEntry::Unparsed(_) => {}
         }
 
@@ -1329,6 +1346,19 @@ impl TreeList {
                 "dim",
                 &format!("[label: {}]", label.label.as_deref().unwrap_or("(cleared)")),
             ),
+            SessionEntry::ContextEdit(edit) => theme_fg(
+                &theme,
+                "dim",
+                &format!(
+                    "[context {}: {}]",
+                    if edit.replacement.is_none() {
+                        "omit"
+                    } else {
+                        "replace"
+                    },
+                    edit.target_id
+                ),
+            ),
             SessionEntry::SessionInfo(info) => match &info.name {
                 Some(name) => {
                     theme_fg(&theme, "dim", "[title: ")
@@ -1341,7 +1371,7 @@ impl TreeList {
                         + &theme_fg(&theme, "dim", "]")
                 }
             },
-            SessionEntry::Usage(_) | SessionEntry::ContextEdit(_) => String::new(),
+            SessionEntry::Usage(_) => String::new(),
             SessionEntry::Unparsed(_) => String::new(),
         };
 

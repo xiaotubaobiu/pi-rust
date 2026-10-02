@@ -49,6 +49,7 @@ use std::sync::Arc;
 use futures::future::BoxFuture;
 use serde_json::Value;
 
+use super::bug_report::BugReportOptions;
 use super::theme::Theme;
 use crate::agent_core::types::{AgentMessage, ThinkingLevel};
 use crate::ai::types::primitives::Usage;
@@ -468,6 +469,10 @@ pub struct GitSourceView {
 /// Upstream `getAutocompleteSourceTag`.
 pub fn get_autocomplete_source_tag(source_info: Option<&SourceInfoView>) -> Option<String> {
     let source_info = source_info?;
+    // Built-in extension commands are untagged, like built-in commands.
+    if source_info.source.as_deref() == Some("builtin") {
+        return None;
+    }
     let scope_prefix = match source_info.scope.as_deref() {
         Some("user") => "u",
         Some("project") => "p",
@@ -1325,6 +1330,119 @@ pub fn cache_miss_notice_text(
         .unwrap_or_default()
 }
 
+/// Upstream `formatCrashExtensionHint`: the `/bug`-adjacent hint naming the
+/// loaded extensions that appear in a crash's stack frames. `None` matches
+/// upstream's `undefined` (no matches or a non-array input).
+pub fn format_crash_extension_hint(extension_matches: Option<&[String]>) -> Option<String> {
+    let matches: Vec<&str> = extension_matches
+        .unwrap_or_default()
+        .iter()
+        .map(String::as_str)
+        .filter(|m| !m.is_empty())
+        .collect();
+    if matches.is_empty() {
+        return None;
+    }
+    let quoted: Vec<String> = matches.iter().map(|m| format!("`{m}`")).collect();
+    let labels = match quoted.len() {
+        1 => quoted[0].clone(),
+        2 => quoted.join(" and "),
+        _ => format!(
+            "{}, and {}",
+            quoted[..quoted.len() - 1].join(", "),
+            quoted[quoted.len() - 1]
+        ),
+    };
+    let noun = if matches.len() == 1 {
+        "extension"
+    } else {
+        "extensions"
+    };
+    let pronoun = if matches.len() == 1 { "it" } else { "them" };
+    let app = crate::coding_agent::cli::APP_NAME;
+    Some(format!(
+        "A stack frame came from loaded {noun} {labels}, which may be involved. Try disabling {pronoun} with `{app} config`, or run `{app} -ne` to confirm."
+    ))
+}
+
+/// Upstream `crashReportInstructions`: the "run /bug" line printed after a
+/// recorded crash. `has_session_file` mirrors the `session.sessionFile`
+/// probe (resume vs fresh start).
+pub fn crash_report_instructions(has_session_file: bool) -> String {
+    let app = crate::coding_agent::cli::APP_NAME;
+    let resume = if has_session_file {
+        format!("run `{app} -r` to resume the session, then")
+    } else {
+        format!("start {app} and")
+    };
+    format!(
+        "To report this crash: {resume} run /bug. The crash details are attached automatically."
+    )
+}
+
+/// The `\b(?:abort(?:ed)?|cancel(?:l?ed)?)\b` probe of
+/// `maybeSuggestBugReport` (case-insensitive, whole word).
+pub(crate) fn abort_or_cancel_word(message: &str) -> bool {
+    // Inline scan: word-boundary match over the case-insensitive
+    // alternation without pulling a regex engine into the shell core.
+    let lower = message.to_lowercase();
+    let bytes = lower.as_bytes();
+    let is_word = |i: usize| {
+        bytes
+            .get(i)
+            .is_some_and(|b| b.is_ascii_alphanumeric() || *b == b'_')
+    };
+    // The alternation is ASCII, so only ASCII positions can start a match
+    // (JS `\b`/`\w` are ASCII too); skip byte offsets inside multibyte chars.
+    for start in 0..bytes.len() {
+        if !bytes[start].is_ascii() {
+            continue;
+        }
+        for word in ["aborted", "abort", "cancelled", "canceled", "cancel"] {
+            if lower[start..].starts_with(word) {
+                let end = start + word.len();
+                // \b on both sides: neither neighbor may be a word char
+                // (JS `\b` is exactly this at string edges).
+                if (start == 0 || !is_word(start - 1)) && !is_word(end) {
+                    return true;
+                }
+            }
+        }
+    }
+    false
+}
+
+/// Upstream `maybeSuggestBugReport`'s decision core: an assistant message
+/// that ended in a non-retryable, non-cancellation error suggests `/bug`
+/// (once per session — the latch lives in the shell state).
+pub fn should_suggest_bug_report(
+    stop_reason: Option<&str>,
+    error_message: Option<&str>,
+    retryable: bool,
+) -> bool {
+    if stop_reason != Some("error") || retryable {
+        return false;
+    }
+    if error_message.is_some_and(abort_or_cancel_word) {
+        return false;
+    }
+    true
+}
+
+/// Upstream `suggestBugReport` hint line.
+pub fn bug_report_hint_text() -> String {
+    let app = crate::coding_agent::cli::APP_NAME;
+    format!("If this looks like a {app} bug, /bug sends a report to the developers.")
+}
+
+/// Upstream startup crash warning (the `takeUnnotifiedCrash` notice).
+pub fn crash_notice_text(when: &str, message: &str) -> String {
+    let app = crate::coding_agent::cli::APP_NAME;
+    format!(
+        "{app} crashed on {when} ({message}). Run /bug to report it; the crash details are attached automatically."
+    )
+}
+
 // ===========================================================================
 // Shell seams (see the module header for the S-numbers)
 // ===========================================================================
@@ -1509,6 +1627,24 @@ pub trait ShellSession: Send + Sync {
     fn record_bash_result(&self, command: &str, result: &BashOutcome, exclude_from_context: bool);
     fn reload(&self, before_session_start: Option<&dyn Fn()>) -> BoxFuture<'_, Result<(), String>>;
     fn export_to_jsonl(&self, path: &str) -> Result<String, String>;
+    /// `buildBundle` + the delivery of `/bug` (upstream assembles
+    /// `collectBugReportMetadata`/`collectBugReportDiagnostics`/
+    /// `serializeSessionBranch` and either uploads or writes the zip from the
+    /// interactive layer). The session surface carries those reads; the
+    /// projection reports the outcome the flow's statuses need.
+    fn build_bug_report_bundle(
+        &self,
+        options: BugReportOptions,
+        summary: Option<String>,
+    ) -> BoxFuture<'_, Result<BugReportOutcome, String>>;
+    /// `session.summarizeForBugReport({ hint })` (core/bug-report summary).
+    fn summarize_for_bug_report(
+        &self,
+        hint: Option<&str>,
+    ) -> BoxFuture<'_, Result<String, String>> {
+        let _ = hint;
+        Box::pin(async { Err("summarizeForBugReport unavailable".to_string()) })
+    }
     fn export_to_html(
         &self,
         path: Option<&str>,
@@ -1549,6 +1685,11 @@ pub trait ShellEditor: Send + Sync {
     fn set_border_color(&self, border: EditorBorder);
     /// `editor.borderColor` read-back (custom-editor copying).
     fn border_color(&self) -> Option<String>;
+    /// `editor.getCursor?.()` — the `(line, col)` of the caret; `None` when
+    /// the editor has no cursor probe (upstream's optional call).
+    fn get_cursor(&self) -> Option<(usize, usize)> {
+        None
+    }
     /// `editor.handleInput(data)` (paste-to-editor bridge).
     fn handle_input(&self, data: &str);
     fn set_working_status_indicator(&self, indicator: Option<ComponentRef>);
@@ -1890,6 +2031,7 @@ pub enum ShellCommand {
     Export(String),
     Import(String),
     Share,
+    Bug(Option<String>),
     Copy {
         flash_confirmation: bool,
         prefer_selection: bool,
@@ -1930,6 +2072,7 @@ impl ShellCommand {
             Self::Export(_) => "handleExportCommand",
             Self::Import(_) => "handleImportCommand",
             Self::Share => "handleShareCommand",
+            Self::Bug(_) => "handleBugCommand",
             Self::Copy { .. } => "handleCopyCommand",
             Self::Name(_) => "handleNameCommand",
             Self::Session => "handleSessionCommand",
@@ -2088,6 +2231,20 @@ pub struct NavigateOutcome {
     pub cancelled: bool,
     pub aborted: bool,
     pub editor_text: Option<String>,
+}
+
+/// The `buildBugReportBundle` outcome projection: what the flow's statuses
+/// and `recordInSession` need (upstream works on the full `BugReportBundle`).
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct BugReportOutcome {
+    /// `bundle.metadata.id`.
+    pub report_id: String,
+    /// `bundle.metadata.createdAt`.
+    pub created_at: String,
+    /// The zip archive path (`delivery: "zip"`; `None` for upload).
+    pub zip_path: Option<String>,
+    /// `bundle.diagnostics.crashes.length` (drives the crash-log clear).
+    pub crash_count: usize,
 }
 
 /// Upstream `session.executeBash` result projection.
@@ -2295,6 +2452,11 @@ pub trait ShellPlatform: Send + Sync {
     /// `readClipboardText`/`readClipboardImage` (image → `(mime, bytes)`).
     fn read_clipboard_text(&self) -> BoxFuture<'_, Option<String>>;
     fn read_clipboard_image(&self) -> BoxFuture<'_, Option<(String, Vec<u8>)>>;
+    /// `readClipboardFilePaths` (delta: files copied to the clipboard paste
+    /// their original paths). `None` falls through to the image/text probes.
+    fn read_clipboard_file_paths(&self) -> BoxFuture<'_, Option<Vec<String>>> {
+        Box::pin(async { None })
+    }
     /// `PI_OFFLINE`.
     fn pi_offline(&self) -> bool;
     /// The trusted-project resource probe (`hasTrustRequiringProjectResources`).
