@@ -1,0 +1,13 @@
+{
+  "upstream": "pi@2bbfcca43",
+  "sha256": {
+    "core/mcp-servers.ts": "6bd181a3645bcec422265e3ce81af8a91efb110f4bed31e90109d222d6b783ff",
+    "core/tools/truncate.ts": "8e4507c3ed7ca7548cf7c2d7f77d07f2ae63a38b756789cbb44e9062db6c8762",
+    "vendor_pi_mcp_content.ts": "a7c5d6e79fd3ce841a36fcfff7b5ab281305dac5466929a28a963a7b7709f63d",
+    "extensions/mcp/config.ts": "caab986a77bf01fbb1d1acc78ff8d8c5427d5833f49fb82027e7f88e511a261b",
+    "extensions/mcp/tools.ts": "13238f4aade3e9130f4cd12a43ce9a5eeaa5d99af9688b11643352c3b383cab8",
+    "extensions/mcp/resources.ts": "e495c2caa567c202b99cd629ea1b909d34f6a3fb17fef3e872322b40a2e08bf0",
+    "extensions/mcp/log.ts": "6e4d70a321a4dce8946b208276cee50bb8b3d9908894dc12af833754dde0e407",
+    "core/tools/render-utils.ts": "6bd0f21d1c1cefcf6bb1de023de46ad1250e096d36327b4d42fbb71a06414956"
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "fixture": "core_delta_oracle/cache-warmer",
+  "upstream": {
+    "repo": "pi @ 2bbfcca43 (v0.99.1)",
+    "module": "packages/coding-agent/src/core/cache-warmer.ts"
+  },
+  "driver": "node --experimental-strip-types oracle.mjs",
+  "capture": "cache_warmer.oracle.json",
+  "verbatimSources": {
+    "src/core/cache-warmer.ts": "596080fbe60702a44bcd8a31aeca45a5048d24c53fb0f0b40dd8781f776a8842",
+    "src/ai/utils/provider-env.ts": "3829251ae0674cef7ca09800cee9f46d4e305770129b72b822ea2f6f85efe675"
+  },
+  "verbatimExtractions": {
+    "src/ai/cost-stub/models-cost.ts": {
+      "sha256": "edba13a3547f1505d9ca2fab5cc1b46eec364dd217f494fbca862113075341cb",
+      "note": "calculateCost copied verbatim out of packages/ai/src/models.ts (the whole module drags the auth/store closure); header type aliases added for standalone parsing"
+    }
+  },
+  "stubPackages": {
+    "@earendil-works/pi-ai": "re-exports calculateCost (extraction) and ./utils/provider-env (verbatim util)"
+  },
+  "canonicalization": [
+    "wall-clock values (nextWarmAt) are pinned as <number> or via (nextWarmAt - now) offsets only",
+    "repeated-refresh scenarios pin the FIRST appended usage entry and a lower bound on the count, never the count",
+    "the process env is scrubbed of PI_CACHE_RETENTION before the ttl grid"
+  ]
+}

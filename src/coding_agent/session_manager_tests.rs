@@ -1589,7 +1589,7 @@ fn session_manager_persisted_flows_match_oracle() {
         other => unreachable!("{other:?}"),
     };
     let compaction_id = s6
-        .append_compaction("summary", &kept, 100, None, None, None)
+        .append_compaction("summary", Some(&kept), 100, None, None, None)
         .unwrap();
     s6.append_message(manager_user("three", 0)).unwrap();
     s6.append_message(manager_assistant("four", 0)).unwrap();
@@ -1780,7 +1780,7 @@ fn session_manager_persisted_flows_match_oracle() {
     let _listed = SessionManager::list(
         &project_a,
         Some(&flat_dir),
-        Some(&mut |loaded, total| {
+        Some(&mut |loaded, total, _partial| {
             progress_events.borrow_mut().push((loaded, total));
         }),
     );
@@ -1831,7 +1831,7 @@ fn session_manager_persisted_flows_match_oracle() {
     .unwrap();
     s8.append_compaction(
         "summary",
-        &root_id,
+        Some(&root_id),
         100,
         None,
         Some(false),
@@ -1947,7 +1947,14 @@ fn session_manager_in_memory_flows_match_oracle() {
     let c1 = s4.append_message(user_msg("1")).unwrap();
     let c2 = s4.append_message(assistant_msg("2")).unwrap();
     let compaction_id = s4
-        .append_compaction("summary", &c1, 1000, None, Some(false), Some(big_usage()))
+        .append_compaction(
+            "summary",
+            Some(&c1),
+            1000,
+            None,
+            Some(false),
+            Some(big_usage()),
+        )
         .unwrap();
     s4.append_message(user_msg("3")).unwrap();
     let compaction_entry4 = s4
@@ -2379,7 +2386,7 @@ fn session_manager_in_memory_flows_match_oracle() {
         .unwrap();
     let kept_f = entries_f_manager.append_message(user_msg("kept")).unwrap();
     entries_f_manager
-        .append_compaction("summary so far", &kept_f, 1000, None, None, None)
+        .append_compaction("summary so far", Some(&kept_f), 1000, None, None, None)
         .unwrap();
     let entries_f = entries_f_manager.get_entries();
     let restored_f = in_memory!(None, Some(entries_to_file_entries(entries_f)));
@@ -2710,6 +2717,8 @@ fn entry_kind(entry: &SessionEntry) -> Option<&'static str> {
         SessionEntry::BranchSummary(_) => Some("branch_summary"),
         SessionEntry::Custom(_) => Some("custom"),
         SessionEntry::CustomMessage(_) => Some("custom_message"),
+        SessionEntry::Usage(_) => Some("usage"),
+        SessionEntry::ContextEdit(_) => Some("context_edit"),
         SessionEntry::Label(_) => Some("label"),
         SessionEntry::SessionInfo(_) => Some("session_info"),
         SessionEntry::Unparsed(_) => None,
@@ -3518,7 +3527,7 @@ fn in_memory_preloaded_entries_resolve_compaction() {
         source.append_message(preloaded_user("dropped")).unwrap();
         let kept = source.append_message(preloaded_user("kept")).unwrap();
         source
-            .append_compaction("summary so far", &kept, 1000, None, None, None)
+            .append_compaction("summary so far", Some(&kept), 1000, None, None, None)
             .unwrap();
     });
     let kept_id = entries[1].id().unwrap().to_string();
@@ -3936,7 +3945,7 @@ fn append_compaction_integrates_into_tree() {
     let id2 = session.append_message(assistant_msg("2")).unwrap();
     let usage = big_usage();
     let compaction_id = session
-        .append_compaction("summary", &id1, 1000, None, Some(false), Some(usage))
+        .append_compaction("summary", Some(&id1), 1000, None, Some(false), Some(usage))
         .unwrap();
     session.append_message(user_msg("3")).unwrap();
 
@@ -4334,9 +4343,12 @@ fn create_branched_session_does_not_duplicate_entries_from_first_user_message() 
         .unwrap();
 
     let new_file = session.create_branched_session(&id1).unwrap().unwrap();
+    // Delta (upstream `_hasConversation`): the branched path holds a user
+    // message, so the file is written immediately (oracle
+    // `manager.branch-no-assistant-exists` = true).
     assert!(
-        !std::path::Path::new(&new_file).exists(),
-        "branched path has no assistant: write deferred"
+        std::path::Path::new(&new_file).exists(),
+        "branched path has a conversation: written now"
     );
 
     session
@@ -4397,7 +4409,14 @@ fn create_branched_session_preserves_usage_across_reload() {
         )
         .unwrap();
     session
-        .append_compaction("summary", &root_id, 100, None, Some(false), Some(usage))
+        .append_compaction(
+            "summary",
+            Some(&root_id),
+            100,
+            None,
+            Some(false),
+            Some(usage),
+        )
         .unwrap();
     session
         .branch_with_summary(

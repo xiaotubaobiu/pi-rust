@@ -1,0 +1,399 @@
+{
+	"scenarios": [
+		{
+			"name": "delay_grid",
+			"observed": {
+				"10001": 1,
+				"10500": 500,
+				"11000": 1000,
+				"20000": 10000,
+				"30050": 20050,
+				"100000": 90000,
+				"3600000": 3240000
+			}
+		},
+		{
+			"name": "ttl_grid",
+			"observed": {
+				"default_short": 300000,
+				"explicit_short": 300000,
+				"explicit_long": 3600000,
+				"env_long": 3600000,
+				"env_empty": 300000,
+				"env_other": 300000,
+				"options_missing": 300000,
+				"fractional": 500
+			}
+		},
+		{
+			"name": "replayable_grid",
+			"observed": {
+				"anthropic_adaptive_reasoning": true,
+				"anthropic_adaptive_no_reasoning": true,
+				"anthropic_legacy_reasoning": false,
+				"anthropic_nocompat_reasoning": false,
+				"openai_reasoning": true,
+				"openai_no_reasoning": true,
+				"options_missing": true
+			}
+		},
+		{
+			"name": "decision_streaming_known_prices",
+			"observed": {
+				"decision": {
+					"phase": "streaming",
+					"warmCost": 0.00046499999999999997,
+					"missCost": 0.005175,
+					"continuationProbability": 1,
+					"expectedSavings": 0.00471,
+					"economicsAvailable": true,
+					"action": "stop"
+				},
+				"appendedUsage": [],
+				"stateAfter": "inactive",
+				"stoppedReason": "expected savings below threshold"
+			}
+		},
+		{
+			"name": "decision_after_settle",
+			"observed": {
+				"decisionBeforeSettle": {
+					"state": "scheduled",
+					"nextWarmAt": "<number>",
+					"decision": {
+						"phase": "streaming",
+						"warmCost": 0.045015,
+						"missCost": 0.5175,
+						"continuationProbability": 1,
+						"expectedSavings": 0.47248499999999993,
+						"economicsAvailable": true,
+						"action": "warm"
+					},
+					"extensionOverride": false
+				},
+				"decisionAfterSettle": {
+					"state": "inactive",
+					"reason": "expected savings below threshold",
+					"decision": {
+						"phase": "idle",
+						"warmCost": 0.045015,
+						"missCost": 0.5175,
+						"continuationProbability": 0.15,
+						"expectedSavings": 0.032609999999999986,
+						"economicsAvailable": true,
+						"action": "stop"
+					},
+					"extensionOverride": false,
+					"nextWarmAt": "<number>"
+				},
+				"appendedUsageCountGte1": true,
+				"firstAppendedUsage": {
+					"type": "usage",
+					"id": "usage-1",
+					"parentId": null,
+					"timestamp": "t-usage",
+					"kind": "cache_warm",
+					"provider": "anthropic",
+					"model": "claude",
+					"usage": {
+						"input": 10,
+						"output": 10,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"totalTokens": 20,
+						"cost": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"total": 0
+						}
+					}
+				}
+			}
+		},
+		{
+			"name": "decision_no_economics",
+			"observed": {
+				"decision": {
+					"phase": "streaming",
+					"warmCost": 0.000015,
+					"missCost": 0,
+					"continuationProbability": 1,
+					"expectedSavings": -0.000015,
+					"economicsAvailable": false,
+					"action": "stop"
+				},
+				"state": "inactive",
+				"reason": "cache economics unavailable"
+			}
+		},
+		{
+			"name": "decision_input_miss",
+			"observed": {
+				"decision": {
+					"phase": "streaming",
+					"warmCost": 0.00046499999999999997,
+					"missCost": 0.004050000000000001,
+					"continuationProbability": 1,
+					"expectedSavings": 0.0035850000000000005,
+					"economicsAvailable": true,
+					"action": "stop"
+				}
+			}
+		},
+		{
+			"name": "decision_tiered",
+			"observed": {
+				"decision": {
+					"phase": "streaming",
+					"warmCost": 0.0375075,
+					"missCost": 0.43125,
+					"continuationProbability": 1,
+					"expectedSavings": 0.3937425,
+					"economicsAvailable": true,
+					"action": "warm"
+				}
+			}
+		},
+		{
+			"name": "decision_long_write",
+			"observed": {
+				"decision": {
+					"phase": "streaming",
+					"warmCost": 0.000165,
+					"missCost": 0.001725,
+					"continuationProbability": 1,
+					"expectedSavings": 0.00156,
+					"economicsAvailable": true,
+					"action": "stop"
+				}
+			}
+		},
+		{
+			"name": "decide_override_stop",
+			"observed": {
+				"state": "inactive",
+				"reason": "stopped by extension",
+				"decision": {
+					"phase": "streaming",
+					"warmCost": 0.045015,
+					"missCost": 0.5175,
+					"continuationProbability": 1,
+					"expectedSavings": 0.47248499999999993,
+					"economicsAvailable": true,
+					"action": "warm"
+				},
+				"extensionOverride": true,
+				"appendedUsage": []
+			}
+		},
+		{
+			"name": "decide_override_warm",
+			"observed": {
+				"state": "scheduled",
+				"decision": {
+					"phase": "streaming",
+					"warmCost": 0.00046499999999999997,
+					"missCost": 0.005175,
+					"continuationProbability": 1,
+					"expectedSavings": 0.00471,
+					"economicsAvailable": true,
+					"action": "stop"
+				},
+				"extensionOverride": false,
+				"appendedUsageCountGte1": true,
+				"firstAppendedUsage": {
+					"type": "usage",
+					"id": "usage-1",
+					"parentId": null,
+					"timestamp": "t-usage",
+					"kind": "cache_warm",
+					"provider": "anthropic",
+					"model": "claude",
+					"usage": {
+						"input": 10,
+						"output": 10,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"totalTokens": 20,
+						"cost": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"total": 0
+						}
+					},
+					"note": "extension override"
+				}
+			}
+		},
+		{
+			"name": "decide_echo_no_override",
+			"observed": {
+				"state": "scheduled",
+				"extensionOverride": false,
+				"firstAppendedUsage": {
+					"type": "usage",
+					"id": "usage-1",
+					"parentId": null,
+					"timestamp": "t-usage",
+					"kind": "cache_warm",
+					"provider": "anthropic",
+					"model": "claude",
+					"usage": {
+						"input": 10,
+						"output": 10,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"totalTokens": 20,
+						"cost": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"total": 0
+						}
+					}
+				},
+				"appendedUsageNoteAbsent": true
+			}
+		},
+		{
+			"name": "decide_reject_fallback",
+			"observed": {
+				"state": "inactive",
+				"reason": "expected savings below threshold",
+				"appendedUsage": []
+			}
+		},
+		{
+			"name": "start_stop_reasons",
+			"observed": {
+				"mode_off": {
+					"state": "inactive",
+					"reason": "cache warming disabled"
+				},
+				"not_replayable": {
+					"state": "inactive",
+					"reason": "request cannot be replayed safely"
+				},
+				"retention_none": {
+					"state": "inactive",
+					"reason": "request disabled prompt caching"
+				},
+				"no_ttl": {
+					"state": "inactive",
+					"reason": "cache lifetime unavailable"
+				},
+				"tiny_ttl": {
+					"state": "inactive",
+					"reason": "cache lifetime unavailable"
+				}
+			}
+		},
+		{
+			"name": "cancel",
+			"observed": {
+				"state": "inactive",
+				"reason": "inactive"
+			}
+		},
+		{
+			"name": "on_mode_changed_off",
+			"observed": {
+				"state": "inactive",
+				"reason": "cache warming disabled"
+			}
+		},
+		{
+			"name": "streaming_settle_stops",
+			"observed": {
+				"state": "inactive",
+				"reason": "agent run settled"
+			}
+		},
+		{
+			"name": "stale_context",
+			"observed": {
+				"state": "inactive",
+				"reason": "conversation context changed"
+			}
+		},
+		{
+			"name": "initial_status",
+			"observed": {
+				"state": "inactive",
+				"reason": "waiting for first request"
+			}
+		},
+		{
+			"name": "status_mode_off",
+			"observed": {
+				"state": "inactive",
+				"reason": "cache warming disabled"
+			}
+		},
+		{
+			"name": "stream_failure_reschedules",
+			"observed": {
+				"appendedUsage": [],
+				"state": "scheduled",
+				"nextWarmArmed": true
+			}
+		},
+		{
+			"name": "error_response_skips_usage",
+			"observed": {
+				"appendedUsage": [],
+				"state": "scheduled"
+			}
+		},
+		{
+			"name": "format_decision_time_grid",
+			"observed": {
+				"now": "Decision now (100% continuation probability while agent is running, expected savings $0.199 >= $0.050 -> warm)",
+				"past": "Decision now (100% continuation probability while agent is running, expected savings $0.199 >= $0.050 -> warm)",
+				"undefined": "Decision now (100% continuation probability while agent is running, expected savings $0.199 >= $0.050 -> warm)",
+				"s59": "Decision in 49s (100% continuation probability while agent is running, expected savings $0.199 >= $0.050 -> warm)",
+				"s60": "Decision in 50s (100% continuation probability while agent is running, expected savings $0.199 >= $0.050 -> warm)",
+				"m1s1": "Decision in 51s (100% continuation probability while agent is running, expected savings $0.199 >= $0.050 -> warm)",
+				"h1": "Decision in 59m 50s (100% continuation probability while agent is running, expected savings $0.199 >= $0.050 -> warm)",
+				"h1m1s1": "Decision in 1h 51s (100% continuation probability while agent is running, expected savings $0.199 >= $0.050 -> warm)",
+				"h1s1": "Decision in 59m 51s (100% continuation probability while agent is running, expected savings $0.199 >= $0.050 -> warm)",
+				"h1m1": "Decision in 1h 50s (100% continuation probability while agent is running, expected savings $0.199 >= $0.050 -> warm)",
+				"ceiling": "Decision in 1s (100% continuation probability while agent is running, expected savings $0.199 >= $0.050 -> warm)"
+			}
+		},
+		{
+			"name": "format_status_grid",
+			"observed": {
+				"waiting": "Inactive (waiting for first request)",
+				"disabled": "Inactive (cache warming disabled)",
+				"unknownReason": "Inactive (unknown reason)",
+				"economicsUnavailable": "Inactive (cache economics unavailable)",
+				"economicsUnavailableOverride": "Stopped (extension override, cache economics unavailable)",
+				"stoppedBelowThreshold": "Stopped (100% continuation probability while agent is running, expected savings -$0.050 < $0.050 -> stop)",
+				"stoppedNegativeSavings": "Stopped (100% continuation probability while agent is running, expected savings -$0.500 < $0.050 -> stop)",
+				"stoppedByExtension": "Stopped (extension override, 100% continuation probability while agent is running, expected savings $0.199 >= $0.050)",
+				"warming": "Warming cache (100% continuation probability while agent is running, expected savings $0.199 >= $0.050 -> warm)",
+				"warmingIdle": "Warming cache (15% continuation probability, expected savings -$0.070 >= $0.050 -> warm)",
+				"scheduled": "Decision in 1m 21s (100% continuation probability while agent is running, expected savings $0.199 >= $0.050 -> warm)",
+				"scheduledIdle": "Decision in 1m 21s (15% continuation probability, expected savings -$0.070 >= $0.050 -> warm)"
+			}
+		},
+		{
+			"name": "format_usage_grid",
+			"observed": {
+				"simple": "Cache warmed: $0.0003",
+				"sixDecimals": "Cache warmed: $0.123456",
+				"trailingZeros": "Cache warmed: $0.1234",
+				"wholeDollar": "Cache warmed: $2.000",
+				"tiny": "Cache warmed: $0.000001",
+				"zero": "Cache warmed: $0.000",
+				"withNote": "Cache warmed (extension override): $0.0003"
+			}
+		}
+	]
+}

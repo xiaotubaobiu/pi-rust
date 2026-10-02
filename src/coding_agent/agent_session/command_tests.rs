@@ -28,7 +28,7 @@ fn preflight(trace: &Trace) -> PromptOptions {
     let trace = trace.clone();
     PromptOptions {
         preflight_result: Some(Arc::new(move |ready| {
-            record(&trace, json!({"phase":"preflight", "value":ready}));
+            record(&trace, json!({"phase":"preflight", "value":ready.as_str()}));
         })),
         ..PromptOptions::default()
     }
@@ -91,7 +91,7 @@ async fn command_context_prompt_reports_preflight_once_for_handled_command() {
         .unwrap();
     assert_eq!(
         snapshot(&trace),
-        vec![json!({"phase":"preflight", "value":true})],
+        vec![json!({"phase":"preflight", "value":"handled"})],
         "actual upstream prompt returns immediately after handling a command"
     );
     test.session.dispose();
@@ -229,7 +229,7 @@ async fn command_context_prompt_awaits_reload_action_and_observes_its_rejection(
         if reject {
             expected.push(json!({"phase":"error", "error":"reload failed"}));
         }
-        expected.push(json!({"phase":"preflight", "value":true}));
+        expected.push(json!({"phase":"preflight", "value":"handled"}));
         assert_eq!(snapshot(&trace), expected);
         assert_eq!(
             serde_json::to_value(test.session.messages()).unwrap(),
@@ -275,7 +275,7 @@ async fn command_context_consumer_reports_pending_error_to_current_runner() {
         snapshot(&trace),
         vec![
             json!({"phase":"handler","args":""}),
-            json!({"phase":"preflight","value":true})
+            json!({"phase":"preflight","value":"handled"})
         ]
     );
     test.session.dispose();
@@ -296,7 +296,7 @@ async fn command_context_prompt_streaming_early_returns_report_preflight_once() 
         .unwrap();
     assert_eq!(
         snapshot(&command_trace),
-        vec![json!({"phase":"preflight","value":true})]
+        vec![json!({"phase":"preflight","value":"handled"})]
     );
     let queue_trace = Trace::default();
     let mut options = preflight(&queue_trace);
@@ -306,7 +306,7 @@ async fn command_context_prompt_streaming_early_returns_report_preflight_once() 
         .unwrap();
     assert_eq!(
         snapshot(&queue_trace),
-        vec![json!({"phase":"preflight","value":true})]
+        vec![json!({"phase":"preflight","value":"queued"})]
     );
     test.gate.notify_one();
     bounded(test.session.abort()).await;

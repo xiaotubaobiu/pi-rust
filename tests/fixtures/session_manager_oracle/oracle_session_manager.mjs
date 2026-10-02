@@ -1,6 +1,6 @@
 // Oracle capture for the W3.10 session-manager slice: upstream
 // coding-agent/src/core/session-manager.ts (sha256
-// 36a474d8cf6f03f2c906680aed5569837f8188e0dc2fc878e9dbdc47b9a14d04, vendored
+// 450d82c529933214e088b8422f00061815e617f352f6c834689787a314064bff, vendored
 // verbatim in ./src/core/) executed under node --experimental-strip-types.
 //
 // Determinism scaffolding:

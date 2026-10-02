@@ -583,6 +583,10 @@ pub async fn create_agent_session(
         base_tools_override: vec![],
         session_start_event: options.session_start_event,
         html_exporter: None,
+        // The session-factory CacheWarmer construction (upstream sdk.ts
+        // `new CacheWarmer(modelRuntime, sessionManager, ...)`) is deferred
+        // with the cache-warming wiring wave; the session accepts the option.
+        cache_warmer: None,
     })?;
     *slot.lock().expect("SDK runner slot") = Arc::downgrade(&session);
     let extensions_result = resource_loader

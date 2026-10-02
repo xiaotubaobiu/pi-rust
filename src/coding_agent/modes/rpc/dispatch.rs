@@ -119,15 +119,13 @@ impl RpcDispatcher {
                                 }),
                                 streaming_behavior,
                                 source: Some(InputSource::Rpc),
-                                preflight_result: Some(Arc::new(move |success| {
-                                    if success {
-                                        accept.store(true, Ordering::SeqCst);
-                                        callback_output(RpcResponse::success(
-                                            callback_id.clone(),
-                                            "prompt",
-                                            None,
-                                        ));
-                                    }
+                                preflight_result: Some(Arc::new(move |_disposition| {
+                                    accept.store(true, Ordering::SeqCst);
+                                    callback_output(RpcResponse::success(
+                                        callback_id.clone(),
+                                        "prompt",
+                                        None,
+                                    ));
                                 })),
                                 ..Default::default()
                             }),

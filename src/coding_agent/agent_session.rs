@@ -144,6 +144,7 @@ use crate::coding_agent::core::defaults::{DEFAULT_THINKING_LEVEL, THINKING_LEVEL
 use crate::coding_agent::core::messages::{BashExecutionMessage, CustomMessage};
 use crate::coding_agent::core::model_registry::ModelRegistry;
 use crate::coding_agent::core::model_resolver::models_are_equal;
+use crate::coding_agent::core::model_runtime::model_thinking_level_from_wire;
 use crate::coding_agent::core::model_runtime::ModelRuntime;
 use crate::coding_agent::core::provider_composer::ProviderConfigInput;
 use crate::coding_agent::core::resource_loader::prompt_templates::PromptTemplate;
@@ -154,6 +155,7 @@ use crate::coding_agent::core::settings_manager::{
     BranchSummarySettings, CompactionSettings as SettingsCompactionSettings, RetrySettings,
     SettingsManager,
 };
+use crate::coding_agent::core::virtual_models::is_virtual_model;
 use crate::coding_agent::extensions::runner::emit_session_shutdown_event;
 use crate::coding_agent::extensions::runner::ErrorListenerUnsubscribe;
 use crate::coding_agent::extensions::runner::ExtensionRunner;
@@ -173,7 +175,7 @@ use crate::coding_agent::extensions::wrapper::wrap_registered_tools;
 use crate::coding_agent::package_manager::{PathMetadata, PathMetadataOrigin, SourceScope};
 use crate::coding_agent::session_manager::{
     get_latest_compaction_entry, SessionEntry, SessionHeader, SessionManager, SessionManagerError,
-    CURRENT_SESSION_VERSION,
+    UsageEntry, CURRENT_SESSION_VERSION,
 };
 use crate::coding_agent::utils::frontmatter::strip_frontmatter;
 use crate::coding_agent::utils::paths::resolve_path;
@@ -534,6 +536,9 @@ pub struct AgentSessionConfig {
     pub custom_tools: Vec<Arc<crate::coding_agent::extensions::types::ToolDefinition>>,
     /// Canonical model/auth runtime used by coding-agent internals.
     pub model_runtime: ModelRuntime,
+    /// Keeps the prompt cache entry of the last session request warm
+    /// (upstream `config.cacheWarmer` — constructed by the session factory).
+    pub cache_warmer: Option<Arc<crate::coding_agent::core::cache_warmer::CacheWarmer>>,
     /// Initial active built-in tool names. Default: [read, bash, edit, write].
     pub initial_active_tool_names: Option<Vec<String>>,
     /// Optional allowlist of tool names. When provided, only these tool names
@@ -562,6 +567,30 @@ pub struct ScopedModel {
     pub thinking_level: Option<ThinkingLevel>,
 }
 
+/// Upstream `routedModel` (`{ model, thinkingLevel? }`).
+#[derive(Debug, Clone, PartialEq)]
+pub struct RoutedModel {
+    pub model: Model,
+    pub thinking_level: Option<crate::ai::types::primitives::ModelThinkingLevel>,
+}
+
+/// Convert the cache warmer's usage entry to the session entry the
+/// `entry_appended` event carries.
+fn usage_entry_to_session_entry(
+    entry: &crate::coding_agent::core::cache_warmer::UsageEntry,
+) -> UsageEntry {
+    UsageEntry {
+        id: entry.id.clone(),
+        parent_id: entry.parent_id.clone(),
+        timestamp: entry.timestamp.clone(),
+        kind: entry.kind.clone(),
+        provider: entry.provider.clone(),
+        model: entry.model.clone(),
+        usage: entry.usage,
+        note: entry.note.clone(),
+    }
+}
+
 /// Options for [`AgentSession::prompt`] (`PromptOptions`).
 #[derive(Clone, Default)]
 pub struct PromptOptions {
@@ -574,9 +603,32 @@ pub struct PromptOptions {
     pub streaming_behavior: Option<StreamingDelivery>,
     /// Source of input for extension input event handlers.
     pub source: Option<InputSource>,
-    /// Internal hook used by RPC mode to observe prompt preflight acceptance
-    /// or rejection.
-    pub preflight_result: Option<Arc<dyn Fn(bool) + Send + Sync>>,
+    /// Internal hook used by RPC mode to observe how an accepted prompt was
+    /// dispatched. Not called if the prompt is rejected.
+    pub preflight_result: Option<Arc<dyn Fn(PromptDisposition) + Send + Sync>>,
+}
+
+/// How an accepted prompt was dispatched (`PromptDisposition` /
+/// `QueuedInputDisposition`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PromptDisposition {
+    /// A handler consumed the input; nothing is queued or started.
+    Handled,
+    /// The input joined the steering/follow-up queue.
+    Queued,
+    /// The input started an agent run.
+    Started,
+}
+
+impl PromptDisposition {
+    /// The upstream literal.
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            PromptDisposition::Handled => "handled",
+            PromptDisposition::Queued => "queued",
+            PromptDisposition::Started => "started",
+        }
+    }
 }
 
 /// Options for model/thinking mutations (`ModelMutationOptions`).
@@ -656,6 +708,9 @@ pub struct AgentSession {
     // Retry state
     retry_abort: Mutex<Option<CancellationToken>>,
     retry_attempt: AtomicU32,
+    /// Set by `abort()` while a run is active; the post-run loop checks it
+    /// instead of continuing (upstream `_agentRunAbortRequested`).
+    agent_run_abort_requested: AtomicBool,
 
     // Bash execution state
     bash_abort_controllers: Mutex<Vec<Arc<CancellationToken>>>,
@@ -688,6 +743,16 @@ pub struct AgentSession {
     extension_error_unsubscriber: Mutex<Option<ErrorListenerUnsubscribe>>,
 
     model_runtime: ModelRuntime,
+    /// Cache warmer configured for this session (upstream `_cacheWarmer`).
+    cache_warmer: Option<Arc<crate::coding_agent::core::cache_warmer::CacheWarmer>>,
+    /// Set while the `agent_settled` extension/listener emission is running;
+    /// prompts arriving in that window are deferred (upstream
+    /// `_isEmittingAgentSettled` + `_deferredSettledActions`). The port stores
+    /// the queued prompts and replays them on a blocking thread after the
+    /// settled emission (the prompt future is not `Send`, so the replay
+    /// cannot be awaited inline).
+    is_emitting_agent_settled: AtomicBool,
+    deferred_settled_prompts: Mutex<Vec<(String, PromptOptions)>>,
 
     // Tool registry for extension getTools/setTools
     tool_registry: Mutex<OrderedMap<Arc<AgentTool>>>,
@@ -701,6 +766,10 @@ pub struct AgentSession {
 
     /// Track the last assistant message for auto-compaction check.
     last_assistant_message: Mutex<Option<AssistantMessage>>,
+
+    /// Projected message → persisted entry id (upstream
+    /// `_entryIdsByMessage` WeakMap; the port keys by message value).
+    persisted_entry_ids_by_message: Mutex<Vec<(AgentMessage, String)>>,
 
     /// This session's own `Arc` (set by [`AgentSession::new`]; runner-bound
     /// closures capture clones of it so `dispose` breaks cycles).
@@ -745,6 +814,7 @@ impl AgentSession {
             resource_loader,
             custom_tools,
             model_runtime,
+            cache_warmer,
             initial_active_tool_names,
             allowed_tool_names,
             excluded_tool_names,
@@ -775,6 +845,7 @@ impl AgentSession {
             branch_summary_abort: Mutex::new(None),
             retry_abort: Mutex::new(None),
             retry_attempt: AtomicU32::new(0),
+            agent_run_abort_requested: AtomicBool::new(false),
             bash_abort_controllers: Mutex::new(Vec::new()),
             pending_bash_messages: Mutex::new(Vec::new()),
             html_exporter: Mutex::new(html_exporter),
@@ -802,6 +873,9 @@ impl AgentSession {
             extension_error_listener: Mutex::new(None),
             extension_error_unsubscriber: Mutex::new(None),
             model_runtime,
+            cache_warmer,
+            is_emitting_agent_settled: AtomicBool::new(false),
+            deferred_settled_prompts: Mutex::new(Vec::new()),
             tool_registry: Mutex::new(OrderedMap::new()),
             tool_definitions: Mutex::new(OrderedMap::new()),
             tool_prompt_snippets: Mutex::new(OrderedMap::new()),
@@ -813,9 +887,24 @@ impl AgentSession {
             ),
             run_system_prompt_options: Mutex::new(None),
             last_assistant_message: Mutex::new(None),
+            persisted_entry_ids_by_message: Mutex::new(Vec::new()),
             self_weak: Mutex::new(Weak::new()),
         });
         *session.self_weak.lock().expect("self weak lock") = Arc::downgrade(&session);
+
+        // Upstream: `this._cacheWarmer.onWarmed = (entry) => this._emit({
+        // type: "entry_appended", entry })`. The warmer's usage entry converts
+        // to the session entry the event carries.
+        if let Some(cache_warmer) = &session.cache_warmer {
+            let session_weak = session.self_weak();
+            cache_warmer.set_on_warmed(Box::new(move |entry| {
+                if let Some(session) = session_weak.upgrade() {
+                    session.emit(AgentSessionEvent::EntryAppended {
+                        entry: SessionEntry::Usage(usage_entry_to_session_entry(entry)),
+                    });
+                }
+            }));
+        }
 
         // Always subscribe to agent events for internal handling (session
         // persistence, extensions, auto-compaction, retry logic).
@@ -850,6 +939,277 @@ impl AgentSession {
             .expect("extension runner lock")
             .clone()
             .expect("extension runner built by the constructor")
+    }
+
+    /// Upstream `refreshContext`: refresh the public finalized transcript
+    /// from the canonical session projection.
+    pub fn refresh_context(&self) {
+        self.refresh_finalized_context();
+    }
+
+    /// Upstream `_refreshFinalizedContext`: rebuild `agent.state.messages`
+    /// from the session projection, recording each projected message's source
+    /// entry id.
+    fn refresh_finalized_context(&self) {
+        let projection = {
+            let manager = self.session_manager.lock().expect("session lock");
+            manager.build_session_projection()
+        };
+        *self
+            .persisted_entry_ids_by_message
+            .lock()
+            .expect("entry id map lock") = projection
+            .entries
+            .iter()
+            .flat_map(|entry| {
+                entry.messages.iter().map(|message| {
+                    (
+                        message.clone(),
+                        entry.source_entry.id().unwrap_or_default().to_string(),
+                    )
+                })
+            })
+            .collect();
+        self.agent.state().messages = projection.messages;
+    }
+
+    /// Upstream `get cacheWarmingStatus`: current cache-warming state and the
+    /// policy inputs that produced it.
+    pub fn cache_warming_status(
+        &self,
+    ) -> Option<crate::coding_agent::core::cache_warmer::CacheWarmingStatus> {
+        self.cache_warmer
+            .as_ref()
+            .map(|cache_warmer| cache_warmer.status())
+    }
+
+    /// Upstream `_recordSelection`: record the selection on the current
+    /// branch when the branch implies another one, so a resume restores it.
+    fn record_selection(&self) {
+        let Some(model) = self.model() else {
+            return;
+        };
+        let runtime = self.model_runtime.clone();
+        let get_model =
+            move |provider: &str, model_id: &str| runtime.get_model_sync(provider, model_id);
+        let branch = {
+            let manager = self.session_manager.lock().expect("session lock");
+            manager.get_branch(None)
+        };
+        let Some(recorded) =
+            crate::coding_agent::core::virtual_models::get_branch_selection(&branch, &get_model)
+        else {
+            return;
+        };
+        if recorded.provider == model.provider && recorded.model_id == model.id {
+            return;
+        }
+        let recorded_model = self
+            .model_runtime
+            .get_model_sync(&recorded.provider, &recorded.model_id);
+        if !is_virtual_model(&model)
+            && !recorded_model
+                .as_ref()
+                .map(is_virtual_model)
+                .unwrap_or(false)
+        {
+            return;
+        }
+        let _ = self
+            .session_manager
+            .lock()
+            .expect("session lock")
+            .append_model_change(&model.provider, &model.id);
+    }
+
+    /// Upstream `_modelForMessage`: the model whose limits apply to
+    /// `message`, or `None` when the message came from another model. Under a
+    /// virtual selection, that is the physical model that produced it.
+    fn model_for_message(&self, message: &AssistantMessage) -> Option<Model> {
+        let model = self.model()?;
+        if is_virtual_model(&model) {
+            return self
+                .model_runtime
+                .get_physical_model(&message.provider, &message.model);
+        }
+        if model.provider == message.provider && model.id == message.model {
+            Some(model)
+        } else {
+            None
+        }
+    }
+
+    /// Upstream `_limitsModel`: the model whose limits apply to the
+    /// conversation (the routed physical model under a virtual selection).
+    fn limits_model(&self) -> Option<Model> {
+        self.routed_model()
+            .map(|routed| routed.model)
+            .or_else(|| self.model())
+    }
+
+    /// Upstream `get routedModel`: under a virtual selection, the physical
+    /// model and thinking level of the latest successful response.
+    pub fn routed_model(&self) -> Option<RoutedModel> {
+        let model = self.model()?;
+        if !is_virtual_model(&model) {
+            return None;
+        }
+        let latest = {
+            let state = self.agent.state();
+            crate::coding_agent::core::virtual_models::find_latest_response(&state.messages)?
+                .clone()
+        };
+        let physical = self
+            .model_runtime
+            .get_physical_model(&latest.provider, &latest.model)?;
+        Some(RoutedModel {
+            model: physical,
+            thinking_level: latest
+                .provider_thinking_level
+                .as_deref()
+                .and_then(model_thinking_level_from_wire),
+        })
+    }
+
+    /// Upstream `_findPersistedMessageEntryId`.
+    fn find_persisted_message_entry_id(&self, message: &AgentMessage) -> Option<String> {
+        {
+            let persisted = self
+                .persisted_entry_ids_by_message
+                .lock()
+                .expect("entry id map lock");
+            if let Some((_, mapped)) = persisted.iter().find(|(candidate, _)| candidate == message)
+            {
+                return Some(mapped.clone());
+            }
+        }
+        {
+            let manager = self.session_manager.lock().expect("session lock");
+            for entry in manager.get_branch(None).iter().rev() {
+                if let SessionEntry::Message(entry_message) = entry {
+                    if &entry_message.message == message {
+                        return entry.id().map(str::to_string);
+                    }
+                }
+            }
+        }
+        let message_index = self
+            .agent
+            .state()
+            .messages
+            .iter()
+            .position(|candidate| candidate == message)?;
+        let projection = {
+            let manager = self.session_manager.lock().expect("session lock");
+            manager.build_session_projection()
+        };
+        let mut projected_index = 0usize;
+        for entry in &projection.entries {
+            for _ in entry.messages.iter() {
+                if projected_index == message_index {
+                    return entry.source_entry.id().map(str::to_string);
+                }
+                projected_index += 1;
+            }
+        }
+        None
+    }
+
+    /// Upstream `_omitRecoveryAttempt`: durably omit a failed attempt (and
+    /// its tool results) from the model projection with context edits.
+    fn omit_recovery_attempt(
+        &self,
+        message: &AgentMessage,
+        tool_results: &[AgentMessage],
+    ) -> Result<(), AgentSessionError> {
+        let mut targets = vec![message.clone()];
+        targets.extend(tool_results.iter().cloned());
+        let target_ids: Vec<Option<String>> = targets
+            .iter()
+            .map(|target| self.find_persisted_message_entry_id(target))
+            .collect();
+        let state_contains = |target: &AgentMessage| self.agent.state().messages.contains(target);
+        let unresolved = targets
+            .iter()
+            .zip(&target_ids)
+            .any(|(target, target_id)| target_id.is_none() && state_contains(target));
+        if unresolved {
+            return Err(AgentSessionError::Upstream(String::from(
+                "Cannot persist recovery omission because a projected message has no source entry",
+            )));
+        }
+        for target_id in target_ids.into_iter().flatten() {
+            let entry = {
+                let mut manager = self.session_manager.lock().expect("session lock");
+                let edit_id = manager
+                    .append_context_edit(&target_id, None)
+                    .map_err(session_manager_error)?;
+                manager.get_entry(&edit_id).cloned()
+            };
+            if let Some(entry) = entry {
+                self.emit(AgentSessionEvent::EntryAppended { entry });
+            }
+        }
+        self.refresh_finalized_context();
+        Ok(())
+    }
+
+    /// Upstream `_finishCancelledRetry`: close out an in-flight retry counter
+    /// after an abort.
+    fn finish_cancelled_retry(&self) {
+        let attempt = self.retry_attempt.load(Ordering::SeqCst);
+        if attempt == 0 {
+            return;
+        }
+        self.retry_attempt.store(0, Ordering::SeqCst);
+        self.emit(AgentSessionEvent::AutoRetryEnd {
+            success: false,
+            attempt,
+            final_error: Some("Retry cancelled".to_string()),
+        });
+    }
+
+    /// Upstream `summarizeForBugReport`: ask the current model to describe
+    /// what went wrong in this session for a bug report.
+    pub async fn summarize_for_bug_report(
+        &self,
+        hint: Option<&str>,
+        signal: CancellationToken,
+    ) -> Result<String, AgentSessionError> {
+        let Some(model) = self.model() else {
+            return Err(AgentSessionError::Upstream(String::from(
+                "No model selected",
+            )));
+        };
+        let auth = self.get_summarization_request_auth(&model).await?;
+        let messages = self.messages();
+        // The session's summarization headers carry plain string values; the
+        // bug-report seam takes the provider header shape (`string | null`
+        // values).
+        let report_headers: Option<std::collections::BTreeMap<String, Option<String>>> =
+            auth.headers.as_ref().map(|headers| {
+                headers
+                    .iter()
+                    .map(|(name, value)| (name.clone(), Some(value.clone())))
+                    .collect()
+            });
+        crate::coding_agent::core::bug_report::generate_bug_report_summary(
+            crate::coding_agent::core::bug_report::GenerateBugReportSummaryOptions {
+                messages: &messages,
+                hint,
+                model: &auth.model,
+                api_key: auth.api_key.as_deref(),
+                headers: report_headers.as_ref(),
+                env: auth.env.as_ref(),
+                signal,
+                thinking_level: None,
+                stream_fn: None,
+                retry: None,
+                session_id: Some(&self.session_id()),
+            },
+        )
+        .await
+        .map_err(AgentSessionError::Upstream)
     }
 
     /// Upstream `_getRequiredRequestAuth`.
@@ -1286,13 +1646,42 @@ impl AgentSession {
 
     /// Upstream `_emitAgentSettled`.
     async fn emit_agent_settled(&self) {
+        // Give the cache warmer a chance to schedule (or cancel) before the
+        // settled observers run.
+        if let Some(cache_warmer) = &self.cache_warmer {
+            cache_warmer.on_agent_settled();
+        }
         self.is_agent_run_active.store(false, Ordering::SeqCst);
+        self.is_emitting_agent_settled.store(true, Ordering::SeqCst);
         {
             let runner = self.extension_runner();
             let mut event = json!({"type": "agent_settled"});
             runner.emit(&mut event).await;
         }
         self.emit(AgentSessionEvent::AgentSettled);
+        self.is_emitting_agent_settled
+            .store(false, Ordering::SeqCst);
+
+        let deferred: Vec<_> = {
+            let mut prompts = self.deferred_settled_prompts.lock().expect("deferred lock");
+            std::mem::take(&mut *prompts)
+        };
+        if !deferred.is_empty() {
+            if let Some(session) = self.self_weak().upgrade() {
+                for (text, options) in deferred {
+                    // The prompt future is not `Send` (mutual recursion with
+                    // the settled emission); block_on on a blocking thread
+                    // keeps the replay ordered without poisoning `Send`.
+                    let task_session = session.clone();
+                    let _ = tokio::task::spawn_blocking(move || {
+                        futures::executor::block_on(task_session.prompt(text, Some(options)))
+                    })
+                    .await;
+                }
+            }
+            self.resolve_idle_wait_if_idle();
+            return;
+        }
         self.resolve_idle_wait_if_idle();
     }
 
@@ -1631,6 +2020,13 @@ impl AgentSession {
         self.abort_branch_summary();
         self.abort_bash();
         self.agent.abort();
+
+        // Upstream `_disconnectFromAgent`: drop the warmer's listener, then
+        // cancel it.
+        if let Some(cache_warmer) = &self.cache_warmer {
+            cache_warmer.set_on_warmed(Box::new(|_| {}));
+            cache_warmer.cancel();
+        }
 
         self.extension_runner().invalidate(Some(
             "This extension ctx is stale after session replacement or reload. Do not use a \
@@ -2070,17 +2466,35 @@ impl AgentSession {
 
     /// Upstream `_runAgentPrompt`.
     async fn run_agent_prompt(&self, messages: Vec<AgentMessage>) -> Result<(), AgentSessionError> {
+        // Compaction before the prompt may have scheduled a retry; the new
+        // prompt replaces it (upstream `_failedResponse = undefined`).
+        self.agent_run_abort_requested
+            .store(false, Ordering::SeqCst);
+        self.record_selection();
         self.is_agent_run_active.store(true, Ordering::SeqCst);
         let _ = self.idle_tx.send(false);
         let result: Result<(), anyhow::Error> = async {
             self.agent.prompt(PromptInput::Messages(messages)).await?;
-            while self.handle_post_agent_run().await? {
-                self.agent.continue_run().await?;
+            // Upstream also consults the `agent_before_settle` boundary here
+            // (deferred with that seam — see the module notes); without it the
+            // post-run loop continues only for retry/compaction/queued work.
+            while !self.agent_run_abort_requested.load(Ordering::SeqCst) {
+                if self.handle_post_agent_run().await? {
+                    if self.agent_run_abort_requested.load(Ordering::SeqCst) {
+                        break;
+                    }
+                    self.agent.continue_run().await?;
+                    continue;
+                }
+                break;
             }
             Ok(())
         }
         .await;
         // finally {
+        if self.agent_run_abort_requested.load(Ordering::SeqCst) {
+            self.finish_cancelled_retry();
+        }
         *self
             .run_system_prompt_options
             .lock()
@@ -2095,17 +2509,29 @@ impl AgentSession {
     /// Upstream `_handlePostAgentRun`: `Ok(true)` means the post-run loop
     /// should call `agent.continue()`.
     async fn handle_post_agent_run(&self) -> Result<bool, AgentSessionError> {
+        if self.agent_run_abort_requested.load(Ordering::SeqCst) {
+            self.finish_cancelled_retry();
+            return Ok(false);
+        }
         let msg = self
             .last_assistant_message
             .lock()
             .expect("assistant lock")
             .take();
         let Some(msg) = msg else {
-            return Ok(false);
+            return Ok(self.agent.has_queued_messages());
         };
 
         if self.is_retryable_error(&msg) && self.prepare_retry(&msg).await? {
+            if self.agent_run_abort_requested.load(Ordering::SeqCst) {
+                self.finish_cancelled_retry();
+                return Ok(false);
+            }
             return Ok(true);
+        }
+        if self.agent_run_abort_requested.load(Ordering::SeqCst) {
+            self.finish_cancelled_retry();
+            return Ok(false);
         }
 
         let retry_attempt = self.retry_attempt.load(Ordering::SeqCst);
@@ -2119,13 +2545,14 @@ impl AgentSession {
         }
 
         if self.check_compaction(&msg, true).await? {
-            return Ok(true);
+            return Ok(!self.agent_run_abort_requested.load(Ordering::SeqCst));
         }
 
         // The agent loop drains both queues before emitting agent_end. Any
         // messages here were queued by agent_end extension handlers and need a
         // continuation.
-        Ok(self.agent.has_queued_messages())
+        Ok(!self.agent_run_abort_requested.load(Ordering::SeqCst)
+            && self.agent.has_queued_messages())
     }
 
     /// Upstream `_runInputHandlers`.
@@ -2189,6 +2616,16 @@ impl AgentSession {
         let options = options.unwrap_or_default();
         let expand_prompt_templates = options.expand_prompt_templates.unwrap_or(true);
         let preflight_result = options.preflight_result.clone();
+        // Upstream: a prompt arriving while `agent_settled` is still being
+        // emitted is deferred until the emission and any earlier deferred
+        // prompts finish.
+        if self.is_emitting_agent_settled.load(Ordering::SeqCst) {
+            self.deferred_settled_prompts
+                .lock()
+                .expect("deferred lock")
+                .push((text, options));
+            return Ok(());
+        }
         let mut messages: Option<Vec<AgentMessage>> = None;
 
         let result: Result<(), AgentSessionError> = async {
@@ -2200,7 +2637,7 @@ impl AgentSession {
                 if handled {
                     // Extension command executed, no prompt to send
                     if let Some(preflight) = &preflight_result {
-                        preflight(true);
+                        preflight(PromptDisposition::Handled);
                     }
                     return Ok(());
                 }
@@ -2234,7 +2671,7 @@ impl AgentSession {
                 .await;
             let Some((current_text, current_images)) = processed_input else {
                 if let Some(preflight) = &preflight_result {
-                    preflight(true);
+                    preflight(PromptDisposition::Handled);
                 }
                 return Ok(());
             };
@@ -2264,7 +2701,7 @@ impl AgentSession {
                     self.queue_steer(&expanded_text, current_images.clone());
                 }
                 if let Some(preflight) = &preflight_result {
-                    preflight(true);
+                    preflight(PromptDisposition::Queued);
                 }
                 return Ok(());
             }
@@ -2394,17 +2831,15 @@ impl AgentSession {
 
         match result {
             Ok(()) => {}
-            Err(error) => {
-                if let Some(preflight) = &preflight_result {
-                    preflight(false);
-                }
-                return Err(error);
-            }
+            // Upstream no longer reports a preflight disposition for rejected
+            // prompts (the hook documents "Not called if the prompt is
+            // rejected").
+            Err(error) => return Err(error),
         }
 
         if let Some(prompt_messages) = messages {
             if let Some(preflight) = &preflight_result {
-                preflight(true);
+                preflight(PromptDisposition::Started);
             }
             self.run_agent_prompt(prompt_messages).await?;
         }
@@ -2510,7 +2945,7 @@ impl AgentSession {
         images: Option<Vec<ImageContent>>,
         behavior: StreamingDelivery,
         source: InputSource,
-    ) -> Result<(), AgentSessionError> {
+    ) -> Result<PromptDisposition, AgentSessionError> {
         if text.starts_with('/') {
             self.throw_if_extension_command(text)?;
         }
@@ -2528,7 +2963,7 @@ impl AgentSession {
             )
             .await
         else {
-            return Ok(());
+            return Ok(PromptDisposition::Handled);
         };
 
         let expanded_text = self.expand_skill_command(&text);
@@ -2540,7 +2975,7 @@ impl AgentSession {
         } else {
             self.queue_follow_up(&expanded_text, images);
         }
-        Ok(())
+        Ok(PromptDisposition::Queued)
     }
 
     /// Upstream `steer`: queue a steering message while the agent is running;
@@ -2552,7 +2987,7 @@ impl AgentSession {
         text: impl Into<String>,
         images: Option<Vec<ImageContent>>,
         source: Option<InputSource>,
-    ) -> Result<(), AgentSessionError> {
+    ) -> Result<PromptDisposition, AgentSessionError> {
         self.queue_user_input(
             &text.into(),
             images,
@@ -2571,7 +3006,7 @@ impl AgentSession {
         text: impl Into<String>,
         images: Option<Vec<ImageContent>>,
         source: Option<InputSource>,
-    ) -> Result<(), AgentSessionError> {
+    ) -> Result<PromptDisposition, AgentSessionError> {
         self.queue_user_input(
             &text.into(),
             images,
@@ -2670,7 +3105,6 @@ impl AgentSession {
 
     /// Upstream `_appendCustomMessage`.
     fn append_custom_message(&self, app_message: AgentMessage) {
-        self.agent.state().messages.push(app_message.clone());
         if let Some(custom) = custom_message_from_agent_message(&app_message) {
             let _ = self
                 .session_manager
@@ -2683,6 +3117,7 @@ impl AgentSession {
                     custom.details.clone(),
                 );
         }
+        self.refresh_finalized_context();
         self.emit(AgentSessionEvent::MessageStart {
             message: app_message.clone(),
         });
@@ -2801,6 +3236,9 @@ impl AgentSession {
     /// Upstream `abort`: abort current operation and wait for agent to become
     /// idle.
     pub async fn abort(&self) {
+        if self.is_agent_run_active.load(Ordering::SeqCst) {
+            self.agent_run_abort_requested.store(true, Ordering::SeqCst);
+        }
         self.abort_retry();
         self.abort_compaction();
         self.abort_branch_summary();
@@ -3978,7 +4416,13 @@ impl AgentSession {
     /// Context overflow errors are NOT retryable (handled by compaction
     /// instead).
     fn is_retryable_error(&self, message: &AssistantMessage) -> bool {
-        if is_context_overflow(message, self.model().map(|model| model.context_window)) {
+        // Context overflow is handled by compaction, not retry.
+        if is_context_overflow(
+            message,
+            self.model_for_message(message)
+                .or_else(|| self.model())
+                .map(|model| model.context_window),
+        ) {
             return false;
         }
         is_retryable_assistant_error(message)
@@ -4499,17 +4943,9 @@ impl AgentSession {
                 .unwrap_or_else(|| "Unknown error".to_string()),
         });
 
-        // Remove error message from agent state (keep in session for history)
-        {
-            let mut state = self.agent.state();
-            if state
-                .messages
-                .last()
-                .is_some_and(|message| message.role() == "assistant")
-            {
-                state.messages.pop();
-            }
-        }
+        // Keep the failed attempt in raw history while durably omitting it
+        // from the model projection.
+        self.omit_recovery_attempt(&AgentMessage::Assistant(message.clone()), &[])?;
 
         // Wait with exponential backoff (abortable)
         let token = CancellationToken::new();
@@ -4522,13 +4958,7 @@ impl AgentSession {
 
         if aborted_during_sleep {
             // Aborted during sleep - emit end event so UI can clean up
-            let attempt = self.retry_attempt.load(Ordering::SeqCst);
-            self.retry_attempt.store(0, Ordering::SeqCst);
-            self.emit(AgentSessionEvent::AutoRetryEnd {
-                success: false,
-                attempt,
-                final_error: Some("Retry cancelled".to_string()),
-            });
+            self.finish_cancelled_retry();
             return Ok(false);
         }
 
@@ -4552,16 +4982,15 @@ impl AgentSession {
             manager
                 .append_compaction(
                     summary,
-                    first_kept_entry_id,
+                    Some(first_kept_entry_id),
                     tokens_before as i64,
                     details,
                     Some(from_extension),
                     usage,
                 )
                 .map_err(session_manager_error)?;
-            let session_context = manager.build_session_context();
-            self.agent.state().messages = session_context.messages;
         }
+        self.refresh_finalized_context();
         Ok(())
     }
 
@@ -4674,15 +5103,14 @@ impl AgentSession {
         };
         for bash_message in pending {
             let message = AgentMessage::Custom(bash_execution_agent_message(&bash_message));
-            // Add to agent state
-            self.agent.state().messages.push(message.clone());
-            // Save to session
+            // Save to session (the finalized context is rebuilt once below).
             let _ = self
                 .session_manager
                 .lock()
                 .expect("session lock")
                 .append_message(message);
         }
+        self.refresh_finalized_context();
     }
 }
 
@@ -5171,7 +5599,6 @@ impl AgentSession {
                 usage,
             )?;
             let estimated_tokens_after = estimate_messages_tokens(&self.agent.state().messages);
-
             // Get the saved compaction entry for the extension event
             let saved_compaction_entry = self
                 .session_manager
@@ -5309,6 +5736,7 @@ impl AgentSession {
         self.apply_extension_bindings(&runner);
         let mut session_start = self.session_start_event.clone();
         runner.emit(&mut session_start).await;
+        runner.report_unhandled_mcp_servers();
         let reason = if session_start
             .get("reason")
             .and_then(Value::as_str)
@@ -5454,6 +5882,7 @@ impl AgentSession {
             let runner = self.extension_runner();
             let mut event = json!({"type": "session_start", "reason": "reload"});
             runner.emit(&mut event).await;
+            runner.report_unhandled_mcp_servers();
             self.extend_resources_from_extensions(ResourcesDiscoverReason::Reload)
                 .await;
         }
@@ -5866,13 +6295,8 @@ impl AgentSession {
                     .map_err(session_manager_error)?;
             }
 
-            // Update agent state
-            let session_context = self
-                .session_manager
-                .lock()
-                .expect("session lock")
-                .build_session_context();
-            self.agent.state().messages = session_context.messages;
+            // Update finalized context from the canonical session projection.
+            self.refresh_finalized_context();
             self.restore_tools_from_transcript();
 
             // Emit session_tree event
@@ -5963,6 +6387,9 @@ impl AgentSession {
 
         for entry in &entries {
             match entry {
+                SessionEntry::Usage(usage_entry) => {
+                    add_usage_to_totals(&mut usage_totals, &usage_entry.usage);
+                }
                 SessionEntry::BranchSummary(summary) => {
                     if let Some(usage) = &summary.usage {
                         add_usage_to_totals(&mut usage_totals, usage);
@@ -6019,7 +6446,9 @@ impl AgentSession {
 
     /// Upstream `getContextUsage`.
     pub fn get_context_usage(&self) -> Result<Option<ContextUsage>, AgentSessionError> {
-        let model = self.model();
+        // Under a virtual selection the routed physical model supplies the
+        // limits (upstream `_limitsModel()`).
+        let model = self.limits_model();
         let Some(model) = model else {
             return Ok(None);
         };
@@ -6758,6 +7187,8 @@ fn set_entry_parent_id(entry: &mut SessionEntry, parent_id: Option<String>) {
         SessionEntry::Message(e) => e.parent_id = parent_id,
         SessionEntry::ThinkingLevelChange(e) => e.parent_id = parent_id,
         SessionEntry::ModelChange(e) => e.parent_id = parent_id,
+        SessionEntry::Usage(e) => e.parent_id = parent_id,
+        SessionEntry::ContextEdit(e) => e.parent_id = parent_id,
         SessionEntry::Compaction(e) => e.parent_id = parent_id,
         SessionEntry::BranchSummary(e) => e.parent_id = parent_id,
         SessionEntry::Custom(e) => e.parent_id = parent_id,
@@ -6914,6 +7345,8 @@ fn to_compaction_entry(entry: &SessionEntry) -> CompactionSessionEntry {
         },
         SessionEntry::ThinkingLevelChange(_)
         | SessionEntry::ModelChange(_)
+        | SessionEntry::Usage(_)
+        | SessionEntry::ContextEdit(_)
         | SessionEntry::Custom(_)
         | SessionEntry::Label(_)
         | SessionEntry::SessionInfo(_)

@@ -5,10 +5,10 @@
       "main.ts": "f985c35a729c2234ddf634c490bf214b9cdc2670489fae1f5eea570e45d5a5ff",
       "cli/args.ts": "f8ba813e8acb43d33b42dff087b05fa3784fc24e6428026d13abe007993bab73",
       "core/model-resolver.ts": "75fead81206126dbdfbf559746b91400cd5b70a5358a4b133e2cc0de04f1cc57",
-      "core/session-manager.ts": "36a474d8cf6f03f2c906680aed5569837f8188e0dc2fc878e9dbdc47b9a14d04",
+      "core/session-manager.ts": "450d82c529933214e088b8422f00061815e617f352f6c834689787a314064bff",
       "utils/paths.ts": "a687cdb54b82216673fea5be1210c48e64ffa8398d64cfabf2bd7dba5c9d4210"
     },
-    "boundary": "Actual upstream main.ts helpers, parseArgs, model-resolver and paths. Model catalog/auth and session discovery lists are injected; no actual provider/session runtime in this oracle. Native filesystem, runtime and cancellation are verified separately in Rust integration tests. minimatch is existing cached 10.2.4 (upstream pins 10.2.6); selected cases do not depend on patch drift."
+    "boundary": "Actual upstream main.ts helpers, parseArgs, model-resolver and paths. Model catalog/auth and session discovery lists are injected; no actual provider/session runtime in this oracle. Native filesystem, runtime and cancellation are verified separately in Rust integration tests. minimatch is existing cached 10.2.4 (upstream pins 10.2.6); selected cases do not depend on patch drift Resolution tie cases re-pinned for the v0.99.1 session-manager delta (discovery orders tie name-descending on equal activity time)."
   },
   "models": [
     {
@@ -1499,8 +1499,8 @@
       "platform": "linux",
       "value": {
         "type": "global",
-        "path": "first",
-        "cwd": "/root/other"
+        "path": "second",
+        "cwd": "/root/third"
       }
     },
     {
@@ -1639,8 +1639,8 @@
       "platform": "win32",
       "value": {
         "type": "global",
-        "path": "first",
-        "cwd": "/root/other"
+        "path": "second",
+        "cwd": "/root/third"
       }
     },
     {

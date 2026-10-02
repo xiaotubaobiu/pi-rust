@@ -1,5 +1,5 @@
-//! Port of upstream `coding-agent/src/core/session-manager.ts` (1786 lines,
-//! sha256 `36a474d8…14d04`): append-only JSONL session trees with id/parentId
+//! Port of upstream `coding-agent/src/core/session-manager.ts` (v0.99.1,
+//! sha256 `450d82c5…64bff`): append-only JSONL session trees with id/parentId
 //! entries, leaf-pointer branching, compaction/branch-summary/label/session-
 //! info/custom entries, v1→v3 migrations, deferred file persistence, session
 //! discovery (`findMostRecentSession` / `findById` / `list` / `listAll`),
@@ -213,6 +213,75 @@ pub struct ModelChangeEntry {
     pub model_id: String,
 }
 
+/// Upstream `UsageEntry`: model-attributed usage that does not participate in
+/// LLM context (e.g. cache warming).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UsageEntry {
+    pub id: String,
+    pub parent_id: Option<String>,
+    pub timestamp: String,
+    /// Arbitrary usage category, such as `cache_warm`.
+    pub kind: String,
+    pub provider: String,
+    pub model: String,
+    pub usage: Usage,
+    /// Optional human-readable qualifier for usage notices.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub note: Option<String>,
+}
+
+/// Upstream `ContextEditableContent`: content that an append-only context edit
+/// may replace without changing message metadata. `Text` is the upstream
+/// `string` shape; `Blocks` is the block-array shape preserved verbatim (the
+/// block element union differs per message role upstream).
+#[derive(Debug, Clone, PartialEq)]
+pub enum ContextEditableContent {
+    Text(String),
+    Blocks(Value),
+}
+
+impl Serialize for ContextEditableContent {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        match self {
+            ContextEditableContent::Text(text) => text.serialize(serializer),
+            ContextEditableContent::Blocks(blocks) => blocks.serialize(serializer),
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for ContextEditableContent {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let value = Value::deserialize(deserializer)?;
+        Ok(match value {
+            Value::String(text) => ContextEditableContent::Text(text),
+            other => ContextEditableContent::Blocks(other),
+        })
+    }
+}
+
+/// Upstream `ContextEditEntry["replacement"]`:
+/// `{ content: ContextEditableContent } | null`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ContextEditReplacement {
+    pub content: ContextEditableContent,
+}
+
+/// Upstream `ContextEditEntry`: append-only change to one earlier entry's
+/// contribution to model context. `replacement: None` (upstream `null`)
+/// omits the target from model context; a value replaces only its content.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ContextEditEntry {
+    pub id: String,
+    pub parent_id: Option<String>,
+    pub timestamp: String,
+    pub target_id: String,
+    #[serde(default)]
+    pub replacement: Option<ContextEditReplacement>,
+}
+
 /// Upstream `CompactionEntry`. `firstKeptEntryIndex` is a v1-only field
 /// captured for the v1→v2 migration and never emitted for current entries.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -324,6 +393,8 @@ pub enum SessionEntry {
     ThinkingLevelChange(ThinkingLevelChangeEntry),
     #[serde(rename = "model_change")]
     ModelChange(ModelChangeEntry),
+    #[serde(rename = "usage")]
+    Usage(UsageEntry),
     #[serde(rename = "compaction")]
     Compaction(CompactionEntry),
     #[serde(rename = "branch_summary")]
@@ -332,6 +403,8 @@ pub enum SessionEntry {
     Custom(CustomEntry),
     #[serde(rename = "custom_message")]
     CustomMessage(CustomMessageEntry),
+    #[serde(rename = "context_edit")]
+    ContextEdit(ContextEditEntry),
     #[serde(rename = "label")]
     Label(LabelEntry),
     #[serde(rename = "session_info")]
@@ -349,10 +422,12 @@ impl SessionEntry {
             SessionEntry::Message(e) => Some(&e.id),
             SessionEntry::ThinkingLevelChange(e) => Some(&e.id),
             SessionEntry::ModelChange(e) => Some(&e.id),
+            SessionEntry::Usage(e) => Some(&e.id),
             SessionEntry::Compaction(e) => Some(&e.id),
             SessionEntry::BranchSummary(e) => Some(&e.id),
             SessionEntry::Custom(e) => Some(&e.id),
             SessionEntry::CustomMessage(e) => Some(&e.id),
+            SessionEntry::ContextEdit(e) => Some(&e.id),
             SessionEntry::Label(e) => Some(&e.id),
             SessionEntry::SessionInfo(e) => Some(&e.id),
             SessionEntry::Unparsed(_) => None,
@@ -365,10 +440,12 @@ impl SessionEntry {
             SessionEntry::Message(e) => e.parent_id.as_deref(),
             SessionEntry::ThinkingLevelChange(e) => e.parent_id.as_deref(),
             SessionEntry::ModelChange(e) => e.parent_id.as_deref(),
+            SessionEntry::Usage(e) => e.parent_id.as_deref(),
             SessionEntry::Compaction(e) => e.parent_id.as_deref(),
             SessionEntry::BranchSummary(e) => e.parent_id.as_deref(),
             SessionEntry::Custom(e) => e.parent_id.as_deref(),
             SessionEntry::CustomMessage(e) => e.parent_id.as_deref(),
+            SessionEntry::ContextEdit(e) => e.parent_id.as_deref(),
             SessionEntry::Label(e) => e.parent_id.as_deref(),
             SessionEntry::SessionInfo(e) => e.parent_id.as_deref(),
             SessionEntry::Unparsed(_) => None,
@@ -381,10 +458,12 @@ impl SessionEntry {
             SessionEntry::Message(e) => &e.timestamp,
             SessionEntry::ThinkingLevelChange(e) => &e.timestamp,
             SessionEntry::ModelChange(e) => &e.timestamp,
+            SessionEntry::Usage(e) => &e.timestamp,
             SessionEntry::Compaction(e) => &e.timestamp,
             SessionEntry::BranchSummary(e) => &e.timestamp,
             SessionEntry::Custom(e) => &e.timestamp,
             SessionEntry::CustomMessage(e) => &e.timestamp,
+            SessionEntry::ContextEdit(e) => &e.timestamp,
             SessionEntry::Label(e) => &e.timestamp,
             SessionEntry::SessionInfo(e) => &e.timestamp,
             SessionEntry::Unparsed(value) => value
@@ -399,10 +478,12 @@ impl SessionEntry {
             SessionEntry::Message(e) => e.parent_id = parent_id,
             SessionEntry::ThinkingLevelChange(e) => e.parent_id = parent_id,
             SessionEntry::ModelChange(e) => e.parent_id = parent_id,
+            SessionEntry::Usage(e) => e.parent_id = parent_id,
             SessionEntry::Compaction(e) => e.parent_id = parent_id,
             SessionEntry::BranchSummary(e) => e.parent_id = parent_id,
             SessionEntry::Custom(e) => e.parent_id = parent_id,
             SessionEntry::CustomMessage(e) => e.parent_id = parent_id,
+            SessionEntry::ContextEdit(e) => e.parent_id = parent_id,
             SessionEntry::Label(e) => e.parent_id = parent_id,
             SessionEntry::SessionInfo(e) => e.parent_id = parent_id,
             SessionEntry::Unparsed(value) => {
@@ -423,10 +504,12 @@ impl SessionEntry {
             SessionEntry::Message(e) => e.id = id,
             SessionEntry::ThinkingLevelChange(e) => e.id = id,
             SessionEntry::ModelChange(e) => e.id = id,
+            SessionEntry::Usage(e) => e.id = id,
             SessionEntry::Compaction(e) => e.id = id,
             SessionEntry::BranchSummary(e) => e.id = id,
             SessionEntry::Custom(e) => e.id = id,
             SessionEntry::CustomMessage(e) => e.id = id,
+            SessionEntry::ContextEdit(e) => e.id = id,
             SessionEntry::Label(e) => e.id = id,
             SessionEntry::SessionInfo(e) => e.id = id,
             SessionEntry::Unparsed(value) => value["id"] = Value::String(id),
@@ -475,6 +558,25 @@ impl Serialize for SessionEntry {
                 entry!("timestamp", &e.timestamp);
                 entry!("provider", &e.provider);
                 entry!("modelId", &e.model_id);
+            }
+            SessionEntry::Usage(e) => {
+                entry!("type", "usage");
+                entry!("id", &e.id);
+                entry!("parentId", &e.parent_id);
+                entry!("timestamp", &e.timestamp);
+                entry!("kind", &e.kind);
+                entry!("provider", &e.provider);
+                entry!("model", &e.model);
+                entry!("usage", &e.usage);
+                optional!("note", e.note);
+            }
+            SessionEntry::ContextEdit(e) => {
+                entry!("type", "context_edit");
+                entry!("id", &e.id);
+                entry!("parentId", &e.parent_id);
+                entry!("timestamp", &e.timestamp);
+                entry!("targetId", &e.target_id);
+                entry!("replacement", &e.replacement);
             }
             SessionEntry::Compaction(e) => {
                 entry!("type", "compaction");
@@ -569,10 +671,12 @@ impl FileEntry {
                 SessionEntry::Message(_) => "message",
                 SessionEntry::ThinkingLevelChange(_) => "thinking_level_change",
                 SessionEntry::ModelChange(_) => "model_change",
+                SessionEntry::Usage(_) => "usage",
                 SessionEntry::Compaction(_) => "compaction",
                 SessionEntry::BranchSummary(_) => "branch_summary",
                 SessionEntry::Custom(_) => "custom",
                 SessionEntry::CustomMessage(_) => "custom_message",
+                SessionEntry::ContextEdit(_) => "context_edit",
                 SessionEntry::Label(_) => "label",
                 SessionEntry::SessionInfo(_) => "session_info",
                 SessionEntry::Unparsed(_) => unreachable!(),
@@ -628,8 +732,10 @@ fn file_entry_from_value(value: Value) -> FileEntry {
             | "branch_summary"
             | "custom"
             | "custom_message"
+            | "context_edit"
             | "label"
-            | "session_info",
+            | "session_info"
+            | "usage",
         ) => serde_json::from_value::<SessionEntry>(value.clone())
             .map(FileEntry::Entry)
             .unwrap_or(FileEntry::Unparsed(value)),
@@ -846,6 +952,16 @@ fn file_mtime_ms(path: &str) -> Option<i64> {
         .and_then(|m| m.modified().ok())
         .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
         .map(|d| d.as_millis() as i64)
+}
+
+/// Upstream `statSync(path).mtimeMs`: sub-millisecond double precision, used
+/// by the mtime-descending discovery sorts.
+fn file_mtime_ms_f64(path: &str) -> Option<f64> {
+    std::fs::metadata(path)
+        .ok()
+        .and_then(|m| m.modified().ok())
+        .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
+        .map(|d| d.as_secs_f64() * 1000.0)
 }
 
 /// Upstream `getDefaultSessionDirPath`.
@@ -1348,18 +1464,171 @@ pub fn build_context_entries(entries: &[SessionEntry], leaf_id: LeafRef<'_>) -> 
     context_entries
 }
 
-/// Upstream `buildSessionContext`.
-pub fn build_session_context(entries: &[SessionEntry], leaf_id: LeafRef<'_>) -> SessionContext {
+/// Upstream `ProjectedSessionEntry`: the raw append-only entry that owns a
+/// projected contribution, plus the model-visible messages after context
+/// edits (empty for state-only entries and omissions).
+#[derive(Debug, Clone, PartialEq)]
+pub struct ProjectedSessionEntry {
+    pub source_entry: SessionEntry,
+    pub messages: Vec<AgentMessage>,
+}
+
+/// Upstream `SessionProjection`: provenance-preserving, compaction-aware
+/// model context.
+#[derive(Debug, Clone, PartialEq)]
+pub struct SessionProjection {
+    pub entries: Vec<ProjectedSessionEntry>,
+    pub messages: Vec<AgentMessage>,
+    pub thinking_level: String,
+    pub model: Option<SessionContextModel>,
+}
+
+/// Upstream `projectContextEntry`: project one selected entry, applying the
+/// latest context edit targeting it. A `None` replacement (upstream `null`)
+/// omits the entry's messages entirely.
+fn project_context_entry(
+    entry: &SessionEntry,
+    edit: Option<&ContextEditEntry>,
+) -> Vec<AgentMessage> {
+    let messages = session_entry_to_context_messages(entry);
+    let Some(edit) = edit else {
+        return messages;
+    };
+    let Some(replacement) = &edit.replacement else {
+        return Vec::new();
+    };
+    messages
+        .into_iter()
+        .map(|message| apply_context_replacement(message, replacement))
+        .collect()
+}
+
+/// The `{ ...message, content }` assignment of upstream `projectContextEntry`:
+/// only user/assistant/toolResult/custom messages take the replacement; a
+/// string replacement becomes a single text block for assistant and tool
+/// result roles, and is assigned verbatim otherwise.
+fn apply_context_replacement(
+    message: AgentMessage,
+    replacement: &ContextEditReplacement,
+) -> AgentMessage {
+    match &replacement.content {
+        ContextEditableContent::Text(text) => match message {
+            AgentMessage::User(mut user) => {
+                user.content = StringOrBlocks::Text(text.clone());
+                AgentMessage::User(user)
+            }
+            AgentMessage::Assistant(mut assistant) => {
+                assistant.content = vec![AssistantBlock::Text(TextContent {
+                    text: text.clone(),
+                    text_signature: None,
+                })];
+                AgentMessage::Assistant(assistant)
+            }
+            AgentMessage::ToolResult(mut tool_result) => {
+                tool_result.content = vec![TextOrImageBlock::Text(TextContent {
+                    text: text.clone(),
+                    text_signature: None,
+                })];
+                AgentMessage::ToolResult(tool_result)
+            }
+            AgentMessage::Custom(mut custom) => {
+                custom
+                    .data
+                    .insert("content".to_string(), Value::String(text.clone()));
+                AgentMessage::Custom(custom)
+            }
+            other => other,
+        },
+        ContextEditableContent::Blocks(blocks) => match message {
+            AgentMessage::User(mut user) => {
+                if let Ok(content) = serde_json::from_value::<StringOrBlocks>(blocks.clone()) {
+                    user.content = content;
+                    return AgentMessage::User(user);
+                }
+                AgentMessage::User(user)
+            }
+            AgentMessage::Assistant(mut assistant) => {
+                if let Ok(content) = serde_json::from_value::<Vec<AssistantBlock>>(blocks.clone()) {
+                    assistant.content = content;
+                    return AgentMessage::Assistant(assistant);
+                }
+                AgentMessage::Assistant(assistant)
+            }
+            AgentMessage::ToolResult(mut tool_result) => {
+                if let Ok(content) = serde_json::from_value::<Vec<TextOrImageBlock>>(blocks.clone())
+                {
+                    tool_result.content = content;
+                    return AgentMessage::ToolResult(tool_result);
+                }
+                AgentMessage::ToolResult(tool_result)
+            }
+            AgentMessage::Custom(mut custom) => {
+                custom.data.insert("content".to_string(), blocks.clone());
+                AgentMessage::Custom(custom)
+            }
+            other => other,
+        },
+    }
+}
+
+/// Upstream `buildSessionProjection`.
+pub fn build_session_projection(
+    entries: &[SessionEntry],
+    leaf_id: LeafRef<'_>,
+) -> SessionProjection {
     let path = build_session_path(entries, leaf_id);
     let (thinking_level, model) = get_session_context_settings(&path);
-    let messages = build_context_entries(entries, leaf_id)
+    let context_entries = build_context_entries(entries, leaf_id);
+    let mut edits: OrderedMap<ContextEditEntry> = OrderedMap {
+        entries: Vec::new(),
+        index: HashMap::new(),
+    };
+    for entry in &context_entries {
+        if let SessionEntry::ContextEdit(edit) = entry {
+            edits.insert(edit.target_id.clone(), edit.clone());
+        }
+    }
+    let projected_entries: Vec<ProjectedSessionEntry> = context_entries
         .iter()
-        .flat_map(session_entry_to_context_messages)
+        .enumerate()
+        .map(|(index, source_entry)| {
+            let messages = match source_entry {
+                // buildContextEntries() may retain an older compaction entry
+                // because its raw ID lies inside the newest retained range.
+                // Only the newest compaction at index zero contributes a
+                // checkpoint and summary.
+                SessionEntry::Compaction(_) if index > 0 => Vec::new(),
+                _ => {
+                    let edit = source_entry.id().and_then(|id| edits.get(id));
+                    project_context_entry(source_entry, edit)
+                }
+            };
+            ProjectedSessionEntry {
+                source_entry: source_entry.clone(),
+                messages,
+            }
+        })
         .collect();
-    SessionContext {
+    let messages = projected_entries
+        .iter()
+        .flat_map(|entry| entry.messages.iter().cloned())
+        .collect();
+    SessionProjection {
+        entries: projected_entries,
         messages,
         thinking_level,
         model,
+    }
+}
+
+/// Upstream `buildSessionContext` (the finalized model context from the
+/// canonical session projection).
+pub fn build_session_context(entries: &[SessionEntry], leaf_id: LeafRef<'_>) -> SessionContext {
+    let projection = build_session_projection(entries, leaf_id);
+    SessionContext {
+        messages: projection.messages,
+        thinking_level: projection.thinking_level,
+        model: projection.model,
     }
 }
 
@@ -1766,17 +2035,30 @@ fn build_session_info(file_path: &str) -> Option<SessionInfo> {
     })
 }
 
-/// Upstream `SessionListProgress`.
-pub type SessionListProgress<'a> = dyn FnMut(usize, usize) + 'a;
+/// Upstream `SessionListProgress`. `partial_sessions` carries the sessions
+/// loaded so far, sorted by activity; it is `None` between periodic updates.
+/// Boxed filtered-progress callback (type-complexity seam).
+type ProgressBox<'a> = Box<dyn FnMut(usize, usize, Option<&[SessionInfo]>) + 'a>;
+
+pub type SessionListProgress<'a> = dyn FnMut(usize, usize, Option<&[SessionInfo]>) + 'a;
+
+/// Upstream `sortSessionInfos` (most recently modified first; stable).
+fn sort_session_infos(sessions: &mut [SessionInfo]) {
+    sessions.sort_by_key(|a| std::cmp::Reverse(a.modified));
+}
 
 /// Upstream `buildSessionInfosWithConcurrency` (sequential, S4): progress
 /// fires once per file (including failures); results keep file order.
-fn build_session_infos(files: &[String], on_loaded: &mut dyn FnMut()) -> Vec<Option<SessionInfo>> {
+fn build_session_infos(
+    files: &[String],
+    on_loaded: &mut dyn FnMut(usize, Option<&SessionInfo>),
+) -> Vec<Option<SessionInfo>> {
     files
         .iter()
-        .map(|file| {
+        .enumerate()
+        .map(|(index, file)| {
             let info = build_session_info(file);
-            on_loaded();
+            on_loaded(index, info.as_ref());
             info
         })
         .collect()
@@ -1786,16 +2068,12 @@ fn build_session_infos(files: &[String], on_loaded: &mut dyn FnMut()) -> Vec<Opt
 fn list_sessions_from_dir(
     dir: &str,
     mut on_progress: Option<&mut SessionListProgress<'_>>,
-    progress_offset: usize,
-    progress_total: Option<usize>,
 ) -> Vec<SessionInfo> {
-    let mut sessions = Vec::new();
     if !path_exists(dir) {
-        return sessions;
+        return Vec::new();
     }
-
     let Ok(read_dir) = std::fs::read_dir(dir) else {
-        return sessions;
+        return Vec::new();
     };
     let mut files: Vec<String> = read_dir
         .filter_map(|entry| entry.ok())
@@ -1803,29 +2081,42 @@ fn list_sessions_from_dir(
         .filter(|name| name.ends_with(".jsonl"))
         .map(|name| path_join(&[dir, &name]))
         .collect();
-    // Upstream keeps readdir order and its mtime sort is stable, so sessions
-    // with an equal activity time tie-break on directory enumeration order —
-    // an OS artifact (NTFS enumerates name-sorted, ext4 hashes names). Sort
-    // the base order by name so ties resolve to the capture machine's
-    // enumeration deterministically on every filesystem; non-tied results are
-    // unaffected by the mtime sort on top.
-    files.sort();
-    let total = progress_total.unwrap_or(files.len());
+    // Upstream sorts the file names descending (`b.localeCompare(a)`); the
+    // remaining result-order ties resolve to that order through the final
+    // stable mtime sort.
+    files.sort_by(|a, b| b.cmp(a));
+    let total = files.len();
 
+    const PUBLISH_INTERVAL: usize = 10;
     let mut loaded = 0usize;
-    let results = build_session_infos(&files, &mut || {
+    let mut partial_sessions: Vec<SessionInfo> = Vec::new();
+    let results = build_session_infos(&files, &mut |_, info| {
         loaded += 1;
+        if let Some(info) = info {
+            partial_sessions.push(info.clone());
+        }
         if let Some(progress) = on_progress.as_deref_mut() {
-            progress(progress_offset + loaded, total);
+            let publish_partial =
+                loaded == 1 || loaded.is_multiple_of(PUBLISH_INTERVAL) || loaded == files.len();
+            progress(
+                loaded,
+                total,
+                publish_partial
+                    .then(|| {
+                        let mut partial = partial_sessions.clone();
+                        sort_session_infos(&mut partial);
+                        partial
+                    })
+                    .as_deref(),
+            );
         }
     });
-    for info in results.into_iter().flatten() {
-        sessions.push(info);
-    }
-    sessions
+    results.into_iter().flatten().collect()
 }
 
-/// Upstream `findMostRecentSession` (exported for testing).
+/// Upstream `findMostRecentSession` (exported for testing). All `.jsonl`
+/// files are mtime-sorted first; the newest one with a readable header (and,
+/// when given, a matching cwd) wins.
 pub fn find_most_recent_session(session_dir: &str, cwd: Option<&str>) -> Option<String> {
     let resolved_session_dir =
         normalize_path(session_dir).unwrap_or_else(|_| session_dir.to_string());
@@ -1834,13 +2125,28 @@ pub fn find_most_recent_session(session_dir: &str, cwd: Option<&str>) -> Option<
         return None;
     };
 
-    let mut files: Vec<(String, i64)> = Vec::new();
+    let mut files: Vec<(String, f64)> = Vec::new();
     for entry in read_dir.filter_map(|entry| entry.ok()) {
         let name = entry.file_name().to_string_lossy().into_owned();
         if !name.ends_with(".jsonl") {
             continue;
         }
         let path = path_join(&[&resolved_session_dir, &name]);
+        let Some(mtime) = file_mtime_ms_f64(&path) else {
+            // statSync throwing fails the whole upstream discovery.
+            return None;
+        };
+        files.push((path, mtime));
+    }
+
+    // Same tie determinism as list_sessions_from_dir: name-sort the base
+    // order so ties resolve to the capture machine's enumeration
+    // deterministically on every filesystem, then the stable mtime-descending
+    // sort on top.
+    files.sort_by(|a, b| a.0.cmp(&b.0));
+    files.sort_by(|a, b| b.1.total_cmp(&a.1));
+
+    for (path, _) in files {
         let Some(header) = read_session_header_for_discovery(&path) else {
             continue;
         };
@@ -1849,20 +2155,9 @@ pub fn find_most_recent_session(session_dir: &str, cwd: Option<&str>) -> Option<
                 continue;
             }
         }
-        let Some(mtime) = file_mtime_ms(&path) else {
-            // statSync throwing fails the whole upstream discovery.
-            return None;
-        };
-        files.push((path, mtime));
+        return Some(path);
     }
-
-    // Same tie determinism as list_sessions_from_dir: name-sort the base
-    // order so equal-mtime ties resolve to the capture machine's NTFS
-    // enumeration order on every filesystem.
-    files.sort_by(|a, b| a.0.cmp(&b.0));
-    // Most recently modified first; ties keep directory order (stable sort).
-    files.sort_by_key(|a| std::cmp::Reverse(a.1));
-    files.into_iter().next().map(|(path, _)| path)
+    None
 }
 
 /// Upstream `SessionManager`: manages conversation sessions as append-only
@@ -2098,23 +2393,35 @@ impl SessionManager {
         self.session_file.as_deref()
     }
 
-    fn has_assistant_message(&self) -> bool {
+    /// Upstream `_hasConversation`: a new session file is created only once
+    /// the session contains a user or assistant message. Setup entries alone
+    /// (model, thinking level, system prompt) stay in memory so opening and
+    /// closing pi without chatting leaves no file behind. Starting at the user
+    /// message (not the first assistant reply) keeps the prompt on disk if the
+    /// first turn never completes (#10000).
+    fn has_conversation(&self) -> bool {
         self.file_entries.iter().any(|entry| match entry {
             FileEntry::Entry(SessionEntry::Message(message)) => {
-                matches!(message.message, AgentMessage::Assistant(_))
+                matches!(
+                    message.message,
+                    AgentMessage::User(_) | AgentMessage::Assistant(_)
+                )
             }
             FileEntry::Unparsed(value) => {
                 value.get("type").and_then(Value::as_str) == Some("message")
-                    && value
-                        .get("message")
-                        .and_then(|message| message.get("role"))
-                        .and_then(Value::as_str)
-                        == Some("assistant")
+                    && matches!(
+                        value
+                            .get("message")
+                            .and_then(|message| message.get("role"))
+                            .and_then(Value::as_str),
+                        Some("user") | Some("assistant")
+                    )
             }
             _ => false,
         })
     }
 
+    /// Upstream `_persist`.
     fn persist_entry(&mut self) -> Result<(), SessionManagerError> {
         if !self.persist {
             return Ok(());
@@ -2125,18 +2432,10 @@ impl SessionManager {
         let last_position = self.file_entries.len() - 1;
         let line = self.serialize_entry_at(last_position);
 
-        if !self.has_assistant_message() {
-            if self.flushed {
-                append_file_text(session_file, &line)?;
-            } else {
-                // Mark as not flushed so when assistant arrives, all entries
-                // get written.
-                self.flushed = false;
-            }
-            return Ok(());
-        }
-
         if !self.flushed {
+            if !self.has_conversation() {
+                return Ok(());
+            }
             let mut file = std::fs::OpenOptions::new()
                 .write(true)
                 .create_new(true)
@@ -2204,19 +2503,22 @@ impl SessionManager {
         self.append_entry(entry)
     }
 
-    /// Upstream `appendCompaction`.
+    /// Upstream `appendCompaction`: append a compaction summary as child of
+    /// the current leaf, then advance the leaf. `first_kept_entry_id: None`
+    /// (upstream `null`) records the compaction entry itself. Returns the
+    /// entry id.
     pub fn append_compaction(
         &mut self,
         summary: &str,
-        first_kept_entry_id: &str,
+        first_kept_entry_id: Option<&str>,
         tokens_before: i64,
         details: Option<Value>,
         from_hook: Option<bool>,
         usage: Option<Usage>,
     ) -> Result<String, SessionManagerError> {
         let timestamp = now_iso();
-        let context = self.build_session_context();
-        let context_messages: Vec<Message> = context
+        let projection = self.build_session_projection();
+        let context_messages: Vec<Message> = projection
             .messages
             .iter()
             .filter_map(AgentMessage::to_message)
@@ -2225,18 +2527,115 @@ impl SessionManager {
             system.timestamp = parse_epoch_millis(&timestamp).unwrap_or(0);
             system
         });
+        let id = mint_entry_id();
         let entry = SessionEntry::Compaction(CompactionEntry {
-            id: mint_entry_id(),
+            id: id.clone(),
             parent_id: self.leaf_id.clone(),
             timestamp,
             summary: summary.to_string(),
-            first_kept_entry_id: Some(first_kept_entry_id.to_string()),
+            first_kept_entry_id: Some(
+                first_kept_entry_id
+                    .map(str::to_string)
+                    .unwrap_or_else(|| id.clone()),
+            ),
             tokens_before,
             details,
             usage,
             from_hook,
             system_message,
             first_kept_entry_index: None,
+        });
+        self.append_entry(entry)
+    }
+
+    /// Upstream `appendUsage`: append model-attributed usage that does not
+    /// participate in LLM context. Returns the appended entry id.
+    pub fn append_usage(
+        &mut self,
+        kind: &str,
+        provider: &str,
+        model: &str,
+        usage: Usage,
+        note: Option<&str>,
+    ) -> Result<String, SessionManagerError> {
+        // Upstream spreads `...(note ? { note } : {})`: an empty note is absent.
+        let note = note.filter(|note| !note.is_empty()).map(str::to_string);
+        let entry = SessionEntry::Usage(UsageEntry {
+            id: mint_entry_id(),
+            parent_id: self.leaf_id.clone(),
+            timestamp: now_iso(),
+            kind: kind.to_string(),
+            provider: provider.to_string(),
+            model: model.to_string(),
+            usage,
+            note,
+        });
+        self.append_entry(entry)
+    }
+
+    /// Upstream `appendContextEdit`: append a branch-local edit to an earlier
+    /// model-visible entry. Returns the entry id.
+    pub fn append_context_edit(
+        &mut self,
+        target_id: &str,
+        replacement: Option<ContextEditReplacement>,
+    ) -> Result<String, SessionManagerError> {
+        if let Some(replacement) = &replacement {
+            let valid = match &replacement.content {
+                ContextEditableContent::Text(_) => true,
+                ContextEditableContent::Blocks(blocks) => blocks.is_array(),
+            };
+            if !valid {
+                return Err(err(
+                    "Context edit replacement must be null or contain string/array content",
+                ));
+            }
+        }
+        if !self.by_id.contains_key(target_id) {
+            return Err(err(format!("Entry {target_id} not found")));
+        }
+        if !self
+            .get_branch(None)
+            .iter()
+            .any(|entry| entry.id() == Some(target_id))
+        {
+            return Err(err(format!(
+                "Entry {target_id} is not on the active branch"
+            )));
+        }
+        let target_role = match self.get_entry(target_id) {
+            Some(SessionEntry::CustomMessage(_)) => Some("custom"),
+            Some(SessionEntry::Message(message)) => Some(message.message.role()),
+            _ => None,
+        };
+        let editable = matches!(
+            target_role,
+            Some("user") | Some("assistant") | Some("toolResult") | Some("custom")
+        );
+        if !editable {
+            return Err(err(format!(
+                "Entry {target_id} does not contribute editable model content"
+            )));
+        }
+        // A string replacement becomes a single text block for assistant and
+        // tool result roles.
+        let normalized_replacement = replacement.map(|replacement| {
+            let is_text_role = matches!(target_role, Some("assistant") | Some("toolResult"));
+            match (&replacement.content, is_text_role) {
+                (ContextEditableContent::Text(text), true) => ContextEditReplacement {
+                    content: ContextEditableContent::Blocks(serde_json::json!([
+                        { "type": "text", "text": text }
+                    ])),
+                },
+                _ => replacement,
+            }
+        });
+        let entry = SessionEntry::ContextEdit(ContextEditEntry {
+            id: mint_entry_id(),
+            parent_id: self.leaf_id.clone(),
+            timestamp: now_iso(),
+            target_id: target_id.to_string(),
+            replacement: normalized_replacement,
         });
         self.append_entry(entry)
     }
@@ -2285,22 +2684,25 @@ impl SessionManager {
     }
 
     /// Upstream `getSessionName`: the latest session_info entry (empty names
-    /// explicitly clear the session title).
+    /// explicitly clear the session title). Reads `fileEntries` directly: the
+    /// footer calls this on every frame, and `getEntries()` copies the whole
+    /// session.
     pub fn get_session_name(&self) -> Option<String> {
-        self.get_entries()
+        self.file_entries
             .iter()
             .rev()
-            .find_map(|entry| match entry {
-                SessionEntry::SessionInfo(info) => Some(
-                    info.name
-                        .as_deref()
-                        .map(crate::coding_agent::utils::text::trim_js_whitespace)
-                        .filter(|trimmed| !trimmed.is_empty())
-                        .map(str::to_string),
-                ),
+            .filter_map(|entry| match entry {
+                FileEntry::Entry(SessionEntry::SessionInfo(info)) => Some(info),
                 _ => None,
             })
-            .unwrap_or(None)
+            .next()
+            .and_then(|info| {
+                info.name
+                    .as_deref()
+                    .map(crate::coding_agent::utils::text::trim_js_whitespace)
+                    .filter(|trimmed| !trimmed.is_empty())
+                    .map(str::to_string)
+            })
     }
 
     /// Upstream `appendCustomMessageEntry`.
@@ -2415,12 +2817,26 @@ impl SessionManager {
         )
     }
 
+    /// Upstream `buildSessionProjection` method form.
+    pub fn build_session_projection(&self) -> SessionProjection {
+        build_session_projection(
+            &self.get_entries(),
+            LeafRef::from_option(self.leaf_id.as_deref()),
+        )
+    }
+
     /// Upstream `buildSessionContext` method form.
     pub fn build_session_context(&self) -> SessionContext {
         build_session_context(
             &self.get_entries(),
             LeafRef::from_option(self.leaf_id.as_deref()),
         )
+    }
+
+    /// Upstream `getEntryCount`: number of session entries (excludes the
+    /// header), without copying them like `get_entries()`.
+    pub fn get_entry_count(&self) -> usize {
+        self.by_id.entries.len()
     }
 
     /// Upstream `getHeader`.
@@ -2716,11 +3132,10 @@ impl SessionManager {
             self.session_file = Some(new_session_file.clone());
             self.build_index();
 
-            // Only write the file now if it contains an assistant message;
-            // otherwise defer to persist_entry(), which creates the file on
-            // the first assistant response, matching the newSession() contract
-            // and avoiding the duplicate-header bug.
-            if self.has_assistant_message() {
+            // Use the same rule as persist_entry(): write now if the branched
+            // path already has a conversation, otherwise let persist_entry()
+            // create the file later.
+            if self.has_conversation() {
                 self.rewrite_file()?;
                 self.flushed = true;
             } else {
@@ -3001,11 +3416,29 @@ impl SessionManager {
         let Ok(resolved_cwd) = resolve_path_auto_base(cwd) else {
             return Vec::new();
         };
-        let mut sessions: Vec<SessionInfo> = list_sessions_from_dir(&dir, on_progress, 0, None)
+        let include_session = |session: &SessionInfo| {
+            !filter_cwd || session_cwd_matches(Some(&session.cwd), &resolved_cwd)
+        };
+        let mut progress: Option<ProgressBox<'_>> =
+            on_progress.map(|on_progress| -> ProgressBox<'_> {
+                Box::new(
+                    move |loaded: usize, total: usize, partial: Option<&[SessionInfo]>| {
+                        let filtered: Option<Vec<SessionInfo>> = partial.map(|partial| {
+                            partial
+                                .iter()
+                                .filter(|session| include_session(session))
+                                .cloned()
+                                .collect()
+                        });
+                        on_progress(loaded, total, filtered.as_deref());
+                    },
+                )
+            });
+        let mut sessions: Vec<SessionInfo> = list_sessions_from_dir(&dir, progress.as_deref_mut())
             .into_iter()
-            .filter(|session| !filter_cwd || session_cwd_matches(Some(&session.cwd), &resolved_cwd))
+            .filter(|session| include_session(session))
             .collect();
-        sessions.sort_by_key(|a| std::cmp::Reverse(a.modified));
+        sort_session_infos(&mut sessions);
         sessions
     }
 
@@ -3019,8 +3452,8 @@ impl SessionManager {
             let custom_session_dir = normalize_path(custom_session_dir)
                 .unwrap_or_else(|_| custom_session_dir.to_string());
             let mut sessions =
-                list_sessions_from_dir(&custom_session_dir, on_progress.as_deref_mut(), 0, None);
-            sessions.sort_by_key(|a| std::cmp::Reverse(a.modified));
+                list_sessions_from_dir(&custom_session_dir, on_progress.as_deref_mut());
+            sort_session_infos(&mut sessions);
             return sessions;
         }
 
@@ -3043,41 +3476,85 @@ impl SessionManager {
             .map(|name| path_join(&[&sessions_dir, &name]))
             .collect();
 
-        let mut total_files = 0usize;
-        let mut dir_files: Vec<Vec<String>> = Vec::new();
-        for dir in &dirs {
-            match std::fs::read_dir(dir) {
-                Ok(entries) => {
-                    let files: Vec<String> = entries
-                        .filter_map(|entry| entry.ok())
-                        .map(|entry| entry.file_name().to_string_lossy().into_owned())
-                        .filter(|name| name.ends_with(".jsonl"))
-                        .map(|name| path_join(&[dir, &name]))
-                        .collect();
-                    total_files += files.len();
-                    dir_files.push(files);
-                }
-                Err(_) => dir_files.push(Vec::new()),
-            }
-        }
+        let dir_files: Vec<Vec<String>> = dirs
+            .iter()
+            .map(|dir| match std::fs::read_dir(dir) {
+                Ok(entries) => entries
+                    .filter_map(|entry| entry.ok())
+                    .map(|entry| entry.file_name().to_string_lossy().into_owned())
+                    .filter(|name| name.ends_with(".jsonl"))
+                    .map(|name| path_join(&[dir, &name]))
+                    .collect(),
+                Err(_) => Vec::new(),
+            })
+            .collect();
 
-        let mut loaded = 0usize;
-        let mut sessions: Vec<SessionInfo> = Vec::new();
+        // Stat every candidate up front so the discovery order is
+        // mtime-descending (stat failures sort last, then by basename
+        // descending).
         let all_files: Vec<String> = dir_files.into_iter().flatten().collect();
-        let results = build_session_infos(&all_files, &mut || {
+        let mut candidates: Vec<(String, Option<f64>)> = all_files
+            .into_iter()
+            .map(|path| {
+                let mtime = file_mtime_ms_f64(&path);
+                (path, mtime)
+            })
+            .collect();
+        candidates.sort_by(|a, b| {
+            let a_mtime = a.1.unwrap_or(f64::NEG_INFINITY);
+            let b_mtime = b.1.unwrap_or(f64::NEG_INFINITY);
+            b_mtime
+                .total_cmp(&a_mtime)
+                .then_with(|| basename(&b.0).cmp(basename(&a.0)))
+        });
+
+        const PUBLISH_INTERVAL: usize = 100;
+        let total_files = candidates.len();
+        let mut loaded = 0usize;
+        let mut first_candidate_loaded = false;
+        let mut partial_sessions: Vec<SessionInfo> = Vec::new();
+        let files: Vec<String> = candidates.into_iter().map(|(path, _)| path).collect();
+        let results = build_session_infos(&files, &mut |index, info| {
             loaded += 1;
+            if index == 0 {
+                first_candidate_loaded = true;
+            }
+            if let Some(info) = info {
+                partial_sessions.push(info.clone());
+            }
             if let Some(progress) = on_progress.as_deref_mut() {
-                progress(loaded, total_files);
+                let publish_partial = first_candidate_loaded
+                    && (index == 0
+                        || loaded.is_multiple_of(PUBLISH_INTERVAL)
+                        || loaded == total_files);
+                progress(
+                    loaded,
+                    total_files,
+                    publish_partial
+                        .then(|| {
+                            let mut partial = partial_sessions.clone();
+                            sort_session_infos(&mut partial);
+                            partial
+                        })
+                        .as_deref(),
+                );
             }
         });
-        for info in results.into_iter().flatten() {
-            sessions.push(info);
-        }
-        sessions.sort_by_key(|a| std::cmp::Reverse(a.modified));
+        let mut sessions: Vec<SessionInfo> = results.into_iter().flatten().collect();
+        sort_session_infos(&mut sessions);
         sessions
     }
+}
+
+/// The basename of a joined path (the discovery sorts tie-break on it).
+fn basename(path: &str) -> &str {
+    path.rsplit(['/', '\\']).next().unwrap_or(path)
 }
 
 #[cfg(test)]
 #[path = "session_manager_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "agent_session_delta_oracle_tests.rs"]
+mod delta_oracle_tests;

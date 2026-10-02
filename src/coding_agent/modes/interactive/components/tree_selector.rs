@@ -990,6 +990,9 @@ impl TreeList {
                 parts.push("label".to_string());
                 parts.push(label.label.clone().unwrap_or_default());
             }
+            // State-only entries (usage) and append-only edits carry no
+            // searchable display text.
+            SessionEntry::Usage(_) | SessionEntry::ContextEdit(_) => {}
             SessionEntry::Unparsed(_) => {}
         }
 
@@ -1338,6 +1341,7 @@ impl TreeList {
                         + &theme_fg(&theme, "dim", "]")
                 }
             },
+            SessionEntry::Usage(_) | SessionEntry::ContextEdit(_) => String::new(),
             SessionEntry::Unparsed(_) => String::new(),
         };
 

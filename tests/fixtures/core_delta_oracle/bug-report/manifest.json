@@ -1,0 +1,36 @@
+{
+  "fixture": "core_delta_oracle/bug-report",
+  "upstream": {
+    "repo": "pi @ 2bbfcca43 (v0.99.1)",
+    "module": "packages/coding-agent/src/core/bug-report.ts"
+  },
+  "driver": "node --experimental-strip-types oracle.mjs",
+  "capture": "bug_report.oracle.json",
+  "verbatimSources": {
+    "src/core/bug-report.ts": "fe83a233e4f38e6d234b54cdf8e8177c6caf0bfb08846830fc7c6d319adc6b9a",
+    "src/core/messages.ts": "5397e3c96c9504266e4ee8b6e88d5098b3280ee7dbb0c687b74708c62a06c8d4",
+    "src/core/compaction/compaction.ts": "d5aebd41333957b57fa3f1bee2a18b3c00b5d47bb1b4af6f913cf8cd791099c8",
+    "src/core/compaction/utils.ts": "cc0baada8a2e31bcf1dbc18948c69ba2264fb2ad4d2c583ceb772fd3c3233674",
+    "src/core/usage-totals.ts": "8b18dd04d65e90af9b331cd5aa23d7891aab8a296f38a6026ce17a098d674ee9",
+    "src/utils/pi-user-agent.ts": "cd2329beb4b18fd99f5180d603fd1371c8f50441d4688f7d75918a051e565c26",
+    "src/utils/zip.ts": "9e523bcac3e9fcc3996b483ca8b4ab2934b551b03e8764ba8a6e92932ee8a548",
+    "src/ai/utils/text.ts": "d37c1825855c7fc71669a545b5b266810242c1c7e58d57228c0c143f29c1c544",
+    "src/ai/utils/transcript.ts": "cad0c126cdfadc1b4f430cc5a95b1c9285ecd1ee9957642d7773b1357bbc9ac5",
+    "src/ai/utils/uuid.ts": "234a48d4b999e69188fdfa49173ccfa7887d947e443ef206cc30219515105a1f",
+    "src/ai/utils/retry.ts": "58a081dc9e2e8f6c381e11d38ed4f9e1df33e30c35d1f94b2b40ea4a1c3ec6c7"
+  },
+  "stubs": {
+    "src/config.ts": "VERSION = \"ORACLE-VERSION\" (the Rust side substitutes its crate version before comparison; upstream config.ts closure is out of scope)",
+    "src/core/session-manager.ts": "stubs the two compaction-only value imports (buildSessionProjection/sessionEntryToContextMessages); bug-report.ts imports only types",
+    "@earendil-works/pi-ai": "re-exports the verbatim text/transcript/uuid/retry utils",
+    "@earendil-works/pi-ai/compat": "completeSimple throws (scenarios always pass a stub streamFn)",
+    "modelRuntime in metadata scenarios": "plain object with the four reads describeProvider makes (getProvider/getProviderAuthStatus/isUsingOAuth/getRegisteredProviderIds)",
+    "redactSettings scenario": "the function is module-private; the driver re-implements its two-line composition over the real redactJsonValue"
+  },
+  "canonicalization": [
+    "createdAt -> <createdAt> (wall clock)",
+    "environment.runtime / userAgent node version -> node/<version>",
+    "environment.osRelease / osVersion -> <osRelease>/<osVersion> placeholders in metadata_environment (host-dependent); metadata_with_model pins this host's win32 values as literals",
+    "summary request options .signal -> <signal>"
+  ]
+}

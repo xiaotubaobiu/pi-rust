@@ -5,10 +5,6 @@
 //!
 //! `combineUsage` is the single implementation for the crate — compaction's
 //! private copy was the baseline duplicate and now delegates here.
-//!
-//! NOTE (upstream delta): HEAD also has a `usage` session-entry kind; the
-//! session-manager delta slice will add it, and `get_usage_cost_breakdown`
-//! gains its arm then.
 
 use std::collections::HashMap;
 
@@ -102,8 +98,12 @@ pub fn get_usage_cost_breakdown(entries: &[SessionEntry]) -> Vec<UsageCostBreakd
                 }
                 _ => continue,
             },
-            // TODO(session-manager delta): the `usage` entry kind lands with
-            // that slice (`key = provider/model`, `usage = entry.usage`).
+            // Upstream: `entry.type === "usage"` attributes the entry to
+            // `provider/model` directly.
+            SessionEntry::Usage(usage_entry) => (
+                format!("{}/{}", usage_entry.provider, usage_entry.model),
+                Some(&usage_entry.usage),
+            ),
             SessionEntry::BranchSummary(summary) => match &summary.usage {
                 Some(usage) => ("Tools/summaries".to_string(), Some(usage)),
                 None => continue,

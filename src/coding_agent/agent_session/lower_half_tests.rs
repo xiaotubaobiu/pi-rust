@@ -238,6 +238,7 @@ async fn create_lower_session(
         base_tools_override,
         session_start_event: None,
         html_exporter: None,
+        cache_warmer: None,
     })
     .expect("agent session");
 
@@ -473,7 +474,7 @@ fn seed_compacted_scenario(test: &LowerTest, with_post_response: bool) {
         .append_message(assistant_message("response2", 195_000, 4))
         .unwrap();
     manager
-        .append_compaction("summary", &kept_user_id, 195_000, None, None, None)
+        .append_compaction("summary", Some(&kept_user_id), 195_000, None, None, None)
         .unwrap();
     manager.append_message(user_message("third", 5)).unwrap();
     if with_post_response {
@@ -577,7 +578,7 @@ async fn stats_include_summary_and_tool_result_usage() {
         manager
             .append_compaction(
                 "summary",
-                &user_id,
+                Some(&user_id),
                 100,
                 None,
                 Some(false),
@@ -610,7 +611,7 @@ async fn stats_ignore_zero_usage_for_post_compaction_usage() {
             .append_message(assistant_message("response2", 195_000, 4))
             .unwrap();
         manager
-            .append_compaction("summary", &kept_user_id, 195_000, None, None, None)
+            .append_compaction("summary", Some(&kept_user_id), 195_000, None, None, None)
             .unwrap();
         manager.append_message(user_message("third", 5)).unwrap();
         manager
@@ -959,7 +960,7 @@ async fn manual_compaction_already_compacted_error() {
         let mut manager = test.session_manager.lock().unwrap();
         let user = manager.append_message(user_message("hello", 1)).unwrap();
         manager
-            .append_compaction("summary", &user, 100, None, None, None)
+            .append_compaction("summary", Some(&user), 100, None, None, None)
             .unwrap();
     }
     let error = test.session.compact(None).await.unwrap_err();
@@ -1166,7 +1167,14 @@ async fn stale_pre_compaction_usage_is_ignored() {
             .unwrap();
         let first_kept_entry_id = manager.get_entries()[0].id().unwrap().to_string();
         manager
-            .append_compaction("summary", &first_kept_entry_id, 610_000, None, None, None)
+            .append_compaction(
+                "summary",
+                Some(&first_kept_entry_id),
+                610_000,
+                None,
+                None,
+                None,
+            )
             .unwrap();
         manager
             .append_message(user_message(
@@ -1293,7 +1301,14 @@ async fn no_threshold_compaction_with_only_kept_pre_compaction_usage() {
             .unwrap();
         let first_kept_entry_id = manager.get_entries()[0].id().unwrap().to_string();
         manager
-            .append_compaction("summary", &first_kept_entry_id, 190_000, None, None, None)
+            .append_compaction(
+                "summary",
+                Some(&first_kept_entry_id),
+                190_000,
+                None,
+                None,
+                None,
+            )
             .unwrap();
     }
     let now = crate::ai::now_ms();

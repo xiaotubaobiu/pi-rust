@@ -57,6 +57,7 @@ use crate::ai::auth::types::{
     ApiKeyAuthInput, AuthCheck, AuthContext, AuthError, AuthInteraction, AuthOperationOptions,
     AuthResult, AuthType, Credential, CredentialInfo, ProviderAuthInteraction,
 };
+use crate::ai::model_operations::assert_chat_model;
 use crate::ai::models::store::ModelsStore;
 use crate::ai::models::{
     create_models, CreateModelsOptions, Models, ModelsApiStreamOptions, ModelsRefreshOptions,
@@ -66,8 +67,8 @@ use crate::ai::transcript::{normalize_context, TranscriptContext};
 use crate::ai::types::events::{AssistantMessageEvent, ErrorReason, PartialAssistant};
 use crate::ai::types::message::AssistantMessage;
 use crate::ai::types::options::ProviderHeaders;
-use crate::ai::types::primitives::{StopReason, Usage};
-use crate::ai::types::Model;
+use crate::ai::types::primitives::{ModelThinkingLevel, StopReason, ThinkingLevel, Usage};
+use crate::ai::types::{AnyModel, Model};
 use crate::ai::{now_ms, Context, ProviderConfig};
 
 use super::model_config::ModelConfig;
@@ -79,6 +80,10 @@ use super::provider_composer::{
 };
 use super::resolve_config_value::ConfigEnv;
 use super::runtime_credentials::RuntimeCredentials;
+use super::virtual_models::{
+    is_virtual_model, with_virtual_models, FailedRoute, ModelRoute, ModelRouteReason,
+    ModelRouteRequest, PreviousRoute, RouteFn, VirtualModelDefinition,
+};
 
 /// One provider's availability computation result
 /// (`auth`, `credential`, filtered models).
@@ -196,6 +201,16 @@ impl std::fmt::Display for ProviderRegistrationError {
 impl std::error::Error for ProviderRegistrationError {}
 
 /// The shared runtime state behind the cloneable [`ModelRuntime`] handle.
+/// Upstream `RegisteredVirtualModel`: a virtual model's catalog entry plus
+/// its router.
+struct RegisteredVirtualModel {
+    model: Model,
+    route: RouteFn,
+}
+
+/// Virtual models by provider id, then model id (insertion-ordered).
+type VirtualModelRegistry = Vec<(String, Vec<(String, RegisteredVirtualModel)>)>;
+
 struct ModelRuntimeInner {
     // Models owns a shared registry; no outer mutex may span provider callbacks.
     models: Models,
@@ -205,6 +220,8 @@ struct ModelRuntimeInner {
     builtins: Mutex<Vec<(String, Arc<dyn Provider>)>>,
     native_extension_providers: Mutex<Vec<(String, Arc<dyn Provider>)>>,
     extension_providers: Mutex<Vec<(String, ProviderConfigInput)>>,
+    /// Virtual models by provider id, then model id (insertion-ordered).
+    virtual_models: Mutex<VirtualModelRegistry>,
     composition_errors: Mutex<Vec<(String, String)>>,
     models_path: Option<String>,
     model_network_enabled: bool,
@@ -220,6 +237,22 @@ struct ModelRuntimeInner {
 /// Upstream `ModelRuntime` (the port hands out cloneable `Arc` handles).
 #[derive(Clone)]
 pub struct ModelRuntime(Arc<ModelRuntimeInner>);
+
+/// Upstream `resolveModel`'s options object.
+#[derive(Debug)]
+pub struct ResolveModelOptions {
+    /// Why the request is being routed.
+    pub reason: ModelRouteReason,
+    /// The selected thinking level; its meaning is up to the router.
+    pub thinking_level: ModelThinkingLevel,
+    /// Caller cancellation for routing itself (e.g. a router calling models).
+    pub signal: Option<CancellationToken>,
+    /// Failed response the next request repeats; `messages` no longer
+    /// contains it.
+    pub failed: Option<AssistantMessage>,
+    /// Router state stored by the caller on this session branch.
+    pub state: Option<serde_json::Value>,
+}
 
 impl ModelRuntime {
     /// Upstream `ModelRuntime.create`.
@@ -273,6 +306,7 @@ impl ModelRuntime {
             builtins: Mutex::new(Vec::new()),
             native_extension_providers: Mutex::new(Vec::new()),
             extension_providers: Mutex::new(Vec::new()),
+            virtual_models: Mutex::new(Vec::new()),
             composition_errors: Mutex::new(Vec::new()),
             models_path,
             model_network_enabled,
@@ -377,7 +411,17 @@ impl ModelRuntime {
             .iter()
             .map(|(id, _)| id.clone())
             .collect();
-        for source in [builtin_ids, native_ids, config_ids, extension_ids] {
+        let virtual_ids: Vec<String> = lock(&self.0.virtual_models)
+            .iter()
+            .map(|(id, _)| id.clone())
+            .collect();
+        for source in [
+            builtin_ids,
+            native_ids,
+            config_ids,
+            extension_ids,
+            virtual_ids,
+        ] {
             for id in source {
                 if !ids.contains(&id) {
                     ids.push(id);
@@ -391,8 +435,45 @@ impl ModelRuntime {
         self.0.models.clone()
     }
 
-    /// Upstream `recomposeProvider` against the shared collection handle.
-    fn recompose_with(&self, provider_id: &str, models: &mut Models) {
+    /// Upstream `recomposeProvider`: compose the provider, wrap it with the
+    /// provider's virtual models, and set/delete it on `models`. Returns the
+    /// provider without virtual models, or `None` when only virtual models
+    /// define it (or nothing does).
+    fn recompose_with(&self, provider_id: &str, models: &mut Models) -> Option<Arc<dyn Provider>> {
+        let provider = self.compose_provider(provider_id);
+        let virtual_models: Vec<Model> = self.virtual_models_of(provider_id);
+        if !virtual_models.is_empty() {
+            models.set_provider(with_virtual_models(
+                provider_id,
+                provider.clone(),
+                virtual_models,
+            ));
+        } else if let Some(provider) = &provider {
+            models.set_provider(Arc::clone(provider));
+        } else {
+            models.delete_provider(provider_id);
+        }
+        provider
+    }
+
+    /// The provider's registered virtual-model catalog entries (insertion
+    /// order).
+    fn virtual_models_of(&self, provider_id: &str) -> Vec<Model> {
+        lock(&self.0.virtual_models)
+            .iter()
+            .find(|(id, _)| id == provider_id)
+            .map(|(_, models)| {
+                models
+                    .iter()
+                    .map(|(_, entry)| entry.model.clone())
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+
+    /// Upstream `composeProvider`: the provider without virtual models, or
+    /// `None` when nothing defines it.
+    fn compose_provider(&self, provider_id: &str) -> Option<Arc<dyn Provider>> {
         let base = {
             let natives = lock(&self.0.native_extension_providers);
             natives
@@ -411,19 +492,11 @@ impl ModelRuntime {
             .find(|(id, _)| id == provider_id)
             .map(|(_, config)| config.clone());
         let config_provider = lock(&self.0.config).get_provider(provider_id).cloned();
-        if base.is_none() && config_provider.is_none() && extension.is_none() {
-            models.delete_provider(provider_id);
+        if config_provider.is_none() && extension.is_none() {
+            // No overlays: use the builtin untouched so its auth/login
+            // behavior is exact.
             lock(&self.0.composition_errors).retain(|(id, _)| id != provider_id);
-            return;
-        }
-        if let Some(base) = &base {
-            if config_provider.is_none() && extension.is_none() {
-                // No overlays: use the builtin untouched so its auth/login
-                // behavior is exact.
-                models.set_provider(Arc::clone(base));
-                lock(&self.0.composition_errors).retain(|(id, _)| id != provider_id);
-                return;
-            }
+            return base;
         }
         match compose_model_provider(
             provider_id,
@@ -432,17 +505,13 @@ impl ModelRuntime {
             extension.clone(),
         ) {
             Ok(provider) => {
-                models.set_provider(provider);
                 lock(&self.0.composition_errors).retain(|(id, _)| id != provider_id);
+                Some(provider)
             }
             Err(message) => {
                 lock(&self.0.composition_errors).retain(|(id, _)| id != provider_id);
                 lock(&self.0.composition_errors).push((provider_id.to_string(), message));
-                if let Some(base) = base {
-                    models.set_provider(base);
-                } else {
-                    models.delete_provider(provider_id);
-                }
+                base
             }
         }
     }
@@ -746,6 +815,13 @@ impl ModelRuntime {
 
     /// Upstream `getModel`.
     pub async fn get_model(&self, provider_id: &str, model_id: &str) -> Option<Model> {
+        self.models().get_model(provider_id, model_id)
+    }
+
+    /// Synchronous catalog read over the shared collection (upstream
+    /// `getModel` is synchronous; the port's other reads became async for the
+    /// collection mutex, which this read does not need).
+    pub fn get_model_sync(&self, provider_id: &str, model_id: &str) -> Option<Model> {
         self.models().get_model(provider_id, model_id)
     }
 
@@ -1315,37 +1391,97 @@ impl ModelRuntime {
         options: Option<ModelsSimpleStreamOptions>,
     ) -> mpsc::Receiver<AssistantMessageEvent> {
         let options = options.unwrap_or_default();
-        let options_api_key = options.simple.stream.api_key.clone();
-        let options_env = options.simple.stream.env.clone();
-        let options_headers = options.simple.stream.headers.clone();
-        let signal = options.simple.stream.signal.clone();
-        let transform_headers = options.transform_headers.clone();
+        if is_virtual_model(model) {
+            // Requests outside the agent loop are routed here. Callers sized
+            // them before routing, so cap the output budget to the routed
+            // model.
+            let this = self.clone();
+            let model = model.clone();
+            let context = context.clone();
+            return lazy_stream(&model, &context, move |model, transcript| async move {
+                let simple_reasoning = model_thinking_level_from_level(options.simple.reasoning)
+                    .unwrap_or(ModelThinkingLevel::Off);
+                let route = this
+                    .resolve_model(
+                        &model,
+                        transcript.messages(),
+                        ResolveModelOptions {
+                            reason: ModelRouteReason::Direct,
+                            thinking_level: simple_reasoning,
+                            signal: options.simple.stream.signal.clone(),
+                            failed: None,
+                            state: None,
+                        },
+                    )
+                    .await?;
+                let limit = route.model.max_tokens;
+                let max_tokens = match options.simple.stream.max_tokens {
+                    // `maxTokens && limit > 0` (0 is falsy upstream).
+                    Some(max_tokens) if max_tokens > 0 && limit > 0 => Some(max_tokens.min(limit)),
+                    max_tokens => max_tokens,
+                };
+                // Caller credentials were resolved for the virtual model's
+                // provider. Another provider resolves its own, so they are
+                // not sent to the wrong vendor.
+                let same_provider = route.model.provider == model.provider;
+                let mut routed_simple = options.simple.clone();
+                if !same_provider {
+                    routed_simple.stream.api_key = None;
+                    routed_simple.stream.headers = None;
+                    routed_simple.stream.env = None;
+                }
+                routed_simple.stream.max_tokens = max_tokens;
+                routed_simple.reasoning = model_thinking_level_to_level(route.thinking_level);
+                this.stream_simple_dispatch(
+                    &route.model,
+                    transcript,
+                    routed_simple,
+                    options.transform_headers.clone(),
+                )
+                .await
+            });
+        }
         let simple_options = options.simple;
+        let transform_headers = options.transform_headers;
         let this = self.clone();
         let model = model.clone();
         lazy_stream(&model, context, move |model, transcript| async move {
-            let (provider, request_model, api_key, headers, env) = this
-                .prepare_request(
-                    &model,
-                    options_api_key,
-                    options_env,
-                    options_headers.as_ref(),
-                    signal,
-                    transform_headers,
-                )
-                .await?;
-            let implementation = api_for_checked(provider.as_ref(), &model)?;
-            let mut simple_options = simple_options;
-            simple_options.stream.api_key = api_key;
-            simple_options.stream.headers = headers;
-            simple_options.stream.env = env;
-            let config = ProviderConfig {
-                base_url: request_model.base_url.clone(),
-                api_key: simple_options.stream.api_key.clone().unwrap_or_default(),
-                max_tokens: request_model.max_tokens,
-            };
-            Ok(implementation.stream_simple(&config, &request_model, &transcript, &simple_options))
+            this.stream_simple_dispatch(&model, transcript, simple_options, transform_headers)
+                .await
         })
+    }
+
+    /// The `streamSimple` dispatch: assert the chat model, prepare auth and
+    /// the request model, then hand the request to the provider's
+    /// implementation.
+    async fn stream_simple_dispatch(
+        &self,
+        model: &Model,
+        transcript: TranscriptContext,
+        mut simple_options: crate::ai::types::options::SimpleStreamOptions,
+        transform_headers: Option<crate::ai::models::TransformHeaders>,
+    ) -> Result<mpsc::Receiver<AssistantMessageEvent>, String> {
+        assert_chat_model(&AnyModel::Chat(model.clone())).map_err(|error| error.message)?;
+        let (provider, request_model, api_key, headers, env) = self
+            .prepare_request(
+                model,
+                simple_options.stream.api_key.clone(),
+                simple_options.stream.env.clone(),
+                simple_options.stream.headers.as_ref(),
+                simple_options.stream.signal.clone(),
+                transform_headers,
+            )
+            .await?;
+        let implementation = api_for_checked(provider.as_ref(), model)?;
+        simple_options.stream.api_key = api_key;
+        simple_options.stream.headers = headers;
+        simple_options.stream.env = env;
+        let config = ProviderConfig {
+            base_url: request_model.base_url.clone(),
+            api_key: simple_options.stream.api_key.clone().unwrap_or_default(),
+            max_tokens: request_model.max_tokens,
+        };
+        Ok(implementation.stream_simple(&config, &request_model, &transcript, &simple_options))
     }
 
     /// Upstream `completeSimple`.
@@ -1655,6 +1791,11 @@ impl ModelRuntime {
             ));
         }
         lock(&self.0.extension_providers).retain(|(existing, _)| existing != &id);
+        let auth_type = if provider.auth().oauth.is_some() && provider.auth().api_key.is_none() {
+            AuthType::OAuth
+        } else {
+            AuthType::ApiKey
+        };
         {
             let mut natives = lock(&self.0.native_extension_providers);
             match natives.iter_mut().find(|(existing, _)| existing == &id) {
@@ -1667,8 +1808,50 @@ impl ModelRuntime {
             self.recompose_with(&id, &mut models);
         }
         self.update_model_snapshot();
+        let configured_status = {
+            let config = lock(&self.0.config).get_provider(&id).cloned();
+            configured_request_auth_status(config.as_ref(), None)
+        };
+        self.mark_provisionally_configured(&id, configured_status, auth_type);
         self.spawn_background_refresh();
         Ok(())
+    }
+
+    /// Upstream `markProvisionallyConfigured`: mark a newly registered
+    /// provider as configured when it has a stored credential or a configured
+    /// API key. Availability checks run asynchronously, and callers such as
+    /// initial model selection read the snapshot before they finish. The next
+    /// availability pass replaces this entry.
+    fn mark_provisionally_configured(
+        &self,
+        provider_id: &str,
+        configured_status: Option<AuthStatus>,
+        auth_type: AuthType,
+    ) {
+        let should_mark = !self.snapshot().stored_providers.contains(provider_id)
+            && !configured_status.is_some_and(|status| status.configured);
+        if should_mark {
+            return;
+        }
+        self.set_snapshot(|snapshot| {
+            snapshot
+                .configured_providers
+                .insert(provider_id.to_string());
+            // Never clobber a real check result.
+            snapshot
+                .auth
+                .entry(provider_id.to_string())
+                .or_insert(Some(AuthCheck {
+                    r#type: auth_type,
+                    source: Some("configured provider".to_string()),
+                }));
+            snapshot.available = snapshot
+                .all
+                .iter()
+                .filter(|model| snapshot.configured_providers.contains(&model.provider))
+                .cloned()
+                .collect();
+        });
     }
 
     /// Upstream `registerProvider(providerId, config)` (the by-name form).
@@ -1718,37 +1901,14 @@ impl ModelRuntime {
             self.recompose_with(provider_id, &mut models);
         }
         self.update_model_snapshot();
-        // Provisional availability entry until the async refresh lands;
-        // never clobber a real check result.
-        let provisionally_configured = self.snapshot().stored_providers.contains(provider_id)
-            || configured_request_auth_status(models_config.as_ref(), Some(&effective))
-                .is_some_and(|status| status.configured);
-        if provisionally_configured {
-            self.set_snapshot(|snapshot| {
-                snapshot
-                    .configured_providers
-                    .insert(provider_id.to_string());
-                if !snapshot.auth.contains_key(provider_id) {
-                    snapshot.auth.insert(
-                        provider_id.to_string(),
-                        Some(AuthCheck {
-                            r#type: if effective.oauth.is_some() && effective.api_key.is_none() {
-                                AuthType::OAuth
-                            } else {
-                                AuthType::ApiKey
-                            },
-                            source: Some("configured provider".to_string()),
-                        }),
-                    );
-                }
-                snapshot.available = snapshot
-                    .all
-                    .iter()
-                    .filter(|model| snapshot.configured_providers.contains(&model.provider))
-                    .cloned()
-                    .collect();
-            });
-        }
+        let configured_status =
+            configured_request_auth_status(models_config.as_ref(), Some(&effective));
+        let auth_type = if effective.oauth.is_some() && effective.api_key.is_none() {
+            AuthType::OAuth
+        } else {
+            AuthType::ApiKey
+        };
+        self.mark_provisionally_configured(provider_id, configured_status, auth_type);
         self.spawn_background_refresh();
         Ok(())
     }
@@ -1768,6 +1928,271 @@ impl ModelRuntime {
         }
         self.update_model_snapshot();
         self.spawn_background_refresh();
+    }
+
+    // ------------------------------------------------------------------
+    // Virtual models
+    // ------------------------------------------------------------------
+
+    /// Upstream `registerVirtualModel`: register a virtual model under
+    /// `definition.provider`, which may also list physical models or several
+    /// virtual models. Re-registering the same provider and id replaces the
+    /// virtual model. Errors when the id belongs to a physical model of that
+    /// provider.
+    pub fn register_virtual_model(
+        &self,
+        definition: &VirtualModelDefinition,
+    ) -> Result<(), ProviderRegistrationError> {
+        let provider_id = definition.provider.as_str();
+        let id = definition.id.as_str();
+        if provider_id.trim().is_empty() || id.trim().is_empty() {
+            return Err(ProviderRegistrationError(
+                "Virtual model provider and id must not be empty.".to_string(),
+            ));
+        }
+        let existing = self.models().get_model(provider_id, id);
+        if existing.is_some_and(|model| !is_virtual_model(&model)) {
+            return Err(ProviderRegistrationError(format!(
+                "Virtual model {provider_id}/{id} conflicts with a physical model."
+            )));
+        }
+        let entry = RegisteredVirtualModel {
+            model: super::virtual_models::create_virtual_model(
+                &super::virtual_models::CreateVirtualModelOptions {
+                    provider: definition.provider.clone(),
+                    id: definition.id.clone(),
+                    name: definition.name.clone(),
+                    thinking_levels: definition.thinking_levels.clone(),
+                    context_window: definition.context_window,
+                    max_tokens: definition.max_tokens,
+                    input: definition.input.clone(),
+                },
+            ),
+            route: Arc::clone(&definition.route),
+        };
+        {
+            let mut registry = lock(&self.0.virtual_models);
+            let models = match registry.iter_mut().find(|(pid, _)| pid == provider_id) {
+                Some((_, models)) => models,
+                None => {
+                    registry.push((provider_id.to_string(), Vec::new()));
+                    &mut registry.last_mut().expect("pushed above").1
+                }
+            };
+            match models.iter_mut().find(|(mid, _)| mid == id) {
+                Some((_, existing)) => *existing = entry,
+                None => models.push((id.to_string(), entry)),
+            }
+        }
+        let composed = {
+            let mut models = self.models();
+            self.recompose_with(provider_id, &mut models)
+        };
+        if composed.is_none() && !self.snapshot().configured_providers.contains(provider_id) {
+            // A provider of only virtual models needs no credentials. Mark it
+            // configured now: session restore checks auth before the refresh
+            // below lands.
+            self.set_snapshot(|snapshot| {
+                snapshot.auth.insert(
+                    provider_id.to_string(),
+                    Some(AuthCheck {
+                        r#type: AuthType::ApiKey,
+                        source: Some("virtual".to_string()),
+                    }),
+                );
+                snapshot
+                    .configured_providers
+                    .insert(provider_id.to_string());
+            });
+        }
+        self.update_model_snapshot();
+        self.spawn_background_refresh();
+        Ok(())
+    }
+
+    /// Upstream `unregisterVirtualModel`.
+    pub fn unregister_virtual_model(&self, provider_id: &str, id: &str) {
+        {
+            let mut registry = lock(&self.0.virtual_models);
+            let Some((_, models)) = registry.iter_mut().find(|(pid, _)| pid == provider_id) else {
+                return;
+            };
+            let Some(position) = models.iter().position(|(mid, _)| mid == id) else {
+                return;
+            };
+            models.remove(position);
+            if models.is_empty() {
+                let position = registry
+                    .iter()
+                    .position(|(pid, _)| pid == provider_id)
+                    .expect("provider still present");
+                registry.remove(position);
+            }
+        }
+        {
+            let mut models = self.models();
+            self.recompose_with(provider_id, &mut models);
+        }
+        self.update_model_snapshot();
+        self.spawn_background_refresh();
+    }
+
+    /// Upstream `resolveModel`: ask a virtual model's router for the model and
+    /// thinking level of one request. The router must return a physical
+    /// catalog model whose provider has credentials; the thinking level is
+    /// clamped to that model. Errors when routing fails.
+    ///
+    /// `previous` reports the latest successful response in `messages`. A
+    /// retry passes the failed response as `options.failed`; `messages` no
+    /// longer contains it. `options.state` is the router state stored by the
+    /// caller, which also stores the returned state.
+    pub async fn resolve_model(
+        &self,
+        model: &Model,
+        messages: &[crate::ai::types::Message],
+        options: ResolveModelOptions,
+    ) -> Result<ModelRoute, String> {
+        let name = format!("Virtual model {}/{}", model.provider, model.id);
+        let route = {
+            let registry = lock(&self.0.virtual_models);
+            registry
+                .iter()
+                .find(|(pid, _)| pid == model.provider.as_str())
+                .and_then(|(_, models)| models.iter().find(|(mid, _)| mid == model.id.as_str()))
+                .map(|(_, entry)| Arc::clone(&entry.route))
+        };
+        let Some(route) = route else {
+            return Err(format!("{name} is not registered."));
+        };
+        let ResolveModelOptions {
+            reason,
+            thinking_level,
+            signal,
+            failed,
+            state,
+        } = options;
+        let latest = find_latest_message_response(messages);
+        let previous_model =
+            latest.and_then(|latest| self.get_physical_model(&latest.provider, &latest.model));
+        // A failed routing attempt names the virtual model; there is no
+        // physical request to report.
+        let failed_model = failed
+            .as_ref()
+            .and_then(|failed| self.get_physical_model(&failed.provider, &failed.model));
+        let request = ModelRouteRequest {
+            model: model.clone(),
+            thinking_level,
+            reason,
+            previous: previous_model.map(|model| PreviousRoute {
+                model,
+                thinking_level: latest.and_then(message_thinking_level),
+            }),
+            failed: match (failed_model, failed) {
+                (Some(model), Some(failed)) => Some(FailedRoute {
+                    model,
+                    thinking_level: message_thinking_level(&failed),
+                    message: failed,
+                }),
+                _ => None,
+            },
+            state,
+            messages: messages.to_vec(),
+            signal,
+        };
+        let route = route(request).await?;
+        let target = self.get_physical_model(&route.model.provider, &route.model.id);
+        let routed = format!(
+            "{name} routed to {}/{}",
+            route.model.provider, route.model.id
+        );
+        let Some(target) = target else {
+            return Err(format!("{routed}, which is not a physical model."));
+        };
+        if !self.has_configured_auth(&target.provider) {
+            return Err(format!("{routed}, which has no credentials."));
+        }
+        Ok(ModelRoute {
+            thinking_level: clamp_model_thinking_level(&target, route.thinking_level),
+            state: route.state,
+            model: target,
+        })
+    }
+
+    /// Upstream `getPhysicalModel`: a catalog chat model that is not virtual.
+    pub fn get_physical_model(&self, provider_id: &str, model_id: &str) -> Option<Model> {
+        self.models()
+            .get_model(provider_id, model_id)
+            .filter(|model| !is_virtual_model(model))
+    }
+
+    // ------------------------------------------------------------------
+    // Any-type catalog surfaces
+    // ------------------------------------------------------------------
+
+    /// Upstream `getModelsOfType`.
+    pub fn get_models_of_type(
+        &self,
+        model_type: crate::ai::ModelType,
+        provider_id: Option<&str>,
+    ) -> Vec<AnyModel> {
+        self.models().get_models_of_type(model_type, provider_id)
+    }
+
+    /// Upstream `getModelOfType`.
+    pub fn get_model_of_type(
+        &self,
+        model_type: crate::ai::ModelType,
+        provider_id: &str,
+        model_id: &str,
+    ) -> Option<AnyModel> {
+        self.models()
+            .get_model_of_type(model_type, provider_id, model_id)
+    }
+
+    /// Upstream `getAllModels`.
+    pub fn get_all_models(&self, provider_id: Option<&str>) -> Vec<AnyModel> {
+        self.models().get_all_models(provider_id)
+    }
+
+    /// Upstream `getAvailableOfType`.
+    pub async fn get_available_of_type(
+        &self,
+        model_type: crate::ai::ModelType,
+        provider_id: Option<&str>,
+        options: Option<&AuthOperationOptions>,
+    ) -> Result<Vec<AnyModel>, AuthError> {
+        self.models()
+            .get_available_of_type(model_type, provider_id, options)
+            .await
+    }
+
+    /// Upstream `getAllAvailable`.
+    pub async fn get_all_available(
+        &self,
+        provider_id: Option<&str>,
+        options: Option<&AuthOperationOptions>,
+    ) -> Result<Vec<AnyModel>, AuthError> {
+        self.models().get_all_available(provider_id, options).await
+    }
+
+    /// Upstream `generateImages`.
+    pub async fn generate_images(
+        &self,
+        model: &crate::ai::types::ImageModel,
+        context: &crate::ai::types::ImagesContext,
+        options: Option<crate::ai::models::ModelsImagesOptions>,
+    ) -> crate::ai::types::AssistantImages {
+        self.models().generate_images(model, context, options).await
+    }
+
+    /// Upstream `classify`.
+    pub async fn classify(
+        &self,
+        model: &crate::ai::types::ClassifierModel,
+        context: &crate::ai::types::ClassifierContext,
+        options: Option<crate::ai::models::ModelsClassifierOptions>,
+    ) -> crate::ai::types::ClassifierResult {
+        self.models().classify(model, context, options).await
     }
 
     /// Upstream `void this.refresh({ allowNetwork: false })`.
@@ -1791,6 +2216,120 @@ fn ensure_live(signal: &CancellationToken) -> Result<(), AuthError> {
     } else {
         Ok(())
     }
+}
+
+/// Upstream `findLatestResponse` over the LLM transcript: the latest
+/// successful assistant response (failed or aborted requests are skipped).
+fn find_latest_message_response(
+    messages: &[crate::ai::types::Message],
+) -> Option<&AssistantMessage> {
+    messages.iter().rev().find_map(|message| match message {
+        crate::ai::types::Message::Assistant(assistant)
+            if assistant.stop_reason != StopReason::Error
+                && assistant.stop_reason != StopReason::Aborted =>
+        {
+            Some(assistant)
+        }
+        _ => None,
+    })
+}
+
+/// The `thinkingLevel` of an assistant message (upstream
+/// `AssistantMessage.thinkingLevel`; the port stores the provider-native wire
+/// spelling).
+fn message_thinking_level(message: &AssistantMessage) -> Option<ModelThinkingLevel> {
+    model_thinking_level_from_wire(message.provider_thinking_level.as_deref()?)
+}
+
+/// Wire spelling → [`ModelThinkingLevel`].
+pub(crate) fn model_thinking_level_from_wire(wire: &str) -> Option<ModelThinkingLevel> {
+    Some(match wire {
+        "off" => ModelThinkingLevel::Off,
+        "minimal" => ModelThinkingLevel::Minimal,
+        "low" => ModelThinkingLevel::Low,
+        "medium" => ModelThinkingLevel::Medium,
+        "high" => ModelThinkingLevel::High,
+        "xhigh" => ModelThinkingLevel::Xhigh,
+        "max" => ModelThinkingLevel::Max,
+        _ => return None,
+    })
+}
+
+/// [`ModelThinkingLevel`] → wire spelling.
+fn model_thinking_level_wire(level: ModelThinkingLevel) -> &'static str {
+    match level {
+        ModelThinkingLevel::Off => "off",
+        ModelThinkingLevel::Minimal => "minimal",
+        ModelThinkingLevel::Low => "low",
+        ModelThinkingLevel::Medium => "medium",
+        ModelThinkingLevel::High => "high",
+        ModelThinkingLevel::Xhigh => "xhigh",
+        ModelThinkingLevel::Max => "max",
+    }
+}
+
+/// `SimpleStreamOptions.reasoning` → [`ModelThinkingLevel`].
+fn model_thinking_level_from_level(level: Option<ThinkingLevel>) -> Option<ModelThinkingLevel> {
+    level.map(|level| match level {
+        ThinkingLevel::Minimal => ModelThinkingLevel::Minimal,
+        ThinkingLevel::Low => ModelThinkingLevel::Low,
+        ThinkingLevel::Medium => ModelThinkingLevel::Medium,
+        ThinkingLevel::High => ModelThinkingLevel::High,
+        ThinkingLevel::Xhigh => ModelThinkingLevel::Xhigh,
+        ThinkingLevel::Max => ModelThinkingLevel::Max,
+    })
+}
+
+/// [`ModelThinkingLevel`] → `SimpleStreamOptions.reasoning` (`"off"` is
+/// absent, matching the upstream `undefined`).
+fn model_thinking_level_to_level(level: ModelThinkingLevel) -> Option<ThinkingLevel> {
+    match level {
+        ModelThinkingLevel::Off => None,
+        ModelThinkingLevel::Minimal => Some(ThinkingLevel::Minimal),
+        ModelThinkingLevel::Low => Some(ThinkingLevel::Low),
+        ModelThinkingLevel::Medium => Some(ThinkingLevel::Medium),
+        ModelThinkingLevel::High => Some(ThinkingLevel::High),
+        ModelThinkingLevel::Xhigh => Some(ThinkingLevel::Xhigh),
+        ModelThinkingLevel::Max => Some(ThinkingLevel::Max),
+    }
+}
+
+/// Upstream `clampThinkingLevel` (pi-ai models.ts) over the ported
+/// `get_supported_thinking_levels`.
+fn clamp_model_thinking_level(model: &Model, level: ModelThinkingLevel) -> ModelThinkingLevel {
+    const LEVELS: [ModelThinkingLevel; 7] = [
+        ModelThinkingLevel::Off,
+        ModelThinkingLevel::Minimal,
+        ModelThinkingLevel::Low,
+        ModelThinkingLevel::Medium,
+        ModelThinkingLevel::High,
+        ModelThinkingLevel::Xhigh,
+        ModelThinkingLevel::Max,
+    ];
+    let available_levels = crate::ai::models::get_supported_thinking_levels(model);
+    if available_levels.contains(&model_thinking_level_wire(level)) {
+        return level;
+    }
+    let Some(requested_index) = LEVELS.iter().position(|candidate| *candidate == level) else {
+        return available_levels
+            .first()
+            .and_then(|wire| model_thinking_level_from_wire(wire))
+            .unwrap_or(ModelThinkingLevel::Off);
+    };
+    for candidate in LEVELS[requested_index..].iter() {
+        if available_levels.contains(&model_thinking_level_wire(*candidate)) {
+            return *candidate;
+        }
+    }
+    for candidate in LEVELS[..requested_index].iter().rev() {
+        if available_levels.contains(&model_thinking_level_wire(*candidate)) {
+            return *candidate;
+        }
+    }
+    available_levels
+        .first()
+        .and_then(|wire| model_thinking_level_from_wire(wire))
+        .unwrap_or(ModelThinkingLevel::Off)
 }
 
 /// `Provider | Model` overload of upstream `getAuth`.

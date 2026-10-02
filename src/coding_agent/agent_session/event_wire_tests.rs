@@ -126,7 +126,23 @@ async fn json_ingress_live_session_updates_queues_before_listeners_and_flushes_t
     captured.lock().unwrap().clear();
     session.handle_agent_event(event("turn_end")).await;
     assert!(session.pending_custom_messages.lock().unwrap().is_empty());
-    assert_eq!(session.agent.state().messages.last(), Some(&custom));
+    // Delta: the flushed message reaches agent state through the session
+    // projection (append entry + `_refreshFinalizedContext`), so state holds
+    // the projected custom message rather than the pushed object (its
+    // timestamp comes from the entry).
+    let last = session.agent.state().messages.last().cloned();
+    let AgentMessage::Custom(last_custom) = last.expect("custom message in state") else {
+        panic!("expected a custom message in agent state");
+    };
+    assert_eq!(last_custom.role, "custom");
+    assert_eq!(
+        last_custom.data.get("customType").and_then(Value::as_str),
+        Some("test")
+    );
+    assert_eq!(
+        last_custom.data.get("content").and_then(Value::as_str),
+        Some("after turn")
+    );
     assert_eq!(session.turn_index.load(Ordering::SeqCst), 1);
     let kinds: Vec<_> = captured
         .lock()

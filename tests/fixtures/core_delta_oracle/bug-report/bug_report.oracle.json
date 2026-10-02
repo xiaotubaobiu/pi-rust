@@ -1,0 +1,1033 @@
+{
+	"scenarios": [
+		{
+			"name": "redact_url_grid",
+			"observed": {
+				"credentials_and_params": "https://api.example.com/v1/x?api_key=%3Credacted%3E&token=%3Credacted%3E&q=hello&Password=%3Credacted%3E#frag",
+				"unchanged": "https://example.com/path",
+				"not_a_url": "not a url",
+				"mailto": "mailto:user@host",
+				"userinfo_only": "https://host.com/",
+				"hyphen_keys": "http://h.com/?authorization=%3Credacted%3E&a=1&api-key=%3Credacted%3E",
+				"camel_key": "https://h.com/?apiKey=%3Credacted%3E",
+				"upper_key": "https://h.com/?API_KEY=%3Credacted%3E",
+				"encoded_value": "https://h.com/?x=a+b&token=%3Credacted%3E",
+				"nested_scheme": "socks5:https://h.com/?token=%3Credacted%3E",
+				"uppercase_url": "https://h.com/?TOKEN=%3Credacted%3E",
+				"boundary_miss": "https://h.com/?refresh_token=%3Credacted%3E&sessionid=b&secret-key=%3Credacted%3E",
+				"empty_value": "https://h.com/?token=%3Credacted%3E",
+				"no_query_with_creds": "https://h.com/x",
+				"plus_value": "https://h.com/?q=a+b&access_token=%3Credacted%3E",
+				"trailing_query": "https://h.com/x?",
+				"keys_only": "https://h.com/?token=%3Credacted%3E",
+				"credential_subpath": "https://h.com/?credential=%3Credacted%3E&other=keep",
+				"oauth_cookie": "https://h.com/?OAUTH=1&cookie=%3Credacted%3E&session=3",
+				"multiple_sensitive": "https://h.com/?b=2&api_key=%3Credacted%3E&c=3"
+			}
+		},
+		{
+			"name": "redact_json_value_grid",
+			"observed": {
+				"nested": {
+					"apiKey": "<redacted>",
+					"nested": {
+						"token": "<redacted>",
+						"keep": "yes",
+						"deeper": {
+							"SECRET_KEY": "<redacted>",
+							"arr": [
+								"plain",
+								"https://h.com/?x=1&password=%3Credacted%3E"
+							]
+						}
+					}
+				},
+				"null_child_kept": {
+					"token": null,
+					"keep": null
+				},
+				"url_strings": [
+					"https://h.com/",
+					"not a url",
+					42,
+					true,
+					null
+				],
+				"camel_boundaries": {
+					"secretToken": "<redacted>",
+					"authToken": "<redacted>",
+					"refreshToken": "<redacted>",
+					"sessionid": "ok",
+					"myKey": "ok"
+				},
+				"passthrough": {
+					"a": 1,
+					"b": [
+						1,
+						2,
+						{
+							"c": 3
+						}
+					]
+				},
+				"empty": {}
+			}
+		},
+		{
+			"name": "redact_settings",
+			"observed": {
+				"redacted": {
+					"theme": "dark",
+					"defaultProvider": "anthropic",
+					"providerAuth": {
+						"anthropic": {
+							"apiKey": "<redacted>",
+							"token": "<redacted>",
+							"expiresIn": 3600
+						}
+					},
+					"nested": {
+						"apiKeyEnv": "<redacted>",
+						"callbackUrl": "https://h.com/cb?secret=%3Credacted%3E"
+					}
+				},
+				"keepsUnknownTopLevel": [
+					"other"
+				]
+			}
+		},
+		{
+			"name": "metadata_with_model",
+			"observed": {
+				"schemaVersion": 1,
+				"id": "fixed-id-1",
+				"createdAt": "<createdAt>",
+				"hint": "it crashed",
+				"environment": {
+					"version": "ORACLE-VERSION",
+					"userAgent": "pi/ORACLE-VERSION (win32; node/v25.8.2; x64)",
+					"runtime": "node/v25.8.2",
+					"platform": "win32",
+					"arch": "x64",
+					"osRelease": "10.0.26200",
+					"osVersion": "Windows 11 Pro",
+					"shell": "bash.exe",
+					"terminal": {
+						"term": "xterm-256color",
+						"program": "vscode",
+						"programVersion": "1.2.3",
+						"colorterm": "truecolor",
+						"tmux": false,
+						"ssh": true,
+						"ci": true
+					},
+					"piEnvironmentVariables": [
+						"PI_ALPHA",
+						"PI_EMPTY",
+						"PI_MIDDY",
+						"PI_ZED"
+					]
+				},
+				"session": {
+					"id": "session-1",
+					"included": true,
+					"summaryIncluded": false,
+					"messageCount": 3,
+					"cwd": "/work/project"
+				},
+				"model": {
+					"provider": "stub",
+					"id": "claude-4",
+					"name": "Claude 4",
+					"api": "anthropic-messages",
+					"baseUrl": "https://stub.example.com/?api_key=%3Credacted%3E",
+					"reasoning": true,
+					"input": [
+						"text",
+						"image"
+					],
+					"contextWindow": 200000,
+					"maxTokens": 64000,
+					"samplingParams": {
+						"top_p": 0.9,
+						"api_key_hint": "<redacted>"
+					},
+					"compat": {
+						"forceAdaptiveThinking": true,
+						"password": "<redacted>"
+					},
+					"thinkingLevelMap": {
+						"off": null,
+						"high": "high"
+					},
+					"headerNames": [
+						"X-B",
+						"x-a"
+					]
+				},
+				"provider": {
+					"id": "stub",
+					"name": "Stub Provider",
+					"baseUrl": "https://stub.example.com/v1?api_key=%3Credacted%3E",
+					"headerNames": [
+						"x-stub",
+						"z-last"
+					],
+					"authTypes": [
+						"api_key",
+						"oauth"
+					],
+					"authStatus": {
+						"configured": true,
+						"source": "runtime",
+						"label": "STUB_KEY"
+					},
+					"usingOAuth": true,
+					"registeredByExtension": true
+				},
+				"thinkingLevel": "high",
+				"extensions": [
+					{
+						"path": "/ext/one.ts",
+						"source": "one.ts",
+						"scope": "project",
+						"origin": "top-level",
+						"hidden": false
+					},
+					{
+						"path": "/ext/pkg/index.ts",
+						"source": "https://registry.example/pkg?token=%3Credacted%3E",
+						"scope": "user",
+						"origin": "package",
+						"hidden": true
+					}
+				],
+				"extensionErrors": [
+					{
+						"path": "/ext/broken.ts",
+						"error": "boom"
+					}
+				],
+				"settings": {
+					"global": {
+						"theme": "dark",
+						"apiKeyEnv": "<redacted>",
+						"nested": {
+							"token": "<redacted>"
+						}
+					},
+					"project": {
+						"theme": "solarized",
+						"authorization": "<redacted>"
+					}
+				}
+			}
+		},
+		{
+			"name": "metadata_minimal",
+			"observed": {
+				"schemaVersion": 1,
+				"id": "fixed-id-2",
+				"createdAt": "<createdAt>",
+				"hint": null,
+				"environment": {
+					"version": "ORACLE-VERSION",
+					"userAgent": "pi/ORACLE-VERSION (win32; node/v25.8.2; x64)",
+					"runtime": "node/v25.8.2",
+					"platform": "win32",
+					"arch": "x64",
+					"osRelease": "10.0.26200",
+					"osVersion": "Windows 11 Pro",
+					"shell": "bash.exe",
+					"terminal": {
+						"term": "xterm-256color",
+						"program": "vscode",
+						"programVersion": "1.2.3",
+						"colorterm": "truecolor",
+						"tmux": false,
+						"ssh": true,
+						"ci": true
+					},
+					"piEnvironmentVariables": [
+						"PI_ALPHA",
+						"PI_EMPTY",
+						"PI_MIDDY",
+						"PI_ZED"
+					]
+				},
+				"session": {
+					"id": "session-1",
+					"included": false,
+					"summaryIncluded": false,
+					"messageCount": 3
+				},
+				"model": null,
+				"provider": null,
+				"thinkingLevel": "off",
+				"extensions": [],
+				"extensionErrors": [],
+				"settings": {
+					"global": {
+						"theme": "dark",
+						"apiKeyEnv": "<redacted>",
+						"nested": {
+							"token": "<redacted>"
+						}
+					},
+					"project": {
+						"theme": "solarized",
+						"authorization": "<redacted>"
+					}
+				}
+			}
+		},
+		{
+			"name": "metadata_environment",
+			"observed": {
+				"version": "ORACLE-VERSION",
+				"userAgent": "pi/ORACLE-VERSION (win32; node/<version>; x64)",
+				"runtime": "node/<version>",
+				"platform": "win32",
+				"arch": "x64",
+				"osRelease": "<osRelease>",
+				"osVersion": "<osVersion>",
+				"shell": "bash.exe",
+				"terminal": {
+					"term": "xterm-256color",
+					"program": "vscode",
+					"programVersion": "1.2.3",
+					"colorterm": "truecolor",
+					"tmux": false,
+					"ssh": true,
+					"ci": true
+				},
+				"piEnvironmentVariables": [
+					"PI_ALPHA",
+					"PI_EMPTY",
+					"PI_MIDDY",
+					"PI_ZED"
+				]
+			}
+		},
+		{
+			"name": "diagnostics",
+			"observed": {
+				"schemaVersion": 1,
+				"sessionId": "session-1",
+				"entryCount": 8,
+				"assistantMessageCount": 5,
+				"assistant": [
+					{
+						"entryId": "m2",
+						"timestamp": "t3",
+						"provider": "anthropic",
+						"model": "claude",
+						"api": "anthropic-messages",
+						"stopReason": "error",
+						"errorMessage": "http 500",
+						"diagnostics": []
+					},
+					{
+						"entryId": "m3",
+						"timestamp": "t4",
+						"provider": "openai",
+						"model": "gpt",
+						"api": "openai-completions",
+						"stopReason": "aborted",
+						"rawStopReason": "cancelled",
+						"diagnostics": []
+					},
+					{
+						"entryId": "m4",
+						"timestamp": "t5",
+						"provider": "p",
+						"model": "m",
+						"api": "api",
+						"stopReason": "stop",
+						"diagnostics": [
+							{
+								"type": "retry",
+								"timestamp": 7,
+								"error": {
+									"name": "HttpError",
+									"message": "429"
+								}
+							}
+						]
+					},
+					{
+						"entryId": "m6",
+						"timestamp": "t8",
+						"provider": "p",
+						"model": "m",
+						"api": "api",
+						"stopReason": "stop",
+						"errorMessage": "leftover message",
+						"diagnostics": []
+					}
+				],
+				"crashes": [
+					{
+						"timestamp": "2026-01-01T00:00:00.000Z",
+						"version": "0.99.1",
+						"kind": "fatal_error",
+						"message": "first",
+						"stack": "Error: first\n    at f (/ext/one.ts:1:1)",
+						"sessionFile": "/s/session.jsonl",
+						"cwd": "/work"
+					},
+					{
+						"timestamp": "2026-01-02T00:00:00.000Z",
+						"version": "0.99.1",
+						"kind": "uncaught_exception",
+						"message": "second",
+						"stack": null,
+						"sessionFile": null,
+						"cwd": "/work"
+					}
+				]
+			}
+		},
+		{
+			"name": "diagnostics_empty",
+			"observed": {
+				"schemaVersion": 1,
+				"sessionId": "empty",
+				"entryCount": 0,
+				"assistantMessageCount": 0,
+				"assistant": [],
+				"crashes": []
+			}
+		},
+		{
+			"name": "bug_report_custom_entry_type",
+			"observed": "pi.bug-report"
+		},
+		{
+			"name": "bug_report_files",
+			"observed": {
+				"full": [
+					{
+						"name": "report.json",
+						"contentType": "application/json",
+						"data": "{\n  \"id\": \"rep-1\",\n  \"z\": 1,\n  \"a\": [\n    1,\n    2\n  ]\n}\n"
+					},
+					{
+						"name": "diagnostics.json",
+						"contentType": "application/json",
+						"data": "{\n  \"sessionId\": \"s\",\n  \"crashes\": []\n}\n"
+					},
+					{
+						"name": "session.jsonl",
+						"contentType": "application/x-ndjson",
+						"data": "{\"type\":\"session\"}\n"
+					},
+					{
+						"name": "summary.md",
+						"contentType": "text/markdown",
+						"data": "Report body\n"
+					}
+				],
+				"summary_newline_added": {
+					"name": "summary.md",
+					"contentType": "text/markdown",
+					"data": "no trailing\n"
+				},
+				"without_summary": [
+					"report.json",
+					"diagnostics.json",
+					"session.jsonl"
+				],
+				"without_session": [
+					"report.json",
+					"diagnostics.json",
+					"summary.md"
+				],
+				"archive_name": "pi-bug-report-rep-1.zip"
+			}
+		},
+		{
+			"name": "bug_report_archive",
+			"observed": {
+				"entryCount": 4,
+				"entries": [
+					{
+						"name": "report.json",
+						"flagsHex": "0x800",
+						"method": 8,
+						"crcMatchesPayload": true,
+						"uncompressedSize": 57,
+						"inflated": "{\n  \"id\": \"rep-1\",\n  \"z\": 1,\n  \"a\": [\n    1,\n    2\n  ]\n}\n",
+						"decompressesRoundTrip": true
+					},
+					{
+						"name": "diagnostics.json",
+						"flagsHex": "0x800",
+						"method": 8,
+						"crcMatchesPayload": true,
+						"uncompressedSize": 40,
+						"inflated": "{\n  \"sessionId\": \"s\",\n  \"crashes\": []\n}\n",
+						"decompressesRoundTrip": true
+					},
+					{
+						"name": "session.jsonl",
+						"flagsHex": "0x800",
+						"method": 8,
+						"crcMatchesPayload": true,
+						"uncompressedSize": 19,
+						"inflated": "{\"type\":\"session\"}\n",
+						"decompressesRoundTrip": true
+					},
+					{
+						"name": "summary.md",
+						"flagsHex": "0x800",
+						"method": 8,
+						"crcMatchesPayload": true,
+						"uncompressedSize": 12,
+						"inflated": "Report body\n",
+						"decompressesRoundTrip": true
+					}
+				],
+				"endsWithCentralDirectory": true,
+				"trailingNewlineEnforced": "Report body\n"
+			}
+		},
+		{
+			"name": "summary_basic",
+			"observed": {
+				"summary": "Report body.\n\nSecond line.",
+				"callCount": 1,
+				"systemPrompt": "You are helping a user file a bug report about pi, the coding agent they are talking to. You will be shown the conversation transcript. Write a report for the pi developers describing what the user was doing and what went wrong.\n\nDo NOT continue the conversation. Do NOT respond to any questions in the conversation. ONLY output the report.",
+				"userTimestampPresence": true,
+				"prompt": "<conversation>\n[User]: hello\n\n[User]: help me debug\n</conversation>\n\n<user-report>\nit hangs\n</user-report>\n\nWrite the bug report in Markdown with these sections:\n\n## What the user was doing\nOne short paragraph.\n\n## What went wrong\nConcrete description of the failure: wrong output, errors, hangs, tool failures, unexpected behavior. Quote error messages and tool output verbatim where they exist.\n\n## Steps to reproduce\nNumbered list, as specific as the transcript allows.\n\n## Relevant details\nTool calls involved, files touched, model behavior, anything else that helps a developer reproduce or locate the problem.\n\nDo not include file contents, secrets, or credentials from the transcript; refer to files by path only. Keep the report factual and concise.",
+				"options": {
+					"maxTokens": 4096,
+					"signal": "<signal>",
+					"sessionId": "session-9",
+					"cacheRetention": "none"
+				},
+				"streamedModel": {
+					"id": "claude-4",
+					"name": "Claude 4",
+					"api": "anthropic-messages",
+					"provider": "stub",
+					"baseUrl": "https://stub.example.com",
+					"reasoning": false,
+					"input": [
+						"text"
+					],
+					"cost": {
+						"input": 3,
+						"output": 15,
+						"cacheRead": 0.3,
+						"cacheWrite": 3.75
+					},
+					"contextWindow": 200000,
+					"maxTokens": 64000
+				}
+			}
+		},
+		{
+			"name": "summary_no_hint",
+			"observed": {
+				"summary": "Report body.\n\nSecond line.",
+				"callCount": 1,
+				"systemPrompt": "You are helping a user file a bug report about pi, the coding agent they are talking to. You will be shown the conversation transcript. Write a report for the pi developers describing what the user was doing and what went wrong.\n\nDo NOT continue the conversation. Do NOT respond to any questions in the conversation. ONLY output the report.",
+				"userTimestampPresence": true,
+				"prompt": "<conversation>\n[User]: hello\n\n[User]: help me debug\n</conversation>\n\nWrite the bug report in Markdown with these sections:\n\n## What the user was doing\nOne short paragraph.\n\n## What went wrong\nConcrete description of the failure: wrong output, errors, hangs, tool failures, unexpected behavior. Quote error messages and tool output verbatim where they exist.\n\n## Steps to reproduce\nNumbered list, as specific as the transcript allows.\n\n## Relevant details\nTool calls involved, files touched, model behavior, anything else that helps a developer reproduce or locate the problem.\n\nDo not include file contents, secrets, or credentials from the transcript; refer to files by path only. Keep the report factual and concise.",
+				"options": {
+					"maxTokens": 4096,
+					"signal": "<signal>",
+					"sessionId": "<sessionId>",
+					"cacheRetention": "none"
+				},
+				"streamedModel": {
+					"id": "claude-4",
+					"name": "Claude 4",
+					"api": "anthropic-messages",
+					"provider": "stub",
+					"baseUrl": "https://stub.example.com",
+					"reasoning": false,
+					"input": [
+						"text"
+					],
+					"cost": {
+						"input": 3,
+						"output": 15,
+						"cacheRead": 0.3,
+						"cacheWrite": 3.75
+					},
+					"contextWindow": 200000,
+					"maxTokens": 64000
+				}
+			}
+		},
+		{
+			"name": "summary_empty_hint",
+			"observed": {
+				"summary": "Report body.\n\nSecond line.",
+				"callCount": 1,
+				"systemPrompt": "You are helping a user file a bug report about pi, the coding agent they are talking to. You will be shown the conversation transcript. Write a report for the pi developers describing what the user was doing and what went wrong.\n\nDo NOT continue the conversation. Do NOT respond to any questions in the conversation. ONLY output the report.",
+				"userTimestampPresence": true,
+				"prompt": "<conversation>\n[User]: hello\n\n[User]: help me debug\n</conversation>\n\nWrite the bug report in Markdown with these sections:\n\n## What the user was doing\nOne short paragraph.\n\n## What went wrong\nConcrete description of the failure: wrong output, errors, hangs, tool failures, unexpected behavior. Quote error messages and tool output verbatim where they exist.\n\n## Steps to reproduce\nNumbered list, as specific as the transcript allows.\n\n## Relevant details\nTool calls involved, files touched, model behavior, anything else that helps a developer reproduce or locate the problem.\n\nDo not include file contents, secrets, or credentials from the transcript; refer to files by path only. Keep the report factual and concise.",
+				"options": {
+					"maxTokens": 4096,
+					"signal": "<signal>",
+					"sessionId": "<sessionId>",
+					"cacheRetention": "none"
+				},
+				"streamedModel": {
+					"id": "claude-4",
+					"name": "Claude 4",
+					"api": "anthropic-messages",
+					"provider": "stub",
+					"baseUrl": "https://stub.example.com",
+					"reasoning": false,
+					"input": [
+						"text"
+					],
+					"cost": {
+						"input": 3,
+						"output": 15,
+						"cacheRead": 0.3,
+						"cacheWrite": 3.75
+					},
+					"contextWindow": 200000,
+					"maxTokens": 64000
+				}
+			}
+		},
+		{
+			"name": "summary_truncation",
+			"observed": {
+				"summary": "Report body.\n\nSecond line.",
+				"callCount": 1,
+				"systemPrompt": "You are helping a user file a bug report about pi, the coding agent they are talking to. You will be shown the conversation transcript. Write a report for the pi developers describing what the user was doing and what went wrong.\n\nDo NOT continue the conversation. Do NOT respond to any questions in the conversation. ONLY output the report.",
+				"userTimestampPresence": true,
+				"prompt": "Note: only the last 2 of 12 messages are shown.\n\n<conversation>\n[User]: u5 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n\n[Tool result]: r5 yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy\n</conversation>\n\nWrite the bug report in Markdown with these sections:\n\n## What the user was doing\nOne short paragraph.\n\n## What went wrong\nConcrete description of the failure: wrong output, errors, hangs, tool failures, unexpected behavior. Quote error messages and tool output verbatim where they exist.\n\n## Steps to reproduce\nNumbered list, as specific as the transcript allows.\n\n## Relevant details\nTool calls involved, files touched, model behavior, anything else that helps a developer reproduce or locate the problem.\n\nDo not include file contents, secrets, or credentials from the transcript; refer to files by path only. Keep the report factual and concise.",
+				"options": {
+					"maxTokens": 4096,
+					"signal": "<signal>",
+					"sessionId": "<sessionId>",
+					"cacheRetention": "none"
+				},
+				"streamedModel": {
+					"id": "claude-4",
+					"name": "Claude 4",
+					"api": "anthropic-messages",
+					"provider": "stub",
+					"baseUrl": "https://stub.example.com",
+					"reasoning": false,
+					"input": [
+						"text"
+					],
+					"cost": {
+						"input": 3,
+						"output": 15,
+						"cacheRead": 0.3,
+						"cacheWrite": 3.75
+					},
+					"contextWindow": 400,
+					"maxTokens": 64000
+				}
+			}
+		},
+		{
+			"name": "summary_max_tokens_zero",
+			"observed": {
+				"summary": "Report body.\n\nSecond line.",
+				"callCount": 1,
+				"systemPrompt": "You are helping a user file a bug report about pi, the coding agent they are talking to. You will be shown the conversation transcript. Write a report for the pi developers describing what the user was doing and what went wrong.\n\nDo NOT continue the conversation. Do NOT respond to any questions in the conversation. ONLY output the report.",
+				"userTimestampPresence": true,
+				"prompt": "<conversation>\n[User]: hello\n\n[User]: help me debug\n</conversation>\n\nWrite the bug report in Markdown with these sections:\n\n## What the user was doing\nOne short paragraph.\n\n## What went wrong\nConcrete description of the failure: wrong output, errors, hangs, tool failures, unexpected behavior. Quote error messages and tool output verbatim where they exist.\n\n## Steps to reproduce\nNumbered list, as specific as the transcript allows.\n\n## Relevant details\nTool calls involved, files touched, model behavior, anything else that helps a developer reproduce or locate the problem.\n\nDo not include file contents, secrets, or credentials from the transcript; refer to files by path only. Keep the report factual and concise.",
+				"options": {
+					"maxTokens": 4096,
+					"signal": "<signal>",
+					"sessionId": "<sessionId>",
+					"cacheRetention": "none"
+				},
+				"streamedModel": {
+					"id": "claude-4",
+					"name": "Claude 4",
+					"api": "anthropic-messages",
+					"provider": "stub",
+					"baseUrl": "https://stub.example.com",
+					"reasoning": false,
+					"input": [
+						"text"
+					],
+					"cost": {
+						"input": 3,
+						"output": 15,
+						"cacheRead": 0.3,
+						"cacheWrite": 3.75
+					},
+					"contextWindow": 200000,
+					"maxTokens": 0
+				}
+			}
+		},
+		{
+			"name": "summary_max_tokens_small",
+			"observed": {
+				"summary": "Report body.\n\nSecond line.",
+				"callCount": 1,
+				"systemPrompt": "You are helping a user file a bug report about pi, the coding agent they are talking to. You will be shown the conversation transcript. Write a report for the pi developers describing what the user was doing and what went wrong.\n\nDo NOT continue the conversation. Do NOT respond to any questions in the conversation. ONLY output the report.",
+				"userTimestampPresence": true,
+				"prompt": "<conversation>\n[User]: hello\n\n[User]: help me debug\n</conversation>\n\nWrite the bug report in Markdown with these sections:\n\n## What the user was doing\nOne short paragraph.\n\n## What went wrong\nConcrete description of the failure: wrong output, errors, hangs, tool failures, unexpected behavior. Quote error messages and tool output verbatim where they exist.\n\n## Steps to reproduce\nNumbered list, as specific as the transcript allows.\n\n## Relevant details\nTool calls involved, files touched, model behavior, anything else that helps a developer reproduce or locate the problem.\n\nDo not include file contents, secrets, or credentials from the transcript; refer to files by path only. Keep the report factual and concise.",
+				"options": {
+					"maxTokens": 100,
+					"signal": "<signal>",
+					"sessionId": "<sessionId>",
+					"cacheRetention": "none"
+				},
+				"streamedModel": {
+					"id": "claude-4",
+					"name": "Claude 4",
+					"api": "anthropic-messages",
+					"provider": "stub",
+					"baseUrl": "https://stub.example.com",
+					"reasoning": false,
+					"input": [
+						"text"
+					],
+					"cost": {
+						"input": 3,
+						"output": 15,
+						"cacheRead": 0.3,
+						"cacheWrite": 3.75
+					},
+					"contextWindow": 200000,
+					"maxTokens": 100
+				}
+			}
+		},
+		{
+			"name": "summary_max_tokens_large",
+			"observed": {
+				"summary": "Report body.\n\nSecond line.",
+				"callCount": 1,
+				"systemPrompt": "You are helping a user file a bug report about pi, the coding agent they are talking to. You will be shown the conversation transcript. Write a report for the pi developers describing what the user was doing and what went wrong.\n\nDo NOT continue the conversation. Do NOT respond to any questions in the conversation. ONLY output the report.",
+				"userTimestampPresence": true,
+				"prompt": "<conversation>\n[User]: hello\n\n[User]: help me debug\n</conversation>\n\nWrite the bug report in Markdown with these sections:\n\n## What the user was doing\nOne short paragraph.\n\n## What went wrong\nConcrete description of the failure: wrong output, errors, hangs, tool failures, unexpected behavior. Quote error messages and tool output verbatim where they exist.\n\n## Steps to reproduce\nNumbered list, as specific as the transcript allows.\n\n## Relevant details\nTool calls involved, files touched, model behavior, anything else that helps a developer reproduce or locate the problem.\n\nDo not include file contents, secrets, or credentials from the transcript; refer to files by path only. Keep the report factual and concise.",
+				"options": {
+					"maxTokens": 4096,
+					"signal": "<signal>",
+					"sessionId": "<sessionId>",
+					"cacheRetention": "none"
+				},
+				"streamedModel": {
+					"id": "claude-4",
+					"name": "Claude 4",
+					"api": "anthropic-messages",
+					"provider": "stub",
+					"baseUrl": "https://stub.example.com",
+					"reasoning": false,
+					"input": [
+						"text"
+					],
+					"cost": {
+						"input": 3,
+						"output": 15,
+						"cacheRead": 0.3,
+						"cacheWrite": 3.75
+					},
+					"contextWindow": 200000,
+					"maxTokens": 999999
+				}
+			}
+		},
+		{
+			"name": "summary_reasoning_model_thinking",
+			"observed": {
+				"summary": "Report body.\n\nSecond line.",
+				"callCount": 1,
+				"systemPrompt": "You are helping a user file a bug report about pi, the coding agent they are talking to. You will be shown the conversation transcript. Write a report for the pi developers describing what the user was doing and what went wrong.\n\nDo NOT continue the conversation. Do NOT respond to any questions in the conversation. ONLY output the report.",
+				"userTimestampPresence": true,
+				"prompt": "<conversation>\n[User]: hello\n\n[User]: help me debug\n</conversation>\n\nWrite the bug report in Markdown with these sections:\n\n## What the user was doing\nOne short paragraph.\n\n## What went wrong\nConcrete description of the failure: wrong output, errors, hangs, tool failures, unexpected behavior. Quote error messages and tool output verbatim where they exist.\n\n## Steps to reproduce\nNumbered list, as specific as the transcript allows.\n\n## Relevant details\nTool calls involved, files touched, model behavior, anything else that helps a developer reproduce or locate the problem.\n\nDo not include file contents, secrets, or credentials from the transcript; refer to files by path only. Keep the report factual and concise.",
+				"options": {
+					"maxTokens": 4096,
+					"signal": "<signal>",
+					"sessionId": "<sessionId>",
+					"reasoning": "medium",
+					"cacheRetention": "none"
+				},
+				"streamedModel": {
+					"id": "claude-4",
+					"name": "Claude 4",
+					"api": "anthropic-messages",
+					"provider": "stub",
+					"baseUrl": "https://stub.example.com",
+					"reasoning": true,
+					"input": [
+						"text"
+					],
+					"cost": {
+						"input": 3,
+						"output": 15,
+						"cacheRead": 0.3,
+						"cacheWrite": 3.75
+					},
+					"contextWindow": 200000,
+					"maxTokens": 64000
+				}
+			}
+		},
+		{
+			"name": "summary_reasoning_model_off",
+			"observed": {
+				"summary": "Report body.\n\nSecond line.",
+				"callCount": 1,
+				"systemPrompt": "You are helping a user file a bug report about pi, the coding agent they are talking to. You will be shown the conversation transcript. Write a report for the pi developers describing what the user was doing and what went wrong.\n\nDo NOT continue the conversation. Do NOT respond to any questions in the conversation. ONLY output the report.",
+				"userTimestampPresence": true,
+				"prompt": "<conversation>\n[User]: hello\n\n[User]: help me debug\n</conversation>\n\nWrite the bug report in Markdown with these sections:\n\n## What the user was doing\nOne short paragraph.\n\n## What went wrong\nConcrete description of the failure: wrong output, errors, hangs, tool failures, unexpected behavior. Quote error messages and tool output verbatim where they exist.\n\n## Steps to reproduce\nNumbered list, as specific as the transcript allows.\n\n## Relevant details\nTool calls involved, files touched, model behavior, anything else that helps a developer reproduce or locate the problem.\n\nDo not include file contents, secrets, or credentials from the transcript; refer to files by path only. Keep the report factual and concise.",
+				"options": {
+					"maxTokens": 4096,
+					"signal": "<signal>",
+					"sessionId": "<sessionId>",
+					"cacheRetention": "none"
+				},
+				"streamedModel": {
+					"id": "claude-4",
+					"name": "Claude 4",
+					"api": "anthropic-messages",
+					"provider": "stub",
+					"baseUrl": "https://stub.example.com",
+					"reasoning": true,
+					"input": [
+						"text"
+					],
+					"cost": {
+						"input": 3,
+						"output": 15,
+						"cacheRead": 0.3,
+						"cacheWrite": 3.75
+					},
+					"contextWindow": 200000,
+					"maxTokens": 64000
+				}
+			}
+		},
+		{
+			"name": "summary_plain_model_thinking",
+			"observed": {
+				"summary": "Report body.\n\nSecond line.",
+				"callCount": 1,
+				"systemPrompt": "You are helping a user file a bug report about pi, the coding agent they are talking to. You will be shown the conversation transcript. Write a report for the pi developers describing what the user was doing and what went wrong.\n\nDo NOT continue the conversation. Do NOT respond to any questions in the conversation. ONLY output the report.",
+				"userTimestampPresence": true,
+				"prompt": "<conversation>\n[User]: hello\n\n[User]: help me debug\n</conversation>\n\nWrite the bug report in Markdown with these sections:\n\n## What the user was doing\nOne short paragraph.\n\n## What went wrong\nConcrete description of the failure: wrong output, errors, hangs, tool failures, unexpected behavior. Quote error messages and tool output verbatim where they exist.\n\n## Steps to reproduce\nNumbered list, as specific as the transcript allows.\n\n## Relevant details\nTool calls involved, files touched, model behavior, anything else that helps a developer reproduce or locate the problem.\n\nDo not include file contents, secrets, or credentials from the transcript; refer to files by path only. Keep the report factual and concise.",
+				"options": {
+					"maxTokens": 4096,
+					"signal": "<signal>",
+					"sessionId": "<sessionId>",
+					"cacheRetention": "none"
+				},
+				"streamedModel": {
+					"id": "claude-4",
+					"name": "Claude 4",
+					"api": "anthropic-messages",
+					"provider": "stub",
+					"baseUrl": "https://stub.example.com",
+					"reasoning": false,
+					"input": [
+						"text"
+					],
+					"cost": {
+						"input": 3,
+						"output": 15,
+						"cacheRead": 0.3,
+						"cacheWrite": 3.75
+					},
+					"contextWindow": 200000,
+					"maxTokens": 64000
+				}
+			}
+		},
+		{
+			"name": "summary_aborted",
+			"observed": {
+				"summary": "Bug report summary was cancelled",
+				"callCount": 1,
+				"systemPrompt": "You are helping a user file a bug report about pi, the coding agent they are talking to. You will be shown the conversation transcript. Write a report for the pi developers describing what the user was doing and what went wrong.\n\nDo NOT continue the conversation. Do NOT respond to any questions in the conversation. ONLY output the report.",
+				"userTimestampPresence": true,
+				"prompt": "<conversation>\n[User]: hello\n\n[User]: help me debug\n</conversation>\n\nWrite the bug report in Markdown with these sections:\n\n## What the user was doing\nOne short paragraph.\n\n## What went wrong\nConcrete description of the failure: wrong output, errors, hangs, tool failures, unexpected behavior. Quote error messages and tool output verbatim where they exist.\n\n## Steps to reproduce\nNumbered list, as specific as the transcript allows.\n\n## Relevant details\nTool calls involved, files touched, model behavior, anything else that helps a developer reproduce or locate the problem.\n\nDo not include file contents, secrets, or credentials from the transcript; refer to files by path only. Keep the report factual and concise.",
+				"options": {
+					"maxTokens": 4096,
+					"signal": "<signal>",
+					"sessionId": "<sessionId>",
+					"cacheRetention": "none"
+				},
+				"streamedModel": {
+					"id": "claude-4",
+					"name": "Claude 4",
+					"api": "anthropic-messages",
+					"provider": "stub",
+					"baseUrl": "https://stub.example.com",
+					"reasoning": false,
+					"input": [
+						"text"
+					],
+					"cost": {
+						"input": 3,
+						"output": 15,
+						"cacheRead": 0.3,
+						"cacheWrite": 3.75
+					},
+					"contextWindow": 200000,
+					"maxTokens": 64000
+				}
+			}
+		},
+		{
+			"name": "summary_error_response",
+			"observed": {
+				"summary": "Bug report summary failed: http 500",
+				"callCount": 1,
+				"systemPrompt": "You are helping a user file a bug report about pi, the coding agent they are talking to. You will be shown the conversation transcript. Write a report for the pi developers describing what the user was doing and what went wrong.\n\nDo NOT continue the conversation. Do NOT respond to any questions in the conversation. ONLY output the report.",
+				"userTimestampPresence": true,
+				"prompt": "<conversation>\n[User]: hello\n\n[User]: help me debug\n</conversation>\n\nWrite the bug report in Markdown with these sections:\n\n## What the user was doing\nOne short paragraph.\n\n## What went wrong\nConcrete description of the failure: wrong output, errors, hangs, tool failures, unexpected behavior. Quote error messages and tool output verbatim where they exist.\n\n## Steps to reproduce\nNumbered list, as specific as the transcript allows.\n\n## Relevant details\nTool calls involved, files touched, model behavior, anything else that helps a developer reproduce or locate the problem.\n\nDo not include file contents, secrets, or credentials from the transcript; refer to files by path only. Keep the report factual and concise.",
+				"options": {
+					"maxTokens": 4096,
+					"signal": "<signal>",
+					"sessionId": "<sessionId>",
+					"cacheRetention": "none"
+				},
+				"streamedModel": {
+					"id": "claude-4",
+					"name": "Claude 4",
+					"api": "anthropic-messages",
+					"provider": "stub",
+					"baseUrl": "https://stub.example.com",
+					"reasoning": false,
+					"input": [
+						"text"
+					],
+					"cost": {
+						"input": 3,
+						"output": 15,
+						"cacheRead": 0.3,
+						"cacheWrite": 3.75
+					},
+					"contextWindow": 200000,
+					"maxTokens": 64000
+				}
+			}
+		},
+		{
+			"name": "summary_length_response",
+			"observed": {
+				"summary": "Bug report summary failed: generation hit the token cap and the summary is incomplete",
+				"callCount": 1,
+				"systemPrompt": "You are helping a user file a bug report about pi, the coding agent they are talking to. You will be shown the conversation transcript. Write a report for the pi developers describing what the user was doing and what went wrong.\n\nDo NOT continue the conversation. Do NOT respond to any questions in the conversation. ONLY output the report.",
+				"userTimestampPresence": true,
+				"prompt": "<conversation>\n[User]: hello\n\n[User]: help me debug\n</conversation>\n\nWrite the bug report in Markdown with these sections:\n\n## What the user was doing\nOne short paragraph.\n\n## What went wrong\nConcrete description of the failure: wrong output, errors, hangs, tool failures, unexpected behavior. Quote error messages and tool output verbatim where they exist.\n\n## Steps to reproduce\nNumbered list, as specific as the transcript allows.\n\n## Relevant details\nTool calls involved, files touched, model behavior, anything else that helps a developer reproduce or locate the problem.\n\nDo not include file contents, secrets, or credentials from the transcript; refer to files by path only. Keep the report factual and concise.",
+				"options": {
+					"maxTokens": 4096,
+					"signal": "<signal>",
+					"sessionId": "<sessionId>",
+					"cacheRetention": "none"
+				},
+				"streamedModel": {
+					"id": "claude-4",
+					"name": "Claude 4",
+					"api": "anthropic-messages",
+					"provider": "stub",
+					"baseUrl": "https://stub.example.com",
+					"reasoning": false,
+					"input": [
+						"text"
+					],
+					"cost": {
+						"input": 3,
+						"output": 15,
+						"cacheRead": 0.3,
+						"cacheWrite": 3.75
+					},
+					"contextWindow": 200000,
+					"maxTokens": 64000
+				}
+			}
+		},
+		{
+			"name": "summary_tool_call",
+			"observed": {
+				"summary": "Bug report summary attempted to call a tool",
+				"callCount": 1,
+				"systemPrompt": "You are helping a user file a bug report about pi, the coding agent they are talking to. You will be shown the conversation transcript. Write a report for the pi developers describing what the user was doing and what went wrong.\n\nDo NOT continue the conversation. Do NOT respond to any questions in the conversation. ONLY output the report.",
+				"userTimestampPresence": true,
+				"prompt": "<conversation>\n[User]: hello\n\n[User]: help me debug\n</conversation>\n\nWrite the bug report in Markdown with these sections:\n\n## What the user was doing\nOne short paragraph.\n\n## What went wrong\nConcrete description of the failure: wrong output, errors, hangs, tool failures, unexpected behavior. Quote error messages and tool output verbatim where they exist.\n\n## Steps to reproduce\nNumbered list, as specific as the transcript allows.\n\n## Relevant details\nTool calls involved, files touched, model behavior, anything else that helps a developer reproduce or locate the problem.\n\nDo not include file contents, secrets, or credentials from the transcript; refer to files by path only. Keep the report factual and concise.",
+				"options": {
+					"maxTokens": 4096,
+					"signal": "<signal>",
+					"sessionId": "<sessionId>",
+					"cacheRetention": "none"
+				},
+				"streamedModel": {
+					"id": "claude-4",
+					"name": "Claude 4",
+					"api": "anthropic-messages",
+					"provider": "stub",
+					"baseUrl": "https://stub.example.com",
+					"reasoning": false,
+					"input": [
+						"text"
+					],
+					"cost": {
+						"input": 3,
+						"output": 15,
+						"cacheRead": 0.3,
+						"cacheWrite": 3.75
+					},
+					"contextWindow": 200000,
+					"maxTokens": 64000
+				}
+			}
+		},
+		{
+			"name": "summary_empty_text",
+			"observed": {
+				"summary": "Bug report summary was empty",
+				"callCount": 1,
+				"systemPrompt": "You are helping a user file a bug report about pi, the coding agent they are talking to. You will be shown the conversation transcript. Write a report for the pi developers describing what the user was doing and what went wrong.\n\nDo NOT continue the conversation. Do NOT respond to any questions in the conversation. ONLY output the report.",
+				"userTimestampPresence": true,
+				"prompt": "<conversation>\n[User]: hello\n\n[User]: help me debug\n</conversation>\n\nWrite the bug report in Markdown with these sections:\n\n## What the user was doing\nOne short paragraph.\n\n## What went wrong\nConcrete description of the failure: wrong output, errors, hangs, tool failures, unexpected behavior. Quote error messages and tool output verbatim where they exist.\n\n## Steps to reproduce\nNumbered list, as specific as the transcript allows.\n\n## Relevant details\nTool calls involved, files touched, model behavior, anything else that helps a developer reproduce or locate the problem.\n\nDo not include file contents, secrets, or credentials from the transcript; refer to files by path only. Keep the report factual and concise.",
+				"options": {
+					"maxTokens": 4096,
+					"signal": "<signal>",
+					"sessionId": "<sessionId>",
+					"cacheRetention": "none"
+				},
+				"streamedModel": {
+					"id": "claude-4",
+					"name": "Claude 4",
+					"api": "anthropic-messages",
+					"provider": "stub",
+					"baseUrl": "https://stub.example.com",
+					"reasoning": false,
+					"input": [
+						"text"
+					],
+					"cost": {
+						"input": 3,
+						"output": 15,
+						"cacheRead": 0.3,
+						"cacheWrite": 3.75
+					},
+					"contextWindow": 200000,
+					"maxTokens": 64000
+				}
+			}
+		},
+		{
+			"name": "summary_stream_throws",
+			"observed": {
+				"summary": "stream setup failed",
+				"callCount": 0,
+				"systemPrompt": null,
+				"userTimestampPresence": null,
+				"prompt": null,
+				"streamedModel": null
+			}
+		}
+	]
+}

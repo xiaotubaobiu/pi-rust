@@ -143,7 +143,7 @@ async fn async_events_session_input_handled_waits_and_reports_preflight_once() {
         "input",
         Some(PromptOptions {
             preflight_result: Some(Arc::new(move |ready| {
-                record(&log, json!({"phase":"preflight","ready":ready}))
+                record(&log, json!({"phase":"preflight","ready":ready.as_str()}))
             })),
             ..Default::default()
         }),
@@ -156,7 +156,7 @@ async fn async_events_session_input_handled_waits_and_reports_preflight_once() {
     bounded(prompt).await.unwrap();
     assert_eq!(
         snapshot(&trace).last(),
-        Some(&json!({"phase":"preflight","ready":true}))
+        Some(&json!({"phase":"preflight","ready":"handled"}))
     );
     assert_eq!(snapshot(&trace).len(), 3);
     assert_eq!(test.faux.state().lock().unwrap().call_count, 0);

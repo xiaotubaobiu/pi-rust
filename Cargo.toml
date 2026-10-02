@@ -92,6 +92,11 @@ icu_properties = { version = "=2.3.0", default-features = false, features = ["co
 # Native coding-agent image processing; all codecs are available offline.
 image_native = { package = "image", version = "=0.25.10", default-features = false, features = ["png", "jpeg", "gif", "webp", "bmp"] }
 
+# Bug-report archive writer (vendored utils/zip.ts): raw deflate (zlib
+# default level 6) + CRC-32. Already in the dependency tree via the `png`
+# codec, so no new lock entries; pinned exact like the other in-tree reuse.
+flate2 = "=1.1.9"
+
 # Native output-guard errno codes on Unix; already cached transitively.
 [target.'cfg(unix)'.dependencies]
 rustix = { version = "=1.1.5", features = ["process"] }

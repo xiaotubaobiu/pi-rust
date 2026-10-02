@@ -136,6 +136,8 @@ mod extensions_delta_tests;
 
 #[path = "loader.rs"]
 pub mod loader;
+#[path = "mcp/mod.rs"]
+pub mod mcp;
 #[path = "runner.rs"]
 pub mod runner;
 #[path = "tool_search.rs"]

@@ -202,6 +202,7 @@ fn native_session_with_agent(
             .as_ref()
             .map(|v| serde_json::to_value(v).unwrap()),
         html_exporter: None,
+        cache_warmer: None,
     })
     .unwrap();
     CreateAgentSessionRuntimeResult {

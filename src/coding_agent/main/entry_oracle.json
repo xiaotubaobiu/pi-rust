@@ -5,7 +5,7 @@
       "cli/args.ts": "f8ba813e8acb43d33b42dff087b05fa3784fc24e6428026d13abe007993bab73",
       "cli/auth-command.ts": "c313c83c6a8981cad0872be8d753a2efa049c1fbb7c216fc01f2b0f0c262b9be",
       "cli/initial-message.ts": "b9df15ffa8769bf419c411cd152c8b807dd0bc2997b6ed3638c2f02376a9b43f",
-      "core/session-manager.ts": "36a474d8cf6f03f2c906680aed5569837f8188e0dc2fc878e9dbdc47b9a14d04"
+      "core/session-manager.ts": "450d82c529933214e088b8422f00061815e617f352f6c834689787a314064bff"
     },
     "boundary": "Executes upstream main() and runAuthCommand() with real argument/auth parser, ID validator, initial-message builder and main helpers. Runtime/services/session discovery/theme/migrations and model/auth IO are explicit injected boundaries; dispatch/stdio/exit only, not evidence those dependencies execute in Rust. Real native runtime/session/IO integration is tested separately. Chalk disabled."
   },

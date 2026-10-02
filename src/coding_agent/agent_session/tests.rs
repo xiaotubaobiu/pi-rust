@@ -576,6 +576,7 @@ async fn create_test_session(
         base_tools_override: Vec::new(),
         session_start_event: None,
         html_exporter: None,
+        cache_warmer: None,
     })
     .expect("agent session");
 

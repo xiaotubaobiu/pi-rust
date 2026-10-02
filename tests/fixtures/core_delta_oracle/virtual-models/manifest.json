@@ -1,0 +1,25 @@
+{
+  "fixture": "core_delta_oracle/virtual-models",
+  "upstream": {
+    "repo": "pi @ 2bbfcca43 (v0.99.1)",
+    "module": "packages/coding-agent/src/core/virtual-models.ts"
+  },
+  "driver": "node --experimental-strip-types oracle.mjs",
+  "capture": "virtual_models.oracle.json",
+  "verbatimSources": {
+    "src/core/virtual-models.ts": "dd836e0623b57bba55fa99b73738427e089a80599a45acc86d7b28219fa26519",
+    "src/ai/api/lazy.ts": "ff4ce241fb72cdd1900d56865a6295815d8d073b321c2ed20435639ed74bf39a",
+    "src/ai/utils/event-stream.ts": "147084657f76665ff7d6c8dcd6eb0745149e3aaee3e7b9c272b315a1b5679386",
+    "src/ai/utils/model-operations.ts": "d024c049a08df73498362f297ca10c45a401fb5a3364c0a4d7890ec92a3c4763",
+    "src/ai/utils/models-error.ts": "f35f82bd86123be7ef05e86036f18e8d3d5df14f394f558b22c38b23d122c12c",
+    "src/ai/utils/diagnostics.ts": "06fcbc2347f65a43938078094a7118036b5f12e73147affb5c73cd72753443f0"
+  },
+  "stubPackages": {
+    "@earendil-works/pi-ai": "re-exports the verbatim isModelType/getModelType and lazyStream sources",
+    "@earendil-works/pi-agent-core": "empty namespace (type-only imports are erased)"
+  },
+  "canonicalization": [
+    "thinkingLevelMap object keys are sorted on capture (the Rust ThinkingLevelMap is a BTreeMap; entry sets are identical)",
+    "with_virtual_models_keyless.unroutedMessage.timestamp is a <timestamp> placeholder (upstream lazy.ts stamps Date.now())"
+  ]
+}

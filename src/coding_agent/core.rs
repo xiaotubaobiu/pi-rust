@@ -42,7 +42,9 @@ pub mod agent_session_runtime;
 pub mod agent_session_services;
 pub mod auth_guidance;
 pub mod auth_storage;
+pub mod bug_report;
 pub mod cache_stats;
+pub mod cache_warmer;
 pub mod compaction;
 pub mod crash_log;
 pub mod defaults;
@@ -73,6 +75,7 @@ pub mod settings_manager;
 pub mod skills;
 pub mod trust_manager;
 pub mod usage_totals;
+pub mod virtual_models;
 
 #[cfg(test)]
 pub mod oracle_data;

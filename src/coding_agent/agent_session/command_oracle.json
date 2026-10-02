@@ -1,6 +1,6 @@
 {
   "source": "packages/coding-agent/src/core/agent-session.ts",
-  "sourceHash": "9a3cdcf299f47bdfb03f7bd850466492c2c4b9120f5245ba64e52904de95d4b3",
+  "sourceHash": "26e76e13456757b0419df26b1f4d9bce9faa28c2588ad66af3e4cc3e9b179e0a",
   "node": "v25.8.2",
   "seams": [
     "all imported collaborators fail if called",
@@ -241,7 +241,7 @@
         },
         {
           "phase": "preflight",
-          "value": true
+          "value": "handled"
         }
       ],
       "trace": [
@@ -251,7 +251,7 @@
         },
         {
           "phase": "preflight",
-          "value": true
+          "value": "handled"
         }
       ],
       "result": {
@@ -269,7 +269,7 @@
         },
         {
           "phase": "preflight",
-          "value": true
+          "value": "handled"
         }
       ],
       "trace": [
@@ -279,7 +279,7 @@
         },
         {
           "phase": "preflight",
-          "value": true
+          "value": "handled"
         }
       ],
       "result": {
@@ -303,7 +303,7 @@
         },
         {
           "phase": "preflight",
-          "value": true
+          "value": "handled"
         }
       ],
       "trace": [
@@ -319,7 +319,7 @@
         },
         {
           "phase": "preflight",
-          "value": true
+          "value": "handled"
         }
       ],
       "result": {
@@ -343,7 +343,7 @@
         },
         {
           "phase": "preflight",
-          "value": true
+          "value": "handled"
         }
       ],
       "trace": [
@@ -359,7 +359,7 @@
         },
         {
           "phase": "preflight",
-          "value": true
+          "value": "handled"
         }
       ],
       "result": {
@@ -383,7 +383,7 @@
         },
         {
           "phase": "preflight",
-          "value": true
+          "value": "handled"
         }
       ],
       "result": {
@@ -413,7 +413,7 @@
         },
         {
           "phase": "preflight",
-          "value": true
+          "value": "handled"
         }
       ],
       "result": {
@@ -430,7 +430,7 @@
         },
         {
           "phase": "preflight",
-          "value": true
+          "value": "handled"
         }
       ],
       "trace": [
@@ -439,7 +439,7 @@
         },
         {
           "phase": "preflight",
-          "value": true
+          "value": "handled"
         }
       ],
       "result": {

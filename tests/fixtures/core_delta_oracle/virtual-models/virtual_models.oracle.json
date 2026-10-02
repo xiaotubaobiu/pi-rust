@@ -1,0 +1,1101 @@
+{
+	"scenarios": [
+		{
+			"name": "create_virtual_model_grid",
+			"observed": {
+				"defaults": {
+					"id": "auto",
+					"name": "Auto",
+					"api": "pi-virtual",
+					"provider": "llama.cpp",
+					"baseUrl": "",
+					"reasoning": false,
+					"thinkingLevelMap": {
+						"high": null,
+						"low": null,
+						"max": null,
+						"medium": null,
+						"minimal": null,
+						"off": "off",
+						"xhigh": null
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 0,
+					"maxTokens": 0
+				},
+				"thinkingLevels_subset": {
+					"id": "m",
+					"name": "M",
+					"api": "pi-virtual",
+					"provider": "p",
+					"baseUrl": "",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"high": null,
+						"low": null,
+						"max": "max",
+						"medium": "medium",
+						"minimal": null,
+						"off": "off",
+						"xhigh": null
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 0,
+					"maxTokens": 0
+				},
+				"thinkingLevels_all": {
+					"id": "m",
+					"name": "M",
+					"api": "pi-virtual",
+					"provider": "p",
+					"baseUrl": "",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"high": "high",
+						"low": "low",
+						"max": "max",
+						"medium": "medium",
+						"minimal": "minimal",
+						"off": "off",
+						"xhigh": "xhigh"
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 0,
+					"maxTokens": 0
+				},
+				"thinkingLevels_unknown": {
+					"id": "m",
+					"name": "M",
+					"api": "pi-virtual",
+					"provider": "p",
+					"baseUrl": "",
+					"reasoning": true,
+					"thinkingLevelMap": {
+						"high": null,
+						"low": null,
+						"max": null,
+						"medium": "medium",
+						"minimal": null,
+						"off": null,
+						"xhigh": null
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 0,
+					"maxTokens": 0
+				},
+				"limits": {
+					"id": "m",
+					"name": "M",
+					"api": "pi-virtual",
+					"provider": "p",
+					"baseUrl": "",
+					"reasoning": false,
+					"thinkingLevelMap": {
+						"high": null,
+						"low": null,
+						"max": null,
+						"medium": null,
+						"minimal": null,
+						"off": "off",
+						"xhigh": null
+					},
+					"input": [
+						"text",
+						"image"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 1000,
+					"maxTokens": 100
+				},
+				"input_text_only": {
+					"id": "m",
+					"name": "M",
+					"api": "pi-virtual",
+					"provider": "p",
+					"baseUrl": "",
+					"reasoning": false,
+					"thinkingLevelMap": {
+						"high": null,
+						"low": null,
+						"max": null,
+						"medium": null,
+						"minimal": null,
+						"off": "off",
+						"xhigh": null
+					},
+					"input": [
+						"text"
+					],
+					"cost": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0
+					},
+					"contextWindow": 0,
+					"maxTokens": 0
+				}
+			}
+		},
+		{
+			"name": "is_virtual_model",
+			"observed": {
+				"virtualModel": true,
+				"physicalModel": false,
+				"assistantVirtual": true,
+				"assistantPhysical": false
+			}
+		},
+		{
+			"name": "find_latest_response",
+			"observed": {
+				"mixed": {
+					"role": "assistant",
+					"content": [],
+					"api": "api",
+					"provider": "p",
+					"model": "final",
+					"usage": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"totalTokens": 0,
+						"cost": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"total": 0
+						}
+					},
+					"stopReason": "stop",
+					"timestamp": 1
+				},
+				"firstWins": {
+					"role": "assistant",
+					"content": [],
+					"api": "api",
+					"provider": "p",
+					"model": "first",
+					"usage": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"totalTokens": 0,
+						"cost": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"total": 0
+						}
+					},
+					"stopReason": "stop",
+					"timestamp": 1
+				}
+			}
+		},
+		{
+			"name": "get_branch_selection_grid",
+			"observed": {
+				"physical_response": {
+					"provider": "other",
+					"modelId": "model"
+				},
+				"model_change_last": {
+					"provider": "p",
+					"modelId": "physical"
+				},
+				"virtual_model_change_holds": {
+					"provider": "p",
+					"modelId": "virtual"
+				},
+				"virtual_model_change_unregistered": {
+					"provider": "p",
+					"modelId": "physical"
+				},
+				"virtual_assistant_skipped": {
+					"provider": "p",
+					"modelId": "virtual"
+				},
+				"earliest_model_change_wins_over_later_virtual_change": {
+					"provider": "p",
+					"modelId": "physical"
+				}
+			}
+		},
+		{
+			"name": "get_virtual_model_state_grid",
+			"observed": {
+				"match": {
+					"tier": "newest"
+				},
+				"other_model": {
+					"tier": "nope"
+				}
+			}
+		},
+		{
+			"name": "state_entry_json_schema",
+			"observed": {
+				"entryKeyOrder": [
+					"type",
+					"customType",
+					"data",
+					"id",
+					"parentId",
+					"timestamp"
+				],
+				"dataKeyOrder": [
+					"provider",
+					"modelId",
+					"state"
+				],
+				"serialized": "{\"type\":\"custom\",\"customType\":\"pi.virtual-model-state\",\"data\":{\"provider\":\"p\",\"modelId\":\"virtual\",\"state\":{\"tier\":\"fast\",\"note\":null}},\"id\":\"s1\",\"parentId\":null,\"timestamp\":\"t-s1\"}"
+			}
+		},
+		{
+			"name": "with_virtual_models_keyless",
+			"observed": {
+				"id": "llama.cpp",
+				"name": "llama.cpp",
+				"models": [
+					{
+						"id": "auto",
+						"name": "Virtual auto",
+						"api": "pi-virtual",
+						"provider": "llama.cpp",
+						"baseUrl": "",
+						"reasoning": true,
+						"thinkingLevelMap": {
+							"high": null,
+							"low": null,
+							"max": null,
+							"medium": "medium",
+							"minimal": null,
+							"off": "off",
+							"xhigh": null
+						},
+						"input": [
+							"text",
+							"image"
+						],
+						"cost": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0
+						},
+						"contextWindow": 8192,
+						"maxTokens": 0
+					},
+					{
+						"id": "eco",
+						"name": "Virtual eco",
+						"api": "pi-virtual",
+						"provider": "llama.cpp",
+						"baseUrl": "",
+						"reasoning": false,
+						"thinkingLevelMap": {
+							"high": null,
+							"low": null,
+							"max": null,
+							"medium": null,
+							"minimal": null,
+							"off": "off",
+							"xhigh": null
+						},
+						"input": [
+							"text",
+							"image"
+						],
+						"cost": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0
+						},
+						"contextWindow": 0,
+						"maxTokens": 0
+					}
+				],
+				"getAllModelsUndefined": true,
+				"auth": {
+					"hasApiKey": true,
+					"apiKeyName": "Virtual model",
+					"resolve": {
+						"auth": {},
+						"source": "virtual"
+					}
+				},
+				"filterModelsUndefined": true,
+				"filterAllModelsUndefined": true,
+				"unroutedMessage": {
+					"role": "assistant",
+					"content": [],
+					"api": "pi-virtual",
+					"provider": "llama.cpp",
+					"model": "auto",
+					"usage": {
+						"input": 0,
+						"output": 0,
+						"cacheRead": 0,
+						"cacheWrite": 0,
+						"totalTokens": 0,
+						"cost": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0,
+							"total": 0
+						}
+					},
+					"stopReason": "error",
+					"errorMessage": "Virtual model llama.cpp/auto must be routed before streaming",
+					"timestamp": "<timestamp>"
+				}
+			}
+		},
+		{
+			"name": "with_virtual_models_wrapped_plain",
+			"observed": {
+				"name": "Provider P",
+				"baseUrl": "https://p.example.com",
+				"models": [
+					{
+						"id": "other",
+						"name": "Name other",
+						"api": "openai-completions",
+						"provider": "p",
+						"baseUrl": "https://api.example.com/v1",
+						"reasoning": false,
+						"thinkingLevelMap": {
+							"off": null
+						},
+						"input": [
+							"text"
+						],
+						"cost": {
+							"input": 1,
+							"output": 2,
+							"cacheRead": 0.1,
+							"cacheWrite": 0.2
+						},
+						"contextWindow": 8192,
+						"maxTokens": 1024
+					},
+					{
+						"id": "shared",
+						"name": "Virtual shared",
+						"api": "pi-virtual",
+						"provider": "p",
+						"baseUrl": "",
+						"reasoning": false,
+						"thinkingLevelMap": {
+							"high": null,
+							"low": null,
+							"max": null,
+							"medium": null,
+							"minimal": null,
+							"off": "off",
+							"xhigh": null
+						},
+						"input": [
+							"text",
+							"image"
+						],
+						"cost": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0
+						},
+						"contextWindow": 0,
+						"maxTokens": 0
+					},
+					{
+						"id": "extra",
+						"name": "Virtual extra",
+						"api": "pi-virtual",
+						"provider": "p",
+						"baseUrl": "",
+						"reasoning": false,
+						"thinkingLevelMap": {
+							"high": null,
+							"low": null,
+							"max": null,
+							"medium": null,
+							"minimal": null,
+							"off": "off",
+							"xhigh": null
+						},
+						"input": [
+							"text",
+							"image"
+						],
+						"cost": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0
+						},
+						"contextWindow": 0,
+						"maxTokens": 0
+					}
+				],
+				"allModels": [
+					{
+						"id": "other",
+						"name": "Name other",
+						"api": "openai-completions",
+						"provider": "p",
+						"baseUrl": "https://api.example.com/v1",
+						"reasoning": false,
+						"thinkingLevelMap": {
+							"off": null
+						},
+						"input": [
+							"text"
+						],
+						"cost": {
+							"input": 1,
+							"output": 2,
+							"cacheRead": 0.1,
+							"cacheWrite": 0.2
+						},
+						"contextWindow": 8192,
+						"maxTokens": 1024
+					},
+					{
+						"id": "img",
+						"name": "Name img",
+						"api": "openai-completions",
+						"provider": "p",
+						"baseUrl": "https://api.example.com/v1",
+						"input": [
+							"text"
+						],
+						"cost": {
+							"input": 1,
+							"output": 2,
+							"cacheRead": 0.1,
+							"cacheWrite": 0.2
+						},
+						"type": "image",
+						"output": [
+							"image"
+						]
+					},
+					{
+						"id": "shared",
+						"name": "Virtual shared",
+						"api": "pi-virtual",
+						"provider": "p",
+						"baseUrl": "",
+						"reasoning": false,
+						"thinkingLevelMap": {
+							"high": null,
+							"low": null,
+							"max": null,
+							"medium": null,
+							"minimal": null,
+							"off": "off",
+							"xhigh": null
+						},
+						"input": [
+							"text",
+							"image"
+						],
+						"cost": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0
+						},
+						"contextWindow": 0,
+						"maxTokens": 0
+					},
+					{
+						"id": "extra",
+						"name": "Virtual extra",
+						"api": "pi-virtual",
+						"provider": "p",
+						"baseUrl": "",
+						"reasoning": false,
+						"thinkingLevelMap": {
+							"high": null,
+							"low": null,
+							"max": null,
+							"medium": null,
+							"minimal": null,
+							"off": "off",
+							"xhigh": null
+						},
+						"input": [
+							"text",
+							"image"
+						],
+						"cost": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0
+						},
+						"contextWindow": 0,
+						"maxTokens": 0
+					}
+				],
+				"filterModels": [
+					{
+						"id": "other",
+						"name": "Name other",
+						"api": "openai-completions",
+						"provider": "p",
+						"baseUrl": "https://api.example.com/v1",
+						"reasoning": false,
+						"thinkingLevelMap": {
+							"off": null
+						},
+						"input": [
+							"text"
+						],
+						"cost": {
+							"input": 1,
+							"output": 2,
+							"cacheRead": 0.1,
+							"cacheWrite": 0.2
+						},
+						"contextWindow": 8192,
+						"maxTokens": 1024
+					},
+					{
+						"id": "shared",
+						"name": "Virtual shared",
+						"api": "pi-virtual",
+						"provider": "p",
+						"baseUrl": "",
+						"reasoning": false,
+						"thinkingLevelMap": {
+							"high": null,
+							"low": null,
+							"max": null,
+							"medium": null,
+							"minimal": null,
+							"off": "off",
+							"xhigh": null
+						},
+						"input": [
+							"text",
+							"image"
+						],
+						"cost": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0
+						},
+						"contextWindow": 0,
+						"maxTokens": 0
+					},
+					{
+						"id": "extra",
+						"name": "Virtual extra",
+						"api": "pi-virtual",
+						"provider": "p",
+						"baseUrl": "",
+						"reasoning": false,
+						"thinkingLevelMap": {
+							"high": null,
+							"low": null,
+							"max": null,
+							"medium": null,
+							"minimal": null,
+							"off": "off",
+							"xhigh": null
+						},
+						"input": [
+							"text",
+							"image"
+						],
+						"cost": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0
+						},
+						"contextWindow": 0,
+						"maxTokens": 0
+					},
+					{
+						"id": "injected",
+						"name": "Virtual injected",
+						"api": "pi-virtual",
+						"provider": "p",
+						"baseUrl": "",
+						"reasoning": false,
+						"thinkingLevelMap": {
+							"high": null,
+							"low": null,
+							"max": null,
+							"medium": null,
+							"minimal": null,
+							"off": "off",
+							"xhigh": null
+						},
+						"input": [
+							"text",
+							"image"
+						],
+						"cost": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0
+						},
+						"contextWindow": 0,
+						"maxTokens": 0
+					}
+				],
+				"filterModelsOfFullList": [
+					{
+						"id": "other",
+						"name": "Name other",
+						"api": "openai-completions",
+						"provider": "p",
+						"baseUrl": "https://api.example.com/v1",
+						"reasoning": false,
+						"thinkingLevelMap": {
+							"off": null
+						},
+						"input": [
+							"text"
+						],
+						"cost": {
+							"input": 1,
+							"output": 2,
+							"cacheRead": 0.1,
+							"cacheWrite": 0.2
+						},
+						"contextWindow": 8192,
+						"maxTokens": 1024
+					},
+					{
+						"id": "shared",
+						"name": "Virtual shared",
+						"api": "pi-virtual",
+						"provider": "p",
+						"baseUrl": "",
+						"reasoning": false,
+						"thinkingLevelMap": {
+							"high": null,
+							"low": null,
+							"max": null,
+							"medium": null,
+							"minimal": null,
+							"off": "off",
+							"xhigh": null
+						},
+						"input": [
+							"text",
+							"image"
+						],
+						"cost": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0
+						},
+						"contextWindow": 0,
+						"maxTokens": 0
+					},
+					{
+						"id": "extra",
+						"name": "Virtual extra",
+						"api": "pi-virtual",
+						"provider": "p",
+						"baseUrl": "",
+						"reasoning": false,
+						"thinkingLevelMap": {
+							"high": null,
+							"low": null,
+							"max": null,
+							"medium": null,
+							"minimal": null,
+							"off": "off",
+							"xhigh": null
+						},
+						"input": [
+							"text",
+							"image"
+						],
+						"cost": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0
+						},
+						"contextWindow": 0,
+						"maxTokens": 0
+					}
+				],
+				"hasFilterAllModels": true,
+				"streamVirtual": {
+					"errorMessage": "Virtual model p/extra must be routed before streaming"
+				},
+				"streamPhysical": {
+					"physical": "other"
+				},
+				"catalogRefreshAddsVirtualThenPhysicalSameId": [
+					{
+						"id": "other",
+						"name": "Name other",
+						"api": "openai-completions",
+						"provider": "p",
+						"baseUrl": "https://api.example.com/v1",
+						"reasoning": false,
+						"thinkingLevelMap": {
+							"off": null
+						},
+						"input": [
+							"text"
+						],
+						"cost": {
+							"input": 1,
+							"output": 2,
+							"cacheRead": 0.1,
+							"cacheWrite": 0.2
+						},
+						"contextWindow": 8192,
+						"maxTokens": 1024
+					},
+					{
+						"id": "shared",
+						"name": "Virtual shared",
+						"api": "pi-virtual",
+						"provider": "p",
+						"baseUrl": "",
+						"reasoning": false,
+						"thinkingLevelMap": {
+							"high": null,
+							"low": null,
+							"max": null,
+							"medium": null,
+							"minimal": null,
+							"off": "off",
+							"xhigh": null
+						},
+						"input": [
+							"text",
+							"image"
+						],
+						"cost": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0
+						},
+						"contextWindow": 0,
+						"maxTokens": 0
+					},
+					{
+						"id": "extra",
+						"name": "Virtual extra",
+						"api": "pi-virtual",
+						"provider": "p",
+						"baseUrl": "",
+						"reasoning": false,
+						"thinkingLevelMap": {
+							"high": null,
+							"low": null,
+							"max": null,
+							"medium": null,
+							"minimal": null,
+							"off": "off",
+							"xhigh": null
+						},
+						"input": [
+							"text",
+							"image"
+						],
+						"cost": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0
+						},
+						"contextWindow": 0,
+						"maxTokens": 0
+					}
+				]
+			}
+		},
+		{
+			"name": "with_virtual_models_wrapped_filtered",
+			"observed": {
+				"filterModels": [
+					{
+						"id": "shared",
+						"name": "Virtual shared",
+						"api": "pi-virtual",
+						"provider": "p",
+						"baseUrl": "",
+						"reasoning": false,
+						"thinkingLevelMap": {
+							"high": null,
+							"low": null,
+							"max": null,
+							"medium": null,
+							"minimal": null,
+							"off": "off",
+							"xhigh": null
+						},
+						"input": [
+							"text",
+							"image"
+						],
+						"cost": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0
+						},
+						"contextWindow": 0,
+						"maxTokens": 0
+					},
+					{
+						"id": "extra",
+						"name": "Virtual extra",
+						"api": "pi-virtual",
+						"provider": "p",
+						"baseUrl": "",
+						"reasoning": false,
+						"thinkingLevelMap": {
+							"high": null,
+							"low": null,
+							"max": null,
+							"medium": null,
+							"minimal": null,
+							"off": "off",
+							"xhigh": null
+						},
+						"input": [
+							"text",
+							"image"
+						],
+						"cost": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0
+						},
+						"contextWindow": 0,
+						"maxTokens": 0
+					}
+				],
+				"filterAllModels": [
+					{
+						"id": "img",
+						"name": "Name img",
+						"api": "openai-completions",
+						"provider": "p",
+						"baseUrl": "https://api.example.com/v1",
+						"input": [
+							"text"
+						],
+						"cost": {
+							"input": 1,
+							"output": 2,
+							"cacheRead": 0.1,
+							"cacheWrite": 0.2
+						},
+						"type": "image",
+						"output": [
+							"image"
+						]
+					},
+					{
+						"id": "shared",
+						"name": "Virtual shared",
+						"api": "pi-virtual",
+						"provider": "p",
+						"baseUrl": "",
+						"reasoning": false,
+						"thinkingLevelMap": {
+							"high": null,
+							"low": null,
+							"max": null,
+							"medium": null,
+							"minimal": null,
+							"off": "off",
+							"xhigh": null
+						},
+						"input": [
+							"text",
+							"image"
+						],
+						"cost": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0
+						},
+						"contextWindow": 0,
+						"maxTokens": 0
+					},
+					{
+						"id": "extra",
+						"name": "Virtual extra",
+						"api": "pi-virtual",
+						"provider": "p",
+						"baseUrl": "",
+						"reasoning": false,
+						"thinkingLevelMap": {
+							"high": null,
+							"low": null,
+							"max": null,
+							"medium": null,
+							"minimal": null,
+							"off": "off",
+							"xhigh": null
+						},
+						"input": [
+							"text",
+							"image"
+						],
+						"cost": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0
+						},
+						"contextWindow": 0,
+						"maxTokens": 0
+					}
+				]
+			}
+		},
+		{
+			"name": "with_virtual_models_catalog_refresh",
+			"observed": {
+				"models": [
+					{
+						"id": "shared",
+						"name": "Name shared",
+						"api": "openai-completions",
+						"provider": "p",
+						"baseUrl": "https://api.example.com/v1",
+						"reasoning": false,
+						"thinkingLevelMap": {
+							"off": null
+						},
+						"input": [
+							"text"
+						],
+						"cost": {
+							"input": 1,
+							"output": 2,
+							"cacheRead": 0.1,
+							"cacheWrite": 0.2
+						},
+						"contextWindow": 8192,
+						"maxTokens": 1024
+					},
+					{
+						"id": "other",
+						"name": "Name other",
+						"api": "openai-completions",
+						"provider": "p",
+						"baseUrl": "https://api.example.com/v1",
+						"reasoning": false,
+						"thinkingLevelMap": {
+							"off": null
+						},
+						"input": [
+							"text"
+						],
+						"cost": {
+							"input": 1,
+							"output": 2,
+							"cacheRead": 0.1,
+							"cacheWrite": 0.2
+						},
+						"contextWindow": 8192,
+						"maxTokens": 1024
+					},
+					{
+						"id": "extra",
+						"name": "Virtual extra",
+						"api": "pi-virtual",
+						"provider": "p",
+						"baseUrl": "",
+						"reasoning": false,
+						"thinkingLevelMap": {
+							"high": null,
+							"low": null,
+							"max": null,
+							"medium": null,
+							"minimal": null,
+							"off": "off",
+							"xhigh": null
+						},
+						"input": [
+							"text",
+							"image"
+						],
+						"cost": {
+							"input": 0,
+							"output": 0,
+							"cacheRead": 0,
+							"cacheWrite": 0
+						},
+						"contextWindow": 0,
+						"maxTokens": 0
+					}
+				]
+			}
+		}
+	]
+}

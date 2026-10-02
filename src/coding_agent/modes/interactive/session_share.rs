@@ -160,6 +160,8 @@ fn set_entry_parent_id(entry: &mut SessionEntry, parent_id: Option<String>) {
         SessionEntry::Message(e) => e.parent_id = parent_id,
         SessionEntry::ThinkingLevelChange(e) => e.parent_id = parent_id,
         SessionEntry::ModelChange(e) => e.parent_id = parent_id,
+        SessionEntry::Usage(e) => e.parent_id = parent_id,
+        SessionEntry::ContextEdit(e) => e.parent_id = parent_id,
         SessionEntry::Compaction(e) => e.parent_id = parent_id,
         SessionEntry::BranchSummary(e) => e.parent_id = parent_id,
         SessionEntry::Custom(e) => e.parent_id = parent_id,
