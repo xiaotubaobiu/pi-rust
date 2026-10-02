@@ -2646,3 +2646,9 @@ WORK_LOG追加前缀：386287 bytes / cadeaf51fe906e35a1531ffc26058289e7d44c061d
 - F3 fixed the 10 whole-lib failures: (a) oauth 5x = ENVIRONMENTAL port 1455 collision (VS Code Code.exe holds the pinned upstream callback port; tests moved to free ports, production constants untouched), (b) rpc prompt-ACK disposition updated to upstream rpc-mode.ts:405 shape + mode_oracle re-captured, (c) cli help fixture updated with the 4 upstream deltas (mcp row, builtin: descriptions, META_API_KEY).
 - Whole-lib serial: 5397/0. clippy 0, fmt clean.
 - Remaining: pi-durable (16.6k, zero upstream consumers - the last package), then close-out (WSL gates + CI + README + v0.2.0 release).
+
+## 2026-10-02 wave-9a: pi-durable phase 1 (types/storage/session)
+- D3 landed src/durable/ (18 files, 10032 lines): types (exact wire key order incl. SubmissionRecord spread-evolution layouts), errors (byte-exact messages), ids (D1 brands->i64), entries (pi.user/assistant/system/tool-result/reset), json (assignJson), util (Waiters/scanAll), documents (definitions/addressId/materialize/migrate/checkpoint), storage/memory (1448L: prepare/apply, fork-copy resolution, incarnations, paging), storage/jsonl (1528L: encode/commit, sidecars, torn-line recovery, confirm records, reclamation, corruption messages byte-exact), session/{transaction 1991L, observation 701L, session 951L, forks}. Disclosed divergences D1-D9 (module docs).
+- Oracle: tests/fixtures/durable_oracle (86 SHA-pinned upstream files; commit_bytes + document_bytes byte-for-byte + read_after_write error text). 15 tests.
+- Remaining (disclosed): env, tasks, harness/ (17 files), Session.documentState wiring; optional sqlite/tools/testing/truncate.
+- Gates: durable 15/0, clippy 0 (lib+tests), fmt clean, cargo check green at every file boundary.

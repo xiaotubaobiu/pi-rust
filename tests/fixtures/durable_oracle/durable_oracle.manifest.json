@@ -1,0 +1,388 @@
+{
+  "staged": [
+    {
+      "file": "api.ts",
+      "sha256": "2ad07e4621229bdc3cfb7d917ed3f098d36fa84d3bcbcad7c2b50edd973ad087"
+    },
+    {
+      "file": "bundler.ts",
+      "sha256": "c8a71296722b264f0361c2f051b55ade4c68ec46f968f6ae16c63324a94989cd"
+    },
+    {
+      "file": "context/index.ts",
+      "sha256": "0f0925a896cf1e506d9495d929157347639e90da343bf28d7472ea645897e7d3"
+    },
+    {
+      "file": "delta/apply-immutable-trusted.ts",
+      "sha256": "861e7f8b7f410326cfb9658c272ee0d5e6235def40c3304237e41a5a49d3ec69"
+    },
+    {
+      "file": "delta/diff.ts",
+      "sha256": "4d1ee245aef0967154ff7177527dcf68606cde400f6cfcfe00cedd4c1e21986e"
+    },
+    {
+      "file": "delta/draft.ts",
+      "sha256": "d23ddbf8f26c6883a30040c460cb82b1cef7281578879bb2afc9ecbc57fc8502"
+    },
+    {
+      "file": "delta/index.ts",
+      "sha256": "a95d221ff4ea9b48bd129904a3c4daacf9dd10182163d5d3f8e0b1c21b533b34"
+    },
+    {
+      "file": "delta/revision-validator.ts",
+      "sha256": "d4d5c62b67271ecfe3029b0619a333b4d8a96a2bb6b8015fe83bffd0f7718c09"
+    },
+    {
+      "file": "delta/tracker.ts",
+      "sha256": "3be4c18b42a4fff288617d96f8547137a485b41b0f455c2c811beae5b4bc5778"
+    },
+    {
+      "file": "documents.ts",
+      "sha256": "7b5e6b95c6dbb13b27dfea7778e383f6501d8038eb49936ff68bb64329b33d42"
+    },
+    {
+      "file": "entries.ts",
+      "sha256": "5cd448162cdccaf0c08ba3ded799e7e3c088cb3f14037847b5534741adb135f5"
+    },
+    {
+      "file": "env/index.ts",
+      "sha256": "6f1dd39d3c58bcc7e6bee92e0ab9a59182eb16132381b9abd8df26bd7d1da835"
+    },
+    {
+      "file": "env/node.ts",
+      "sha256": "f3e1646c8016abec3c4529cf34ae4987a8d094411ea5d4e11b0e0ed354bd3a82"
+    },
+    {
+      "file": "errors.ts",
+      "sha256": "6801e6f7c801d4c160a04ec80ccd27bd97e1a5522fbecb9dd40c560dcde2dfb6"
+    },
+    {
+      "file": "facets/host.ts",
+      "sha256": "a31983f78d4d0cb3a30cd5bbd796152078b71da37e9a69ab3c8b6d030b88f831"
+    },
+    {
+      "file": "facets/loader.ts",
+      "sha256": "ea51215619f0a9ce6d7db5350ee2644e8522126f3cdb863e60c58d16bd0e4646"
+    },
+    {
+      "file": "harness/config.ts",
+      "sha256": "c306efdb24716c4d1536992d17e655037d42df3e780f31501f3b21b0fee9195e"
+    },
+    {
+      "file": "harness/context.ts",
+      "sha256": "1b55ce42f79cd6614c450a42b8207a0f85fd784d96a9cc7d95d75d297fca593d"
+    },
+    {
+      "file": "harness/events.ts",
+      "sha256": "f9880786176ec9a465dd4151408364d1b0ba61691cdb4863a62e1a37eaa6da8c"
+    },
+    {
+      "file": "harness/generation.ts",
+      "sha256": "9a32809459600707a0d95119afc3672535232e0cb1f6a32f5ef3e09f5b43c5ce"
+    },
+    {
+      "file": "harness/harness.ts",
+      "sha256": "d5dd371c3710dc74a003642703200c56ccbaec40d2000321c233351dc8d0b4bb"
+    },
+    {
+      "file": "harness/inbox.ts",
+      "sha256": "a799818d2c550d81a2cbc6bb5b45a38c90024fb366a3bbbe2b7b7b07927aed72"
+    },
+    {
+      "file": "harness/json.ts",
+      "sha256": "31bbac3370fdd84131abeccf6ba5b4919365ae9eaa429031d0d4a3fa9930e9d4"
+    },
+    {
+      "file": "harness/live.ts",
+      "sha256": "090749791dc54352f19c29fdbc767b0d89be8db9297e4c81fb0c4d9c7577cf3a"
+    },
+    {
+      "file": "harness/output.ts",
+      "sha256": "ef4312415bb881398bee208afc30b23851211a354b63d4e7d5f0fa0a8e38c9a2"
+    },
+    {
+      "file": "harness/prompt.ts",
+      "sha256": "13c3737ee6083e25e730ce939a5a134362a030fcde3766cbffc07a96bc8c9db7"
+    },
+    {
+      "file": "harness/registry.ts",
+      "sha256": "9ea43637f8d7323e9d24dfc029278cf1fa1b7b9165220d188fd0241d5f442059"
+    },
+    {
+      "file": "harness/scheduler.ts",
+      "sha256": "3cfd4fa2728f34a1c9516978ce2250d77cbbe12bd911b5b34d6f8d235feaf0a2"
+    },
+    {
+      "file": "harness/submissions.ts",
+      "sha256": "94dcbea7a50a191489c3d4ed4e6cdd5eafa81b484d2f293173f743c389cd4416"
+    },
+    {
+      "file": "harness/tool.ts",
+      "sha256": "a8b76523e9198613e749c18b3a1c571293dbe440fc6f27accd309cc9357d60d5"
+    },
+    {
+      "file": "harness/types.ts",
+      "sha256": "f82e9cc159f842969863f6ed84e0497b38ece2f2e3ff42eb3e86a3dac4264bcb"
+    },
+    {
+      "file": "harness/usage.ts",
+      "sha256": "3fc9f0b49e0dabd704f9d7122881d60316f72169bd83a7d6d6a8cac65f95e7dc"
+    },
+    {
+      "file": "harness/util.ts",
+      "sha256": "a4c38adab640c128aa9e29f3b62afe74210637a305eb8db08ed25c5e873f0a15"
+    },
+    {
+      "file": "harness/view.ts",
+      "sha256": "809471155b7fcf15b219a9bb302dbb90f7db16fb1a0ffd67e46d6d994f3fc907"
+    },
+    {
+      "file": "ids.ts",
+      "sha256": "bbeede57cfc771208d6d333ea1d29a03690be8c039479841572570decfbaf228"
+    },
+    {
+      "file": "index.ts",
+      "sha256": "a3401f1d4af8ad9c317e76a7eca7c22b44257926db2b8c9f40734be3669f7d16"
+    },
+    {
+      "file": "index.ts",
+      "sha256": "121d1a881080fa390f825f46194658e652f6c714f80436c8f32ffce653414449"
+    },
+    {
+      "file": "json.ts",
+      "sha256": "8b7d633aabcf694f3827355a9d5bc305efbcdb6c276f9420509eeccfa613edf8"
+    },
+    {
+      "file": "node.ts",
+      "sha256": "6b2e9d201a21c4cd62171f5aa2c9d4b739b1b14c73d534a4630fd01cce77b4ee"
+    },
+    {
+      "file": "node/bundle-loader.ts",
+      "sha256": "26800e73ee5ab25ccb4b3c769e102fdf48a4abddd67c8af27cc58c4225852ab1"
+    },
+    {
+      "file": "node/bundle.ts",
+      "sha256": "c7a5009381af017322e4cbdd70f111b1c2d20fb37fbe22405b39015d1445c905"
+    },
+    {
+      "file": "node/manifest.ts",
+      "sha256": "03169161da822cbe62fff71c0fe1a1e4ce04e4960691b20b6272d2042bc30037"
+    },
+    {
+      "file": "node/package.ts",
+      "sha256": "7ba150d4dc2030e0a7b6771cf4c34dcc8b6f0e4e16e1d624a1facf0962579823"
+    },
+    {
+      "file": "services/consumer.ts",
+      "sha256": "e628903661564561ec647434d3e6d3ad5b70b97d829fccfc97821584584bb052"
+    },
+    {
+      "file": "services/errors.ts",
+      "sha256": "487e73b60a1c69dd132cf6f4c4ec625e346b5cecc1cb890da25a5199a43798a8"
+    },
+    {
+      "file": "services/handle.ts",
+      "sha256": "4c68a6dc8835e9ab2542523fce64076b3f63a1e6941b67c615056707ecc58f56"
+    },
+    {
+      "file": "services/instances.ts",
+      "sha256": "fbe50a36b313314f4cdf7902ae2a37cf4f54eb52b2f53a10b661d2aaa8022af1"
+    },
+    {
+      "file": "services/loopback.ts",
+      "sha256": "533ec7e5680090e4bcdade2b6ece9b39fba816acb72bc019ba0324af9beae9ad"
+    },
+    {
+      "file": "services/provider.ts",
+      "sha256": "47ca6cd540079906cff962e58a86961ee52f82ef8949fe4674e964bcfaf12100"
+    },
+    {
+      "file": "services/state-codec.ts",
+      "sha256": "a42c889ae7659ef5dfabca835b3e59fb85796f0b45f58666f8418d4e34f40834"
+    },
+    {
+      "file": "services/state-internals.ts",
+      "sha256": "1ff3650206497e3c0863f978b358593bacaee437d7e141b80e31327c00629cea"
+    },
+    {
+      "file": "services/state.ts",
+      "sha256": "6722c58e0816120d4f48a6d58d0d7248c3fe6dd9baf6f7cfd9181a56f2797668"
+    },
+    {
+      "file": "services/wire.ts",
+      "sha256": "dbe4011b774fbeb90535d4c89ec0ffe19aa3828b602db9cc75506fb2f39eef74"
+    },
+    {
+      "file": "session/forks.ts",
+      "sha256": "9cb7549b66cd29510c0654ce999474f2941c4efa59410cf93faa6d268c83d6e9"
+    },
+    {
+      "file": "session/observation.ts",
+      "sha256": "324e113a036aba8b7aef5ba3cd852d1cdb2fbf99b69f8f1d28c69fc9da5abedb"
+    },
+    {
+      "file": "session/session.ts",
+      "sha256": "7f1b6434783ff30b6fd803fe26f5eb64dc54a63e2bc33776c57677a3496b321c"
+    },
+    {
+      "file": "session/transaction.ts",
+      "sha256": "4b4403be562a1c019eeb3940c2289636477384c5d997f26e8422b003ba658170"
+    },
+    {
+      "file": "storage/jsonl/index.ts",
+      "sha256": "40ec992c7b22076769ab53da6ced2694bfda5a1a585639b2a9aa7caf0ef9ce39"
+    },
+    {
+      "file": "storage/jsonl/node.ts",
+      "sha256": "cb0a654864c44a5e9fa11078669db6f6586e45ddcecb34c4245fa5f8c8a41683"
+    },
+    {
+      "file": "storage/jsonl/storage.ts",
+      "sha256": "c4eb5b609b87a08df2595f066dbc75d7a3d6a5d11021cfdfc08e282435dca780"
+    },
+    {
+      "file": "storage/memory.ts",
+      "sha256": "106f0bd07ffeae64a9f4613d55ca9ff117106b054e8d0a0bfa2296a16920c841"
+    },
+    {
+      "file": "storage/sqlite/database.ts",
+      "sha256": "3328889a345ceee4d2ecd86944ead58095535dc877719568cc224c7e0058c065"
+    },
+    {
+      "file": "storage/sqlite/index.ts",
+      "sha256": "7c5902202c5996bff6efaf9d4d294bd031e61f19bad53d2c2fdfe645e2bc2d2d"
+    },
+    {
+      "file": "storage/sqlite/migrations.ts",
+      "sha256": "18b698568da5703b9fc0b46a71ce98abafc82dbf55124dd5c67f5c85a3f969b4"
+    },
+    {
+      "file": "storage/sqlite/node.ts",
+      "sha256": "802246239030485574be3ad1661e732d7da2b18e852b4bf951f533937389d100"
+    },
+    {
+      "file": "storage/sqlite/storage.ts",
+      "sha256": "dec015c494692c8a4088c2b22ec6b359fd1f3a84cd5dd918a94303ee3cc99df0"
+    },
+    {
+      "file": "tasks.ts",
+      "sha256": "08ed979b5ae25122aca620952deeb0cde4956c41869ae5a51d47fc7aaf2627d9"
+    },
+    {
+      "file": "testing/assertions.ts",
+      "sha256": "77a6a20a8978f2eddd4bdc5e8fbe3e06127afe45476cc8a9ad91bdbd5cfc33ac"
+    },
+    {
+      "file": "testing/index.ts",
+      "sha256": "67fa54dcf37d7cef50da0060e44640d98d3891957cb9558a54d844820b04f464"
+    },
+    {
+      "file": "testing/runner.ts",
+      "sha256": "e26d8226dcf6254fa508caa73d356e2251d929479a1dbe4549047b688d2e7927"
+    },
+    {
+      "file": "testing/storage-benchmark.ts",
+      "sha256": "8dae25ae6eb39d5e7fccc10df0258efb89c6a6d3ff9cef134eb4cb42385f89a5"
+    },
+    {
+      "file": "testing/storage-conformance.ts",
+      "sha256": "a7925e4edbbb1eb7ad93b9badd1149a392cd53db16251c10a9e5c706fe10feeb"
+    },
+    {
+      "file": "testing/types.ts",
+      "sha256": "3150d398e5c444c2fb471e1a00733b283af90fa823769513671618493ea8fbc5"
+    },
+    {
+      "file": "tools/bash.ts",
+      "sha256": "91a054d11d820f0a753d85c2decb1438b86b55d2147db0165cdc8d7fde062a2a"
+    },
+    {
+      "file": "tools/edit-diff.ts",
+      "sha256": "70f486d5d5e54a76913d96597e792fc3e2c0938813b01595824a63b2300800db"
+    },
+    {
+      "file": "tools/edit.ts",
+      "sha256": "ea5aa39c0d87f4c2b87321277537ddb8096a57d3a0e03de6f8ca9bdae4b8fa02"
+    },
+    {
+      "file": "tools/env.ts",
+      "sha256": "c84674f1a15b2e870d35cab80c3d8290033d28cee8ba2ad8e4cbba78489e9d21"
+    },
+    {
+      "file": "tools/file-mutation-queue.ts",
+      "sha256": "998efeb70544565e748a969f3a566c2e38f861b428a4dce3150bae9196db5f5e"
+    },
+    {
+      "file": "tools/image.ts",
+      "sha256": "c4a01c54a26bdbc9b17a92c55d39bd5b33c8ca2112af7c07dc7122d055e99202"
+    },
+    {
+      "file": "tools/index.ts",
+      "sha256": "866d244ede02241442496bc4898130b8a9731e5b896629988ae4caf7581745a9"
+    },
+    {
+      "file": "tools/path-utils.ts",
+      "sha256": "3e689aa44a02cc2c89e4b84eca59ac6737ef9dbf0d1b31a13633a38293165a14"
+    },
+    {
+      "file": "tools/read.ts",
+      "sha256": "f6f7e2162ede23892d549cf9e29ce5ef7c260134d9199d339182752186dd334a"
+    },
+    {
+      "file": "tools/write.ts",
+      "sha256": "b2b5e43e740c0da054175578e093c2a25278df48b140a2d48653dbc930f60965"
+    },
+    {
+      "file": "truncate.ts",
+      "sha256": "7e910171562e6d935f1d45f0adb80f2db631c4013456c06608e3f28da70bdcff"
+    },
+    {
+      "file": "types.ts",
+      "sha256": "adb3602bbf8ccdc94015b950151504e890612cdd1e836366137ceaa4f228b5f4"
+    },
+    {
+      "file": "types.ts",
+      "sha256": "a034b8eba3514f3ef1e7841fef0d8e004aa2c1b73aac774e684e209c57e4d903"
+    }
+  ],
+  "substitutions": {
+    "node/bundle-loader.ts": "workspace specifier rewritten to staged file URL",
+    "node/bundle.ts": "workspace specifier rewritten to staged file URL",
+    "documents.ts": "workspace specifier rewritten to staged file URL",
+    "entries.ts": "workspace specifier rewritten to staged file URL",
+    "env/index.ts": "workspace specifier rewritten to staged file URL",
+    "env/node.ts": "workspace specifier rewritten to staged file URL",
+    "harness/context.ts": "workspace specifier rewritten to staged file URL",
+    "harness/events.ts": "workspace specifier rewritten to staged file URL",
+    "harness/generation.ts": "workspace specifier rewritten to staged file URL",
+    "harness/harness.ts": "workspace specifier rewritten to staged file URL",
+    "harness/inbox.ts": "workspace specifier rewritten to staged file URL",
+    "harness/json.ts": "workspace specifier rewritten to staged file URL",
+    "harness/live.ts": "workspace specifier rewritten to staged file URL",
+    "harness/prompt.ts": "workspace specifier rewritten to staged file URL",
+    "harness/scheduler.ts": "workspace specifier rewritten to staged file URL",
+    "harness/submissions.ts": "workspace specifier rewritten to staged file URL",
+    "harness/tool.ts": "workspace specifier rewritten to staged file URL",
+    "harness/types.ts": "workspace specifier rewritten to staged file URL",
+    "harness/usage.ts": "workspace specifier rewritten to staged file URL",
+    "harness/util.ts": "workspace specifier rewritten to staged file URL",
+    "harness/view.ts": "workspace specifier rewritten to staged file URL",
+    "session/forks.ts": "workspace specifier rewritten to staged file URL",
+    "session/observation.ts": "workspace specifier rewritten to staged file URL",
+    "session/session.ts": "workspace specifier rewritten to staged file URL",
+    "session/transaction.ts": "workspace specifier rewritten to staged file URL",
+    "storage/jsonl/node.ts": "workspace specifier rewritten to staged file URL",
+    "storage/jsonl/storage.ts": "workspace specifier rewritten to staged file URL",
+    "storage/memory.ts": "workspace specifier rewritten to staged file URL",
+    "storage/sqlite/storage.ts": "workspace specifier rewritten to staged file URL",
+    "testing/storage-benchmark.ts": "workspace specifier rewritten to staged file URL",
+    "testing/storage-conformance.ts": "workspace specifier rewritten to staged file URL",
+    "tools/bash.ts": "workspace specifier rewritten to staged file URL",
+    "tools/edit.ts": "workspace specifier rewritten to staged file URL",
+    "tools/file-mutation-queue.ts": "workspace specifier rewritten to staged file URL",
+    "tools/path-utils.ts": "workspace specifier rewritten to staged file URL",
+    "tools/read.ts": "workspace specifier rewritten to staged file URL",
+    "types.ts": "workspace specifier rewritten to staged file URL"
+  },
+  "stagedCount": 86
+}

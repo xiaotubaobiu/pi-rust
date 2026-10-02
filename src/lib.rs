@@ -11,6 +11,9 @@ pub mod codemode;
 pub mod client;
 pub mod coding_agent;
 pub mod config;
+// Durable-execution slice: port of `pi/packages/durable`
+// (`@earendil-works/pi-durable`).
+pub mod durable;
 // M6 evals slice: port of `pi/packages/evals`.
 pub mod evals;
 // MCP client slice: port of `pi/packages/mcp`.
