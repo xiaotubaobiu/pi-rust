@@ -40,4 +40,7 @@ jobs:
       - run: cargo test -- --test-threads=1
         env:
           NO_PROXY: 127.0.0.1,localhost
-          RUSTFLAGS: ${{ runner.os == 'Linux' && '-C link-arg=-fuse-ld=lld' || '' }}
+          # Both runners OOM in the link phase of the ~880k-line test binary:
+          # GNU ld on ubuntu, link.exe on windows. lld (LLVM's linker, bundled
+          # with the toolchain) cuts the linker peak memory ~10x on both.
+          RUSTFLAGS: ${{ runner.os == 'Linux' && '-C link-arg=-fuse-ld=lld' || '-C linker=rust-lld' }}
