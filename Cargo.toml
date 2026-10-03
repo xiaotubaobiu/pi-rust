@@ -136,8 +136,11 @@ fs2 = "0.4.3"
 tokio = { version = "1.53.1", features = ["test-util"] }
 wiremock = "0.6.5"
 
-# CI runners (2-core, 7 GB) OOM'd LLVM codegen for the 528k-line crate's test
-# binary with full debuginfo; line tables keep panic backtraces usable at a
-# fraction of the cost. Behavior of the tests themselves is unchanged.
+# CI runners (2-core, 7 GB) OOM'd LLVM codegen for the test binary of this
+# crate (~880k lines) even with line tables; the test profile strips debug
+# info entirely and raises codegen parallelism (smaller peak per unit).
+# Behavior of the tests themselves is unchanged. Local release builds and
+# `cargo run` are unaffected ([profile.release] keeps its own settings).
 [profile.test]
-debug = "line-tables-only"
+debug = 0
+codegen-units = 256
