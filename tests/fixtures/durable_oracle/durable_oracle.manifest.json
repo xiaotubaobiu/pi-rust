@@ -359,6 +359,274 @@
     {
       "file": "types.ts",
       "sha256": "a034b8eba3514f3ef1e7841fef0d8e004aa2c1b73aac774e684e209c57e4d903"
+    },
+    {
+      "file": "vendor/diff/libesm/convert/dmp.d.ts",
+      "sha256": "c49a2c2b75a2c37ee620759e00517d2a5b37231432e6606cbb9a6493591eb6c5"
+    },
+    {
+      "file": "vendor/diff/libesm/convert/dmp.d.ts.map",
+      "sha256": "5262035a6160dc4a684530b9d103fa814862ecbfd721c5024c0367d909bfe9d6"
+    },
+    {
+      "file": "vendor/diff/libesm/convert/dmp.js",
+      "sha256": "05bad2211249703a43f2d4250fb0e0831511a32aed763cd21890c1b5ee7032c4"
+    },
+    {
+      "file": "vendor/diff/libesm/convert/xml.d.ts",
+      "sha256": "b342336b75a5615111f5dba9bfefe4329015473c3fb61c1fb3d9257457aac201"
+    },
+    {
+      "file": "vendor/diff/libesm/convert/xml.d.ts.map",
+      "sha256": "918618579cd70597d08cf7ce493013958ffbc0af79039a35fc24ce2ca8b3780a"
+    },
+    {
+      "file": "vendor/diff/libesm/convert/xml.js",
+      "sha256": "c9dfceeb2ab8248f6dee37f0ce253317939fe1302ffb4483ccf777400a3ac552"
+    },
+    {
+      "file": "vendor/diff/libesm/diff/array.d.ts",
+      "sha256": "0a5634f7bbf1e77f453a8469795472ceef410f9a2a6902a38e830ee997e11aad"
+    },
+    {
+      "file": "vendor/diff/libesm/diff/array.d.ts.map",
+      "sha256": "2d035d34ce7c9f6ed87f20ee3fe98e4a2aaab1d0013cf8971110b1bbb5823bda"
+    },
+    {
+      "file": "vendor/diff/libesm/diff/array.js",
+      "sha256": "5bcc1320c7ee74e565421a556d81ed3fdd82ff2f366e6151beebac6b425f528f"
+    },
+    {
+      "file": "vendor/diff/libesm/diff/base.d.ts",
+      "sha256": "14cad32342459938e4dc3e43290c21815e8c50ff9987fbb6a707c20fab488a0c"
+    },
+    {
+      "file": "vendor/diff/libesm/diff/base.d.ts.map",
+      "sha256": "f2586bf2f20ca3b260123b444adb5e7f8155c9f32346de79c15bed91b9e8035c"
+    },
+    {
+      "file": "vendor/diff/libesm/diff/base.js",
+      "sha256": "faa81734df6ea7f8034efc5572ad1bbf19c50b300fdd183baf0d7813c5eec3b2"
+    },
+    {
+      "file": "vendor/diff/libesm/diff/character.d.ts",
+      "sha256": "4bd23b962c6702f2d842017b6fcbe35d63899e4524ff6af4facc74598c113522"
+    },
+    {
+      "file": "vendor/diff/libesm/diff/character.d.ts.map",
+      "sha256": "b67af1c7447f40ea9f095bedcb148e97323cdac1af17ef42029ae2ece85c8ed2"
+    },
+    {
+      "file": "vendor/diff/libesm/diff/character.js",
+      "sha256": "75677c2b3c5990099675493b415ce59f92f5de4709de59fa481b9fb563168deb"
+    },
+    {
+      "file": "vendor/diff/libesm/diff/css.d.ts",
+      "sha256": "60bd054853cda7ee357f147bf903e2f88cd78a9b3e37732c218a3493ae226986"
+    },
+    {
+      "file": "vendor/diff/libesm/diff/css.d.ts.map",
+      "sha256": "cda76c7d614cca884b2548d7db489c7d273add402d252281130249f0c8c3dd16"
+    },
+    {
+      "file": "vendor/diff/libesm/diff/css.js",
+      "sha256": "db85fa43d4e4d4bbe3707d9e575de338589deb9a4cc8243c7f15fa5e2c87724d"
+    },
+    {
+      "file": "vendor/diff/libesm/diff/json.d.ts",
+      "sha256": "fdd3335862781599d7de3dc5659b5a8135aa3954b9c1492723432bc0d484e85e"
+    },
+    {
+      "file": "vendor/diff/libesm/diff/json.d.ts.map",
+      "sha256": "5d574296d689bab498fad7bd5d68f85e726cc670bb8d8893358b418e1b81f997"
+    },
+    {
+      "file": "vendor/diff/libesm/diff/json.js",
+      "sha256": "c97ec8c04a7c4fc37a605d5863018ead1cac1c19128a7333bcb19d33fa6771b7"
+    },
+    {
+      "file": "vendor/diff/libesm/diff/line.d.ts",
+      "sha256": "8e7155b1873201785456300ffcdd7f0bcc869f995b7df50ad27ea33740b122a3"
+    },
+    {
+      "file": "vendor/diff/libesm/diff/line.d.ts.map",
+      "sha256": "ce4b4da26c3d142302d7d4961995f8783d795958036f336ddb9c6131122aad21"
+    },
+    {
+      "file": "vendor/diff/libesm/diff/line.js",
+      "sha256": "e3ef2d8c8c3a56f6b9fb04609f545b2aae2f84a02c31c5de3201aef1b0545f90"
+    },
+    {
+      "file": "vendor/diff/libesm/diff/sentence.d.ts",
+      "sha256": "d449145a9a77065e6438e42469cad4ddb83b92c53be6ec94ad2a87b21be3249e"
+    },
+    {
+      "file": "vendor/diff/libesm/diff/sentence.d.ts.map",
+      "sha256": "02ba8e2ccc9dbc51dd466151d13120fa66bc44ddf2d8f3b5160b554c26d7b10e"
+    },
+    {
+      "file": "vendor/diff/libesm/diff/sentence.js",
+      "sha256": "dad3b5952b2d8f29d8a01618580661c1757ed0bcce5e2af969b17eff613ca93b"
+    },
+    {
+      "file": "vendor/diff/libesm/diff/word.d.ts",
+      "sha256": "3f34c292613d80c8efdc20534366cd9cb08ff7cb60c92bef5658826ee095bc69"
+    },
+    {
+      "file": "vendor/diff/libesm/diff/word.d.ts.map",
+      "sha256": "cc45ae7ed5dedee0779c81a180b8d4eba238a7baf85af256c1b2f75aea5a9141"
+    },
+    {
+      "file": "vendor/diff/libesm/diff/word.js",
+      "sha256": "c1d6a6c52ef517e4ea9df6d71465fa520ce677d1b4e127425e3c2d8cf14f7a22"
+    },
+    {
+      "file": "vendor/diff/libesm/index.d.ts",
+      "sha256": "c3ee2fb2465660509cd53a26c5fa8df4b5f4d8d34d84f8c58b77656d714ad4a8"
+    },
+    {
+      "file": "vendor/diff/libesm/index.d.ts.map",
+      "sha256": "198e22bfb5f5c3d5e46227a817f4d3019bbcd86267f87b2df537854b8dd992d2"
+    },
+    {
+      "file": "vendor/diff/libesm/index.js",
+      "sha256": "b1f400fd24da44377867ede7ab847a34940423f8bbf3fc5475d8c7647759a2aa"
+    },
+    {
+      "file": "vendor/diff/libesm/package.json",
+      "sha256": "5e433a0d28d7f422b2c6fbc3058b931d19d29bdc49c154b312099680e992e3f5"
+    },
+    {
+      "file": "vendor/diff/libesm/patch/apply.d.ts",
+      "sha256": "688962814dc9d6a47ba11ec5ded89fb6cc7e82a4390c23d51e6f479f80760049"
+    },
+    {
+      "file": "vendor/diff/libesm/patch/apply.d.ts.map",
+      "sha256": "4a1f620f1a25e7ddd7a3f6537e5c0ebd56c9f023514f8de2fdfa1d8bf16dafa0"
+    },
+    {
+      "file": "vendor/diff/libesm/patch/apply.js",
+      "sha256": "f8096efdfda914e9b85a8cb270dfb1a57f0d483656368327c89b80098955589e"
+    },
+    {
+      "file": "vendor/diff/libesm/patch/create.d.ts",
+      "sha256": "83f4ce03f3779bd3c5973c3b2d4a72dfd24fa3ff1f031675b7e305543e098003"
+    },
+    {
+      "file": "vendor/diff/libesm/patch/create.d.ts.map",
+      "sha256": "6cc98e95ea4658eee098f486e214f947484aec92cc0e13882a96d0af12f22d78"
+    },
+    {
+      "file": "vendor/diff/libesm/patch/create.js",
+      "sha256": "c71772a9d9ce5933ed5848a33a2f8afaac1eff24430deb6d39cd34d676d80a84"
+    },
+    {
+      "file": "vendor/diff/libesm/patch/line-endings.d.ts",
+      "sha256": "0eb5ff25a78fcc2a2088e0f28e36dfffce1a83a0accb6ed903f8b81f3964c14c"
+    },
+    {
+      "file": "vendor/diff/libesm/patch/line-endings.d.ts.map",
+      "sha256": "166e856902edd31382a590d19c99584dbcc2482ae70270699e5da797741b2ad4"
+    },
+    {
+      "file": "vendor/diff/libesm/patch/line-endings.js",
+      "sha256": "65af590b9426800782d692a7b1923ad1d6d6bbc1c74e9863053c6cfe1d97f3f4"
+    },
+    {
+      "file": "vendor/diff/libesm/patch/parse.d.ts",
+      "sha256": "cd16697aef969e23d590a712b0c7e943630f7515f3592d71545b21d13de4c31d"
+    },
+    {
+      "file": "vendor/diff/libesm/patch/parse.d.ts.map",
+      "sha256": "a01c4c68d8a8f80572091ef606928305b5cf13f0416a053ccfbc72b74d6ec162"
+    },
+    {
+      "file": "vendor/diff/libesm/patch/parse.js",
+      "sha256": "ace28c724776288617444bc9a2111b4b954e5bcae3be7ddb74b926a39b507c90"
+    },
+    {
+      "file": "vendor/diff/libesm/patch/reverse.d.ts",
+      "sha256": "c2deae73969f6a13e1347d01754d9b5d9a6ed3f8ab5574f90435ee5f1bfb6616"
+    },
+    {
+      "file": "vendor/diff/libesm/patch/reverse.d.ts.map",
+      "sha256": "1a4a6bb6d519da5839ba844b9dc00dc7decb807dc0e8f0e0dd7b27c62bd5299d"
+    },
+    {
+      "file": "vendor/diff/libesm/patch/reverse.js",
+      "sha256": "3de415ad62332e04fc860a775303e989988306a1eb8587801b9db69d49c861d8"
+    },
+    {
+      "file": "vendor/diff/libesm/types.d.ts",
+      "sha256": "f4c6ab477fe710f67f66c55a81f9ca7ac4398cdbac73b5ca38a904a8f342957d"
+    },
+    {
+      "file": "vendor/diff/libesm/types.d.ts.map",
+      "sha256": "ead946904b8add894b6f189012b3bb41af2e8542951c47021506f668759cc692"
+    },
+    {
+      "file": "vendor/diff/libesm/types.js",
+      "sha256": "8e609bb71c20b858c77f0e9f90bb1319db8477b13f9f965f1a1e18524bf50881"
+    },
+    {
+      "file": "vendor/diff/libesm/util/array.d.ts",
+      "sha256": "9b181c0e2b265d7c12205426643b366e7850e789dd9cdf48dd2452fe806e148d"
+    },
+    {
+      "file": "vendor/diff/libesm/util/array.d.ts.map",
+      "sha256": "ed0fe147615d1348c03b2d7f4433f900fde05a1a0abbeb841da2d8f1d3043071"
+    },
+    {
+      "file": "vendor/diff/libesm/util/array.js",
+      "sha256": "8bbc0246a6d709eb776531a7a2062066a77916643364945c1a713a00eca33e46"
+    },
+    {
+      "file": "vendor/diff/libesm/util/distance-iterator.d.ts",
+      "sha256": "be1a5aebf79d0f7739f8c27a65393a23723535f39de3ab62ab088d22937bf9a7"
+    },
+    {
+      "file": "vendor/diff/libesm/util/distance-iterator.d.ts.map",
+      "sha256": "d937c682f41787763b5f7ce5d19072e9a12c32c985554e2755106a4be22572a5"
+    },
+    {
+      "file": "vendor/diff/libesm/util/distance-iterator.js",
+      "sha256": "41e12ebbedb76278e3bd37ede510e009a5952897a3e748e9673b4e5c8ae660e5"
+    },
+    {
+      "file": "vendor/diff/libesm/util/params.d.ts",
+      "sha256": "90b80eea50f29206d12cff5377a443c97b69c0f0f766edf78b5e5b8d90903b83"
+    },
+    {
+      "file": "vendor/diff/libesm/util/params.d.ts.map",
+      "sha256": "af149eeab485d9ce8a49deba23ff42717d672acc81a939c4bbab97166a2a5f34"
+    },
+    {
+      "file": "vendor/diff/libesm/util/params.js",
+      "sha256": "bb76a1c299071b6f8314bb7195ad701af06f092c629aed8b4fef4a7474ab3759"
+    },
+    {
+      "file": "vendor/diff/libesm/util/string.d.ts",
+      "sha256": "26c1c2ff9bf23092a17d2279654a572211357d6e62acb1c9ec7a2063df5ec613"
+    },
+    {
+      "file": "vendor/diff/libesm/util/string.d.ts.map",
+      "sha256": "3b4d262f26a214645dd70c9c9f35fd6b587155b015e801e33850d27f9c914158"
+    },
+    {
+      "file": "vendor/diff/libesm/util/string.js",
+      "sha256": "0836eacdebdb30c8aba0e898f9c7a45e236d036848ccfb058f56745f5ff020d3"
+    },
+    {
+      "file": "vendor/diff/LICENSE",
+      "sha256": "eda81a415869e67809f6a9f3fd6056062cb83a462118e07eec5e92b2e0c40ce9"
+    },
+    {
+      "file": "vendor/diff/package.json",
+      "sha256": "7f3acd64473e4f82ef8d34264c41e95d7d9638684eec65e307b9923cc3b9210c"
+    },
+    {
+      "file": "node_modules/typebox/index.mjs (staged stub; pinned upstream version 1.3.27)",
+      "sha256": "5fce13cd99f02113b383a6d3f356e753c1bf79c1a1daf6d609f9161c3ca45086"
     }
   ],
   "substitutions": {
@@ -399,7 +667,9 @@
     "tools/path-utils.ts": "workspace specifier rewritten to staged file URL",
     "tools/read.ts": "workspace specifier rewritten to staged file URL",
     "types.ts": "workspace specifier rewritten to staged file URL",
-    "packages/ai/src/utils/validation.ts": "typebox unavailable in staging: validateToolArguments replaced with a passthrough stub (coercion not exercised by the scenarios)"
+    "packages/ai/src/utils/validation.ts": "typebox unavailable in staging: validateToolArguments replaced with a passthrough stub (coercion not exercised by the scenarios)",
+    "node_modules/diff": "staged verbatim from the vendored jsdiff 8.0.4 libesm build (vendor/diff, hashed above)",
+    "node_modules/typebox": "typebox unavailable in staging: Type.{Object,String,Number,Array,Optional} stub reproducing typebox 1.3.27 emission (schema bytes pinned by the tools_decl scenario)"
   },
-  "stagedCount": 90
+  "stagedCount": 157
 }

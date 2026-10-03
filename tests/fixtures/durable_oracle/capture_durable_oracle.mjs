@@ -27,6 +27,20 @@
 //
 // Output: durable_oracle.json (scenario records) + durable_oracle.manifest.json
 // (staged-file SHA-256 provenance).
+//
+// Tools/testing slice scenarios (mirrored one-to-one by
+// `src/durable/tools/oracle_tests.rs` and
+// `src/durable/testing/oracle_tests.rs`):
+//   9.  `tools_decl_and_exec` — the four tool declarations (typebox schema
+//       bytes) and execute() shapes over a deterministic exec/file shim.
+//   10. `diff_surface` / `image_detect` / `path_utils` — edit-diff, image
+//       sniffing, and path-resolution surfaces.
+//   11. `testing_conformance` — recorded assertion traces of the storage
+//       conformance suite over the in-memory backend.
+//   12. `testing_benchmark` — benchmark seeder dataset and read/write tables.
+// Assertion traces and execute records are recorded in a canonical form
+// (object keys sorted, `undefined` → `null`); the Rust side canonicalizes
+// identically, so key-order divergence cannot mask value divergence.
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
@@ -142,7 +156,81 @@ export function validateToolArguments(tool: Tool, call: ToolCall): ToolCall["arg
 }
 manifest.staged.sort((a, b) => (a.file < b.file ? -1 : 1));
 
+// Stage the REAL jsdiff 8.0.4 (`tools/edit-diff.ts` imports `Diff.diffLines`
+// and `Diff.createTwoFilesPatch` at runtime) from the vendored copy in this
+// fixture directory (`vendor/diff`, unmodified `libesm` build + LICENSE,
+// provenance-hashed like every other staged file).
+{
+  const vendorRoot = fileURLToPath(new URL("./vendor/diff", import.meta.url));
+  const diffOut = path.join(staging, "node_modules", "diff");
+  const walk = (dir) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        walk(full);
+      } else {
+        const rel = path.relative(vendorRoot, full).replaceAll("\\", "/");
+        const text = fs.readFileSync(full);
+        const out = path.join(diffOut, rel.replaceAll("/", path.sep));
+        fs.mkdirSync(path.dirname(out), { recursive: true });
+        fs.writeFileSync(out, text);
+        manifest.staged.push({
+          file: `vendor/diff/${rel}`,
+          sha256: createHash("sha256").update(text).digest("hex"),
+        });
+      }
+    }
+  };
+  walk(vendorRoot);
+  manifest.substitutions["node_modules/diff"] =
+    "staged verbatim from the vendored jsdiff 8.0.4 libesm build (vendor/diff, hashed above)";
+}
+
+// Stage a minimal `typebox` module so the tools slice's runtime `Type` calls
+// resolve (`bash.ts`/`read.ts`/`write.ts`/`edit.ts` import { Type } from
+// "typebox"; the package is not installed in the staging environment). The
+// stub reproduces typebox 1.3.27's emitted schema JSON byte-for-byte for the
+// combinators the tools use (`Type.Object` emits `{type, required?, properties,
+// ...options}`, optional properties are marked with a symbol key that
+// `JSON.stringify` drops, verified against the real package); the emitted
+// declarations are pinned by the `tools_decl` scenario.
+{
+  const typeboxOut = path.join(staging, "node_modules", "typebox");
+  fs.mkdirSync(typeboxOut, { recursive: true });
+  const stub =
+    `// Staged typebox stub (disclosed): reproduces typebox 1.3.27 emission for\n` +
+    `// the Type.{Object,String,Number,Array,Optional} combinators the durable\n` +
+    `// tools use; symbol-keyed markers never reach JSON.stringify.\n` +
+    `const GlobalObject = globalThis.Object;\n` +
+    `const OPTIONAL = Symbol("typebox.optional");\n` +
+    `export const Optional = (schema) => ({ ...schema, [OPTIONAL]: "Optional" });\n` +
+    `export const String = (options = {}) => ({ type: "string", ...options });\n` +
+    `export const Number = (options = {}) => ({ type: "number", ...options });\n` +
+    `export const Array = (items, options = {}) => ({ type: "array", items, ...options });\n` +
+    `export const Object = (properties, options = {}) => {\n` +
+    `  const required = GlobalObject.keys(properties).filter((key) => !(OPTIONAL in properties[key]));\n` +
+    `  return { type: "object", ...(required.length > 0 ? { required } : {}), properties, ...options };\n` +
+    `};\n` +
+    `export const Type = { Object, Array, String, Number, Optional };\n` +
+    `export default Type;\n`;
+  const lockText = fs.readFileSync(path.join(upstreamRoot, "package-lock.json"), "utf8");
+  const lockPin = lockText.match(/"node_modules\/typebox": \{\n\s*"version": "([^"]+)"/);
+  manifest.staged.push({
+    file: "node_modules/typebox/index.mjs (staged stub; pinned upstream version " +
+      (lockPin ? lockPin[1] : "unknown") + ")",
+    sha256: createHash("sha256").update(stub, "utf8").digest("hex"),
+  });
+  manifest.substitutions["node_modules/typebox"] =
+    "typebox unavailable in staging: Type.{Object,String,Number,Array,Optional} stub reproducing typebox 1.3.27 emission (schema bytes pinned by the tools_decl scenario)";
+  fs.writeFileSync(path.join(typeboxOut, "index.mjs"), stub);
+  fs.writeFileSync(
+    path.join(typeboxOut, "package.json"),
+    JSON.stringify({ name: "typebox", version: "1.3.27", type: "module", main: "./index.mjs", exports: { ".": "./index.mjs" } }, null, 2) + "\n",
+  );
+}
+
 const durableUrl = (rel) => pathToFileURL(path.join(durableOut, rel)).href;
+
 
 // ─── Deterministic FileSystem shim (env/index.ts contract) ──────────────────
 const textDecoder = new TextDecoder("utf-8", { fatal: true });
@@ -188,6 +276,8 @@ const fileSystemShim = {
   },
   async writeFile(p, content) {
     try {
+      // env/node.ts `writeFile` creates parent directories; the shim matches.
+      fs.mkdirSync(path.dirname(String(p)), { recursive: true });
       fs.writeFileSync(p, content);
       return { ok: true, value: undefined };
     } catch (error) {
@@ -768,7 +858,580 @@ const submissions_state = {
 };
 await session8.close(BACKGROUND);
 
-const oracle = { commit_bytes, document_bytes, read_after_write, harness_docs, prompt_plan, output_bound, scheduler_grids, submissions_state };
+// ─── Scenario 9: tools declarations and execute shapes ─────────────────────
+// Determinism contract for the tools scenarios: `exec` never spawns a shell;
+// a table keyed by command text returns canned chunks / exit codes / spill
+// paths, and the exact options each call received are recorded.
+function canonical(value) {
+  if (value === undefined) return null;
+  if (Array.isArray(value)) return value.map(canonical);
+  if (value && typeof value === "object") {
+    const out = {};
+    for (const key of Object.keys(value).sort()) out[key] = canonical(value[key]);
+    return out;
+  }
+  return value;
+}
+
+const EXEC_STUB = {
+  "echo oracle-ok": { chunks: ["out1\n", "err1\n"], exitCode: 0 },
+  "echo oracle-spill": { chunks: ["chunk-a\n", "chunk-b\n"], exitCode: 0, spillPath: "/tmp/durable-oracle-spill.txt" },
+  "exit 3": { chunks: ["boom\n"], exitCode: 3 },
+  "sleep oracle-timeout": { chunks: ["partial\n"], error: { code: "timeout", message: "timed out" } },
+  "sleep oracle-abort": { chunks: [], error: { code: "aborted", message: "aborted" } },
+  "bad oracle-spawn": { chunks: [], error: { code: "spawn_error", message: "spawn failed" } },
+};
+
+function makeExecEnv(shim, execLog) {
+  return {
+    ...shim,
+    async exec(command, options, context) {
+      execLog.push({
+        command,
+        cwd: options?.cwd,
+        envKeys: Object.keys(options?.env ?? {}),
+        inheritEnv: options?.inheritEnv,
+        timeout: options?.timeout,
+        spill: options?.spill,
+        hasOnOutput: typeof options?.onOutput === "function",
+      });
+      const spec = EXEC_STUB[command] ?? { chunks: [], exitCode: 0 };
+      for (const chunk of spec.chunks) options?.onOutput?.(chunk);
+      if (spec.error) return { ok: false, error: spec.error };
+      return {
+        ok: true,
+        value: { exitCode: spec.exitCode ?? 0, spillPath: spec.spillPath },
+      };
+    },
+  };
+}
+
+function fakeApi(env, sink, isEnded) {
+  const assertLive = () => {
+    if (isEnded()) throw new Error("The tool call has settled");
+  };
+  return {
+    taskId: 7,
+    conversationId: 1,
+    callId: "call-1",
+    env,
+    output(text) {
+      assertLive();
+      sink.outputs.push(text);
+    },
+    diagnostic(diagnostic) {
+      assertLive();
+      sink.diagnostics.push(diagnostic);
+    },
+    details() {
+      assertLive();
+      return Promise.resolve();
+    },
+    commit() {
+      assertLive();
+      return Promise.resolve(null);
+    },
+    memo() {
+      assertLive();
+      return Promise.resolve(undefined);
+    },
+    createTask() {
+      assertLive();
+      return Promise.resolve(99);
+    },
+    getTask() {
+      assertLive();
+      return Promise.resolve(undefined);
+    },
+    waitForTask() {
+      assertLive();
+      return Promise.resolve(undefined);
+    },
+    conversation() {
+      assertLive();
+      return Promise.resolve(undefined);
+    },
+  };
+}
+
+async function runToolExecute(tool, args, env, context = BACKGROUND) {
+  const sink = { outputs: [], diagnostics: [] };
+  let ended = false;
+  const api = fakeApi(env, sink, () => ended);
+  let result;
+  let thrown = null;
+  try {
+    result = await tool.execute(args, api, context);
+  } catch (error) {
+    thrown = { name: error.name, message: error.message };
+  }
+  ended = true;
+  return canonical({
+    result: result === undefined ? null : result,
+    thrown,
+    outputs: sink.outputs,
+    diagnostics: sink.diagnostics,
+  });
+}
+
+const tools = await import(durableUrl("tools/index.ts"));
+const chordContext = await import(
+  pathToFileURL(path.join(chordOut, "context", "index.ts")).href
+);
+const toolsPathUtils = await import(durableUrl("tools/path-utils.ts"));
+const toolsEditDiff = await import(durableUrl("tools/edit-diff.ts"));
+const toolsImage = await import(durableUrl("tools/image.ts"));
+const toolsEnv = await import(durableUrl("tools/env.ts"));
+
+const bashTool = tools.createBashTool();
+const readTool = tools.createReadTool();
+const writeTool = tools.createWriteTool();
+const editTool = tools.createEditTool();
+
+const tools_decl = canonical([
+  { name: bashTool.name, description: bashTool.description, parameters: bashTool.parameters, outputLimits: bashTool.outputLimits ?? null },
+  { name: readTool.name, description: readTool.description, parameters: readTool.parameters, outputLimits: readTool.outputLimits ?? null },
+  { name: writeTool.name, description: writeTool.description, parameters: writeTool.parameters, outputLimits: writeTool.outputLimits ?? null },
+  { name: editTool.name, description: editTool.description, parameters: editTool.parameters, outputLimits: editTool.outputLimits ?? null },
+]);
+
+// requireEnv without an environment.
+const tools_env_error = (() => {
+  try {
+    toolsEnv.requireEnv(fakeApi(undefined, { outputs: [], diagnostics: [] }, () => false));
+    return null;
+  } catch (error) {
+    return { name: error.name, message: error.message };
+  }
+})();
+
+const scenario9Dir = path.join(staging, "scenario9");
+fs.mkdirSync(scenario9Dir, { recursive: true });
+const scenario10Dir = path.join(staging, "scenario10");
+fs.mkdirSync(scenario10Dir, { recursive: true });
+const execLog = [];
+const toolPathShim = {
+  ...fileSystemShim,
+  cwd: scenario9Dir,
+  // env/node.ts  resolves against the environment's cwd.
+  async absolutePath(p) {
+    return { ok: true, value: path.resolve(scenario9Dir, String(p)) };
+  },
+};
+const toolEnv = makeExecEnv(toolPathShim, execLog);
+
+const bash_ok = await runToolExecute(bashTool, { command: "echo oracle-ok" }, toolEnv);
+const bash_spill = await runToolExecute(bashTool, { command: "echo oracle-spill" }, toolEnv);
+const bash_nonzero = await runToolExecute(bashTool, { command: "exit 3" }, toolEnv);
+const bash_timeout = await runToolExecute(bashTool, { command: "sleep oracle-timeout", timeout: 5 }, toolEnv);
+const bash_unknown_error = await runToolExecute(bashTool, { command: "bad oracle-spawn" }, toolEnv);
+const bash_prefix_prepare = await runToolExecute(
+  tools.createBashTool({
+    commandPrefix: "set -e",
+    prepare(execution) {
+      execution.cwd = path.join(scenario9Dir, "prepared");
+      execution.env.PREPARED = "1";
+    },
+  }),
+  { command: "echo oracle-ok" },
+  toolEnv,
+);
+const bash_timeout_invalid = await runToolExecute(bashTool, { command: "echo x", timeout: 0 }, toolEnv);
+const bash_timeout_too_large = await runToolExecute(bashTool, { command: "echo x", timeout: 2147483647 }, toolEnv);
+
+const abortedController = new AbortController();
+abortedController.abort();
+const abortedContext = chordContext.withAbortSignal(abortedController.signal, BACKGROUND);
+const bash_aborted_with_signal = await runToolExecute(bashTool, { command: "sleep oracle-abort" }, toolEnv, abortedContext);
+const bash_aborted_without_signal = await runToolExecute(bashTool, { command: "sleep oracle-abort" }, toolEnv);
+
+fs.writeFileSync(path.join(scenario9Dir, "one-two-three.txt"), "one\ntwo\nthree", "utf8");
+const read_basic = await runToolExecute(readTool, { path: "one-two-three.txt" }, toolEnv);
+const read_offset_limit = await runToolExecute(readTool, { path: "one-two-three.txt", offset: 2, limit: 1 }, toolEnv);
+const read_offset_beyond = await runToolExecute(readTool, { path: "one-two-three.txt", offset: 99 }, toolEnv);
+fs.writeFileSync(
+  path.join(scenario9Dir, "many-lines.txt"),
+  Array.from({ length: 2500 }, (_, i) => `line-${i}`).join("\n") + "\n",
+  "utf8",
+);
+const read_truncated_lines = await runToolExecute(readTool, { path: "many-lines.txt" }, toolEnv);
+fs.writeFileSync(path.join(scenario9Dir, "huge-line.txt"), "x".repeat(60000) + "\nsecond\n", "utf8");
+const read_huge_line = await runToolExecute(readTool, { path: "huge-line.txt" }, toolEnv);
+fs.writeFileSync(path.join(scenario9Dir, "picture.png"), Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13, 73, 72, 68, 82]), "binary");
+const read_unsupported_image = await runToolExecute(readTool, { path: "picture.png" }, toolEnv);
+
+const write_basic = await runToolExecute(writeTool, { path: "out/write-target.txt", content: "written-1\n" }, toolEnv);
+const writeFileBytes1 = fs.readFileSync(path.join(scenario9Dir, "out", "write-target.txt"), "utf8");
+const write_overwrite = await runToolExecute(writeTool, { path: "out/write-target.txt", content: "written-2" }, toolEnv);
+const writeFileBytes2 = fs.readFileSync(path.join(scenario9Dir, "out", "write-target.txt"), "utf8");
+
+fs.writeFileSync(path.join(scenario9Dir, "edit-me.txt"), "alpha\nbeta\ngamma\nbeta again\n", "utf8");
+const edit_two_blocks = await runToolExecute(
+  editTool,
+  {
+    path: "edit-me.txt",
+    edits: [
+      { oldText: "alpha\nbeta", newText: "ALPHA\nBETA" },
+      { oldText: "gamma", newText: "GAMMA" },
+    ],
+  },
+  toolEnv,
+);
+const editMeBytes = fs.readFileSync(path.join(scenario9Dir, "edit-me.txt"), "utf8");
+fs.writeFileSync(path.join(scenario9Dir, "fuzzy.txt"), "value = \u201Cquoted\u201D end\n", "utf8");
+const edit_fuzzy = await runToolExecute(
+  editTool,
+  { path: "fuzzy.txt", edits: [{ oldText: '"quoted"', newText: '"QUOTED"' }] },
+  toolEnv,
+);
+const fuzzyBytes = fs.readFileSync(path.join(scenario9Dir, "fuzzy.txt"), "utf8");
+fs.writeFileSync(path.join(scenario9Dir, "crlf.txt"), "one\r\ntwo\r\nthree\r\n", "utf8");
+fs.writeFileSync(path.join(scenario9Dir, "dup.txt"), "two\nmore two\n", "utf8");
+fs.writeFileSync(path.join(scenario9Dir, "nochange.txt"), "two\n", "utf8");
+const edit_duplicate = await runToolExecute(
+  editTool,
+  { path: "dup.txt", edits: [{ oldText: "two", newText: "x" }] },
+  toolEnv,
+);
+const edit_no_change = await runToolExecute(
+  editTool,
+  { path: "nochange.txt", edits: [{ oldText: "two", newText: "two" }] },
+  toolEnv,
+);
+const edit_crlf = await runToolExecute(
+  editTool,
+  { path: "crlf.txt", edits: [{ oldText: "two", newText: "TWO" }] },
+  toolEnv,
+);
+const crlfBytes = fs.readFileSync(path.join(scenario9Dir, "crlf.txt"), "utf8");
+const edit_not_found = await runToolExecute(
+  editTool,
+  { path: "crlf.txt", edits: [{ oldText: "absent", newText: "x" }] },
+  toolEnv,
+);
+const edit_empty_old = await runToolExecute(
+  editTool,
+  { path: "crlf.txt", edits: [{ oldText: "", newText: "x" }] },
+  toolEnv,
+);
+const edit_missing_file = await runToolExecute(
+  editTool,
+  { path: "absent-file.txt", edits: [{ oldText: "a", newText: "b" }] },
+  toolEnv,
+);
+const edit_directory = await runToolExecute(
+  editTool,
+  { path: "out", edits: [{ oldText: "a", newText: "b" }] },
+  toolEnv,
+);
+
+const tools_execute = scrubStaging(canonical({
+  execLog,
+  requireEnvError: tools_env_error,
+  bashOk: bash_ok,
+  bashSpill: bash_spill,
+  bashNonzero: bash_nonzero,
+  bashTimeout: bash_timeout,
+  bashUnknownError: bash_unknown_error,
+  bashPrefixPrepare: bash_prefix_prepare,
+  bashTimeoutInvalid: bash_timeout_invalid,
+  bashTimeoutTooLarge: bash_timeout_too_large,
+  bashAbortedWithSignal: bash_aborted_with_signal,
+  bashAbortedWithoutSignal: bash_aborted_without_signal,
+  readBasic: read_basic,
+  readOffsetLimit: read_offset_limit,
+  readOffsetBeyond: read_offset_beyond,
+  readTruncatedLines: read_truncated_lines,
+  readHugeLine: read_huge_line,
+  readUnsupportedImage: read_unsupported_image,
+  writeBasic: write_basic,
+  writeFileBytes1,
+  writeOverwrite: write_overwrite,
+  writeFileBytes2,
+  editTwoBlocks: edit_two_blocks,
+  editMeBytes,
+  editFuzzy: edit_fuzzy,
+  fuzzyBytes,
+  editCrlf: edit_crlf,
+  crlfBytes,
+  editNotFound: edit_not_found,
+  editDuplicate: edit_duplicate,
+  editEmptyOld: edit_empty_old,
+  editNoChange: edit_no_change,
+  editMissingFile: edit_missing_file,
+  editDirectory: edit_directory,
+}));
+
+const tools_decl_and_exec = { tools_decl, tools_execute };
+
+// ─── Scenario 10: edit-diff / image / path-utils surfaces ──────────────────
+const diff_surface = canonical({
+  detectLineEnding: [
+    toolsEditDiff.detectLineEnding("a\r\nb\n"),
+    toolsEditDiff.detectLineEnding("a\nb\r\n"),
+    toolsEditDiff.detectLineEnding("no endings"),
+    toolsEditDiff.detectLineEnding("lone \r cr"),
+  ],
+  normalizeToLf: toolsEditDiff.normalizeToLF("a\r\nb\rc\nd"),
+  restoreLineEndings: toolsEditDiff.restoreLineEndings("a\nb", "\r\n"),
+  normalizeForFuzzyMatch: toolsEditDiff.normalizeForFuzzyMatch(
+    "“quoted” \u00A0 en–dash — em  \n z\u205Fw",
+  ),
+  stripBom: toolsEditDiff.stripBom("\uFEFFbody"),
+  fuzzyExact: toolsEditDiff.fuzzyFindText("abc def", "def"),
+  fuzzyFuzzy: toolsEditDiff.fuzzyFindText("x = \u201Cq\u201D;", '"q"'),
+  fuzzyMiss: toolsEditDiff.fuzzyFindText("abc", "zzz"),
+  applyTwoEdits: toolsEditDiff.applyEditsToNormalizedContent(
+    "one\ntwo\nthree\ntwo again\n",
+    [
+      { oldText: "one\ntwo", newText: "ONE\nTWO" },
+      { oldText: "three", newText: "THREE" },
+    ],
+    "f.txt",
+  ),
+  applyFuzzyOverlay: toolsEditDiff.applyEditsToNormalizedContent(
+    "x = \u201Cv\u201D ;  \ny\n",
+    [{ oldText: '"v"', newText: '"W"' }],
+    "f.txt",
+  ),
+  unifiedPatch: toolsEditDiff.generateUnifiedPatch(
+    "f.txt",
+    "keep\nchange-from\nkeep2\nkeep3\nkeep4\nkeep5\nchange-to\nkeep6\n",
+    "keep\nchange-from-edited\nkeep2\nkeep3\nkeep4\nkeep5\nchange-to\nkeep6\n",
+  ),
+  unifiedPatchNoNewline: toolsEditDiff.generateUnifiedPatch(
+    "g.txt",
+    "a\nb",
+    "a\nc",
+  ),
+  diffString: toolsEditDiff.generateDiffString(
+    "l0\nl1\nl2\nl3\nl4\nold\nl6\nl7\nl8\nl9\nl10\nnew-tail\n",
+    "l0\nl1\nl2\nl3\nl4\nNEW\nl6\nl7\nl8\nl9\nl10\nNEW-TAIL\n",
+  ),
+});
+
+const image_detect = canonical([
+  { name: "jpeg", bytes: [0xff, 0xd8, 0xff, 0xe0, 0, 5], mime: toolsImage.detectSupportedImageMimeType(new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0, 5])) },
+  { name: "jpeg-lossless", bytes: [0xff, 0xd8, 0xff, 0xf7], mime: toolsImage.detectSupportedImageMimeType(new Uint8Array([0xff, 0xd8, 0xff, 0xf7])) },
+  { name: "png", bytes: [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13, 73, 72, 68, 82], mime: toolsImage.detectSupportedImageMimeType(new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13, 73, 72, 68, 82])) },
+  { name: "png-short", bytes: [0x89, 0x50, 0x4e, 0x47], mime: toolsImage.detectSupportedImageMimeType(new Uint8Array([0x89, 0x50, 0x4e, 0x47])) },
+  { name: "png-bad-ihdr", bytes: [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 12, 73, 72, 68, 82], mime: toolsImage.detectSupportedImageMimeType(new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 12, 73, 72, 68, 82])) },
+  { name: "png-animated", bytes: [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 1, 97, 99, 84, 76, 1], mime: toolsImage.detectSupportedImageMimeType(new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 1, 97, 99, 84, 76, 1])) },
+  { name: "png-idat-first", bytes: [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13, 73, 72, 68, 82, 0, 0, 0, 5, 73, 68, 65, 84], mime: toolsImage.detectSupportedImageMimeType(new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13, 73, 72, 68, 82, 0, 0, 0, 5, 73, 68, 65, 84])) },
+  { name: "gif87a", bytes: [...Buffer.from("GIF87a")], mime: toolsImage.detectSupportedImageMimeType(new Uint8Array(Buffer.from("GIF87a"))) },
+  { name: "gif89a", bytes: [...Buffer.from("GIF89a")], mime: toolsImage.detectSupportedImageMimeType(new Uint8Array(Buffer.from("GIF89a"))) },
+  { name: "gif88a", bytes: [...Buffer.from("GIF88a")], mime: toolsImage.detectSupportedImageMimeType(new Uint8Array(Buffer.from("GIF88a"))) },
+  { name: "webp", bytes: [...Buffer.from("RIFF0000WEBPVP8 ")], mime: toolsImage.detectSupportedImageMimeType(new Uint8Array(Buffer.from("RIFF0000WEBPVP8 "))) },
+  { name: "bmp-24", bytes: [0x42, 0x4d, 46, 0, 0, 0, 0, 0, 0, 0, 54, 0, 0, 0, 40, 0, 0, 0, 1, 0, 1, 0, 1, 0, 24, 0, 0, 0], mime: toolsImage.detectSupportedImageMimeType(new Uint8Array([0x42, 0x4d, 46, 0, 0, 0, 0, 0, 0, 0, 54, 0, 0, 0, 40, 0, 0, 0, 1, 0, 1, 0, 1, 0, 24, 0, 0, 0])) },
+  { name: "bmp-bad-planes", bytes: [0x42, 0x4d, 46, 0, 0, 0, 0, 0, 0, 0, 54, 0, 0, 0, 40, 0, 0, 0, 1, 0, 1, 0, 2, 0, 24, 0, 0, 0], mime: toolsImage.detectSupportedImageMimeType(new Uint8Array([0x42, 0x4d, 46, 0, 0, 0, 0, 0, 0, 0, 54, 0, 0, 0, 40, 0, 0, 0, 1, 0, 1, 0, 2, 0, 24, 0, 0, 0])) },
+  { name: "bmp-core", bytes: [0x42, 0x4d, 0, 0, 0, 0, 0, 0, 0, 0, 26, 0, 0, 0, 12, 0, 0, 0, 1, 0, 1, 0, 1, 0, 8, 0], mime: toolsImage.detectSupportedImageMimeType(new Uint8Array([0x42, 0x4d, 0, 0, 0, 0, 0, 0, 0, 0, 26, 0, 0, 0, 12, 0, 0, 0, 1, 0, 1, 0, 1, 0, 8, 0])) },
+  { name: "bmp-truncated", bytes: [0x42, 0x4d], mime: toolsImage.detectSupportedImageMimeType(new Uint8Array([0x42, 0x4d])) },
+  { name: "empty", bytes: [], mime: toolsImage.detectSupportedImageMimeType(new Uint8Array([])) },
+  { name: "text", bytes: [...Buffer.from("plain text")], mime: toolsImage.detectSupportedImageMimeType(new Uint8Array(Buffer.from("plain text"))) },
+]);
+
+const pathEnv = {
+  ...fileSystemShim,
+  cwd: scenario10Dir,
+  // env/node.ts  resolves against the environment's cwd.
+  async absolutePath(p) {
+    return { ok: true, value: path.resolve(scenario10Dir, String(p)) };
+  },
+};
+fs.writeFileSync(path.join(scenario10Dir, "re ad.txt"), "spacey", "utf8");
+fs.writeFileSync(path.join(scenario10Dir, "photo\u202FAM.txt"), "narrow", "utf8");
+fs.writeFileSync(path.join(scenario10Dir, "apostrophe.txt"), "quote", "utf8");
+
+function scrubStaging(value) {
+  return JSON.parse(
+    JSON.stringify(value, (_key, entry) =>
+      typeof entry === "string"
+        ? entry
+            .split(scenario9Dir + path.sep)
+            .join("<scenario9>/")
+            .split(scenario9Dir)
+            .join("<scenario9>")
+            .split(scenario10Dir + path.sep)
+            .join("<scenario10>/")
+            .split(scenario10Dir)
+            .join("<scenario10>")
+        : entry,
+    ),
+  );
+}
+
+const path_utils = scrubStaging(canonical({
+  resolveToolPath: [
+    await toolsPathUtils.resolveToolPath(pathEnv, "re ad.txt", BACKGROUND),
+    await toolsPathUtils.resolveToolPath(pathEnv, "@re ad.txt", BACKGROUND),
+    await toolsPathUtils.resolveToolPath(pathEnv, "re\u00A0ad.txt", BACKGROUND),
+  ],
+  resolveReadToolPath: [
+    await toolsPathUtils.resolveReadToolPath(pathEnv, "re ad.txt", BACKGROUND),
+    await toolsPathUtils.resolveReadToolPath(pathEnv, "photo AM.txt", BACKGROUND),
+    await toolsPathUtils.resolveReadToolPath(pathEnv, "apostrophe.txt", BACKGROUND),
+    await toolsPathUtils.resolveReadToolPath(pathEnv, "missing.txt", BACKGROUND),
+  ],
+}));
+
+// ─── Scenario 11: storage conformance traces ───────────────────────────────
+const { MemoryStorage } = await import(durableUrl("storage/memory.ts"));
+const { createStorageConformance } = await import(durableUrl("testing/storage-conformance.ts"));
+
+function structuralEqual(left, right) {
+  if (left === right) return true;
+  if (typeof left === "number" && typeof right === "number") {
+    return Number.isNaN(left) && Number.isNaN(right);
+  }
+  if (left === null || right === null || typeof left !== "object" || typeof right !== "object") {
+    return false;
+  }
+  if (Array.isArray(left) !== Array.isArray(right)) return false;
+  const leftKeys = Object.keys(left);
+  const rightKeys = Object.keys(right);
+  if (leftKeys.length !== rightKeys.length) return false;
+  return leftKeys.every((key) => Object.hasOwn(right, key) && structuralEqual(left[key], right[key]));
+}
+
+function partialEqual(actual, expected) {
+  if (expected === null || typeof expected !== "object" || Array.isArray(expected)) {
+    return structuralEqual(actual, expected);
+  }
+  if (actual === null || typeof actual !== "object") return false;
+  return Object.keys(expected).every((key) =>
+    Object.hasOwn(actual, key) && partialEqual(actual[key], expected[key]),
+  );
+}
+
+function recordingAssertions(steps) {
+  const fail = () => {
+    throw new Error("conformance assertion failed");
+  };
+  // Snapshot at push time: recorded values must not change when the case
+  // later mutates a returned record (JS holds references otherwise).
+  const snapshot = (value) => (value === undefined ? null : JSON.parse(JSON.stringify(value)));
+  return {
+    ok(value, message) {
+      steps.push({ method: "ok", value, message: message ?? null });
+      if (!value) fail();
+    },
+    strictEqual(actual, expected) {
+      steps.push({ method: "strictEqual", actual: snapshot(actual), expected: snapshot(expected) });
+      if (!structuralEqual(actual, expected)) fail();
+    },
+    deepEqual(actual, expected) {
+      steps.push({ method: "deepEqual", actual: snapshot(actual), expected: snapshot(expected) });
+      if (!structuralEqual(actual, expected)) fail();
+    },
+    partialDeepEqual(actual, expected) {
+      steps.push({ method: "partialDeepEqual", actual: snapshot(actual), expected: snapshot(expected) });
+      if (!partialEqual(actual, expected)) fail();
+    },
+    greaterThan(actual, expected) {
+      steps.push({ method: "greaterThan", actual, expected });
+      if (!(actual > expected)) fail();
+    },
+    async rejects(operation, messageIncludes) {
+      let matched = false;
+      try {
+        await operation;
+      } catch (error) {
+        matched = String(error && error.message !== undefined ? error.message : error).includes(
+          messageIncludes,
+        );
+      }
+      steps.push({ method: "rejects", messageIncludes, matched });
+      if (!matched) fail();
+    },
+  };
+}
+
+const CONFORMANCE_CASES = [
+  "reserves ID 1 for the immutable root conversation",
+  "commits mixed table writes atomically and rolls all of them back on failure",
+  "detaches retained writes and every returned record",
+  "detaches prototype-like JSON keys without changing object prototypes",
+  "indexes entries committed out of ID order",
+  "continues an entry cursor below its last item after a newer commit",
+  "paginates conversations by opaque cursor in ascending ID order",
+  "filters and pages conversations by durable owner edges",
+  "replaces complete task records and pages filtered task scans",
+  "stores owners and scans waiting and completing tasks by status",
+  "indexes logical addresses and exact-scope scans independently",
+  "keeps one global record ID namespace and rejects exhausted ID minting",
+  "rejects every operation after close",
+];
+
+const testing_conformance = [];
+for (const name of CONFORMANCE_CASES) {
+  const steps = [];
+  let error = null;
+  try {
+    const storage = new MemoryStorage();
+    const cases = createStorageConformance({
+      assertions: recordingAssertions(steps),
+      withStorage: async (use) => {
+        await use(storage);
+      },
+    });
+    const testCase = cases.find((candidate) => candidate.name === name);
+    if (!testCase) throw new Error(`missing conformance case: ${name}`);
+    await testCase.run();
+  } catch (thrown) {
+    error = thrown.message;
+  }
+  testing_conformance.push({ name, steps: JSON.parse(JSON.stringify(canonical(steps))), error });
+}
+
+// ─── Scenario 12: storage benchmark seeders and tables ─────────────────────
+const bench = await import(durableUrl("testing/storage-benchmark.ts"));
+const TINY_SCALE = { name: "tiny", entryCount: 8, taskCount: 6, documentCount: 4 };
+
+const benchStorage = new MemoryStorage();
+const benchDataset = await bench.seedStorageBenchmark(benchStorage, TINY_SCALE);
+const testing_benchmark = {
+  memoryScales: canonical(bench.STORAGE_MEMORY_SCALES),
+  timingScale: canonical(bench.TIMING_SCALE),
+  primaryRecordCounts: {
+    scale1k: bench.storageBenchmarkPrimaryRecordCount(bench.STORAGE_MEMORY_SCALES[0]),
+    timing: bench.storageBenchmarkPrimaryRecordCount(bench.TIMING_SCALE),
+    tiny: bench.storageBenchmarkPrimaryRecordCount(TINY_SCALE),
+  },
+  dataset: canonical({
+    firstEntryId: benchDataset.firstEntryId,
+    filteredTaskCount: benchDataset.filteredTaskCount,
+    exactDocumentId: benchDataset.exactDocumentId,
+    exactDocumentKey: benchDataset.exactDocumentKey,
+    replayDocumentIds: Object.fromEntries(
+      Object.entries(benchDataset.replayDocumentIds).map(([tail, id]) => [tail, id]),
+    ),
+    historicalDocumentId: benchDataset.historicalDocumentId,
+    ancientAt: benchDataset.ancientAt,
+    recentAt: benchDataset.recentAt,
+    deepestConversationId: benchDataset.deepestConversationId,
+    ancestorHeadEntryId: benchDataset.ancestorHeadEntryId,
+  }),
+  readBenchmarks: [],
+  writeBenchmarks: [],
+};
+for (const readBenchmark of bench.STORAGE_READ_BENCHMARKS) {
+  testing_benchmark.readBenchmarks.push({
+    name: readBenchmark.name,
+    run: await readBenchmark.run(benchStorage, benchDataset),
+    expected: readBenchmark.expected(benchDataset),
+  });
+}
+const writeStorage = new MemoryStorage();
+await bench.seedStorageWriteBenchmark(writeStorage);
+for (const writeBenchmark of bench.STORAGE_WRITE_BENCHMARKS) {
+  testing_benchmark.writeBenchmarks.push({
+    name: writeBenchmark.name,
+    expected: writeBenchmark.expected,
+    run: await writeBenchmark.run(writeStorage),
+  });
+}
+
+const oracle = { commit_bytes, document_bytes, read_after_write, harness_docs, prompt_plan, output_bound, scheduler_grids, submissions_state, tools_decl_and_exec, diff_surface, image_detect, path_utils, testing_conformance, testing_benchmark };
 
 // ─── Emit ───────────────────────────────────────────────────────────────────
 const outDir = fileURLToPath(new URL(".", import.meta.url));

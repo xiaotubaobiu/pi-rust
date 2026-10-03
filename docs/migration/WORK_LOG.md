@@ -2663,3 +2663,10 @@ WORK_LOG追加前缀：386287 bytes / cadeaf51fe906e35a1531ffc26058289e7d44c061d
 - D6 (died at inactivity) + F4 landed sqlite backend (rusqlite =0.32.1 bundled; database/migrations/node/storage) + documentState/view state() (D24) and fixed TWO same-thread self-deadlocks F4 instrumented out: (1) node.rs transaction held the connection Mutex across the callback while the core re-enters (replaced with per-thread re-entrant ConnectionGate + RAII lease; connection guard dropped between BEGIN/COMMIT), (2) storage.rs commit re-locked state() inside a place-expression temporary (single-guard scope). 13 pre-existing WIP clippy errors in durable cleared.
 - durable suite 29/0 (0.09s); whole-lib serial 5426/0; clippy 0; fmt clean.
 - Remaining (only optional items): durable tools/** (11 files), testing/** (6 files).
+
+## 2026-10-02 wave-9d: pi-durable tools + testing — PACKAGE COMPLETE
+- D7 (inactivity-killed at ~100%, work verified green) landed durable/tools (11 files: bash/edit/edit_diff/env/file_mutation_queue/image/read/write/path_utils + oracle) and durable/testing (7 files: assertions/runner/storage_benchmark/storage_conformance/types). 7555 lines.
+- durable suite 36/0; whole-lib serial 5433/0; clippy 0; fmt clean.
+- pi-durable: ALL 57 upstream files ported across 4 phases (9a types/storage/session, 9b env/tasks/truncate/harness-foundations, 9c harness-complete/sqlite, 9d tools/testing). Divergences D1-D30 disclosed in module docs.
+- UPSTREAM DELTA MIGRATION IS COMPLETE: every package (tui/ai/agent/chord/protocol/client/server/telemetry/coding-agent/mcp/codemode/durable) now matches pi@2bbfcca43 (v0.99.1).
+- Next: close-out (WSL unix-cfg gate, CI double-green, README/version v0.2.0, tag + 4-platform release).

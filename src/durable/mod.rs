@@ -77,6 +77,8 @@ pub mod json;
 pub mod session;
 pub mod storage;
 pub mod tasks;
+pub mod testing;
+pub mod tools;
 pub mod truncate;
 pub mod types;
 pub mod util;
