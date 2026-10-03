@@ -30,6 +30,9 @@
 //!   `start()`. Post-spawn child errors do not exist in the Rust model (the
 //!   exit status is observed by the watcher task).
 
+// Only the Windows kill-tree helper needs `PathBuf`; the unix path shells
+// out to the external `kill` binary instead.
+#[cfg(windows)]
 use std::path::PathBuf;
 use std::process::Stdio;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -205,7 +208,8 @@ impl StdioTransport {
         // the server's children too.
         #[cfg(unix)]
         {
-            use std::os::unix::process::CommandExt;
+            // `tokio::process::Command` exposes `process_group` natively on
+            // unix (no std `CommandExt` import needed).
             command.process_group(0);
         }
 

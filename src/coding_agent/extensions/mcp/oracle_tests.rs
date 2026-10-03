@@ -452,12 +452,19 @@ fn oracle_config_load() {
                     loaded.errors[0]
                 );
             } else {
+                // The capture ran on Windows (`<root>\...`); compare
+                // separator-agnostically.
                 let mine: Vec<String> = loaded
                     .errors
                     .iter()
                     .map(|error| substitute(error.clone(), &base.to_string_lossy(), "<root>"))
+                    .map(|error| error.replace('\\', "/"))
                     .collect();
-                assert_eq!(mine, oracle_errors, "errors of {}", case.name);
+                let oracle_normalized: Vec<String> = oracle_errors
+                    .iter()
+                    .map(|error| error.replace('\\', "/"))
+                    .collect();
+                assert_eq!(mine, oracle_normalized, "errors of {}", case.name);
             }
         }
 
@@ -479,8 +486,14 @@ fn oracle_config_load() {
             });
             assert_eq!(mine_scope, oracle_scope, "scope of {}", case.name);
             let mine_source = substitute(mine.source.clone(), &base.to_string_lossy(), "<root>");
+            // The capture ran on a Windows host (`<root>\...`); compare
+            // separator-agnostically.
             assert_eq!(
-                mine_source, oracle_server["source"],
+                mine_source.replace('\\', "/"),
+                oracle_server["source"]
+                    .as_str()
+                    .expect("source is a string")
+                    .replace('\\', "/"),
                 "source of {}",
                 case.name
             );
@@ -585,8 +598,10 @@ fn oracle_config_update() {
     .unwrap_err();
     let oracle_error = oracle["update_missing"].as_str().unwrap();
     assert_eq!(
-        substitute(error, &base.to_string_lossy(), "<root>"),
-        oracle_error
+        // The capture ran on Windows (`<root>\...`); compare separators
+        // normalized to forward slashes.
+        substitute(error, &base.to_string_lossy(), "<root>").replace('\\', "/"),
+        oracle_error.replace('\\', "/")
     );
     let broken = base.join("broken.json");
     std::fs::write(&broken, "[]").unwrap();
@@ -598,8 +613,10 @@ fn oracle_config_update() {
     .unwrap_err();
     let oracle_error = oracle["update_broken"].as_str().unwrap();
     assert_eq!(
-        substitute(error, &base.to_string_lossy(), "<root>"),
-        oracle_error
+        // The capture ran on Windows (`<root>\...`); compare separators
+        // normalized to forward slashes.
+        substitute(error, &base.to_string_lossy(), "<root>").replace('\\', "/"),
+        oracle_error.replace('\\', "/")
     );
 
     // d) add (creates directories), replace, remove.

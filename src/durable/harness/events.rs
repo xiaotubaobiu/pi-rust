@@ -381,10 +381,10 @@ pub fn translate(
                     tasks.push(value.clone());
                 }
             }
-            CommitChange::Table(TableCommitChange::Submission { value }) => {
-                if value.conversation_id == conversation_id {
-                    submissions.push(value.clone());
-                }
+            CommitChange::Table(TableCommitChange::Submission { value })
+                if value.conversation_id == conversation_id =>
+            {
+                submissions.push(value.clone());
             }
             _ => {}
         }

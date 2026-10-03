@@ -594,12 +594,15 @@ async fn stdio_spawn_failure_matches_the_capture() {
     let transport = crate::mcp::transports::StdioTransport::new(options);
     let error = transport.start().await.expect_err("spawn fails");
     // Upstream surfaces the spawn error from `start()` (ENOENT); Rust reports
-    // the OS program-not-found error with the same shape.
+    // the OS program-not-found error with the same shape ("The system cannot
+    // find the file specified" on Windows, "No such file or directory" on
+    // unix) — match case-insensitively.
     let message = error.to_string();
+    let lowered = message.to_ascii_lowercase();
     assert!(
-        message.contains("not found")
-            || message.contains("no such file")
-            || message.contains("cannot find"),
+        lowered.contains("not found")
+            || lowered.contains("no such file")
+            || lowered.contains("cannot find"),
         "spawn failure should mention the missing program: {message}"
     );
     // The capture's `startedFlag: true`: the started flag is set before the

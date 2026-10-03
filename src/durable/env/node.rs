@@ -94,10 +94,8 @@ fn home_dir() -> PathBuf {
 fn file_url_to_path(url: &str) -> Option<PathBuf> {
     let rest = url.strip_prefix("file://")?;
     // Strip the authority (empty or localhost), then percent-decode.
-    let (authority, path) = match rest.find('/') {
-        Some(index) => (&rest[..index], &rest[index..]),
-        None => return None,
-    };
+    let index = rest.find('/')?;
+    let (authority, path) = (&rest[..index], &rest[index..]);
     if !authority.is_empty() && !authority.eq_ignore_ascii_case("localhost") {
         return None;
     }

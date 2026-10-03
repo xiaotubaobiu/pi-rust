@@ -6,7 +6,7 @@
 
 行为级完全兼容（drop-in compatible）——session 文件、`auth.json`、keybindings/themes/skills、JSON 输出、RPC 协议、扩展 API 与上游一致，可互相操作。不是源码逐行翻译（跨语言不存在），而是同架构哲学、同外部行为的全新实现。
 
-规模：824 个 Rust 源文件、约 52.7 万行；5,136 项测试全部通过。
+规模：约 88 万行 Rust；5,457 项测试全部通过（Windows + Linux 双平台门禁）。
 
 ## 构建
 
@@ -46,7 +46,16 @@
 
 支持 `--provider`：anthropic、openai-compat、openai-responses、azure-openai-responses、openai-codex、google、google-vertex、mistral、amazon-bedrock、pi-messages。
 
-会话内支持 `/model`、`/settings`、`/compact`、`/export`、`/share`、`/tree`、`/session` 等命令，扩展系统、skills、hooks、themes、keybindings 均可用。
+会话内支持 `/model`、`/settings`、`/compact`、`/export`、`/share`、`/tree`、`/session`、`/bug` 等命令，扩展系统、skills、hooks、themes、keybindings 均可用。
+
+### 与上游 v0.99 同代的能力
+
+- **MCP 客户端**：stdio / streamable-HTTP 传输、OAuth（动态客户端注册 + 回环回调）、`mcp.json` 配置、`/mcp` 管理、tool/resources/prompts 暴露策略（direct/deferred/codemode/hidden）。
+- **codemode**：内嵌 QuickJS（quickjs-ng）沙箱，模型可以用 JavaScript 组合调用工具（`searchTools`、命名空间、延迟加载）。
+- **tool-search**：BM25 工具检索与延迟加载。
+- **system 主题**：从终端回读的背景/调色板实时生成 OKHSL 配色（对比度规则引擎），支持浅色/深色终端与灰度首帧。
+- **pi-durable**：持久执行库（JSONL/内存/SQLite 存储、fork/事务/观察、调度器与 harness）。
+- **System One / llama.cpp 分类器**、ChatGPT/Meta OAuth 新流程、指数退避重试。
 
 ## 平台支持
 
@@ -67,7 +76,7 @@ A full rewrite of the [Pi Agent Harness](https://github.com/earendil-works/pi) i
 
 Behaviorally drop-in compatible — session files, `auth.json`, keybindings/themes/skills, JSON output, the RPC protocol and the extension API all interoperate with upstream. Not a line-by-line translation (impossible across languages), but a fresh implementation with the same architecture and identical external behavior.
 
-Scale: 824 Rust source files, ~527k lines; 5,136 tests, all passing.
+Scale: ~880k lines of Rust; 5,457 tests, all passing (gates verified on both Windows and Linux).
 
 ## Build
 
@@ -107,7 +116,16 @@ Credentials are stored in `auth.json` (upstream-pi format; default path: `%APPDA
 
 Supported `--provider`: anthropic, openai-compat, openai-responses, azure-openai-responses, openai-codex, google, google-vertex, mistral, amazon-bedrock, pi-messages.
 
-In-session commands: `/model`, `/settings`, `/compact`, `/export`, `/share`, `/tree`, `/session` and more. Extensions, skills, hooks, themes and custom keybindings all work.
+In-session commands: `/model`, `/settings`, `/compact`, `/export`, `/share`, `/tree`, `/session`, `/bug` and more. Extensions, skills, hooks, themes and custom keybindings all work.
+
+### Capabilities current with upstream v0.99
+
+- **MCP client**: stdio / streamable-HTTP transports, OAuth (dynamic client registration + loopback callback), `mcp.json` config, `/mcp` management, tool/resources/prompts exposure policies (direct/deferred/codemode/hidden).
+- **codemode**: an embedded QuickJS (quickjs-ng) sandbox where the model composes tool calls in JavaScript (`searchTools`, namespaces, deferred loading).
+- **tool-search**: BM25 tool retrieval with deferred loading.
+- **system theme**: live OKHSL palette generation from the terminal's reported background/palette (contrast-rule engine), light/dark terminals, grayscale first frame.
+- **pi-durable**: the durable-execution library (JSONL/memory/SQLite storage, forks/transactions/observations, scheduler + harness).
+- **System One / llama.cpp classifiers**, the ChatGPT/Meta OAuth flows, exponential-backoff retries.
 
 ## Platform support
 

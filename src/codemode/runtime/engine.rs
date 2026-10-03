@@ -925,10 +925,7 @@ fn run_context<'js>(
 
     // Host → VM settle messages (upstream `parentPort.on("message")`). The
     // loop ends when the host finishes the execution (worker terminated).
-    loop {
-        let Ok(message) = settle_rx.recv() else {
-            break;
-        };
+    while let Ok(message) = settle_rx.recv() {
         let payload = match &message.payload {
             Some(payload) => {
                 let string = rquickjs::String::from_str(ctx.clone(), payload)

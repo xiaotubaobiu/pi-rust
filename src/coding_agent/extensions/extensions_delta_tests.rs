@@ -1821,8 +1821,10 @@ fn synthetic_source_info() {
         Some("<inline:named>"),
     )
     .unwrap();
-    // Windows separators on the capture host; the port uses the same shape.
-    let file_path = format!("{CWD}\\file-ext.ts");
+    // Windows separators on the capture host; the port replays the same
+    // relative shape with the host separator (the normalize step below maps
+    // the capture's `<root>\file-ext.ts` onto either).
+    let file_path = format!("{CWD}{}file-ext.ts", std::path::MAIN_SEPARATOR_STR);
     let local = load_extension_from_factory(
         Arc::new(|_pi| Ok(())),
         CWD,
