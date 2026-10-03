@@ -230,6 +230,7 @@
  "commands": [
   {
    "text": "/",
+   "cursor": 1,
    "prefix": "/",
    "items": [
     {
@@ -261,6 +262,7 @@
   },
   {
    "text": "/d",
+   "cursor": 2,
    "prefix": "/d",
    "items": [
     {
@@ -282,6 +284,7 @@
   },
   {
    "text": "/de",
+   "cursor": 3,
    "prefix": "/de",
    "items": [
     {
@@ -298,6 +301,7 @@
   },
   {
    "text": "/skill",
+   "cursor": 6,
    "prefix": "/skill",
    "items": [
     {
@@ -319,6 +323,7 @@
   },
   {
    "text": "/skill:",
+   "cursor": 7,
    "prefix": "/skill:",
    "items": [
     {
@@ -340,6 +345,7 @@
   },
   {
    "text": "/skill:d",
+   "cursor": 8,
    "prefix": "/skill:d",
    "items": [
     {
@@ -356,6 +362,7 @@
   },
   {
    "text": "/b",
+   "cursor": 2,
    "prefix": "/b",
    "items": [
     {
@@ -367,8 +374,147 @@
   },
   {
    "text": "/z",
+   "cursor": 2,
    "prefix": null,
    "items": null
+  },
+  {
+   "text": " /b",
+   "cursor": 3,
+   "prefix": "/b",
+   "items": [
+    {
+     "value": "build",
+     "label": "build",
+     "description": "[target]"
+    }
+   ]
+  },
+  {
+   "text": "  /sk",
+   "cursor": 5,
+   "prefix": "/sk",
+   "items": [
+    {
+     "value": "skill:deploy",
+     "label": "skill:deploy",
+     "description": "deploy the service"
+    },
+    {
+     "value": "skill:diagnose",
+     "label": "skill:diagnose",
+     "description": "diagnose failures"
+    },
+    {
+     "value": "skill:other",
+     "label": "skill:other",
+     "description": "unrelated"
+    }
+   ]
+  },
+  {
+   "text": "\t/d",
+   "cursor": 3,
+   "prefix": "/d",
+   "items": [
+    {
+     "value": "skill:deploy",
+     "label": "skill:deploy",
+     "description": "deploy the service"
+    },
+    {
+     "value": "skill:diagnose",
+     "label": "skill:diagnose",
+     "description": "diagnose failures"
+    },
+    {
+     "value": "build",
+     "label": "build",
+     "description": "[target]"
+    }
+   ]
+  },
+  {
+   "text": " /b",
+   "cursor": 1,
+   "prefix": "",
+   "items": [
+    {
+     "value": "\"Folder Names/\"",
+     "label": "Folder Names/",
+     "description": null
+    },
+    {
+     "value": "sub/",
+     "label": "sub/",
+     "description": null
+    },
+    {
+     "value": "z-last/",
+     "label": "z-last/",
+     "description": null
+    },
+    {
+     "value": "app.js",
+     "label": "app.js",
+     "description": null
+    },
+    {
+     "value": "readme.md",
+     "label": "readme.md",
+     "description": null
+    }
+   ]
+  },
+  {
+   "text": " /b x",
+   "cursor": 3,
+   "prefix": "/b",
+   "items": [
+    {
+     "value": "build",
+     "label": "build",
+     "description": "[target]"
+    }
+   ]
+  },
+  {
+   "text": "no slash",
+   "cursor": 8,
+   "prefix": null,
+   "items": null
+  },
+  {
+   "text": " /",
+   "cursor": 2,
+   "prefix": "/",
+   "items": [
+    {
+     "value": "skill:deploy",
+     "label": "skill:deploy",
+     "description": "deploy the service"
+    },
+    {
+     "value": "skill:diagnose",
+     "label": "skill:diagnose",
+     "description": "diagnose failures"
+    },
+    {
+     "value": "build",
+     "label": "build",
+     "description": "[target]"
+    },
+    {
+     "value": "review",
+     "label": "review",
+     "description": null
+    },
+    {
+     "value": "skill:other",
+     "label": "skill:other",
+     "description": "unrelated"
+    }
+   ]
   }
  ],
  "suggestions": [
@@ -417,10 +563,10 @@
   }
  ],
  "provenance": {
-  "autocompleteSha256": "609b8ff2149e6e78e3bbc49c04d75016960b604a80702acfec59d40bbe32244d",
-  "utilsSha256": "5ecbc6c9b4850e78bf19de1fe8859b99b9c4c5f8a6384728d255a8e7e8a610ee",
+  "autocompleteSha256": "7391902f35b60c3467ceb5eccc86e0954a388ea1012455c1a7ea8f7325de773b",
+  "utilsSha256": "258ff73a0ff4d2b05f8a60515a9cc37eb96c9fc03a4072ac6db2906cad1862d9",
   "fuzzySha256": "0ae2bedc6a4f043d875ec415202a6e3d9e45405741359d7d2dc2855240dff633",
-  "node": "v25.8.2",
+  "node": "v22.14.0",
   "platform": "win32"
  }
 }

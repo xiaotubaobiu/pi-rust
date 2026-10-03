@@ -62,8 +62,8 @@ use crate::ai::api::openai_completions::request::{
 };
 use crate::ai::api::pi_user_agent;
 use crate::ai::transcript::{
-    get_current_tools, get_declared_tools, get_initial_system_message, get_system_message_text,
-    has_tool_redefinitions, resolve_transcript, TranscriptContext,
+    get_current_tools, get_initial_system_message, get_system_message_text, resolve_transcript,
+    TranscriptContext,
 };
 use crate::ai::types::message::{
     AssistantBlock, Message, StringOrBlocks, TextOrImageBlock, ToolResultMessage,
@@ -73,6 +73,10 @@ use crate::ai::types::primitives::{CacheRetention, ThinkingBudgets, ThinkingLeve
 use crate::ai::types::tool::Tool;
 use crate::ai::types::Model;
 use crate::ai::ProviderConfig;
+
+/// The v1.0.0 `convertToolDefinitions` closure handed to `convertMessages`.
+type ConvertToolDefinitionsFn<'a> = dyn Fn(&[Tool]) -> Result<Vec<Value>, String> + 'a;
+type ConvertToolDefinitions<'a> = Box<ConvertToolDefinitionsFn<'a>>;
 
 /// The pure output of [`build_request`]: the JSON request body and the ordered
 /// header pairs from `buildParams` + `createClient`. The body retains SDK
@@ -213,7 +217,9 @@ const INTERLEAVED_THINKING_BETA: &str = "interleaved-thinking-2025-05-14";
 const SERVER_SIDE_FALLBACK_BETA: &str = "server-side-fallback-2026-07-01";
 const MID_CONVERSATION_OUTPUT_CONFIG_BETA: &str = "mid-conversation-output-config-2026-07-01";
 const THINKING_BINDING_CONTROLS_BETA: &str = "thinking-binding-controls-2026-08-01";
-const MID_CONVERSATION_TOOL_CHANGES_BETA: &str = "mid-conversation-tool-changes-2026-07-01";
+/// v1.0.0: the mid-conversation tool-changes beta became the inline-tools
+/// beta (`tool_addition` blocks carry inline tool definitions).
+const INLINE_TOOLS_BETA: &str = "inline-tools-2026-09-15";
 
 /// Claude Code identity for OAuth requests (anthropic-messages.ts:87, 1082).
 const CLAUDE_CODE_VERSION: &str = "2.1.280";
@@ -515,7 +521,7 @@ fn get_beta_features(
         features.push(THINKING_BINDING_CONTROLS_BETA.to_string());
     }
     if native_tool_changes {
-        features.push(MID_CONVERSATION_TOOL_CHANGES_BETA.to_string());
+        features.push(INLINE_TOOLS_BETA.to_string());
     }
     // `[...new Set(features)]`.
     let mut unique: Vec<String> = Vec::new();
@@ -710,24 +716,34 @@ fn build_params(
     let initial_tools = initial_system_message
         .and_then(|message| message.tools_added.clone())
         .unwrap_or_default();
-    // Native tool changes reference tools by name, so a redefined name cannot
-    // be expressed, and Anthropic rejects an all-deferred tool list (lines
-    // 1047-1055).
+    // Native tool changes keep the request-level tool list fixed and define
+    // every later tool by value in a `tool_addition` block, which also
+    // expresses same-name redefinitions (v1.0.0). Anthropic rejects an
+    // all-deferred tool list, so there must be an initial active tool to
+    // anchor the placeholder.
     let native_tool_changes = compat.supports_mid_convo_system_messages
         && compat.supports_mid_convo_tool_changes
-        && !initial_tools.is_empty()
-        && !has_tool_redefinitions(context.messages());
+        && !initial_tools.is_empty();
     let managed_provider = compat
         .supports_mid_convo_effort
         .then_some(model.provider.as_str());
+    // Converts tool definitions for native `tool_addition` blocks; `None`
+    // when tool changes are not native.
+    let convert_tool_definitions: Option<ConvertToolDefinitions<'_>> = if native_tool_changes {
+        Some(Box::new(move |tools: &[Tool]| {
+            convert_tools(tools, is_oauth, compat, None)
+        }))
+    } else {
+        None
+    };
     let converted = convert_messages(
         conversation_messages,
         is_oauth,
         cache_control.as_ref(),
         compat.allow_empty_signature,
         managed_provider,
-        native_tool_changes,
-    );
+        convert_tool_definitions.as_deref(),
+    )?;
     let active_effort = options.effort.map_or("high", AnthropicEffort::as_str);
     let beta_features = get_beta_features(
         model,
@@ -797,16 +813,11 @@ fn build_params(
         None
     };
     if native_tool_changes {
-        // Initial tools stay active with the cache breakpoint on the last one;
-        // every later declaration is deferred (lines 1115-1137).
-        let initial_names: HashSet<&str> = initial_tools
-            .iter()
-            .map(|tool| tool.name.as_str())
-            .collect();
-        let later_tools: Vec<Tool> = get_declared_tools(context.messages())
-            .into_iter()
-            .filter(|tool| !initial_names.contains(tool.name.as_str()))
-            .collect();
+        // Initial tools stay active with the cache breakpoint on the last one,
+        // followed by the placeholder. The list never changes afterwards: later
+        // tools are defined by value in `tool_addition` blocks and withdrawn by
+        // `tool_removal`, so the cached prefix survives every tool change
+        // (lines 1203-1220).
         let mut tools = convert_tools(
             &initial_tools,
             is_oauth,
@@ -814,13 +825,6 @@ fn build_params(
             tool_cache_control.as_ref(),
         )?;
         tools.push(deferred_tool_placeholder());
-        for tool in convert_tools(&later_tools, is_oauth, compat, None)? {
-            let mut tool = tool;
-            if let Some(object) = tool.as_object_mut() {
-                object.insert("defer_loading".into(), json!(true));
-            }
-            tools.push(tool);
-        }
         params.insert("tools".into(), Value::Array(tools));
     } else {
         let tools = get_current_tools(context.messages());
@@ -1083,15 +1087,17 @@ fn convert_assistant_blocks(
     blocks
 }
 
-/// Upstream `convertMessages` (lines 1226-1428).
+/// Upstream `convertMessages` (lines 1226-1428). `convert_tool_definitions`
+/// (v1.0.0) converts tool definitions for native `tool_addition` blocks;
+/// `None` when tool changes are not native.
 fn convert_messages(
     messages: &[Message],
     is_oauth: bool,
     cache_control: Option<&Value>,
     allow_empty_signature: bool,
     managed_provider: Option<&str>,
-    native_tool_changes: bool,
-) -> ConvertedAnthropicMessages {
+    convert_tool_definitions: Option<&ConvertToolDefinitionsFn>,
+) -> Result<ConvertedAnthropicMessages, String> {
     let mut params: Vec<Value> = Vec::new();
     let mut assistant_levels: HashMap<usize, String> = HashMap::new();
     // Later system messages are held back and emitted directly before the next
@@ -1108,17 +1114,25 @@ fn convert_messages(
                 if !text.is_empty() {
                     blocks.push(json!({"type": "text", "text": text}));
                 }
-                if native_tool_changes {
+                if let Some(convert_tool_definitions) = convert_tool_definitions {
+                    let added: Vec<Tool> = system.tools_added.clone().unwrap_or_default();
+                    let redefined: HashSet<&str> =
+                        added.iter().map(|tool| tool.name.as_str()).collect();
                     for tool in system.tools_removed.iter().flatten() {
+                        // A new definition under the same name replaces the
+                        // old one, so no removal is needed (v1.0.0).
+                        if redefined.contains(tool.name.as_str()) {
+                            continue;
+                        }
                         blocks.push(json!({
                             "type": "tool_removal",
                             "tool": {"type": "tool_reference", "name": if is_oauth { to_claude_code_name(&tool.name) } else { tool.name.clone() }}
                         }));
                     }
-                    for tool in system.tools_added.iter().flatten() {
+                    for definition in convert_tool_definitions(&added)? {
                         blocks.push(json!({
                             "type": "tool_addition",
-                            "tool": {"type": "tool_reference", "name": if is_oauth { to_claude_code_name(&tool.name) } else { tool.name.clone() }}
+                            "tool": {"type": "tool_definition", "definition": definition}
                         }));
                     }
                 }
@@ -1192,10 +1206,10 @@ fn convert_messages(
         add_cache_control_to_last_message(&mut params, marker);
     }
 
-    ConvertedAnthropicMessages {
+    Ok(ConvertedAnthropicMessages {
         messages: params,
         assistant_levels,
-    }
+    })
 }
 
 /// Upstream lines 1399-1425.
@@ -2334,7 +2348,7 @@ mod tests {
     }
 
     #[test]
-    fn native_tool_changes_defer_later_declarations() {
+    fn native_tool_changes_define_later_tools_inline() {
         let model = make_model(json!({
             "supportsMidConvoSystemMessages": true,
             "supportsMidConvoToolChanges": true
@@ -2358,8 +2372,11 @@ mod tests {
         };
         let assembly = build(&model, &ctx, &options);
 
-        // Initial tools stay active, the placeholder anchors deferred loading,
-        // and later declarations are deferred (upstream lines 1115-1137).
+        // Initial tools stay active with the cache breakpoint on the last one,
+        // followed by the placeholder. The list never changes afterwards: later
+        // tools are defined by value in `tool_addition` blocks and withdrawn by
+        // `tool_removal`, so the cached prefix survives every tool change
+        // (upstream lines 1203-1220).
         assert_eq!(
             assembly.body["tools"],
             json!([
@@ -2378,34 +2395,32 @@ mod tests {
                     "description": "Reserved placeholder. Never available. Never call this.",
                     "input_schema": {"type": "object", "properties": {}, "required": []},
                     "defer_loading": true
-                },
-                {
-                    "name": "store",
-                    "description": "Tool store",
-                    "eager_input_streaming": true,
-                    "input_schema": {
-                        "type": "object",
-                        "properties": {"value": {"type": "string"}},
-                        "required": ["value"]
-                    },
-                    "defer_loading": true
                 }
             ])
         );
-        // The later system message carries its addition in place, held back
-        // until the next assistant message.
+        // The later system message carries the inline tool definition in place,
+        // held back until the next assistant message.
         assert_eq!(
             assembly.body["messages"],
             json!([
                 {"role": "user", "content": "hi"},
                 {"role": "system", "content": [{"type": "text", "text": "More."}, {
                     "type": "tool_addition",
-                    "tool": {"type": "tool_reference", "name": "store"}
+                    "tool": {"type": "tool_definition", "definition": {
+                        "name": "store",
+                        "description": "Tool store",
+                        "eager_input_streaming": true,
+                        "input_schema": {
+                            "type": "object",
+                            "properties": {"value": {"type": "string"}},
+                            "required": ["value"]
+                        }
+                    }}
                 }]},
                 {"role": "assistant", "content": [{"type": "text", "text": "answer"}]}
             ])
         );
-        assert!(betas(&assembly).contains(&"mid-conversation-tool-changes-2026-07-01".to_string()));
+        assert!(betas(&assembly).contains(&"inline-tools-2026-09-15".to_string()));
     }
 
     #[test]

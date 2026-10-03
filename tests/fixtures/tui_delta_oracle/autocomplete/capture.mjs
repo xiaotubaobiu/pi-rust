@@ -74,6 +74,20 @@ for (const text of ["/", "/d", "/de", "/skill", "/skill:", "/skill:d", "/b", "/z
   const suggestions = await skillProvider.getSuggestions([text], 0, text.length, { signal: signal(), force: false });
   out.commands.push({
     text,
+    cursor: text.length,
+    prefix: suggestions?.prefix ?? null,
+    items: suggestions?.items?.map((item) => ({ value: item.value, label: item.label, description: item.description ?? null })) ?? null,
+  });
+}
+
+// v1.0.0: slash commands complete after leading whitespace; the returned
+// prefix starts at the `/` so replacement splices cleanly. The cursor column
+// counts code points.
+for (const [text, cursor] of [[" /b", 3], ["  /sk", 5], ["\t/d", 3], [" /b", 1], [" /b x", 3], ["no slash", 8], [" /", 2]]) {
+  const suggestions = await skillProvider.getSuggestions([text], 0, cursor, { signal: signal(), force: false });
+  out.commands.push({
+    text,
+    cursor,
     prefix: suggestions?.prefix ?? null,
     items: suggestions?.items?.map((item) => ({ value: item.value, label: item.label, description: item.description ?? null })) ?? null,
   });

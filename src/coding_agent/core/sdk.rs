@@ -368,6 +368,9 @@ pub async fn create_agent_session(
         .tools
         .clone()
         .or_else(|| (options.no_tools == Some(NoTools::All)).then(Vec::new));
+    // Upstream `usesDefaultTools: options.tools === undefined && !options.noTools`
+    // — whether the initial tools came from the `defaultTools` setting.
+    let tools_used = options.tools.is_some();
     let active = options
         .tools
         .unwrap_or_else(|| {
@@ -578,6 +581,8 @@ pub async fn create_agent_session(
         custom_tools: options.custom_tools,
         model_runtime,
         initial_active_tool_names: Some(active),
+        // Upstream `usesDefaultTools: options.tools === undefined && !options.noTools`.
+        uses_default_tools: Some(!tools_used && options.no_tools.is_none()),
         allowed_tool_names: allowed,
         excluded_tool_names: options.exclude_tools,
         base_tools_override: vec![],

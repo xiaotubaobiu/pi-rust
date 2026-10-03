@@ -154,6 +154,7 @@ fn create_connection(
         cwd: options.cwd.clone(),
         create_transport: Arc::new(create_default_transport),
         credentials,
+        provider_token: None,
         on_tools: Arc::new(|_| {}),
         on_change: None,
         log: Some(log),
@@ -380,7 +381,7 @@ pub async fn run_mcp_command(args: &[String], options: &McpCommandOptions) -> i3
                 return 1;
             };
             if command == "logout" {
-                let removed = credentials.remove(&url).await;
+                let removed = credentials.remove(name, &url).await;
                 let message = if removed {
                     format!("Signed out of MCP server \"{name}\".")
                 } else {
@@ -933,7 +934,7 @@ async fn login(
     });
     let result = sign_in_mcp_server(
         url,
-        credentials.for_server(url),
+        credentials.for_server(name, url),
         connection.oauth_settings(),
         connection.challenge(),
         prompt,

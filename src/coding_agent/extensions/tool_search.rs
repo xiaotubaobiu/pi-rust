@@ -38,8 +38,7 @@ use serde_json::{json, Value};
 
 use super::loader::ExtensionApi;
 use super::types::{
-    ExtensionContext, HandlerError, ToolDefinition, ToolExposure, ToolInfo, ToolLoadout,
-    ToolLoadoutChanges, ToolNamespace,
+    ExtensionContext, HandlerError, ToolDefinition, ToolExposure, ToolInfo, ToolNamespace,
 };
 
 pub const TOOL_SEARCH_TOOL_NAME: &str = "tool_search";
@@ -428,34 +427,10 @@ fn search_and_load(
         .collect()
 }
 
-/// The `tool_search` description. `sources` lists the namespaces whose tools
-/// can be found, with their descriptions (upstream
-/// `createToolSearchDescription`).
-pub fn create_tool_search_description(sources: &[ToolNamespace]) -> String {
-    let listed = if sources.is_empty() {
-        "None currently enabled.".to_string()
-    } else {
-        sources
-            .iter()
-            .map(|source| {
-                let description = source
-                    .description
-                    .as_deref()
-                    .map(|text| first_line(text.trim()))
-                    .unwrap_or_default();
-                if description.is_empty() {
-                    format!("- {}", source.name)
-                } else {
-                    format!("- {name}: {description}", name = source.name)
-                }
-            })
-            .collect::<Vec<_>>()
-            .join("\n")
-    };
-    format!(
-        "# Tool discovery\n\nSearches over deferred tool metadata with BM25 and exposes matching tools for the next model call.\n\nYou have access to tools from the following sources:\n{listed}\n\nSome of the tools may not have been provided to you upfront, and you should use this tool (`{TOOL_SEARCH_TOOL_NAME}`) to search for the required tools. For MCP tool discovery, always use `{TOOL_SEARCH_TOOL_NAME}`."
-    )
-}
+/// The `tool_search` description (v1.0.0 `TOOL_SEARCH_DESCRIPTION`). It does
+/// not list the searchable tools or their namespaces, so it stays the same
+/// while tools are registered, for example when MCP servers connect.
+pub const TOOL_SEARCH_DESCRIPTION: &str = "# Tool discovery\n\nSearches over deferred tool metadata with BM25 and exposes matching tools for the next model call.\n\nSome of the tools, such as tools of MCP servers, may not have been provided to you upfront, and you should use this tool (`tool_search`) to search for the required tools. For MCP tool discovery, always use `tool_search`.";
 
 /// Options for [`create_tool_search_tool_definition`] (upstream
 /// `ToolSearchToolOptions`). `tools` is the session's tools; without it the
@@ -472,8 +447,7 @@ pub fn create_tool_search_tool_definition(options: ToolSearchToolOptions) -> Too
     let mut definition = ToolDefinition::new(
         TOOL_SEARCH_TOOL_NAME,
         TOOL_SEARCH_TOOL_NAME,
-        // Replaced with the searchable sources when the tool is activated.
-        &create_tool_search_description(&[]),
+        TOOL_SEARCH_DESCRIPTION,
         tool_search_schema(),
     );
     definition.prompt_snippet =
@@ -481,30 +455,6 @@ pub fn create_tool_search_tool_definition(options: ToolSearchToolOptions) -> Too
     // Searching is not something scripts need; it changes what the model sees.
     definition.exposure = ToolExposure::ModelOnly;
     definition.default_active = None;
-    // List the namespaces of the searchable tools.
-    definition.prepare_loadout = Some(Arc::new(|loadout: &ToolLoadout| {
-        let mut sources: OrderedMapNamespace = OrderedMapNamespace::new();
-        for tool in &loadout.registered {
-            if !is_searchable(loadout.get_exposure(&tool.name)) {
-                continue;
-            }
-            if let Some(namespace) = loadout.get_namespace(&tool.name) {
-                if !sources.has(&namespace.name) {
-                    sources.set(namespace.name.clone(), namespace);
-                }
-            }
-        }
-        let description =
-            create_tool_search_description(&sources.values().cloned().collect::<Vec<_>>());
-        Some(ToolLoadoutChanges {
-            descriptions: Some(
-                [(TOOL_SEARCH_TOOL_NAME.to_string(), description)]
-                    .into_iter()
-                    .collect(),
-            ),
-            hidden_declarations: None,
-        })
-    }));
     let tools = options.tools;
     definition.execute = Some(Arc::new(
         move |_tool_call_id: &str,
@@ -568,35 +518,6 @@ fn limit_from_json(value: f64) -> Option<usize> {
         Some(value as usize)
     } else {
         None
-    }
-}
-
-/// Insertion-ordered namespace collector (JS `Map`).
-struct OrderedMapNamespace {
-    entries: Vec<(String, ToolNamespace)>,
-}
-
-impl OrderedMapNamespace {
-    fn new() -> Self {
-        Self {
-            entries: Vec::new(),
-        }
-    }
-    fn has(&self, key: &str) -> bool {
-        self.entries.iter().any(|(existing, _)| existing == key)
-    }
-    fn set(&mut self, key: String, value: ToolNamespace) {
-        match self
-            .entries
-            .iter_mut()
-            .find(|(existing, _)| *existing == key)
-        {
-            Some(slot) => slot.1 = value,
-            None => self.entries.push((key, value)),
-        }
-    }
-    fn values(&self) -> impl Iterator<Item = &ToolNamespace> {
-        self.entries.iter().map(|(_, value)| value)
     }
 }
 

@@ -496,7 +496,7 @@ impl WorkerLifecycle {
                 _ => {
                     return Err(
                         "Session worker request does not match the active attachment".to_string(),
-                    )
+                    );
                 }
             }
         }

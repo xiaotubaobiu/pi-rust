@@ -40,8 +40,8 @@ use tokio_util::sync::CancellationToken;
 use crate::ai::api::azure_openai_responses::get_provider_env_value;
 use crate::ai::api::http_client;
 use crate::ai::auth::types::{
-    AuthError, AuthEvent, AuthInteraction, ModelAuth, OAuthAuth, OAuthCredential,
-    ProviderAuthInteraction,
+    AuthError, AuthEvent, AuthInteraction, AuthPrompt, AuthPromptKind, AuthPromptOption, ModelAuth,
+    OAuthAuth, OAuthCredential, ProviderAuthInteraction,
 };
 use crate::ai::now_ms;
 
@@ -76,9 +76,18 @@ const CALLBACK_PORT: u16 = 53692;
 /// Upstream `CALLBACK_PATH` (anthropic.ts:34).
 const CALLBACK_PATH: &str = "/callback";
 
+/// Upstream `COPY_CODE_REDIRECT_URI` (v1.0.0): the headless login's redirect,
+/// whose code the user copies from the Anthropic page.
+const COPY_CODE_REDIRECT_URI: &str = "https://platform.claude.com/oauth/code/callback";
+
+/// Upstream `ANTHROPIC_BROWSER_LOGIN_METHOD` (v1.0.0).
+const ANTHROPIC_BROWSER_LOGIN_METHOD: &str = "browser";
+
+/// Upstream `ANTHROPIC_COPY_CODE_LOGIN_METHOD` (v1.0.0).
+const ANTHROPIC_COPY_CODE_LOGIN_METHOD: &str = "copy_code";
+
 /// Upstream `SCOPES` (anthropic.ts:36-37).
-const SCOPES: &str =
-    "org:create_api_key user:profile user:inference user:sessions:claude_code user:mcp_servers user:file_upload";
+const SCOPES: &str = "org:create_api_key user:profile user:inference user:sessions:claude_code user:mcp_servers user:file_upload";
 
 /// Upstream `AbortSignal.timeout(30_000)` composed into every token request
 /// (anthropic.ts:178).
@@ -308,6 +317,76 @@ async fn refresh_anthropic_token(
     }
 }
 
+/// Upstream `loginAnthropicCopyCode` (v1.0.0): headless login — publish the
+/// copy-code authorize URL, read the pasted `code#state`, then exchange with
+/// the copy-code redirect URI.
+async fn login_anthropic_copy_code(
+    token_url: &str,
+    interaction: ProviderAuthInteraction,
+) -> Result<OAuthCredential, AuthError> {
+    if interaction.signal.is_cancelled() {
+        return Err(AuthError::Cancelled);
+    }
+    let Pkce {
+        verifier,
+        challenge,
+    } = generate_pkce();
+    let auth_url = {
+        let mut query = url::form_urlencoded::Serializer::new(String::new());
+        query.append_pair("code", "true");
+        query.append_pair("client_id", CLIENT_ID);
+        query.append_pair("response_type", "code");
+        query.append_pair("redirect_uri", COPY_CODE_REDIRECT_URI);
+        query.append_pair("scope", SCOPES);
+        query.append_pair("code_challenge", &challenge);
+        query.append_pair("code_challenge_method", "S256");
+        query.append_pair("state", &verifier);
+        format!("{AUTHORIZE_URL}?{}", query.finish())
+    };
+    interaction.notify(AuthEvent::AuthUrl {
+        url: auth_url,
+        instructions: Some(
+            "Complete login in your browser, then copy the code Anthropic shows and paste it here."
+                .to_string(),
+        ),
+    });
+
+    let input = interaction
+        .prompt(AuthPrompt {
+            signal: Some(interaction.signal.clone()),
+            kind: AuthPromptKind::ManualCode {
+                message: "Paste the code Anthropic shows after you sign in:".to_string(),
+                placeholder: Some("code#state".to_string()),
+            },
+        })
+        .await?;
+    let parsed = parse_authorization_input(&input);
+    if parsed
+        .state
+        .as_deref()
+        .is_some_and(|state| !state.is_empty() && state != verifier)
+    {
+        return Err(AuthError::Operation("OAuth state mismatch".to_string()));
+    }
+    let Some(code) = parsed.code.filter(|code| !code.is_empty()) else {
+        return Err(AuthError::Operation(
+            "Missing authorization code".to_string(),
+        ));
+    };
+    interaction.notify(AuthEvent::Progress {
+        message: "Exchanging authorization code for tokens...".to_string(),
+    });
+    exchange_authorization_code(
+        token_url,
+        &code,
+        &parsed.state.unwrap_or_else(|| verifier.clone()),
+        &verifier,
+        COPY_CODE_REDIRECT_URI,
+        &interaction.signal,
+    )
+    .await
+}
+
 /// Upstream `loginAnthropic` (anthropic.ts:134-191): open the shared
 /// callback server (a failed bind degrades to manual-only login through
 /// `.catch(() => undefined)`), publish the authorize URL, race the manual
@@ -444,17 +523,55 @@ impl OAuthAuth for AnthropicOAuth {
         true
     }
 
-    /// Upstream `login` (anthropic.ts:358).
+    /// Upstream `login` (v1.0.0): pick the login method, then run the browser
+    /// flow or the headless copy-code flow.
     fn login<'a>(
         &'a self,
         interaction: ProviderAuthInteraction,
     ) -> BoxFuture<'a, Result<OAuthCredential, AuthError>> {
-        Box::pin(login_anthropic(
-            &self.token_url,
-            &self.callback_host,
-            self.callback_port,
-            interaction,
-        ))
+        Box::pin(async move {
+            // Pre-flight cancellation guard: upstream's select prompt carries
+            // the interaction signal, so an already-cancelled login rejects
+            // at the prompt; the port checks before recording it.
+            if interaction.signal.is_cancelled() {
+                return Err(AuthError::Cancelled);
+            }
+            let method = interaction
+                .prompt(AuthPrompt {
+                    signal: Some(interaction.signal.clone()),
+                    kind: AuthPromptKind::Select {
+                        message: "Select Anthropic login method:".to_string(),
+                        options: vec![
+                            AuthPromptOption {
+                                id: ANTHROPIC_BROWSER_LOGIN_METHOD.to_string(),
+                                label: "Browser login (default)".to_string(),
+                                description: None,
+                            },
+                            AuthPromptOption {
+                                id: ANTHROPIC_COPY_CODE_LOGIN_METHOD.to_string(),
+                                label: "Copy code login (headless)".to_string(),
+                                description: None,
+                            },
+                        ],
+                    },
+                })
+                .await?;
+            if method == ANTHROPIC_COPY_CODE_LOGIN_METHOD {
+                return login_anthropic_copy_code(&self.token_url, interaction).await;
+            }
+            if method != ANTHROPIC_BROWSER_LOGIN_METHOD {
+                return Err(AuthError::Operation(format!(
+                    "Unknown Anthropic login method: {method}"
+                )));
+            }
+            login_anthropic(
+                &self.token_url,
+                &self.callback_host,
+                self.callback_port,
+                interaction,
+            )
+            .await
+        })
     }
 
     /// Upstream `refresh` (anthropic.ts:359).
@@ -560,12 +677,51 @@ mod tests {
         )
     }
 
+    /// v1.0.0: login starts with the method select. This fake answers the
+    /// select with 'browser' and every later prompt with .
+    fn browser_interaction(
+        answer: &'static str,
+    ) -> (Arc<FakeInteraction>, ProviderAuthInteraction) {
+        let count = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let count_move = Arc::clone(&count);
+        fake_interaction_with_slot(
+            Arc::new(Mutex::new(None)),
+            Box::new(move |prompt| {
+                let count = Arc::clone(&count_move);
+                Box::pin(async move {
+                    if count.fetch_add(1, std::sync::atomic::Ordering::SeqCst) == 0 {
+                        let AuthPromptKind::Select { options, .. } = prompt.kind else {
+                            panic!("expected the method select first, got {:?}", prompt.kind);
+                        };
+                        let browser = options
+                            .iter()
+                            .find(|option| option.id == ANTHROPIC_BROWSER_LOGIN_METHOD)
+                            .expect("browser option");
+                        return Ok(browser.id.clone());
+                    }
+                    Ok(answer.to_string())
+                })
+            }),
+        )
+    }
     /// Never answers; blocks on its prompt signal like a real pending UI
     /// prompt, so the callback-server path can win the race.
     fn hanging_interaction() -> (Arc<FakeInteraction>, ProviderAuthInteraction) {
         fake_interaction_with_slot(
             Arc::new(Mutex::new(None)),
-            Box::new(|prompt| {
+            Box::new(move |prompt| {
+                // v1.0.0: the first prompt is the login-method select; answer
+                // it and hang on the later prompts like a real pending UI.
+                if let AuthPromptKind::Select { options, .. } = prompt.kind {
+                    if let Some(browser) = options
+                        .iter()
+                        .find(|option| option.id == ANTHROPIC_BROWSER_LOGIN_METHOD)
+                    {
+                        let id = browser.id.clone();
+                        return Box::pin(async move { Ok(id) })
+                            as BoxFuture<'static, Result<String, AuthError>>;
+                    }
+                }
                 Box::pin(async move {
                     prompt.signal.unwrap_or_default().cancelled().await;
                     Err(AuthError::Cancelled)
@@ -585,10 +741,18 @@ mod tests {
         let respond_slot = Arc::clone(&slot);
         fake_interaction_with_slot(
             slot,
-            Box::new(move |_prompt| {
+            Box::new(move |prompt| {
                 let slot = Arc::clone(&respond_slot);
                 let query_for_state = Arc::clone(&query_for_state);
                 Box::pin(async move {
+                    // v1.0.0: the first prompt is the login-method select.
+                    if let AuthPromptKind::Select { options, .. } = prompt.kind {
+                        let browser = options
+                            .iter()
+                            .find(|option| option.id == ANTHROPIC_BROWSER_LOGIN_METHOD)
+                            .expect("browser option");
+                        return Ok(browser.id.clone());
+                    }
                     let auth_url = slot.lock().unwrap().clone().expect("auth_url emitted");
                     let url = Url::parse(&auth_url).unwrap();
                     let pair = |name: &str| {
@@ -780,7 +944,7 @@ mod tests {
         mount_token_endpoint(&server, &token_body("access", "refresh"), 200, 1).await;
         let port = free_callback_port();
         let oauth = flow_with(&server, port);
-        let (fake, interaction) = instant_interaction("the-code");
+        let (fake, interaction) = browser_interaction("the-code");
 
         let credential = oauth.login(interaction).await.unwrap();
 
@@ -802,13 +966,15 @@ mod tests {
             "login must emit the exchange progress event: {events:?}"
         );
         let prompts = fake.prompts.lock().unwrap();
-        assert_eq!(prompts.len(), 1);
+        // The method select precedes the manual prompt (v1.0.0).
+        assert_eq!(prompts.len(), 2);
+        assert!(matches!(&prompts[0].kind, AuthPromptKind::Select { .. }));
         let AuthPromptKind::ManualCode {
             message,
             placeholder,
-        } = &prompts[0].kind
+        } = &prompts[1].kind
         else {
-            panic!("expected a manual_code prompt, got {:?}", prompts[0].kind);
+            panic!("expected a manual_code prompt, got {:?}", prompts[1].kind);
         };
         assert_eq!(
             message,
@@ -820,7 +986,7 @@ mod tests {
         );
         // The prompt's signal is aborted once login settles, so UIs can
         // dismiss it.
-        assert!(prompts[0].signal.as_ref().unwrap().is_cancelled());
+        assert!(prompts[1].signal.as_ref().unwrap().is_cancelled());
     }
 
     // ---- Flow details ----
@@ -852,7 +1018,7 @@ mod tests {
         mount_token_endpoint(&server, &token_body("a", "r"), 200, 1).await;
         let port = free_callback_port();
         let oauth = flow_with(&server, port);
-        let (fake, interaction) = instant_interaction("any-code");
+        let (fake, interaction) = browser_interaction("any-code");
 
         oauth.login(interaction).await.unwrap();
 
@@ -925,7 +1091,8 @@ mod tests {
             error,
             AuthError::Operation("OAuth state mismatch".to_string())
         );
-        assert_eq!(fake.prompts.lock().unwrap().len(), 1);
+        // The method select precedes the manual prompt (v1.0.0).
+        assert_eq!(fake.prompts.lock().unwrap().len(), 2);
     }
 
     /// An empty pasted state is not a mismatch (JS truthiness) and is sent
@@ -953,7 +1120,7 @@ mod tests {
         let server = MockServer::start().await;
         mount_token_endpoint(&server, &token_body("a", "r"), 200, 1).await;
         let oauth = flow_with(&server, free_callback_port());
-        let (fake, interaction) = instant_interaction("bare-code");
+        let (fake, interaction) = browser_interaction("bare-code");
 
         let credential = oauth.login(interaction).await.unwrap();
         assert_eq!(credential.access, "a");
@@ -969,7 +1136,7 @@ mod tests {
         let server = MockServer::start().await;
         mount_token_endpoint(&server, "{}", 200, 0).await;
         let oauth = flow_with(&server, free_callback_port());
-        let (_fake, interaction) = instant_interaction("   ");
+        let (_fake, interaction) = browser_interaction("   ");
 
         let error = oauth.login(interaction).await.unwrap_err();
         assert_eq!(
@@ -1011,8 +1178,9 @@ mod tests {
         let requests = server.received_requests().await.unwrap();
         let body: serde_json::Value = serde_json::from_slice(&requests[0].body).unwrap();
         assert_eq!(body["code"], "cb-code");
-        // The manual prompt was aborted by the finally block.
-        assert!(fake.prompts.lock().unwrap()[0]
+        // The manual prompt (second: the method select precedes it) was
+        // aborted by the finally block.
+        assert!(fake.prompts.lock().unwrap()[1]
             .signal
             .as_ref()
             .unwrap()
@@ -1066,7 +1234,7 @@ mod tests {
         let blocker = std::net::TcpListener::bind(("127.0.0.1", 0)).unwrap();
         let port = blocker.local_addr().unwrap().port();
         let oauth = flow_with(&server, port);
-        let (fake, interaction) = instant_interaction("the-code");
+        let (fake, interaction) = browser_interaction("the-code");
 
         let credential = tokio::time::timeout(Duration::from_secs(5), oauth.login(interaction))
             .await
@@ -1074,7 +1242,8 @@ mod tests {
             .unwrap();
         drop(blocker);
         assert_eq!(credential.access, "a");
-        assert_eq!(fake.prompts.lock().unwrap().len(), 1);
+        // The method select precedes the manual prompt (v1.0.0).
+        assert_eq!(fake.prompts.lock().unwrap().len(), 2);
     }
 
     #[tokio::test]
@@ -1113,7 +1282,9 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(result, Err(AuthError::Cancelled));
-        assert_eq!(fake.prompts.lock().unwrap().len(), 1);
+        // The method select precedes the manual prompt (v1.0.0); both were
+        // shown before the wait was aborted.
+        assert_eq!(fake.prompts.lock().unwrap().len(), 2);
     }
 
     #[tokio::test]
@@ -1123,7 +1294,7 @@ mod tests {
         let port = free_callback_port();
         let token_url = format!("{}/v1/oauth/token", server.uri());
         let oauth = flow_with(&server, port);
-        let (_fake, interaction) = instant_interaction("the-code");
+        let (_fake, interaction) = browser_interaction("the-code");
 
         let error = oauth.login(interaction).await.unwrap_err();
         let redirect = format!("http://localhost:{port}/callback");
@@ -1143,7 +1314,7 @@ mod tests {
         mount_token_endpoint(&server, "not json", 200, 1).await;
         let token_url = format!("{}/v1/oauth/token", server.uri());
         let oauth = flow_with(&server, free_callback_port());
-        let (_fake, interaction) = instant_interaction("the-code");
+        let (_fake, interaction) = browser_interaction("the-code");
 
         let error = oauth.login(interaction).await.unwrap_err();
         match error {

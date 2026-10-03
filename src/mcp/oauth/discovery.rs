@@ -52,10 +52,17 @@ fn field(header: &str, name: &str) -> Option<String> {
     );
     let regex = Regex::new(&pattern).ok()?;
     let captures = regex.captures(header)?;
-    captures
+    // v1.0.0: an empty value (`scope=""`) carries no information, so it
+    // counts as absent (`match?.[1] || match?.[2] || undefined`).
+    let quoted = captures
         .get(1)
-        .or_else(|| captures.get(2))
-        .map(|value| value.as_str().to_string())
+        .map(|value| value.as_str())
+        .filter(|v| !v.is_empty());
+    let bare = captures
+        .get(2)
+        .map(|value| value.as_str())
+        .filter(|v| !v.is_empty());
+    quoted.or(bare).map(|value| value.to_string())
 }
 
 /// Upstream `parseWwwAuthenticate`: only `Bearer`/`DPoP` challenges carry the
@@ -244,7 +251,7 @@ pub async fn discover_authorization_server_metadata(
             let expected = authorization_server_url.to_string();
             if trim_slash(&metadata.issuer()) != trim_slash(&expected) {
                 return Err(OAuthFlowError::IssuerMismatch(
-                    OAuthIssuerMismatchError::new(expected, metadata.issuer()),
+                    OAuthIssuerMismatchError::new(expected, Some(metadata.issuer())),
                 ));
             }
         }
@@ -267,6 +274,7 @@ pub async fn discover_oauth_server_info(
     server_url: &str,
     options: DiscoveryOptions,
     resource_metadata_url: Option<String>,
+    authorization_server_metadata_url: Option<String>,
     skip_issuer_validation: bool,
 ) -> Result<OAuthServerInfo, OAuthFlowError> {
     let inner = DiscoveryOptions {
@@ -283,6 +291,32 @@ pub async fn discover_oauth_server_info(
         Err(error @ OAuthFlowError::Network(_)) => return Err(error),
         Err(OAuthFlowError::Other(_)) => {}
         Err(error) => return Err(error),
+    }
+    // v1.0.0: a configured metadata document replaces discovery. It is
+    // trusted as configured, so its issuer is not checked.
+    if let Some(metadata_url) = &authorization_server_metadata_url {
+        let url =
+            Url::parse(metadata_url).map_err(|error| OAuthFlowError::Other(error.to_string()))?;
+        let fetch = inner.fetch_or_default();
+        let response = fetch_metadata(&fetch, url.clone(), LATEST_PROTOCOL_VERSION)
+            .await
+            .map_err(flow_error)?;
+        if !(200..300).contains(&response.status) {
+            let status = response.status;
+            response.discard();
+            return Err(OAuthFlowError::Other(format!(
+                "HTTP {status} loading authorization server metadata from {url}"
+            )));
+        }
+        let text = response.into_text().await.map_err(OAuthFlowError::Other)?;
+        let value: serde_json::Value = serde_json::from_str(&text)
+            .map_err(|error| OAuthFlowError::Other(error.to_string()))?;
+        let metadata = parse_authorization_server_metadata(value).map_err(OAuthFlowError::Other)?;
+        return Ok(OAuthServerInfo {
+            authorization_server_url: metadata.issuer(),
+            authorization_server_metadata: Some(metadata),
+            resource_metadata,
+        });
     }
     let authorization_server_url = match resource_metadata
         .as_ref()

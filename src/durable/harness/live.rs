@@ -12,6 +12,7 @@
 
 use std::sync::Arc;
 
+use serde::Deserialize;
 use serde_json::{Map, Value};
 
 use super::super::documents::{define_doc, DefinitionScope, DocToken};
@@ -182,6 +183,142 @@ pub fn read_live(draft: &DocumentDraft) -> Result<Option<Value>, PlainError> {
 pub const RUN_TASK_KINDS: [&str; 1] = ["pi.generation"];
 /// The built-in tool task kind (`TOOL_TASK_KIND`).
 pub const TOOL_TASK_KIND: &str = "pi.tool";
+/// The built-in compaction task kind (`COMPACTION_TASK_KIND`, v1.0.0).
+pub const COMPACTION_TASK_KIND: &str = "pi.compaction";
+
+/// Presentation of one live compaction task (spec §8.7) — `live.ts`
+/// `CompactionStatus` (v1.0.0). Wire order
+/// `{taskId, reason, blocking, attempt, retry?}`.
+#[derive(Debug, Clone, PartialEq)]
+pub struct CompactionStatus {
+    pub task_id: TaskId,
+    pub reason: super::types::CompactionReason,
+    /// Whether a generation waits for it: a compaction the generation owns.
+    pub blocking: bool,
+    pub attempt: i64,
+    /// Durable backoff before the next summarization attempt.
+    pub retry: Option<CompactionRetry>,
+}
+
+/// `CompactionStatus.retry` (`{ at, error }`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CompactionRetry {
+    /// Epoch millis of the next attempt.
+    pub at: i64,
+    pub error: String,
+}
+
+impl CompactionStatus {
+    /// Parse one stored status; unknown fields keep their JSON values through
+    /// the raw map.
+    pub fn from_json(value: &Value) -> Option<CompactionStatus> {
+        let object = value.as_object()?;
+        Some(CompactionStatus {
+            task_id: object.get("taskId").and_then(Value::as_i64)?,
+            reason: super::types::CompactionReason::deserialize(object.get("reason")?.clone())
+                .ok()?,
+            blocking: object.get("blocking").and_then(Value::as_bool)?,
+            attempt: object.get("attempt").and_then(Value::as_i64)?,
+            retry: object.get("retry").and_then(|retry| {
+                let retry = retry.as_object()?;
+                Some(CompactionRetry {
+                    at: retry.get("at").and_then(Value::as_i64)?,
+                    error: retry.get("error").and_then(Value::as_str)?.to_string(),
+                })
+            }),
+        })
+    }
+
+    /// Serialize in the upstream construction order.
+    pub fn to_json(&self) -> Value {
+        let mut map = Map::new();
+        map.insert(String::from("taskId"), Value::from(self.task_id));
+        map.insert(String::from("reason"), Value::from(self.reason.as_str()));
+        map.insert(String::from("blocking"), Value::from(self.blocking));
+        map.insert(String::from("attempt"), Value::from(self.attempt));
+        if let Some(retry) = &self.retry {
+            let mut retry_map = Map::new();
+            retry_map.insert(String::from("at"), Value::from(retry.at));
+            retry_map.insert(String::from("error"), Value::from(retry.error.clone()));
+            map.insert(String::from("retry"), Value::Object(retry_map));
+        }
+        Value::Object(map)
+    }
+}
+
+/// Add the status of a compaction task created in this commit (`addCompactionStatus`):
+/// statuses stay in task ID order.
+pub fn add_compaction_status(
+    draft: &DocumentDraft,
+    status: &CompactionStatus,
+) -> Result<(), PlainError> {
+    let mut statuses = read_live(draft)?
+        .and_then(|live| live.get("compactions").cloned())
+        .and_then(|value| value.as_array().cloned())
+        .unwrap_or_default();
+    statuses.push(status.to_json());
+    draft
+        .set(
+            &[Seg::Key(String::from("compactions"))],
+            Value::Array(statuses),
+        )
+        .map_err(error_of)
+}
+
+/// The status of compaction task `taskId`, if listed (`compactionStatus`).
+pub fn compaction_status(
+    draft: &DocumentDraft,
+    task_id: TaskId,
+) -> Result<Option<CompactionStatus>, PlainError> {
+    Ok(compaction_statuses(draft)?
+        .into_iter()
+        .find(|status| status.task_id == task_id))
+}
+
+/// The parsed `compactions` array of a live draft (`live.compactions ?? []`).
+pub fn compaction_statuses(draft: &DocumentDraft) -> Result<Vec<CompactionStatus>, PlainError> {
+    Ok(read_live(draft)?
+        .and_then(|live| live.get("compactions").cloned())
+        .and_then(|value| value.as_array().cloned())
+        .map(|statuses| {
+            statuses
+                .iter()
+                .filter_map(CompactionStatus::from_json)
+                .collect()
+        })
+        .unwrap_or_default())
+}
+
+/// The draft path of one compaction status field
+/// (`["compactions", index, field...]`).
+fn compaction_path(index: usize, field: &[&str]) -> Vec<Seg> {
+    let mut path = vec![Seg::Key(String::from("compactions")), Seg::Index(index)];
+    path.extend(field.iter().map(|name| Seg::Key((*name).to_owned())));
+    path
+}
+
+/// Remove the status of compaction task `taskId`, and the list once empty
+/// (`removeCompactionStatus`).
+pub fn remove_compaction_status(draft: &DocumentDraft, task_id: TaskId) -> Result<(), PlainError> {
+    let statuses = read_live(draft)?
+        .and_then(|live| live.get("compactions").cloned())
+        .and_then(|value| value.as_array().cloned());
+    let Some(statuses) = statuses else {
+        return Ok(());
+    };
+    let index = statuses
+        .iter()
+        .position(|status| status.get("taskId").and_then(Value::as_i64) == Some(task_id));
+    let Some(index) = index else {
+        return Ok(());
+    };
+    if statuses.len() == 1 {
+        return draft
+            .delete(&[Seg::Key(String::from("compactions"))])
+            .map_err(error_of);
+    }
+    draft.delete(&compaction_path(index, &[])).map_err(error_of)
+}
 
 type Seg = crate::chord::delta::Seg;
 
@@ -396,9 +533,10 @@ pub fn end_run(
 /// Harness cleanup for a terminal outcome the scheduler writes itself
 /// (`faulted` or `orphaned`, `live.ts` `settleSchedulerOutcome`). A run task
 /// ends its run; a tool task's slot is marked done without an entry, and
-/// context derivation synthesizes the missing result. Ignores other kinds so
-/// it never creates `pi.live` elsewhere. The scheduler calls this without
-/// knowing task kinds; the Harness passes it in (spec §5.4).
+/// context derivation synthesizes the missing result; a compaction task's
+/// status is removed (v1.0.0). Ignores other kinds so it never creates
+/// `pi.live` elsewhere. The scheduler calls this without knowing task kinds;
+/// the Harness passes it in (spec §5.4).
 /// REMINDER: a committed generation partial becomes an aborted assistant
 /// entry here, exactly as in the generation abort handler, so the transcript
 /// keeps what the model produced and `pi.usage` counts its spend. The
@@ -415,6 +553,9 @@ pub fn settle_scheduler_outcome(
             finish_slot(&draft, index, None)?;
         }
         return Ok(());
+    }
+    if record.kind == COMPACTION_TASK_KIND {
+        return remove_compaction_status(&draft, record.id);
     }
     if !RUN_TASK_KINDS.contains(&record.kind.as_str()) {
         return Ok(());
@@ -435,4 +576,47 @@ pub fn settle_scheduler_outcome(
         _ => return Ok(()),
     };
     end_run(tx, &draft, record.id, settlement)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::durable::harness::types::CompactionReason;
+
+    #[test]
+    fn compaction_status_round_trips_in_upstream_field_order() {
+        let status = CompactionStatus {
+            task_id: 7,
+            reason: CompactionReason::Manual,
+            blocking: true,
+            attempt: 1,
+            retry: None,
+        };
+        let json = status.to_json();
+        let keys: Vec<&str> = json
+            .as_object()
+            .map(|map| map.keys().map(String::as_str).collect())
+            .unwrap_or_default();
+        assert_eq!(keys, vec!["taskId", "reason", "blocking", "attempt"]);
+        assert_eq!(CompactionStatus::from_json(&json), Some(status.clone()));
+
+        let retrying = CompactionStatus {
+            retry: Some(CompactionRetry {
+                at: 42,
+                error: String::from("overloaded"),
+            }),
+            ..status
+        };
+        let json = retrying.to_json();
+        let keys: Vec<&str> = json
+            .as_object()
+            .map(|map| map.keys().map(String::as_str).collect())
+            .unwrap_or_default();
+        assert_eq!(
+            keys,
+            vec!["taskId", "reason", "blocking", "attempt", "retry"]
+        );
+        assert_eq!(CompactionStatus::from_json(&json), Some(retrying));
+        assert_eq!(CompactionStatus::from_json(&Value::Null), None);
+    }
 }

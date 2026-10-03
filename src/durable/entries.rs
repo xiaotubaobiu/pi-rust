@@ -72,3 +72,15 @@ pub fn tool_result_entry() -> Entry {
 pub fn reset_entry() -> Entry {
     define_entry(RESET_ENTRY_KIND)
 }
+
+/// Start of a new context: always `head: "self"`, with `model` absent for a
+/// plain reset or `[UserMessage]` carrying the handoff text.
+pub const COMPACTION_ENTRY_KIND: &str = "pi.compaction";
+
+/// `CompactionEntry` (`entries.ts:31-34`, v1.0.0): `model` is `[UserMessage]`
+/// with the wrapped summary, `head` the first kept entry. Written by
+/// compaction tasks, directly or through a write submission. `data` carries
+/// `{ reason: CompactionReason }`.
+pub fn compaction_entry() -> Entry {
+    define_entry(COMPACTION_ENTRY_KIND)
+}

@@ -52,7 +52,6 @@ pub mod tree_selector;
 //                            render-utils getTextOutput subset)
 // - `footer.ts`            → `footer.rs` (FooterSession/FooterDataProvider
 //                            traits over the AgentSession/provider reads)
-// - `daxnuts.ts`           → `daxnuts.rs`
 // - `earendil-announcement.ts` → `earendil_announcement.rs`
 // - `session-selector-search.ts` → `session_selector_search.rs` (seam S19.9:
 //                            `RegExp` → the vendored `regex` crate)
@@ -73,6 +72,7 @@ pub mod tree_selector;
 // (D8/D9).
 
 pub mod assistant_message;
+pub mod auth_url;
 pub mod bash_execution;
 pub mod bordered_loader;
 pub mod branch_summary_message;
@@ -80,7 +80,6 @@ pub mod compaction_summary_message;
 pub mod countdown_timer;
 pub mod custom_entry;
 pub mod custom_message;
-pub mod daxnuts;
 pub mod diff;
 pub mod dynamic_border;
 pub mod earendil_announcement;
@@ -95,6 +94,7 @@ pub mod markdown_transform;
 pub mod mermaid;
 pub mod oauth_selector;
 pub mod pi_logo;
+pub mod radius_login_selector;
 pub mod session_selector_search;
 pub mod settings_submenu;
 pub mod skill_invocation_message;

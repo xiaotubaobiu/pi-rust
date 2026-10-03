@@ -57,14 +57,73 @@
 //!   lazily at render time; the port owns them, so runtime mutation of the
 //!   options object is not observable.
 
-use std::sync::Arc;
+use std::sync::{Arc, Mutex, OnceLock, RwLock};
 
 use crate::tui::component::Component;
 use crate::tui::terminal_image::{
-    allocate_image_id, get_capabilities, get_cell_dimensions, get_image_dimensions, image_fallback,
-    render_image, ImageDimensions, ImageRenderOptions,
+    allocate_image_id, get_capabilities, get_cell_dimensions, get_image_dimensions,
+    get_png_dimensions, image_fallback, render_image, ImageDimensions, ImageRenderOptions,
 };
 use crate::tui::utils::truncate_to_width;
+
+/// Upstream `ImageTranscoder` (v1.0.0): converts base64 image data to base64
+/// PNG data, or returns `None` if it cannot. Called synchronously during
+/// rendering.
+pub type ImageTranscoder = Arc<dyn Fn(&str, &str) -> Option<String> + Send + Sync>;
+
+static IMAGE_TRANSCODER: RwLock<Option<ImageTranscoder>> = RwLock::new(None);
+/// Upstream module-level `pngCache`: backstop for callers that recreate
+/// `Image` instances, keyed by source data, least recently used first.
+/// One pngCache slot: source base64 -> converted PNG (None when the
+/// transcoder failed).
+type PngCacheEntry = (String, Option<String>);
+static PNG_CACHE: OnceLock<Mutex<Vec<PngCacheEntry>>> = OnceLock::new();
+
+const PNG_CACHE_LIMIT: usize = 32;
+
+/// Upstream `setImageTranscoder` (v1.0.0): register the converter used for
+/// non-PNG images on Kitty-protocol terminals, which only accept PNG.
+/// Without one, such images render as text fallbacks.
+pub fn set_image_transcoder(transcoder: Option<ImageTranscoder>) {
+    *IMAGE_TRANSCODER
+        .write()
+        .unwrap_or_else(std::sync::PoisonError::into_inner) = transcoder;
+    if let Some(cache) = PNG_CACHE.get() {
+        cache
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .clear();
+    }
+}
+
+/// Upstream `toPng`: the transcoder call memoized in the LRU cache.
+fn to_png(base64_data: &str, mime_type: &str) -> Option<String> {
+    let transcoder = IMAGE_TRANSCODER
+        .read()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .clone()?;
+    let cache = PNG_CACHE.get_or_init(|| Mutex::new(Vec::new()));
+    let mut cache = cache
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let cached = cache
+        .iter()
+        .find(|(key, _)| key == base64_data)
+        .map(|(_, value)| value.clone());
+    let png = match cached {
+        Some(png) => png,
+        // The upstream reads `cached === undefined ? imageTranscoder(..) : cached`,
+        // so a cached `null` short-circuits and a miss converts.
+        None => transcoder(base64_data, mime_type),
+    };
+    // Re-insert as most recently used.
+    cache.retain(|(key, _)| key != base64_data);
+    cache.push((base64_data.to_owned(), png.clone()));
+    if cache.len() > PNG_CACHE_LIMIT {
+        cache.remove(0);
+    }
+    png
+}
 
 /// Upstream `ImageTheme`.
 #[derive(Clone)]
@@ -106,6 +165,9 @@ pub struct Image {
     options: ImageOptions,
     dimensions: ImageDimensions,
     image_id: Option<u64>,
+    /// Converted PNG data for Kitty (v1.0.0). Failures are not stored so a
+    /// later transcoder can retry.
+    png_data: Option<String>,
 
     cached_lines: Option<Vec<String>>,
     cached_width: Option<usize>,
@@ -141,6 +203,7 @@ impl Image {
             options,
             dimensions,
             image_id,
+            png_data: None,
             cached_lines: None,
             cached_width: None,
         }
@@ -176,14 +239,32 @@ impl Image {
         let max_height = self.options.max_height_cells.unwrap_or(default_max_height);
 
         let caps = get_capabilities();
-        let lines: Vec<String> = match caps.images {
+        // v1.0.0: Kitty accepts only PNG, so a non-PNG source is converted
+        // through the registered transcoder; conversion may apply EXIF
+        // rotation, so the PNG's own dimensions are preferred. Without data
+        // (no transcoder, or it failed) the image renders as a text fallback.
+        let mut data: Option<String> = Some(self.base64_data.clone());
+        let mut dimensions = self.dimensions;
+        if caps.images == Some("kitty") && self.mime_type != "image/png" {
+            if self.png_data.is_none() {
+                self.png_data = to_png(&self.base64_data, &self.mime_type);
+            }
+            data = self.png_data.clone();
+            if let Some(png) = &data {
+                if let Some(png_dimensions) = get_png_dimensions(png) {
+                    dimensions = png_dimensions;
+                }
+            }
+        }
+        let lines: Vec<String> = match caps.images.filter(|_| data.is_some()) {
             Some(protocol) => {
+                let data = data.as_deref().expect("checked non-empty above");
                 if protocol == "kitty" && self.image_id.is_none() {
                     self.image_id = Some(allocate_image_id());
                 }
                 let rendered = render_image(
-                    &self.base64_data,
-                    self.dimensions,
+                    data,
+                    dimensions,
                     ImageRenderOptions {
                         max_width_cells: Some(max_width),
                         max_height_cells: Some(max_height),

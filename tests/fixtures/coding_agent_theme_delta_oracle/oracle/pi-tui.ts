@@ -2,6 +2,7 @@ export {
 	colorToOkhsl,
 	colorToOklch,
 	okhslColor,
+	oklchColor,
 	rgbColor,
 	indexedColor,
 	parseColor,

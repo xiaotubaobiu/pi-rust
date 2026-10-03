@@ -140,7 +140,12 @@
         "tools": null,
         "excludeTools": null,
         "cliThinkingFromModel": false,
-        "diagnostics": []
+        "diagnostics": [
+          {
+            "type": "error",
+            "message": "--provider requires --model (for example: --provider openai --model <pattern>)"
+          }
+        ]
       }
     },
     {

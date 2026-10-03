@@ -51,5 +51,38 @@ pub use edit_diff::Edit;
 pub use read::{create_read_tool, ReadToolDetails, ReadToolInput};
 pub use write::{create_write_tool, WriteToolInput};
 
+/// Upstream `CodingTools` (v1.0.0, `tools/index.ts`): `read`, `write`,
+/// `edit`, and `bash`; nothing installs it automatically.
+///
+/// Divergence (D-types, disclosed): upstream's extension carries the four
+/// executable `ToolRegistration` values; the port's erased
+/// [`ExtensionSpec`](crate::durable::harness::agent::ExtensionSpec) holds
+/// JSON payloads, so each spec carries the registration's pi-ai declaration
+/// (name, description, parameters) and the host binds executables through
+/// its own registration seam. `bash` uses the default
+/// [`BashToolOptions`], matching the option-free upstream call.
+pub fn coding_tools() -> crate::durable::harness::agent::ExtensionSpec {
+    use crate::durable::harness::agent::{ExtensionSpec, ToolSpec};
+    use crate::durable::harness::define::define_extension;
+    let tools = [
+        create_read_tool(),
+        create_write_tool(),
+        create_edit_tool(),
+        create_bash_tool(BashToolOptions::default()),
+    ];
+    define_extension(ExtensionSpec {
+        name: String::from("coding-tools"),
+        tools: tools
+            .iter()
+            .map(|registration| ToolSpec {
+                name: registration.name().to_string(),
+                payload: serde_json::to_value(&registration.tool)
+                    .unwrap_or(serde_json::Value::Null),
+            })
+            .collect(),
+        ..ExtensionSpec::default()
+    })
+}
+
 #[cfg(test)]
 mod oracle_tests;

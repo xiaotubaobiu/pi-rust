@@ -45,11 +45,12 @@ use futures::FutureExt as _;
 use serde_json::{json, Value};
 
 use crate::coding_agent::core::mcp_servers::{
-    get_mcp_tool_exposure, validate_mcp_server_config, McpExposure,
+    get_mcp_tool_exposure, mcp_namespace, validate_mcp_server_config, McpExposure,
 };
 use crate::coding_agent::core::path_join;
 use crate::coding_agent::extensions::loader::ExtensionApi;
 use crate::coding_agent::extensions::tool_search::is_tool_search_tool;
+use crate::coding_agent::extensions::types::ProviderRegistryHandle;
 use crate::coding_agent::extensions::types::{
     AbortSignal, CommandFuture, ExtensionCommandContext, ExtensionContext, ExtensionMode,
     HandlerResult, ToolDefinition, ToolExposure, ToolInfo, ToolNamespace,
@@ -65,7 +66,7 @@ use super::resources::{
 };
 use super::runtime::{
     create_default_transport, McpServerConnection, McpServerConnectionOptions, McpServerLog,
-    McpTransportFactory, ServerState,
+    McpTransportFactory, ProviderTokenResolver, ServerState,
 };
 use super::tools::{create_mcp_tool_definition, create_mcp_tool_name, McpToolCaller};
 use super::ui::{McpMenu, McpMenuItem, McpUi, MenuBuilder, MenuListener, MenuUnsubscribe};
@@ -111,6 +112,9 @@ struct McpServer {
     registered_config: Option<String>,
     /// Result of the last `/mcp` action that failed, shown in the manager.
     message: Option<String>,
+    /// Settles when the connection started for the server connected or failed
+    /// (upstream `server.ready`).
+    ready: Option<futures::future::Shared<BoxFuture<'static, ()>>>,
 }
 
 const EXPOSURE_DESCRIPTIONS: [(&str, &str); 3] = [
@@ -152,6 +156,206 @@ fn is_enabled(server: &McpServer) -> bool {
 
 fn exposure_of(entry: &McpServerEntry) -> McpExposure {
     entry.config.exposure()
+}
+
+/// Exposures the server's tools can have, known from its config before it
+/// connects (upstream `configuredExposures`).
+fn configured_exposures(entry: &McpServerEntry) -> Vec<McpExposure> {
+    let mut exposures = vec![exposure_of(entry)];
+    for (_, exposure) in entry.config.tool_exposure().iter() {
+        if !exposures.contains(exposure) {
+            exposures.push(*exposure);
+        }
+    }
+    exposures
+}
+
+/// Whether some of the server's tools are declared to the model, so the first
+/// prompt waits for them (upstream `hasDirectTools`).
+fn has_direct_tools(entry: &McpServerEntry) -> bool {
+    configured_exposures(entry).contains(&McpExposure::Direct)
+}
+
+/// Whether some of the server's tools are reached through codemode or
+/// tool_search (upstream `hasIndirectTools`).
+fn has_indirect_tools(entry: &McpServerEntry) -> bool {
+    let exposures = configured_exposures(entry);
+    exposures.contains(&McpExposure::Codemode) || exposures.contains(&McpExposure::Deferred)
+}
+
+/// Name of the system prompt section that lists the servers whose tools are
+/// not declared (upstream `MCP_SERVERS_SECTION`).
+pub const MCP_SERVERS_SECTION: &str = "mcp_servers";
+/// Characters of a server description in the section, as Codex allows for
+/// deferred namespaces (upstream `MAX_SERVER_DESCRIPTION_CHARS`).
+const MAX_SERVER_DESCRIPTION_CHARS: usize = 250;
+/// Characters of the whole section. Descriptions shrink to fit; when the
+/// server lines alone do not fit, the last servers are left out and counted
+/// in a closing line (upstream `MAX_SERVERS_SECTION_CHARS`).
+pub const MAX_SERVERS_SECTION_CHARS: usize = 4096;
+
+/// The section's first line. It explains only the ways of reaching tools that
+/// the listed servers use (upstream `serversSectionIntro`).
+fn servers_section_intro(reaches: &[&str]) -> String {
+    let mut intro = "MCP servers whose tools are not declared to you.".to_string();
+    if reaches.contains(&"codemode") {
+        intro += " Call the tools of `codemode` servers from codemode scripts.";
+    }
+    if reaches.contains(&"tool_search") {
+        intro += " Load the tools of `tool_search` servers with `tool_search`.";
+    }
+    intro
+}
+
+/// Upstream `truncate`: cut to `max` characters, ellipsis-terminated; the
+/// empty string when `max <= 1`.
+fn truncate(text: &str, max: usize) -> String {
+    if text.chars().count() <= max {
+        return text.to_string();
+    }
+    if max <= 1 {
+        return String::new();
+    }
+    let mut cut: String = text.chars().take(max - 1).collect();
+    while cut.ends_with(char::is_whitespace) {
+        cut.pop();
+    }
+    cut.push('\u{2026}');
+    cut
+}
+
+/// What the `mcp_servers` section needs of a server (upstream
+/// `McpServerListing`).
+pub struct McpServerListing<'a> {
+    pub entry: &'a McpServerEntry,
+    pub connection_instructions: Option<String>,
+}
+
+/// First line of the configured description, or of the server instructions
+/// once connected (upstream `serverSummary`).
+fn server_summary(server: &McpServerListing) -> String {
+    let text = server
+        .entry
+        .config
+        .description()
+        .map(str::trim)
+        .filter(|description| !description.is_empty())
+        .map(|description| description.to_string())
+        .or_else(|| server.connection_instructions.clone())
+        .unwrap_or_default();
+    first_line(&text).trim().to_string()
+}
+
+/// The `mcp_servers` section: every enabled server with codemode or deferred
+/// tools, with how its tools are reached and a one-line summary. The model
+/// learns of the servers from it, since neither codemode nor tool_search
+/// lists them. `None` when there are no such servers (upstream
+/// `renderServersSection`).
+pub fn render_servers_section(servers: &[McpServerListing]) -> Option<String> {
+    let mut listed: Vec<&McpServerListing> = servers
+        .iter()
+        .filter(|server| server.entry.config.enabled() && has_indirect_tools(server.entry))
+        .collect();
+    listed.sort_by(|a, b| locale_compare(a.entry.name.as_str(), b.entry.name.as_str()));
+    if listed.is_empty() {
+        return None;
+    }
+    let reaches: Vec<&str> = listed
+        .iter()
+        .map(|server| {
+            if configured_exposures(server.entry).contains(&McpExposure::Codemode) {
+                "codemode"
+            } else {
+                "tool_search"
+            }
+        })
+        .collect();
+    let intro = servers_section_intro(&reaches);
+    let heads: Vec<String> = listed
+        .iter()
+        .enumerate()
+        .map(|(index, server)| {
+            format!(
+                "- {} ({})",
+                mcp_namespace(&server.entry.name),
+                reaches[index]
+            )
+        })
+        .collect();
+    let omitted = |count: usize| -> Vec<String> {
+        (count > 0)
+            .then(|| {
+                format!(
+                    "- … {count} more server{}; find their tools with searchTools()",
+                    if count == 1 { "" } else { "s" }
+                )
+            })
+            .into_iter()
+            .collect()
+    };
+    // Characters of the intro, the first `kept` server lines without
+    // descriptions, and the omission line.
+    let size = |kept: usize| -> usize {
+        [intro.clone()]
+            .into_iter()
+            .chain(heads.iter().take(kept).cloned())
+            .chain(omitted(listed.len() - kept))
+            .collect::<Vec<_>>()
+            .join("\n")
+            .chars()
+            .count()
+    };
+    let mut kept = listed.len();
+    while kept > 0 && size(kept) > MAX_SERVERS_SECTION_CHARS {
+        kept -= 1;
+    }
+    // Each description also takes a ": " separator.
+    let per_server = if kept == 0 {
+        0
+    } else {
+        (MAX_SERVERS_SECTION_CHARS.saturating_sub(size(kept)) / kept)
+            .saturating_sub(2)
+            .min(MAX_SERVER_DESCRIPTION_CHARS)
+    };
+    let mut lines: Vec<String> = Vec::new();
+    for (index, server) in listed.iter().take(kept).enumerate() {
+        let summary = if per_server > 0 {
+            truncate(&server_summary(server), per_server)
+        } else {
+            String::new()
+        };
+        if summary.is_empty() {
+            lines.push(heads[index].clone());
+        } else {
+            lines.push(format!("{}: {}", heads[index], summary));
+        }
+    }
+    Some(
+        [intro]
+            .into_iter()
+            .chain(lines)
+            .chain(omitted(listed.len() - kept))
+            .collect::<Vec<_>>()
+            .join("\n"),
+    )
+}
+
+/// Whether a codemode script needs the server: it names the server's
+/// namespace, or searches, enumerates, or describes tools or namespaces,
+/// which may name the server in other forms (upstream `scriptNeedsServer`).
+fn script_needs_server(code: &str, server: &str) -> bool {
+    if code
+        .split(|c: char| !(c.is_alphanumeric() || c == '_'))
+        .any(|word| {
+            matches!(
+                word,
+                "searchTools" | "describeNamespace" | "describeTool" | "ALL_TOOLS"
+            )
+        })
+    {
+        return true;
+    }
+    code.contains(&mcp_namespace(server))
 }
 
 /// Short state for lists and the startup report. `with_error` appends the
@@ -356,6 +560,9 @@ struct McpExtensionState {
     /// of the same name.
     configured_entries: Vec<McpServerEntry>,
     config_errors: Vec<String>,
+    /// The trusted project's `mcp.json`, where `/mcp` saves project overrides
+    /// of global servers (upstream `projectConfig`).
+    project_config: Option<String>,
     /// Registered servers that `mcp.json` overrides, shown in `/mcp`.
     overridden: Vec<String>,
     /// Between session_start and session_shutdown. Registrations before that
@@ -378,6 +585,9 @@ struct McpExtensionState {
     /// Working directory of the session, for stdio servers.
     session_cwd: String,
     credentials: Option<Arc<McpOAuthCredentialStore>>,
+    /// The session's model registry, which resolves `auth.provider` tokens
+    /// (upstream `modelRegistry`).
+    model_registry: Option<std::sync::Arc<dyn ProviderRegistryHandle>>,
     server_log: Option<Arc<McpServerLog>>,
     /// pi tool name to the `<server>\0<tool>` it was assigned to, so names
     /// stay unique and stable.
@@ -388,8 +598,9 @@ struct McpExtensionState {
     /// withdrawn tools as hidden.
     definitions: HashMap<String, ToolDefinition>,
     /// Stored tokens of servers waiting for a sign-in, as they were when the
-    /// sign-in was needed (keyed by connection identity).
-    tokens_at_sign_in: HashMap<usize, Arc<McpServerConnection>>,
+    /// sign-in was needed (keyed by connection identity; the snapshot fills
+    /// in asynchronously, upstream `tokensAtSignIn`).
+    tokens_at_sign_in: HashMap<usize, (Arc<McpServerConnection>, TokenSnapshot)>,
     /// Exposure the resource tools were last registered with; `None` until a
     /// server has resources.
     resource_tools_exposure: Option<McpExposure>,
@@ -400,6 +611,10 @@ struct McpExtensionState {
 }
 
 type SharedState = Arc<Mutex<McpExtensionState>>;
+
+/// The token snapshot taken when a server started waiting for a sign-in
+/// (upstream the `string` value of `tokensAtSignIn`).
+type TokenSnapshot = Arc<std::sync::Mutex<Option<String>>>;
 
 fn connection_id(connection: &Arc<McpServerConnection>) -> usize {
     Arc::as_ptr(connection) as usize
@@ -427,6 +642,7 @@ pub fn create_mcp_extension(
                 servers: Vec::new(),
                 configured_entries: Vec::new(),
                 config_errors: Vec::new(),
+                project_config: None,
                 overridden: Vec::new(),
                 session_active: false,
                 auto_enable_codemode: true,
@@ -439,6 +655,7 @@ pub fn create_mcp_extension(
                     .map(|dir| dir.to_string_lossy().into_owned())
                     .unwrap_or_default(),
                 credentials: None,
+                model_registry: None,
                 server_log: None,
                 tool_owners: HashMap::new(),
                 server_tools: HashMap::new(),
@@ -490,38 +707,128 @@ fn register_events(state: &SharedState) -> Result<(), String> {
     }
 
     // Upstream `pi.on("before_agent_start", ...)`: the first prompt waits for
-    // startup connections so their tools are available to it, but not
-    // indefinitely: a slow or hanging server must not hold up the prompt.
+    // servers whose tools are declared to the model, so they are declared in
+    // its first request, but not indefinitely: a slow or hanging server must
+    // not hold up the prompt. Other servers are waited for when a script or
+    // search needs them (`tool_call` below). Every prompt lists the servers in
+    // the `mcp_servers` section as they are when it starts; pi appends the
+    // section to the conversation when it changed, for example after a server
+    // connected.
     {
         let state = Arc::clone(state);
         pi.on(
             "before_agent_start",
-            Arc::new(move |_event: &mut Value, ctx: &ExtensionContext| {
+            Arc::new(move |event: &mut Value, ctx: &ExtensionContext| {
                 let state = Arc::clone(&state);
                 let ctx = ctx.clone();
                 Box::pin(async move {
-                    let pending = {
-                        let mut guard = lock(&state);
-                        if guard.pending.is_none() || guard.waited_for_startup {
-                            None
-                        } else {
-                            guard.waited_for_startup = true;
-                            guard.pending.clone()
-                        }
+                    wait_for_direct_servers(&state, &ctx).await;
+                    let section = {
+                        let guard = lock(&state);
+                        let listings: Vec<McpServerListing> = guard
+                            .servers
+                            .iter()
+                            .map(|server| McpServerListing {
+                                entry: &server.entry,
+                                connection_instructions: server
+                                    .connection
+                                    .as_ref()
+                                    .and_then(|connection| connection.instructions()),
+                            })
+                            .collect();
+                        render_servers_section(&listings)
                     };
-                    let Some(pending) = pending else {
+                    let options = event
+                        .get_mut("systemPromptOptions")
+                        .and_then(Value::as_object_mut);
+                    if let Some(options) = options {
+                        let sections = options
+                            .entry("sections")
+                            .or_insert_with(|| Value::Object(serde_json::Map::new()));
+                        if let Some(sections) = sections.as_object_mut() {
+                            match section {
+                                Some(section) => {
+                                    sections.insert(
+                                        MCP_SERVERS_SECTION.to_string(),
+                                        Value::from(section),
+                                    );
+                                }
+                                None => {
+                                    sections.remove(MCP_SERVERS_SECTION);
+                                }
+                            }
+                        }
+                    }
+                    Ok(None)
+                })
+            }),
+        )?;
+    }
+
+    // A codemode script waits for the servers it names, or for every server
+    // when it searches or enumerates tools, so their tools are registered
+    // before the script runs. tool_search and the resource tools reach every
+    // server, so they wait for all of them.
+    {
+        let state = Arc::clone(state);
+        pi.on(
+            "tool_call",
+            Arc::new(move |event: &mut Value, ctx: &ExtensionContext| {
+                let state = Arc::clone(&state);
+                let ctx = ctx.clone();
+                let tool_name = event
+                    .get("toolName")
+                    .and_then(Value::as_str)
+                    .unwrap_or_default()
+                    .to_string();
+                let input = event.get("input").cloned().unwrap_or(Value::Null);
+                Box::pin(async move {
+                    let tool = lock(&state)
+                        .pi
+                        .get_all_tools()
+                        .unwrap_or_default()
+                        .into_iter()
+                        .find(|candidate| candidate.name == tool_name);
+                    let Some(tool) = tool else {
                         return Ok(None);
                     };
-                    let wait_ms = lock(&state).startup_wait_ms;
-                    let finished = tokio::select! {
-                        () = pending => true,
-                        _ = tokio::time::sleep(std::time::Duration::from_millis(wait_ms)) => false,
+                    let pending_servers: Vec<McpServer> = {
+                        let guard = lock(&state);
+                        guard
+                            .servers
+                            .iter()
+                            .filter(|server| {
+                                is_enabled(server)
+                                    && server
+                                        .connection
+                                        .as_ref()
+                                        .map(|connection| {
+                                            connection.state() != ServerState::Connected
+                                        })
+                                        .unwrap_or(true)
+                                    && server.ready.is_some()
+                            })
+                            .cloned()
+                            .collect()
                     };
-                    if !finished {
-                        notify_ctx(&ctx, "MCP servers are still connecting; their tools become available once connected.",
-                            Some("info"),
-                        );
+                    if pending_servers.is_empty() {
+                        return Ok(None);
                     }
+                    let waiting: Vec<McpServer> = if is_codemode_tool(&tool) {
+                        let source = input
+                            .get("code")
+                            .and_then(Value::as_str)
+                            .unwrap_or_default();
+                        pending_servers
+                            .into_iter()
+                            .filter(|server| script_needs_server(source, &server.entry.name))
+                            .collect()
+                    } else if is_tool_search_tool_info(&tool) || resource_tool_name(&tool_name) {
+                        pending_servers
+                    } else {
+                        Vec::new()
+                    };
+                    wait_for_servers(&waiting, ctx.signal().ok().flatten()).await;
                     Ok(None)
                 })
             }),
@@ -590,10 +897,12 @@ fn session_start(state: &SharedState, ctx: &ExtensionContext) {
             None => default_load_config(ctx),
         };
         guard.config_errors = loaded.errors.clone();
+        guard.project_config = loaded.project_config.clone();
         guard.auto_enable_codemode = loaded.auto_enable_codemode.unwrap_or(true);
         guard.warned_unreachable = false;
         guard.waited_for_startup = false;
         guard.session_cwd = ctx.cwd().unwrap_or_default();
+        guard.model_registry = ctx.model_registry().ok();
         guard.generation += 1;
         guard.session_active = true;
         guard.configured_entries = loaded.servers.clone();
@@ -607,10 +916,15 @@ fn session_start(state: &SharedState, ctx: &ExtensionContext) {
                 connection: None,
                 registered_config: None,
                 message: None,
+                ready: None,
             })
             .chain(registered.servers)
             .collect();
         emit_change(&mut guard);
+        // Codemode or tool_search is activated from the config: the first
+        // prompt does not wait for servers whose tools are not declared to
+        // the model, and scripts or searches wait for them.
+        ensure_discovery_active(state, ctx);
         let enabled_count = guard
             .servers
             .iter()
@@ -633,32 +947,148 @@ fn session_start(state: &SharedState, ctx: &ExtensionContext) {
     lock(state).pending = Some(raw.shared());
 }
 
-/// The body of the startup `pending` promise (upstream the
-/// `.then(loadMcpRuntime).then(...)` chain).
-async fn connect_all(state: &SharedState, ctx: &ExtensionContext, current: u64) {
-    let connections = {
+type IsCurrent = Arc<dyn Fn() -> bool + Send + Sync>;
+
+fn is_current_generation(state: &SharedState, current: u64) -> IsCurrent {
+    let state = Arc::clone(state);
+    Arc::new(move || lock(&state).generation == current)
+}
+
+/// Whether a tool name is one of the resource tools, which reach every
+/// server (upstream `RESOURCE_TOOL_NAMES`).
+fn resource_tool_name(name: &str) -> bool {
+    matches!(
+        name,
+        super::resources::LIST_MCP_RESOURCES_TOOL
+            | super::resources::LIST_MCP_RESOURCE_TEMPLATES_TOOL
+            | super::resources::READ_MCP_RESOURCE_TOOL
+    )
+}
+
+/// Wait for the direct-tools servers that are still connecting, until they
+/// settle or [`DEFAULT_STARTUP_WAIT_MS`] passes (upstream
+/// `waitForDirectServers`).
+async fn wait_for_direct_servers(state: &SharedState, ctx: &ExtensionContext) {
+    let ready: Vec<futures::future::Shared<BoxFuture<'static, ()>>> = {
         let mut guard = lock(state);
-        let mut connections = Vec::new();
+        if guard.waited_for_startup {
+            return;
+        }
+        guard.waited_for_startup = true;
+        guard
+            .servers
+            .iter()
+            .filter(|server| is_enabled(server) && has_direct_tools(&server.entry))
+            .filter_map(|server| server.ready.clone())
+            .collect()
+    };
+    if ready.is_empty() {
+        return;
+    }
+    let wait_ms = lock(state).startup_wait_ms;
+    let finished = tokio::select! {
+        _ = futures::future::join_all(ready) => true,
+        _ = tokio::time::sleep(std::time::Duration::from_millis(wait_ms)) => false,
+    };
+    if !finished {
+        notify_ctx(
+            ctx,
+            "MCP servers are still connecting; their tools become available once connected.",
+            Some("info"),
+        );
+    }
+}
+
+/// Wait for servers still connecting, until they settle or `signal` aborts
+/// (upstream `waitForServers`).
+async fn wait_for_servers(waiting: &[McpServer], signal: Option<Arc<AbortSignal>>) {
+    let ready: Vec<futures::future::Shared<BoxFuture<'static, ()>>> = waiting
+        .iter()
+        .filter_map(|server| server.ready.clone())
+        .collect();
+    if ready.is_empty() || signal.as_ref().is_some_and(|signal| signal.is_aborted()) {
+        return;
+    }
+    // Upstream races `Promise.all(ready)` against an abort listener; the
+    // port races against the signal's cancellation future.
+    let abort = async {
+        match &signal {
+            Some(signal) => signal.cancelled().await,
+            None => std::future::pending().await,
+        }
+    };
+    tokio::select! {
+        _ = futures::future::join_all(ready) => {}
+        () = abort => {}
+    }
+}
+
+/// Connect the server in the background. `server.ready` settles when it
+/// connected or failed; failures show in its state. It starts after `after`;
+/// `is_current` stops it when the session ended meanwhile. Upstream returns
+/// the rejecting promise; the statically linked runtime cannot fail to load,
+/// so the port's handle never errors.
+fn start_connection(
+    guard: &mut McpExtensionState,
+    server_index: usize,
+    is_current: IsCurrent,
+    after: Option<futures::future::Shared<BoxFuture<'static, ()>>>,
+) -> futures::future::Shared<BoxFuture<'static, ()>> {
+    let state = downgrade_state(guard);
+    let raw: BoxFuture<'static, ()> = Box::pin(async move {
+        if let Some(after) = after {
+            after.await;
+        }
+        if !is_current() {
+            return;
+        }
+        let connection = {
+            let Some(state) = state.upgrade() else {
+                return;
+            };
+            let mut guard = lock(&state);
+            create_connection(&mut guard, server_index).ok()
+        };
+        if !is_current() {
+            return;
+        }
+        if let Some(connection) = connection {
+            let _ = connection.get_client().await;
+        }
+    });
+    let joined = tokio::spawn(raw);
+    let shared: futures::future::Shared<BoxFuture<'static, ()>> = async move {
+        let _ = joined.await;
+    }
+    .boxed()
+    .shared();
+    guard.servers[server_index].ready = Some(shared.clone());
+    shared
+}
+
+/// The body of the startup `pending` promise (upstream the
+/// `.then(loadMcpRuntime).then(...)` chain): connect every enabled server in
+/// the background, then report.
+async fn connect_all(state: &SharedState, ctx: &ExtensionContext, current: u64) {
+    let is_current = is_current_generation(state, current);
+    let waits: Vec<futures::future::Shared<BoxFuture<'static, ()>>> = {
+        let mut guard = lock(state);
+        let mut waits = Vec::new();
         for index in 0..guard.servers.len() {
             if !is_enabled(&guard.servers[index]) {
                 continue;
             }
-            if let Ok(connection) = create_connection(&mut guard, index) {
-                connections.push(connection);
-            }
+            let wait = start_connection(&mut guard, index, Arc::clone(&is_current), None);
+            waits.push(wait);
         }
-        connections
+        waits
     };
-    if lock(state).generation != current {
+    for wait in waits {
+        wait.await;
+    }
+    if !is_current() {
         return;
     }
-    for connection in &connections {
-        let _ = connection.get_client().await;
-    }
-    if lock(state).generation != current {
-        return;
-    }
-    ensure_discovery_active(state, ctx);
     report_problems(state, ctx, None);
 }
 
@@ -714,39 +1144,54 @@ async fn on_mcp_servers_change(state: &SharedState, ctx: &ExtensionContext) {
         }
     }
     let connecting: Vec<McpServer> = added.into_iter().filter(is_enabled).collect();
+    ensure_discovery_active(state, ctx);
     if lock(state).generation != current || connecting.is_empty() {
         return;
     }
-    let started: Vec<Arc<McpServerConnection>> = {
-        let mut guard = lock(state);
-        let mut started = Vec::new();
-        for server in &connecting {
-            let Some(index) = guard
+    let is_current = is_current_generation(state, current);
+    let mut waits: Vec<futures::future::Shared<BoxFuture<'static, ()>>> = Vec::new();
+    for server in &connecting {
+        let index = {
+            let guard = lock(state);
+            guard
                 .servers
                 .iter()
                 .position(|candidate| candidate.entry.name == server.entry.name)
-            else {
-                continue;
-            };
-            if let Ok(connection) = create_connection(&mut guard, index) {
-                started.push(connection);
-            }
-        }
-        started
-    };
-    if lock(state).generation != current {
-        for connection in &started {
+        };
+        let Some(index) = index else {
+            continue;
+        };
+        let mut guard = lock(state);
+        waits.push(start_connection(
+            &mut guard,
+            index,
+            Arc::clone(&is_current),
+            None,
+        ));
+    }
+    for wait in &waits {
+        wait.clone().await;
+    }
+    if !is_current() {
+        // The session ended meanwhile: close what connected for it.
+        let stale: Vec<Arc<McpServerConnection>> = {
+            let guard = lock(state);
+            guard
+                .servers
+                .iter()
+                .filter(|server| {
+                    connecting
+                        .iter()
+                        .any(|added| added.entry.name == server.entry.name)
+                })
+                .filter_map(|server| server.connection.clone())
+                .collect()
+        };
+        for connection in &stale {
             let _ = connection.close().await;
         }
         return;
     }
-    for connection in &started {
-        let _ = connection.get_client().await;
-    }
-    if lock(state).generation != current {
-        return;
-    }
-    ensure_discovery_active(state, ctx);
     report_problems(state, ctx, Some(&connecting));
 }
 
@@ -789,12 +1234,12 @@ fn registered_servers(guard: &mut McpExtensionState) -> RegisteredServers {
         let configured = guard
             .configured_entries
             .iter()
-            .find(|entry| entry.name == server.name)
+            .find(|entry| mcp_namespace(&entry.name) == mcp_namespace(&server.name))
             .cloned();
         if let Some(configured) = configured {
             overridden_names.push(format!(
-                "\"{}\" registered by {} is overridden by {}",
-                server.name, server.extension_path, configured.source
+                "\"{}\" registered by {} is overridden by \"{}\" in {}",
+                server.name, server.extension_path, configured.name, configured.source
             ));
             continue;
         }
@@ -806,10 +1251,12 @@ fn registered_servers(guard: &mut McpExtensionState) -> RegisteredServers {
                 config: server.config,
                 source: server.extension_path,
                 scope: Some(McpConfigScope::Extension),
+                override_: None,
             },
             connection: None,
             registered_config: Some(registered_config),
             message: None,
+            ready: None,
         });
     }
     RegisteredServers {
@@ -878,6 +1325,14 @@ fn create_connection(
         cwd,
         create_transport,
         credentials,
+        provider_token: guard.model_registry.clone().map(|registry| {
+            let resolver: ProviderTokenResolver = Arc::new(move |provider: &str| {
+                let registry = Arc::clone(&registry);
+                let provider = provider.to_string();
+                Box::pin(async move { registry.get_api_key_for_provider(provider).await })
+            });
+            resolver
+        }),
         on_tools,
         on_change: Some(on_change),
         log: Some(log),
@@ -935,29 +1390,69 @@ fn on_connection_change(state: &SharedState, connection: &Arc<McpServerConnectio
     let id = connection_id(connection);
     if connection.state() != ServerState::NeedsAuth {
         guard.tokens_at_sign_in.remove(&id);
-    } else if !guard.tokens_at_sign_in.contains_key(&id) {
-        guard
-            .tokens_at_sign_in
-            .entry(id)
-            .or_insert_with(|| Arc::clone(connection));
+    } else if let std::collections::hash_map::Entry::Vacant(slot) =
+        guard.tokens_at_sign_in.entry(id)
+    {
+        let snapshot = Arc::new(std::sync::Mutex::new(None));
+        slot.insert((Arc::clone(connection), Arc::clone(&snapshot)));
+        // The snapshot is taken asynchronously (the file-backed store reads
+        // under a lock); until it lands the server cannot be mistaken for
+        // signed-in.
+        let state_for_snapshot = Arc::clone(state);
+        let connection_for_snapshot = Arc::clone(connection);
+        drop(guard);
+        tokio::spawn(async move {
+            let tokens = stored_tokens(&state_for_snapshot, &connection_for_snapshot).await;
+            if connection_for_snapshot.state() == ServerState::NeedsAuth {
+                *snapshot.lock().expect("token snapshot cannot be poisoned") = Some(tokens);
+            }
+        });
+        return;
     }
     emit_change(&mut guard);
 }
 
-/// Reconnect servers that need a sign-in when their credentials were stored
-/// since (upstream `reconnectSignedIn`; the token snapshots compare the
-/// stored credentials, which the file-backed store reads per call).
-async fn reconnect_signed_in(state: &SharedState, ctx: &ExtensionContext) {
-    let signed_in: Vec<Arc<McpServerConnection>> = {
-        let mut guard = lock(state);
-        guard
-            .tokens_at_sign_in
-            .drain()
-            .map(|(_, connection)| connection)
-            .collect()
+/// The stored tokens of a connection, as JSON (upstream `storedTokens`).
+async fn stored_tokens(state: &SharedState, connection: &Arc<McpServerConnection>) -> String {
+    let credentials = lock(state).credentials.clone();
+    let Some(url) = connection.oauth_url() else {
+        return "null".to_string();
     };
+    let Some(credentials) = credentials else {
+        return "null".to_string();
+    };
+    let tokens = credentials.tokens(connection.name(), &url).await;
+    serde_json::to_string(&tokens.unwrap_or(Value::Null)).unwrap_or_else(|_| "null".to_string())
+}
+
+/// Reconnect servers that need a sign-in when their credentials were stored
+/// since (upstream `reconnectSignedIn`).
+async fn reconnect_signed_in(state: &SharedState, ctx: &ExtensionContext) {
+    let waiting: Vec<(Arc<McpServerConnection>, TokenSnapshot)> = {
+        let guard = lock(state);
+        guard.tokens_at_sign_in.values().cloned().collect()
+    };
+    let mut signed_in: Vec<Arc<McpServerConnection>> = Vec::new();
+    for (connection, snapshot) in waiting {
+        let Some(at_sign_in) = snapshot
+            .lock()
+            .expect("token snapshot cannot be poisoned")
+            .clone()
+        else {
+            continue;
+        };
+        if stored_tokens(state, &connection).await != at_sign_in {
+            signed_in.push(connection);
+        }
+    }
     if signed_in.is_empty() {
         return;
+    }
+    {
+        let mut guard = lock(state);
+        for connection in &signed_in {
+            guard.tokens_at_sign_in.remove(&connection_id(connection));
+        }
     }
     for connection in &signed_in {
         let _ = connection.reconnect().await;
@@ -1059,7 +1554,6 @@ fn register_tools(state: &SharedState, connection: &Arc<McpServerConnection>) {
     let entry = find_server(&guard, &server)
         .map(|server| server.entry.clone())
         .unwrap_or_else(|| connection.entry.clone());
-    let namespace_name = format!("mcp__{server}");
     let description = entry
         .config
         .description()
@@ -1068,7 +1562,7 @@ fn register_tools(state: &SharedState, connection: &Arc<McpServerConnection>) {
         .map(str::to_string);
     let instructions = connection.instructions();
     let namespace = ToolNamespace {
-        name: namespace_name,
+        name: mcp_namespace(&server),
         description,
         instructions,
     };
@@ -1076,6 +1570,17 @@ fn register_tools(state: &SharedState, connection: &Arc<McpServerConnection>) {
     let mut current: BTreeSet<String> = BTreeSet::new();
     let tools = connection.tools();
     let connection_id_value = connection_id(connection);
+    // Like Codex, all tools whose names sanitize to the same name get the
+    // hash suffix, so which one would keep the plain name does not depend on
+    // the order of the list.
+    let mut plain: Vec<String> = Vec::new();
+    let mut seen_plain: std::collections::HashSet<String> = std::collections::HashSet::new();
+    for tool in &tools {
+        let name = create_mcp_tool_name(&server, &tool.name, |_| false);
+        if seen_plain.insert(name.clone()) {
+            plain.push(name);
+        }
+    }
     for tool in &tools {
         let owner = format!("{server}\0{}", tool.name);
         let taken = |candidate: &str| {
@@ -1086,6 +1591,7 @@ fn register_tools(state: &SharedState, connection: &Arc<McpServerConnection>) {
                 .map(|existing| existing != &owner)
                 .unwrap_or(false)
                 || current.contains(candidate)
+                || plain.iter().filter(|name| **name == candidate).count() > 1
         };
         let name = create_mcp_tool_name(&server, &tool.name, taken);
         guard.tool_owners.insert(name.clone(), owner);
@@ -1217,27 +1723,15 @@ fn sync_resource_tools(guard: &mut McpExtensionState) {
 /// tool (scripts call them) or the tool_search tool (it declares them). Either
 /// reaches every such tool. Activate the one the tools' exposure asks for:
 /// codemode for `codemode` unless `autoEnableCodemode` is false, tool_search
-/// for `deferred` (upstream `ensureDiscoveryActive`).
+/// for `deferred` (upstream `ensureDiscoveryActive`). Since v1.0.0 the
+/// exposures come from the config, so the tool is active before the servers
+/// connect.
 fn ensure_discovery_active(state: &SharedState, ctx: &ExtensionContext) {
     let mut guard = lock(state);
     let mut exposures: Vec<McpExposure> = Vec::new();
     for server in &guard.servers {
-        let Some(connection) = &server.connection else {
-            continue;
-        };
-        if connection.state() != ServerState::Connected {
-            continue;
-        }
-        // Resource tools share the server's exposure.
-        if connection.has_resources() {
-            let exposure = exposure_of(&server.entry);
-            if !exposures.contains(&exposure) {
-                exposures.push(exposure);
-            }
-        }
-        for tool in connection.tools() {
-            {
-                let exposure = get_mcp_tool_exposure(&server.entry.config, &tool.name);
+        if is_enabled(server) {
+            for exposure in configured_exposures(&server.entry) {
                 if !exposures.contains(&exposure) {
                     exposures.push(exposure);
                 }
@@ -1289,7 +1783,8 @@ fn ensure_discovery_active(state: &SharedState, ctx: &ExtensionContext) {
     } else {
         ""
     };
-    notify_ctx(ctx,
+    notify_ctx(
+        ctx,
         &format!(
             "MCP tools are only reachable from the codemode or tool_search tool, but neither is active{reason}; they cannot be called."
         ),
@@ -1631,27 +2126,45 @@ async fn sign_out(state: &SharedState, server: &McpServer) -> bool {
         let mut guard = lock(state);
         get_credentials(&mut guard)
     };
-    let removed = credentials.remove(&url).await;
+    let removed = credentials.remove(&server.entry.name, &url).await;
     connection.sign_out().await;
     removed
 }
 
 /// Save a config change; returns an error message when the file could not be
-/// updated. Changes to registered servers only apply to the current session
-/// (upstream `saveConfig`). Takes the caller-held state guard's update hook;
-/// never locks the state itself.
+/// updated. Changes to registered servers only apply to the current session;
+/// `in_project` adds a project override (upstream `saveConfig`). Takes the
+/// caller-held state guard's update hook; never locks the state itself.
 fn save_config_with(
     update: Option<UpdateConfigHook>,
+    project_config: Option<String>,
     server: &mut McpServer,
     patch: McpServerConfigPatch,
+    in_project: bool,
 ) -> Option<String> {
+    let override_path = if in_project {
+        project_config
+    } else {
+        server.entry.override_.clone()
+    };
+    let target = override_path
+        .clone()
+        .unwrap_or_else(|| server.entry.source.clone());
+    let previous_override = server.entry.override_.clone();
+    server.entry.override_ = override_path;
     if server.entry.scope != Some(McpConfigScope::Extension) {
         let result = match &update {
             Some(update) => update(&server.entry, patch),
-            None => update_mcp_server_config(&server.entry.source, &server.entry.name, patch),
+            None => update_mcp_server_config(
+                &target,
+                &server.entry.name,
+                patch,
+                previous_override.is_some(),
+            ),
         };
         if let Err(error) = result {
-            return Some(format!("Could not update {}: {error}", server.entry.source));
+            server.entry.override_ = previous_override;
+            return Some(format!("Could not update {target}: {error}"));
         }
     }
     server.entry = merged_entry(&server.entry, patch);
@@ -1683,10 +2196,16 @@ fn merged_entry(entry: &McpServerEntry, patch: McpServerConfigPatch) -> McpServe
         config,
         source: entry.source.clone(),
         scope: entry.scope,
+        override_: entry.override_.clone(),
     }
 }
 
-async fn set_enabled(state: &SharedState, server_name: &str, enabled: bool) -> Option<String> {
+async fn set_enabled(
+    state: &SharedState,
+    server_name: &str,
+    enabled: bool,
+    in_project: bool,
+) -> Option<String> {
     let (failed, old_connection) = {
         let mut guard = lock(state);
         let index = guard
@@ -1694,13 +2213,16 @@ async fn set_enabled(state: &SharedState, server_name: &str, enabled: bool) -> O
             .iter()
             .position(|server| server.entry.name == server_name)?;
         let update = guard.options.update_config.clone();
+        let project_config = guard.project_config.clone();
         let failed = save_config_with(
             update,
+            project_config,
             &mut guard.servers[index],
             McpServerConfigPatch {
                 enabled: Some(enabled),
                 exposure: None,
             },
+            in_project,
         );
         let old_connection = guard.servers[index].connection.clone();
         if !enabled {
@@ -1719,15 +2241,15 @@ async fn set_enabled(state: &SharedState, server_name: &str, enabled: bool) -> O
         }
         return None;
     }
-    let connection = {
+    let wait = {
         let mut guard = lock(state);
         let index = guard
             .servers
             .iter()
             .position(|server| server.entry.name == server_name)?;
-        create_connection(&mut guard, index).ok()?
+        start_connection(&mut guard, index, Arc::new(|| true), None)
     };
-    let _ = connection.get_client().await;
+    wait.await;
     None
 }
 
@@ -1739,13 +2261,16 @@ fn set_exposure(state: &SharedState, server_name: &str, exposure: McpExposure) -
             .iter()
             .position(|server| server.entry.name == server_name)?;
         let update = guard.options.update_config.clone();
+        let project_config = guard.project_config.clone();
         save_config_with(
             update,
+            project_config,
             &mut guard.servers[index],
             McpServerConfigPatch {
                 enabled: None,
                 exposure: Some(exposure),
             },
+            false,
         )
     };
     if failed.is_some() {
@@ -1812,7 +2337,7 @@ async fn sign_in(
         let mut guard = lock(state);
         let credentials = get_credentials(&mut guard);
         (
-            credentials.for_server(&url),
+            credentials.for_server(&server.entry.name, &url),
             connection.oauth_settings(),
             connection.challenge(),
         )
@@ -1902,16 +2427,28 @@ async fn login_command(state: &SharedState, server: &McpServer, ctx: &ExtensionC
         );
         return;
     }
-    let open_url = {
-        let guard = lock(state);
-        guard
-            .options
-            .open_url
-            .clone()
-            .unwrap_or_else(|| Arc::new(open_browser))
+    // v1.0.0: in the TUI the sign-in runs through the manager view, which
+    // shows the URL with a copy key (upstream `showMcpManager`); elsewhere the
+    // URL is announced as a notification.
+    let failure = if ctx
+        .mode()
+        .map(|mode| mode == ExtensionMode::Tui)
+        .unwrap_or(false)
+    {
+        let ui: Arc<dyn McpUi> = Arc::new(manager_ui(ctx));
+        sign_in_with_ui(state, &ui, server, &name).await
+    } else {
+        let open_url = {
+            let guard = lock(state);
+            guard
+                .options
+                .open_url
+                .clone()
+                .unwrap_or_else(|| Arc::new(open_browser))
+        };
+        let prompt = command_sign_in_prompt(ctx, &name, open_url);
+        sign_in(state, server, prompt).await
     };
-    let prompt = command_sign_in_prompt(ctx, &name, open_url);
-    let failure = sign_in(state, server, prompt).await;
     if let Some(failure) = failure {
         let notify_type = if failure == "Sign-in cancelled." {
             "info"
@@ -1977,11 +2514,15 @@ fn servers_menu(state: &SharedState) -> McpMenu {
                     "{} · {} · {}",
                     describe_state(server, true),
                     exposure_name(exposure_of(&server.entry)),
-                    server
-                        .entry
-                        .scope
-                        .map(|scope| scope.as_str().to_string())
-                        .unwrap_or_else(|| server.entry.source.clone())
+                    if server.entry.override_.is_some() {
+                        "global, project override".to_string()
+                    } else {
+                        server
+                            .entry
+                            .scope
+                            .map(|scope| scope.as_str().to_string())
+                            .unwrap_or_else(|| server.entry.source.clone())
+                    }
                 )),
             })
             .collect(),
@@ -2012,16 +2553,30 @@ fn server_menu(state: &SharedState, name: &str) -> McpMenu {
     let connection = server.connection.as_ref();
     let saved = match entry.scope {
         Some(McpConfigScope::Extension) => "for this session".to_string(),
+        _ if entry.override_.is_some() => "saved to the project mcp.json".to_string(),
         Some(scope) => format!("saved to the {} mcp.json", scope.as_str()),
         None => "saved to mcp.json".to_string(),
     };
+    // Global servers without an override can be turned on or off for the
+    // trusted project alone.
+    let in_project = entry.scope == Some(McpConfigScope::Global)
+        && entry.override_.is_none()
+        && guard.project_config.is_some();
+    let in_project_saved = "saved to the project mcp.json".to_string();
     let mut items: Vec<McpMenuItem> = Vec::new();
     if !is_enabled(server) {
         items.push(McpMenuItem {
             value: "enable".to_string(),
             label: "Enable".to_string(),
-            description: Some(saved),
+            description: Some(saved.clone()),
         });
+        if in_project {
+            items.push(McpMenuItem {
+                value: "enable-project".to_string(),
+                label: "Enable in this project".to_string(),
+                description: Some(in_project_saved),
+            });
+        }
     } else {
         let state = connection.map(|connection| connection.state());
         if state == Some(ServerState::NeedsAuth) {
@@ -2071,8 +2626,15 @@ fn server_menu(state: &SharedState, name: &str) -> McpMenu {
             label: "Disable".to_string(),
             description: Some(saved),
         });
+        if in_project {
+            items.push(McpMenuItem {
+                value: "disable-project".to_string(),
+                label: "Disable in this project".to_string(),
+                description: Some(in_project_saved),
+            });
+        }
     }
-    let details = [
+    let mut details_rows: Vec<String> = vec![
         describe_transport(entry),
         format!(
             "{}: {}",
@@ -2082,9 +2644,12 @@ fn server_menu(state: &SharedState, name: &str) -> McpMenu {
                 .unwrap_or_else(|| "config".to_string()),
             entry.source
         ),
-        format!("State: {}", describe_state(server, false)),
-    ]
-    .join("\n");
+    ];
+    if let Some(override_path) = &entry.override_ {
+        details_rows.push(format!("project override: {override_path}"));
+    }
+    details_rows.push(format!("State: {}", describe_state(server, false)));
+    let details = details_rows.join("\n");
     let error = [
         server.message.clone(),
         match connection {
@@ -2109,13 +2674,17 @@ fn server_menu(state: &SharedState, name: &str) -> McpMenu {
 }
 
 async fn choose_exposure(state: &SharedState, ui: &dyn McpUi, server_name: &str) -> Option<String> {
-    let (current, is_extension, source) = {
+    let (current, is_extension, saved_to) = {
         let guard = lock(state);
         let server = find_server(&guard, server_name)?;
         (
             exposure_of(&server.entry),
             server.entry.scope == Some(McpConfigScope::Extension),
-            server.entry.source.clone(),
+            server
+                .entry
+                .override_
+                .clone()
+                .unwrap_or_else(|| server.entry.source.clone()),
         )
     };
     let current_name = exposure_name(current).to_string();
@@ -2135,9 +2704,9 @@ async fn choose_exposure(state: &SharedState, ui: &dyn McpUi, server_name: &str)
             McpMenu {
                 title: format!("Exposure of {server_name}"),
                 details: Some(if is_extension {
-                    format!("Applies to this session; the server is registered by {source}.")
+                    format!("Applies to this session; the server is registered by {saved_to}.")
                 } else {
-                    format!("Saved to {source}.")
+                    format!("Saved to {saved_to}.")
                 }),
                 items,
                 selected: Some(current_name.clone()),
@@ -2171,28 +2740,12 @@ async fn run_action(
     let mut message: Option<String> = None;
     match action {
         "signin" => {
-            let title = format!("Sign in to {server_name}");
-            ui.status(&title, "Contacting the authorization server…");
-            let open_url = {
-                let guard = lock(state);
-                guard
-                    .options
-                    .open_url
-                    .clone()
-                    .unwrap_or_else(|| Arc::new(open_browser))
-            };
-            let prompt = Arc::new(ManagerSignInPrompt {
-                title: title.clone(),
-                ui: Arc::clone(ui),
-                authorization_url: Mutex::new(String::new()),
-                open_url,
-            });
             let server = {
                 let guard = lock(state);
                 find_server(&guard, server_name).cloned()
             };
             if let Some(server) = server {
-                message = sign_in(state, &server, prompt).await;
+                message = sign_in_with_ui(state, ui, &server, &server.entry.name).await;
             }
         }
         "reconnect" => {
@@ -2239,17 +2792,17 @@ async fn run_action(
         "exposure" => {
             message = choose_exposure(state, ui.as_ref(), server_name).await;
         }
-        "enable" | "disable" => {
-            let enabled = action == "enable";
+        "enable" | "disable" | "enable-project" | "disable-project" => {
+            let enable = action.starts_with("enable");
             ui.status(
                 &format!("MCP server {server_name}"),
-                if enabled {
+                if enable {
                     "Connecting…"
                 } else {
                     "Disconnecting…"
                 },
             );
-            message = set_enabled(state, server_name, enabled).await;
+            message = set_enabled(state, server_name, enable, action.ends_with("-project")).await;
         }
         _ => {}
     }
@@ -2316,6 +2869,33 @@ fn tools_menu_data(_guard: &McpExtensionState, server: &McpServer) -> McpMenu {
         cancel_label: "back".to_string(),
         ..McpMenu::default()
     }
+}
+
+/// Sign in with the manager view's sign-in screen, which shows the URL with a
+/// copy key (upstream `signInWithUi`).
+async fn sign_in_with_ui(
+    state: &SharedState,
+    ui: &Arc<dyn McpUi>,
+    server: &McpServer,
+    name: &str,
+) -> Option<String> {
+    let title = format!("Sign in to {name}");
+    ui.status(&title, "Contacting the authorization server…");
+    let open_url = {
+        let guard = lock(state);
+        guard
+            .options
+            .open_url
+            .clone()
+            .unwrap_or_else(|| Arc::new(open_browser))
+    };
+    let prompt = Arc::new(ManagerSignInPrompt {
+        title: title.clone(),
+        ui: Arc::clone(ui),
+        authorization_url: Mutex::new(String::new()),
+        open_url,
+    });
+    sign_in(state, server, prompt).await
 }
 
 /// The manager's sign-in prompt (upstream the `runAction` "signin" prompt):

@@ -632,6 +632,22 @@ fn supports_native_xhigh_effort(model: &Model) -> bool {
     })
 }
 
+/// Upstream `THINKING_BINDING_CONTROLS_BETA` (v1.0.0).
+const THINKING_BINDING_CONTROLS_BETA: &str = "thinking-binding-controls-2026-08-01";
+
+/// Upstream `supportsThinkingBlockBinding` (v1.0.0): check if the model
+/// accepts `thinking.block_binding`. Opus 4.6 and Sonnet 4.6 reject it with
+/// "thinking.adaptive.block_binding: Extra inputs are not permitted".
+fn supports_thinking_block_binding(model: &Model) -> bool {
+    get_model_match_candidates(model).iter().any(|candidate| {
+        candidate.contains("opus-4-7")
+            || candidate.contains("opus-4-8")
+            || candidate.contains("opus-5")
+            || candidate.contains("sonnet-5")
+            || candidate.contains("fable-5")
+    })
+}
+
 /// Upstream `mapThinkingLevelToEffort` (lines 789-809): native xhigh for the
 /// newest line, then the model's `thinkingLevelMap`, then the fixed fallback.
 fn map_thinking_level_to_effort(model: &Model, level: Option<ThinkingLevel>) -> String {
@@ -880,7 +896,7 @@ fn create_image_block(mime_type: &str, data: &str) -> Result<Value, BedrockFailu
         other => {
             return Err(BedrockFailure::plain(format!(
                 "Unknown image type: {other}"
-            )))
+            )));
         }
     };
     Ok(json!({ "image": { "source": { "bytes": data }, "format": format } }))
@@ -1158,11 +1174,17 @@ fn build_additional_model_request_fields(
     }
 
     // GovCloud Bedrock currently rejects the Claude thinking.display field.
-    let display = if is_gov_cloud_bedrock_target(model, env) {
+    let is_gov_cloud = is_gov_cloud_bedrock_target(model, env);
+    let display = if is_gov_cloud {
         None
     } else {
         Some("summarized")
     };
+    // Replayed signed thinking blocks are bound to the system prompt and
+    // tools they were created with (v1.0.0). Bedrock 400s on replay after
+    // either changes unless stale blocks are dropped, matching the Anthropic
+    // provider. Skipped on GovCloud like display.
+    let use_block_binding = !is_gov_cloud && supports_thinking_block_binding(model);
     let mut result = Map::new();
     if supports_adaptive_thinking(model) {
         let mut thinking = Map::new();
@@ -1170,11 +1192,23 @@ fn build_additional_model_request_fields(
         if let Some(display) = display {
             thinking.insert("display".to_string(), json!(display));
         }
+        if use_block_binding {
+            thinking.insert(
+                "block_binding".to_string(),
+                json!({ "prefix_mismatch_behavior": "drop_block" }),
+            );
+        }
         result.insert("thinking".to_string(), Value::Object(thinking));
         result.insert(
             "output_config".to_string(),
             json!({ "effort": map_thinking_level_to_effort(model, reasoning) }),
         );
+        if use_block_binding {
+            result.insert(
+                "anthropic_beta".to_string(),
+                json!([THINKING_BINDING_CONTROLS_BETA]),
+            );
+        }
     } else {
         let default_budgets: [(ThinkingLevel, u32); 6] = [
             (ThinkingLevel::Minimal, 1024),
@@ -3006,8 +3040,11 @@ mod tests {
             ..ResolvedEndpointConfig::default()
         };
         assert_eq!(
-            build_stream_url(&resolved, "arn:aws:bedrock:us-west-2:123456789012:application-inference-profile/abc123")
-                .unwrap(),
+            build_stream_url(
+                &resolved,
+                "arn:aws:bedrock:us-west-2:123456789012:application-inference-profile/abc123"
+            )
+            .unwrap(),
             "https://bedrock-runtime.us-west-2.amazonaws.com/model/arn%3Aaws%3Abedrock%3Aus-west-2%3A123456789012%3Aapplication-inference-profile/abc123/stream"
         );
         // Custom endpoints keep their base URL; trailing slashes are trimmed.
@@ -4324,12 +4361,22 @@ mod tests {
         );
         let (additional, _) =
             capture_additional_fields(&model, Some(ThinkingLevel::High), None).await;
+        // v1.0.0: Opus 4.8 accepts thinking.block_binding, so replayed signed
+        // thinking blocks are dropped on a prefix mismatch, and the binding
+        // controls beta rides along.
         assert_eq!(
             additional["thinking"],
-            json!({ "type": "adaptive", "display": "summarized" })
+            json!({
+                "type": "adaptive",
+                "display": "summarized",
+                "block_binding": { "prefix_mismatch_behavior": "drop_block" }
+            })
         );
         assert_eq!(additional["output_config"], json!({ "effort": "high" }));
-        assert!(additional.get("anthropic_beta").is_none());
+        assert_eq!(
+            additional["anthropic_beta"],
+            json!(["thinking-binding-controls-2026-08-01"])
+        );
     }
 
     #[tokio::test]
@@ -4611,7 +4658,9 @@ mod tests {
         let message = error_of(&events);
         assert_eq!(
             message.error_message.as_deref(),
-            Some("Tool \"lookup\" requires JSON-schema constrained sampling, but root schema must have type object."),
+            Some(
+                "Tool \"lookup\" requires JSON-schema constrained sampling, but root schema must have type object."
+            ),
         );
         assert!(server.received_requests().await.unwrap().is_empty());
     }

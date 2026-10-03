@@ -382,7 +382,9 @@ fn tool_definition_shape() {
     );
     assert_eq!(
         definition.prompt_snippet.as_deref(),
-        Some("Run JavaScript that calls other tools (chains, loops, Promise.all, filtering large results)")
+        Some(
+            "Run JavaScript that calls other tools (chains, loops, Promise.all, filtering large results)"
+        )
     );
     assert_eq!(
         definition.constrained_sampling,

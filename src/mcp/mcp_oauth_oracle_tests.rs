@@ -389,8 +389,7 @@ async fn oauth_discovery_matches_the_capture() {
                     .to_string(),
                 received: expected["issuerMismatch"]["received"]
                     .as_str()
-                    .unwrap()
-                    .to_string(),
+                    .map(str::to_string),
             }
         );
         assert_eq!(
@@ -489,6 +488,7 @@ async fn oauth_discovery_matches_the_capture() {
                 fetch: Some(fetch),
                 protocol_version: None,
             },
+            None,
             None,
             false,
         )
@@ -1838,6 +1838,7 @@ async fn oauth_provider_matches_the_capture() {
         now_ms: Some(Arc::new(|| FIXED_NOW)),
         client_id: None,
         client_secret: None,
+        client_metadata_document: None,
     });
     assert_canonical(
         "client metadata defaults",
@@ -1990,6 +1991,7 @@ async fn oauth_provider_matches_the_capture() {
         now_ms: Some(Arc::new(|| FIXED_NOW)),
         client_id: None,
         client_secret: None,
+        client_metadata_document: None,
     });
     assert_eq!(isolated.tokens().await, None);
     let error = isolated
@@ -2010,6 +2012,7 @@ async fn oauth_provider_matches_the_capture() {
         now_ms: Some(Arc::new(|| FIXED_NOW)),
         client_id: Some("fixed-id".to_string()),
         client_secret: Some("fixed-secret".to_string()),
+        client_metadata_document: None,
     });
     let configured_client = configured
         .client_information()
@@ -2041,6 +2044,7 @@ async fn oauth_provider_matches_the_capture() {
         now_ms: Some(Arc::new(|| FIXED_NOW)),
         client_id: None,
         client_secret: None,
+        client_metadata_document: None,
     });
     assert_canonical(
         "explicit metadata",
@@ -2341,7 +2345,7 @@ async fn oauth_callback_server_matches_the_capture() {
     let port = port_of(&redirect_url, "/callback");
 
     // Happy path: the page answers while the waiter resolves.
-    let pending = server.wait_for_callback("state-1");
+    let pending = server.wait_for_callback("state-1", None);
     let page = tokio::spawn(raw_get(
         port,
         "/callback?code=xyz&state=state-1&iss=https://as.example",
@@ -2368,7 +2372,7 @@ async fn oauth_callback_server_matches_the_capture() {
     assert_eq!(body, expected["okPage"]["body"].as_str().unwrap());
 
     // Error callback.
-    let pending2 = server.wait_for_callback("state-2");
+    let pending2 = server.wait_for_callback("state-2", None);
     let page2 = tokio::spawn(raw_get(
         port,
         "/callback?state=state-2&error=access_denied&error_description=User%20said%20no",
@@ -2415,7 +2419,7 @@ async fn oauth_callback_server_matches_the_capture() {
     );
     assert_eq!(body, expected["wrongPath"]["body"].as_str().unwrap());
     // Missing code -> 400 and rejection.
-    let pending3 = server.wait_for_callback("state-3");
+    let pending3 = server.wait_for_callback("state-3", None);
     let page3 = tokio::spawn(raw_get(port, "/callback?state=state-3"));
     let error = match pending3.await {
         Err(error) => error,
@@ -2431,8 +2435,8 @@ async fn oauth_callback_server_matches_the_capture() {
     // Duplicate pending state errors (upstream throws synchronously; the
     // port's check runs when the duplicate future is first polled). The
     // first state-4 waiter stays unresolved until the server closes.
-    let _pending4 = server.wait_for_callback("state-4");
-    let duplicate = server.wait_for_callback("state-4").await;
+    let _pending4 = server.wait_for_callback("state-4", None);
+    let duplicate = server.wait_for_callback("state-4", None).await;
     assert_eq!(
         duplicate.expect_err("duplicate"),
         expected["duplicateState"].as_str().unwrap()
@@ -2458,7 +2462,7 @@ async fn oauth_callback_server_matches_the_capture() {
         "custom redirect url: {custom_redirect}"
     );
     let port2 = port_of(&custom_redirect, "/cb");
-    let pending5 = server2.wait_for_callback("s");
+    let pending5 = server2.wait_for_callback("s", None);
     let page5 = tokio::spawn(raw_get(port2, "/cb?code=1&state=s"));
     let callback = pending5.await.expect("custom callback");
     let (status, headers, body) = page5.await.expect("page");
@@ -2488,7 +2492,7 @@ async fn oauth_callback_server_matches_the_capture() {
         )
     );
     assert_eq!(body, expected["customOkPage"]["body"].as_str().unwrap());
-    let pending6 = server2.wait_for_callback("s2");
+    let pending6 = server2.wait_for_callback("s2", None);
     let page6 = tokio::spawn(raw_get(port2, "/cb?state=s2&error=nope"));
     match pending6.await {
         Err(_) => {}
@@ -2497,7 +2501,7 @@ async fn oauth_callback_server_matches_the_capture() {
     let (_status, _headers, body) = page6.await.expect("page");
     assert_eq!(body, expected["customErrorPage"]["body"].as_str().unwrap());
     // close() rejects pending waiters.
-    let pending7 = server2.wait_for_callback("s3");
+    let pending7 = server2.wait_for_callback("s3", None);
     let (error, close_result) = tokio::join!(pending7, server2.close());
     let error = match error {
         Err(error) => error,

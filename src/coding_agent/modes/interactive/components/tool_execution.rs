@@ -7,10 +7,14 @@
 //! with generic fallbacks, expand/collapse, image blocks and partial states.
 //!
 //! Disclosed seams (S19.7 in `components/mod.rs`):
-//! - `convertToPng` (`utils/image-convert.ts`) spawns an image transcoder; the
-//!   port takes an optional synchronous converter (absent in the vendored
-//!   tree), so under kitty non-PNG images are skipped exactly like an
-//!   unresolved conversion upstream.
+//! - `convertToPng`/`ensurePngTranscoder` (`utils/image-convert.ts`) map to
+//!   [`crate::coding_agent::utils::image_process`]'s synchronous transcoder;
+//!   the per-component conversion cache upstream (`convertedImages`) is
+//!   needless here because the child payloads are rebuilt deterministically
+//!   (upstream's `imageSources` reuse only preserves converted data inside
+//!   the mounted Image widget). Upstream re-renders once the transcoder
+//!   registers; the native one registers synchronously, so the converted
+//!   image renders in the same pass.
 //! - `getRenderedTextOutput` (`core/tools/render-utils.ts`) is re-stated in
 //!   [`get_text_output`] (its other exports belong to other slices); terminal
 //!   capabilities come from the vendored `tui::terminal_image` (test hook
@@ -136,23 +140,8 @@ pub struct ToolExecutionComponent {
     execution_started: bool,
     args_complete: bool,
     result: Option<ToolResultPayload>,
-    /// Upstream `convertedImages`: keyed by result index, each record carries
-    /// the source data/mime the conversion came from so a changed result
-    /// block never renders a stale conversion.
-    #[allow(dead_code)]
-    converted_images: std::collections::BTreeMap<usize, ConvertedImage>,
     hide_component: bool,
     theme: Arc<Theme>,
-}
-
-/// One converted image record (upstream `{ sourceData, sourceMimeType, data, mimeType }`).
-#[derive(Clone, Debug)]
-#[allow(dead_code)]
-struct ConvertedImage {
-    source_data: String,
-    source_mime_type: String,
-    data: String,
-    mime_type: String,
 }
 
 impl ToolExecutionComponent {
@@ -190,7 +179,6 @@ impl ToolExecutionComponent {
             execution_started: false,
             args_complete: false,
             result: None,
-            converted_images: std::collections::BTreeMap::new(),
             hide_component: false,
             theme,
         };
@@ -292,28 +280,6 @@ impl ToolExecutionComponent {
         self.result = Some(result);
         self.is_partial = is_partial;
         self.update_display();
-        self.maybe_convert_images_for_kitty();
-    }
-
-    /// Upstream `maybeConvertImagesForKitty` (converter seam: no transcoder in
-    /// the vendored tree, so non-PNG images stay unconverted).
-    fn maybe_convert_images_for_kitty(&mut self) {
-        if get_capabilities().images != Some("kitty") {
-            return;
-        }
-        let Some(result) = &self.result else {
-            return;
-        };
-        let image_indexes: Vec<usize> = result
-            .content
-            .iter()
-            .enumerate()
-            .filter(|(_, block)| block.block_type == "image")
-            .map(|(index, _)| index)
-            .collect();
-        let _ = image_indexes;
-        // Without a converter every conversion resolves to `null` upstream:
-        // no map entries, no re-render.
     }
 
     /// Upstream `setExpanded`.
@@ -458,20 +424,38 @@ impl ToolExecutionComponent {
             let caps = get_capabilities();
             // upstream: `caps.images && this.showImages && img.data && img.mimeType`
             let images_enabled = caps.images.is_some() && self.show_images;
-            for (index, img) in image_blocks.iter().enumerate() {
+            for img in image_blocks {
                 if let (true, Some(data), Some(mime_type)) =
                     (images_enabled, &img.data, &img.mime_type)
                 {
+                    let mut image_data = data.clone();
+                    let mut image_mime_type = mime_type.clone();
                     if caps.images == Some("kitty") && mime_type != "image/png" {
-                        continue;
+                        // v1.0.0: on kitty, a registered PNG transcoder
+                        // converts non-PNG images; before it loads they are
+                        // skipped and its registration schedules a re-render.
+                        // The native transcoder registers synchronously, so
+                        // the conversion runs in the same pass.
+                        crate::coding_agent::utils::image_process::ensure_png_transcoder(|| {
+                            // Upstream `onRegistered` invalidates and requests
+                            // a render; the synchronous port renders the
+                            // converted image in this pass instead.
+                        });
+                        let converted =
+                            crate::coding_agent::utils::image_process::registered_png_transcoder()
+                                .and_then(|transcoder| transcoder(data));
+                        let Some(png) = converted else {
+                            continue;
+                        };
+                        image_data = png;
+                        image_mime_type = "image/png".to_string();
                     }
                     children.push(ChildPayload::Image(ImageSpec {
-                        data: data.clone(),
-                        mime_type: mime_type.clone(),
+                        data: image_data,
+                        mime_type: image_mime_type,
                         max_width_cells: self.image_width_cells,
                         fallback_color: "toolOutput",
                     }));
-                    let _ = index;
                 }
             }
         }
@@ -974,7 +958,8 @@ mod tests {
         let rendered = with_renderers.render(60).join("\n");
         assert!(rendered.contains("RESULT(out) false"));
 
-        // kitty: png mounts, jpeg is skipped (no converter)
+        // kitty: png mounts; jpeg has no transcodable bytes ("jpegdata" does
+        // not decode), so it is skipped exactly like a failed conversion.
         let mut kitty = ToolExecutionComponent::new(
             theme.clone(),
             "img",

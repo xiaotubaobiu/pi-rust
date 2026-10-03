@@ -18,7 +18,8 @@ use super::{
     js_number_to_string_for_tests, js_to_string_for_tests, parse_settings_value,
     settings_value_to_serde_for_tests, stringify_pretty_for_tests, DefaultProjectTrust,
     FullscreenExitOutput, FullscreenScrollbar, InMemorySettingsStorage, MermaidRenderingMode,
-    SettingsManager, SettingsScope, SettingsStorage, SettingsValue, TreeFilterMode, TuiMode,
+    QuietStartup, SettingsManager, SettingsScope, SettingsStorage, SettingsValue, TreeFilterMode,
+    TuiMode,
 };
 use crate::ai::types::primitives::ThinkingLevel;
 use crate::coding_agent::core::http_dispatcher::DEFAULT_HTTP_IDLE_TIMEOUT_MS;
@@ -646,7 +647,10 @@ fn tui_mode_defaults_persists_and_validates() {
     let fixture = Fixture::new("tui");
 
     let manager = fixture.manager();
-    assert_eq!(manager.get_tui_mode(), TuiMode::Regular);
+    // v1.0.0 flips the default to fullscreen and only recognizes "regular";
+    // the captured oracle predates the flip, so the default is pinned here
+    // instead of compared against it.
+    assert_eq!(manager.get_tui_mode(), TuiMode::Fullscreen);
     manager.set_tui_mode(TuiMode::Fullscreen);
     manager.flush();
     assert_eq!(manager.get_tui_mode(), TuiMode::Fullscreen);
@@ -654,14 +658,15 @@ fn tui_mode_defaults_persists_and_validates() {
     let saved: serde_json::Value = serde_json::from_str(&fixture.global_bytes()).unwrap();
     assert_eq!(saved["tuiMode"], serde_json::json!("fullscreen"));
 
+    // An unrecognized value falls back to the (now fullscreen) default.
     fixture.write_global(r#"{"tuiMode":"other"}"#);
     let manager = fixture.manager();
-    assert_eq!(manager.get_tui_mode(), TuiMode::Regular);
+    assert_eq!(manager.get_tui_mode(), TuiMode::Fullscreen);
 
     // The old uiMode key is not recognized.
     fixture.write_global(r#"{"uiMode":"fullscreen"}"#);
     let manager = fixture.manager();
-    assert_eq!(manager.get_tui_mode(), TuiMode::Regular);
+    assert_eq!(manager.get_tui_mode(), TuiMode::Fullscreen);
     let _ = capture;
 }
 
@@ -1473,8 +1478,11 @@ fn empty_manager_getter_battery_matches_the_oracle() {
         manager.get_show_cache_miss_notices(),
         values["show_cache_miss"].as_bool().unwrap()
     );
+    // The captured oracle predates v1.0.0's QuietStartup widening, where the
+    // accessor returns `boolean | "header"`; the boolean values it captured map
+    // to `true`/`false` below.
     assert_eq!(
-        manager.get_quiet_startup(),
+        manager.get_quiet_startup() == QuietStartup::Full,
         values["quiet_startup"].as_bool().unwrap()
     );
     assert_eq!(
@@ -1525,10 +1533,9 @@ fn empty_manager_getter_battery_matches_the_oracle() {
         manager.get_show_terminal_progress(),
         values["show_terminal_progress"].as_bool().unwrap()
     );
-    assert_eq!(
-        manager.get_tui_mode() == TuiMode::Regular,
-        values["tui_mode"] == "regular"
-    );
+    // v1.0.0 flips the default to fullscreen; the empty-manager oracle
+    // captured "regular" (the old default), so the new default is pinned.
+    assert_eq!(manager.get_tui_mode(), TuiMode::Fullscreen);
     assert_eq!(
         manager.get_fullscreen_exit_output() == FullscreenExitOutput::Transcript,
         values["fullscreen_exit"] == "transcript"

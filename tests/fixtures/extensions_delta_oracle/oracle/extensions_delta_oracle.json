@@ -334,7 +334,7 @@
 				"definition": {
 					"name": "tool_search",
 					"label": "tool_search",
-					"description": "# Tool discovery\n\nSearches over deferred tool metadata with BM25 and exposes matching tools for the next model call.\n\nYou have access to tools from the following sources:\nNone currently enabled.\n\nSome of the tools may not have been provided to you upfront, and you should use this tool (`tool_search`) to search for the required tools. For MCP tool discovery, always use `tool_search`.",
+					"description": "# Tool discovery\n\nSearches over deferred tool metadata with BM25 and exposes matching tools for the next model call.\n\nSome of the tools, such as tools of MCP servers, may not have been provided to you upfront, and you should use this tool (`tool_search`) to search for the required tools. For MCP tool discovery, always use `tool_search`.",
 					"promptSnippet": "Search for tools that are not loaded yet and load the matches",
 					"parameters": {
 						"type": "object",
@@ -354,7 +354,7 @@
 					},
 					"exposure": "model-only",
 					"hasExecute": true,
-					"hasPrepareLoadout": true
+					"hasPrepareLoadout": false
 				}
 			}
 		},

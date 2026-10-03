@@ -133,6 +133,18 @@ pub fn build_session_options(
     let mut options = CreateAgentSessionOptions::default();
     let mut diagnostics = Vec::new();
     let mut cli_thinking_from_model = false;
+    // Upstream v1.0.0: `--provider` alone is an error; it only narrows `--model` search.
+    if parsed.provider.as_deref().is_some_and(|p| !p.is_empty())
+        && parsed.model.as_deref().is_none_or(|m| m.is_empty())
+    {
+        diagnostics.push(AgentSessionRuntimeDiagnostic {
+            kind: DiagnosticType::Error,
+            message: format!(
+                "--provider requires --model (for example: --provider {} --model <pattern>)",
+                parsed.provider.as_deref().unwrap_or_default()
+            ),
+        });
+    }
     if parsed.model.as_ref().is_some_and(|s| !s.is_empty()) {
         let resolved = resolve_cli_model(ResolveCliModelOptions {
             cli_provider: parsed.provider.as_deref(),

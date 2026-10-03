@@ -31,9 +31,9 @@ pub use errors::{
 };
 pub use flow::{
     adapt_oauth_provider, authorize_mcp, exchange_authorization_code, refresh_authorization,
-    register_client, start_authorization, AdaptedOAuthProvider, AddClientAuthentication,
-    CredentialKind, FormParams, OAuthClientProvider, OAuthFlowOptions, OAuthFlowResult,
-    TokenRequestOptions,
+    register_client, start_authorization, step_up_scope, AdaptedOAuthProvider,
+    AddClientAuthentication, CredentialKind, FormParams, OAuthClientMetadataDocument,
+    OAuthClientProvider, OAuthFlowOptions, OAuthFlowResult, TokenRequestOptions,
 };
 pub use provider::{
     McpOAuthProvider, McpOAuthProviderOptions, McpOAuthState, McpOAuthStateStore,

@@ -13,8 +13,8 @@ use std::sync::{Arc, Mutex};
 use futures::future::BoxFuture;
 use serde_json::Value;
 
+use super::types::SessionMetadata;
 use crate::agent_core::chord_support::Context;
-use crate::agent_core::harness::session::types::SessionMetadata;
 use crate::chord::types::ServiceCall;
 use crate::protocol::json::JsonValue;
 use crate::protocol::protocol::{ClientMessage, ProtocolError, ResponseEnvelope, ResponseOutcome};
@@ -275,7 +275,7 @@ fn tokio_test() -> tokio::runtime::Runtime {
 fn handshake_identifies_the_logical_server_without_listing_sessions() {
     tokio_test().block_on(async {
         let host = super::testing::host::TestServerHost::new();
-        host.seed("session-1", None).await.unwrap();
+        host.seed("session-1");
         let server = create_server(host.clone());
         let (client, _frames) = connect(&server);
 
@@ -324,19 +324,13 @@ fn rejects_a_semantically_invalid_service_call_after_envelope_decoding() {
 }
 
 /// Upstream scenario 3: `openSession` receives the exact repository metadata
-/// (S-A: value equality of the concrete metadata record).
+/// (S-A: value equality of the concrete metadata record). Upstream v1.0.0
+/// extends the minimal `SessionMetadata` with host-specific fields; the
+/// port's concrete record has only `id`, which the equality check covers.
 #[test]
 fn attach_passes_concrete_repository_metadata_to_the_harness_host() {
     tokio_test().block_on(async {
-        let metadata = SessionMetadata {
-            id: "session-1".to_string(),
-            created_at: 1,
-            storage_version: 1,
-            cwd: Some("/workspace".to_string()),
-            path: Some("/sessions/session-1.jsonl".to_string()),
-            modified_at: Some(2.0),
-            ..SessionMetadata::default()
-        };
+        let metadata = SessionMetadata::new("session-1");
         let received: Arc<Mutex<Option<SessionMetadata>>> = Arc::new(Mutex::new(None));
 
         struct MetadataHost {
@@ -394,7 +388,7 @@ fn attach_passes_concrete_repository_metadata_to_the_harness_host() {
 fn routes_opaque_server_services_and_publishes_attachment_changes_out_of_band() {
     tokio_test().block_on(async {
         let backing = super::testing::host::TestServerHost::new();
-        backing.seed("session-1", None).await.unwrap();
+        backing.seed("session-1");
         let release_count = Arc::new(AtomicI64::new(0));
 
         struct OpaqueServices {
@@ -568,7 +562,7 @@ fn routes_opaque_server_services_and_publishes_attachment_changes_out_of_band() 
 fn permits_multiple_client_attachments_per_session() {
     tokio_test().block_on(async {
         let host = super::testing::host::TestServerHost::new();
-        host.seed("session-1", None).await.unwrap();
+        host.seed("session-1");
         let server = create_server(host.clone());
         let (first, _f1) = connect(&server);
         let (second, _f2) = connect(&server);
@@ -599,7 +593,7 @@ fn permits_multiple_client_attachments_per_session() {
 fn clears_connection_ownership_when_attachment_release_fails() {
     tokio_test().block_on(async {
         let host = super::testing::host::TestServerHost::new();
-        host.seed("session-1", None).await.unwrap();
+        host.seed("session-1");
         let errors: Arc<Mutex<Vec<String>>> = Arc::new(Mutex::new(Vec::new()));
         let observer = {
             let errors = errors.clone();
@@ -636,8 +630,8 @@ fn clears_connection_ownership_when_attachment_release_fails() {
 fn requires_the_requesting_client_to_hold_the_targeted_session_attachment() {
     tokio_test().block_on(async {
         let host = super::testing::host::TestServerHost::new();
-        host.seed("session-1", None).await.unwrap();
-        host.seed("session-2", None).await.unwrap();
+        host.seed("session-1");
+        host.seed("session-2");
         let server = create_server(host.clone());
         let (attached, _fa) = connect(&server);
         let (unattached, _fu) = connect(&server);
@@ -705,8 +699,8 @@ fn requires_the_requesting_client_to_hold_the_targeted_session_attachment() {
 fn rejects_a_stale_attachment_route_after_switching_sessions() {
     tokio_test().block_on(async {
         let host = super::testing::host::TestServerHost::new();
-        host.seed("session-1", None).await.unwrap();
-        host.seed("session-2", None).await.unwrap();
+        host.seed("session-1");
+        host.seed("session-2");
         let server = create_server(host.clone());
         let (client, _frames) = connect(&server);
         client.hello().await.unwrap();
@@ -746,7 +740,7 @@ fn rejects_a_stale_attachment_route_after_switching_sessions() {
 fn preserves_opaque_service_results_and_bounds_adapter_defects() {
     tokio_test().block_on(async {
         let host = super::testing::host::TestServerHost::new();
-        host.seed("session-1", None).await.unwrap();
+        host.seed("session-1");
         let server = create_server(host.clone());
         let (client, _frames) = connect(&server);
         client.hello().await.unwrap();
@@ -796,7 +790,7 @@ fn preserves_opaque_service_results_and_bounds_adapter_defects() {
 fn admits_concurrent_service_calls_to_the_attached_session() {
     tokio_test().block_on(async {
         let host = super::testing::host::TestServerHost::new();
-        host.seed("session-1", None).await.unwrap();
+        host.seed("session-1");
         let server = create_server(host.clone());
         let (client, _frames) = connect(&server);
         client.hello().await.unwrap();
@@ -836,7 +830,7 @@ fn admits_concurrent_service_calls_to_the_attached_session() {
 fn keeps_attachment_demand_until_an_accepted_service_call_settles_after_disconnect() {
     tokio_test().block_on(async {
         let host = super::testing::host::TestServerHost::new();
-        host.seed("session-1", None).await.unwrap();
+        host.seed("session-1");
         let server = create_server(host.clone());
         let (client, _frames) = connect(&server);
         client.hello().await.unwrap();
@@ -869,7 +863,7 @@ fn keeps_attachment_demand_until_an_accepted_service_call_settles_after_disconne
 fn rejects_requests_addressed_to_another_server_before_repository_access() {
     tokio_test().block_on(async {
         let host = super::testing::host::TestServerHost::new();
-        host.seed("session-1", None).await.unwrap();
+        host.seed("session-1");
         let server = create_server(host.clone());
         let (client, _frames) = connect(&server);
         client.hello().await.unwrap();
@@ -949,7 +943,7 @@ fn rejects_an_ambiguous_session_id_without_creating_a_harness() {
 fn invalidates_a_terminated_harness_handle_and_allows_a_later_attach() {
     tokio_test().block_on(async {
         let host = super::testing::host::TestServerHost::new();
-        host.seed("session-1", None).await.unwrap();
+        host.seed("session-1");
         let server = create_server(host.clone());
         let (client, _frames) = connect(&server);
         client.hello().await.unwrap();
@@ -973,7 +967,7 @@ fn invalidates_a_terminated_harness_handle_and_allows_a_later_attach() {
 fn connection_loss_releases_its_attachment_while_server_shutdown_closes_the_harness() {
     tokio_test().block_on(async {
         let host = super::testing::host::TestServerHost::new();
-        host.seed("session-1", None).await.unwrap();
+        host.seed("session-1");
         let server = create_server(host.clone());
         let (client, _frames) = connect(&server);
         client.hello().await.unwrap();
@@ -1051,12 +1045,7 @@ impl RoutedSessionAttachment for CountingAttachment {
 #[test]
 fn releases_a_lease_acquired_concurrently_with_harness_termination() {
     tokio_test().block_on(async {
-        let metadata = SessionMetadata {
-            id: "session-1".to_string(),
-            created_at: 1,
-            storage_version: 1,
-            ..SessionMetadata::default()
-        };
+        let metadata = SessionMetadata::new("session-1");
         let acquiring = Arc::new(super::testing::host::Deferred::new());
         let continue_acquiring = Arc::new(super::testing::host::Deferred::new());
         let terminated: Arc<super::testing::host::Deferred<Option<OperationError>>> =
@@ -1125,7 +1114,7 @@ fn releases_a_lease_acquired_concurrently_with_harness_termination() {
 fn shares_a_harness_creation_failure_releases_the_session_and_allows_a_later_retry() {
     tokio_test().block_on(async {
         let host = super::testing::host::TestServerHost::new();
-        host.seed("session-1", None).await.unwrap();
+        host.seed("session-1");
         host.set_next_open_session_error(Some(OperationError::Other(
             "Harness creation failed".to_string(),
         )));
@@ -1161,7 +1150,7 @@ fn shares_a_harness_creation_failure_releases_the_session_and_allows_a_later_ret
 fn closes_a_harness_acquired_while_server_shutdown_is_in_progress() {
     tokio_test().block_on(async {
         let host = super::testing::host::TestServerHost::new();
-        host.seed("session-1", None).await.unwrap();
+        host.seed("session-1");
         let server = create_server(host.clone());
         let (client, _frames) = connect(&server);
         client.hello().await.unwrap();
@@ -1186,7 +1175,7 @@ fn closes_a_harness_acquired_while_server_shutdown_is_in_progress() {
 fn fails_shutdown_when_an_in_flight_acquisition_cannot_release_its_harness() {
     tokio_test().block_on(async {
         let host = super::testing::host::TestServerHost::new();
-        host.seed("session-1", None).await.unwrap();
+        host.seed("session-1");
         host.set_next_harness_close_error(Some(OperationError::Other("close failed".to_string())));
         let server = create_server(host.clone());
         let (client, _frames) = connect(&server);

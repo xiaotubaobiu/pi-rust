@@ -520,11 +520,14 @@ impl AutocompleteProvider for CombinedAutocompleteProvider {
             return None;
         }
 
-        if !force && text_before_cursor.starts_with('/') {
-            let space_index = text_before_cursor.find(' ');
+        // v1.0.0: the command grammar matches against the line's leading
+        // whitespace trimmed, and the reported prefix is that trimmed text.
+        let command_text = text_before_cursor.trim_start();
+        if !force && command_text.starts_with('/') {
+            let space_index = command_text.find(' ');
 
             let Some(space_index) = space_index else {
-                let prefix = text_before_cursor[1..].to_string();
+                let prefix = command_text[1..].to_string();
                 let mut command_items: Vec<(String, Option<String>, Option<String>)> = Vec::new();
                 for cmd in &self.commands {
                     let hint = cmd.argument_hint.clone();
@@ -584,12 +587,12 @@ impl AutocompleteProvider for CombinedAutocompleteProvider {
 
                 return Some(AutocompleteSuggestions {
                     items,
-                    prefix: text_before_cursor.to_string(),
+                    prefix: command_text.to_string(),
                 });
             };
 
-            let command_name = text_before_cursor[1..space_index].to_string();
-            let argument_text = text_before_cursor[space_index + 1..].to_string();
+            let command_name = command_text[1..space_index].to_string();
+            let argument_text = command_text[space_index + 1..].to_string();
             let command = self.find_command(&command_name);
             // Argument completions require the command-specific callback from
             // the host application; the provider alone has none.

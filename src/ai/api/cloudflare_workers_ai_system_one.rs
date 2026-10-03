@@ -1,9 +1,13 @@
 //! Upstream `packages/ai/src/api/cloudflare-workers-ai-system-one.ts`:
 //! System One models on the Workers AI REST endpoint —
 //! `POST /accounts/{account}/ai/run` with `{ model, input }`. The REST API
-//! wraps the model output in Cloudflare's API envelope and a run record:
+//! wraps the model output in Cloudflare's API envelope. Third-party models
+//! such as `typesafe/jev` add a run record:
 //! `{ success, result: { state: "Completed", result: { answers, usage } } }`.
 //! https://developers.cloudflare.com/ai/models/typesafe/jev/
+//! Cloudflare-hosted models such as `@cf/cloudflare/clef` return the output
+//! directly: `{ success, result: { model, answers, usage } }`.
+//! https://developers.cloudflare.com/workers-ai/models/clef/
 
 use serde_json::{json, Value};
 
@@ -61,14 +65,21 @@ impl SystemOneTransport for CloudflareWorkersAiSystemOneTransport {
                 body.get("errors").unwrap_or(&Value::Null),
             ));
         }
-        let run = body.get("result").unwrap_or(&Value::Null);
-        if !is_record(run) {
+        // v1.0.0: Cloudflare-hosted models return the output directly
+        // (`result.answers`), third-party ones nest it in a run record
+        // (`result.state` + `result.result`).
+        let result = body.get("result").unwrap_or(&Value::Null);
+        if !is_record(result) {
             return Err(format!("{LABEL} returned an unexpected response"));
         }
-        if run.get("state").and_then(Value::as_str) != Some("Completed") {
+        if result.get("answers").is_some() {
+            return Ok(result.clone());
+        }
+        if result.get("state").and_then(Value::as_str) != Some("Completed") {
             return Err(format!(
                 "{LABEL} run did not complete (state: {})",
-                run.get("state")
+                result
+                    .get("state")
                     .map(|state| match state {
                         Value::String(text) => text.clone(),
                         other => other.to_string(),
@@ -76,11 +87,11 @@ impl SystemOneTransport for CloudflareWorkersAiSystemOneTransport {
                     .unwrap_or_else(|| "undefined".to_string())
             ));
         }
-        let result = run.get("result").unwrap_or(&Value::Null);
-        if !is_record(result) {
+        let inner = result.get("result").unwrap_or(&Value::Null);
+        if !is_record(inner) {
             return Err(format!("{LABEL} returned an unexpected response"));
         }
-        Ok(result.clone())
+        Ok(inner.clone())
     }
 }
 

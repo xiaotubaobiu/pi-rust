@@ -39,7 +39,7 @@ use super::types::{
 };
 use crate::coding_agent::core::event_bus::{EventBus, EventBusController, EventBusUnsubscribe};
 use crate::coding_agent::core::mcp_servers::{
-    validate_mcp_server_config, McpExposure, McpServerConfig, RegisteredMcpServer,
+    mcp_namespace, validate_mcp_server_config, McpExposure, McpServerConfig, RegisteredMcpServer,
 };
 use crate::coding_agent::core::CONFIG_DIR_NAME;
 use crate::coding_agent::utils::node_path;
@@ -1456,6 +1456,16 @@ impl ExtensionApi {
                     owner.extension_path
                 ));
             }
+        }
+        // v1.0.0: names that differ only in `-` and `_` would share a namespace.
+        let clash = self.runtime.mcp_servers_list().into_iter().find(|server| {
+            server.name != name && mcp_namespace(&server.name) == mcp_namespace(name)
+        });
+        if let Some(clash) = clash {
+            return Err(format!(
+                "MCP server \"{name}\" conflicts with registered server \"{}\"",
+                clash.name
+            ));
         }
         let payload = resolved_mcp_config_value(config, &validated);
         let runtime = self.runtime.clone();

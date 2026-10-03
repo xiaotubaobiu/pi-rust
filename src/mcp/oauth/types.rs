@@ -52,16 +52,46 @@ pub(crate) fn required_string(value: &Value, name: &str) -> Result<String, Strin
     }
 }
 
+/// Upstream `absent` (v1.0.0): treats `null` and `""` as absent — servers
+/// send them for fields they have no value for, like `scope: ""`. JSON has
+/// no `undefined`, so a missing key counts as absent too.
+fn absent(value: Option<&Value>) -> bool {
+    match value {
+        None => true,
+        Some(Value::Null) => true,
+        Some(Value::String(text)) => text.is_empty(),
+        Some(_) => false,
+    }
+}
+
 /// The field is present in the input object (JSON `undefined` does not exist;
 /// absence is the upstream `undefined`).
 fn field<'a>(input: &'a JsonMap, key: &str) -> Option<&'a Value> {
     input.get(key)
 }
 
-/// Upstream `optionalString`: absent means `undefined`; a present value must
-/// be a non-empty string (null throws).
-fn parse_optional_string(value: &Value, name: &str) -> Result<Option<String>, String> {
-    required_string(value, name).map(Some)
+/// Upstream `optionalString` (v1.0.0): absent (`undefined`/`null`/`""`)
+/// means `undefined`; a present value must be a non-empty string.
+fn parse_optional_string(value: Option<&Value>, name: &str) -> Result<Option<String>, String> {
+    if absent(value) {
+        return Ok(None);
+    }
+    required_string(value.expect("checked present"), name).map(Some)
+}
+
+/// Upstream `optionalStrings` (v1.0.0): `undefined` or `null` means
+/// `undefined`; a present value must be an array of strings.
+fn parse_strings_optional(
+    value: Option<&Value>,
+    name: &str,
+) -> Result<Option<Vec<String>>, String> {
+    let Some(value) = value else {
+        return Ok(None);
+    };
+    if value.is_null() {
+        return Ok(None);
+    }
+    parse_strings(value, name).map(Some)
 }
 
 /// Upstream `optionalStrings`: absent means `undefined`; a present value must
@@ -153,19 +183,22 @@ pub fn parse_protected_resource_metadata(
         )?)),
     )];
     if let Some(raw_servers) = field(input, "authorization_servers") {
-        let servers = parse_strings(raw_servers, "authorization_servers")?;
-        let mut validated = Vec::with_capacity(servers.len());
-        for server in &servers {
-            validated.push(safe_url(
-                &Value::from(server.clone()),
-                "authorization server URL",
-            )?);
+        // v1.0.0: a present `null` reads as absent (`optionalStrings`).
+        if let Some(servers) = parse_strings_optional(Some(raw_servers), "authorization_servers")? {
+            let mut validated = Vec::with_capacity(servers.len());
+            for server in &servers {
+                validated.push(safe_url(
+                    &Value::from(server.clone()),
+                    "authorization server URL",
+                )?);
+            }
+            updates.push(("authorization_servers", Some(strings_value(&validated))));
         }
-        updates.push(("authorization_servers", Some(strings_value(&validated))));
     }
     if let Some(raw_scopes) = field(input, "scopes_supported") {
-        let scopes = parse_strings(raw_scopes, "scopes_supported")?;
-        updates.push(("scopes_supported", Some(strings_value(&scopes))));
+        if let Some(scopes) = parse_strings_optional(Some(raw_scopes), "scopes_supported")? {
+            updates.push(("scopes_supported", Some(strings_value(&scopes))));
+        }
     }
     // Upstream `compact` drops validated fields whose value was undefined —
     // impossible for present fields here, so every update is Some.
@@ -220,6 +253,14 @@ impl AuthorizationServerMetadata {
     pub fn client_id_metadata_document_supported(&self) -> Option<bool> {
         self.raw
             .get("client_id_metadata_document_supported")
+            .and_then(Value::as_bool)
+    }
+
+    /// Upstream `authorization_response_iss_parameter_supported` (v1.0.0):
+    /// whether authorization responses carry an `iss` parameter (RFC 9207).
+    pub fn authorization_response_iss_parameter_supported(&self) -> Option<bool> {
+        self.raw
+            .get("authorization_response_iss_parameter_supported")
             .and_then(Value::as_bool)
     }
 
@@ -286,40 +327,63 @@ pub fn parse_authorization_server_metadata(
             )?)),
         ),
     ];
-    if let Some(raw) = field(input, "registration_endpoint") {
-        let endpoint = safe_url(raw, "registration endpoint")?;
+    // Upstream `optionalUrl` (v1.0.0): absent (`undefined`/`null`/`""`)
+    // drops the field; otherwise the URL must validate.
+    if !absent(field(input, "registration_endpoint")) {
+        let endpoint = safe_url(
+            field(input, "registration_endpoint").expect("checked present"),
+            "registration endpoint",
+        )?;
         updates.push(("registration_endpoint", Some(Value::from(endpoint))));
     }
     if let Some(raw_scopes) = field(input, "scopes_supported") {
-        let scopes = parse_strings(raw_scopes, "scopes_supported")?;
-        updates.push(("scopes_supported", Some(strings_value(&scopes))));
+        if let Some(scopes) = parse_strings_optional(Some(raw_scopes), "scopes_supported")? {
+            updates.push(("scopes_supported", Some(strings_value(&scopes))));
+        }
     }
     updates.push((
         "response_types_supported",
         Some(strings_value(&response_types)),
     ));
     if let Some(raw_grants) = field(input, "grant_types_supported") {
-        let grants = parse_strings(raw_grants, "grant_types_supported")?;
-        updates.push(("grant_types_supported", Some(strings_value(&grants))));
+        if let Some(grants) = parse_strings_optional(Some(raw_grants), "grant_types_supported")? {
+            updates.push(("grant_types_supported", Some(strings_value(&grants))));
+        }
     }
     if let Some(raw_methods) = field(input, "token_endpoint_auth_methods_supported") {
-        let methods = parse_strings(raw_methods, "token_endpoint_auth_methods_supported")?;
-        updates.push((
-            "token_endpoint_auth_methods_supported",
-            Some(strings_value(&methods)),
-        ));
+        if let Some(methods) =
+            parse_strings_optional(Some(raw_methods), "token_endpoint_auth_methods_supported")?
+        {
+            updates.push((
+                "token_endpoint_auth_methods_supported",
+                Some(strings_value(&methods)),
+            ));
+        }
     }
     if let Some(raw_challenges) = field(input, "code_challenge_methods_supported") {
-        let challenges = parse_strings(raw_challenges, "code_challenge_methods_supported")?;
-        updates.push((
-            "code_challenge_methods_supported",
-            Some(strings_value(&challenges)),
-        ));
+        if let Some(challenges) =
+            parse_strings_optional(Some(raw_challenges), "code_challenge_methods_supported")?
+        {
+            updates.push((
+                "code_challenge_methods_supported",
+                Some(strings_value(&challenges)),
+            ));
+        }
     }
     if let Some(raw_flag) = field(input, "client_id_metadata_document_supported") {
         if raw_flag.is_boolean() {
             updates.push((
                 "client_id_metadata_document_supported",
+                Some(raw_flag.clone()),
+            ));
+        }
+    }
+    // v1.0.0: whether authorization responses carry an `iss` parameter
+    // (RFC 9207).
+    if let Some(raw_flag) = field(input, "authorization_response_iss_parameter_supported") {
+        if raw_flag.is_boolean() {
+            updates.push((
+                "authorization_response_iss_parameter_supported",
                 Some(raw_flag.clone()),
             ));
         }
@@ -400,7 +464,15 @@ fn coerce_number(value: &Value) -> f64 {
 /// Upstream `parseOAuthTokens`.
 pub fn parse_oauth_tokens(value: Value) -> Result<OAuthTokens, String> {
     let input = require_object(&value, "OAuth token response")?;
-    let expires = field(input, "expires_in").map(coerce_number);
+    // v1.0.0: absent (`undefined`/`null`/`""`) means no expiry —
+    // `Number(null)` is 0, which would mark the token as expired at once.
+    let expires = if absent(field(input, "expires_in")) {
+        None
+    } else {
+        Some(coerce_number(
+            field(input, "expires_in").expect("checked present"),
+        ))
+    };
     if expires.is_some_and(|expires| !expires.is_finite()) {
         return Err("Invalid expires_in".to_string());
     }
@@ -414,18 +486,9 @@ pub fn parse_oauth_tokens(value: Value) -> Result<OAuthTokens, String> {
             "token_type",
         )?,
         expires_in: expires,
-        scope: match field(input, "scope") {
-            Some(raw) => parse_optional_string(raw, "scope")?,
-            None => None,
-        },
-        refresh_token: match field(input, "refresh_token") {
-            Some(raw) => parse_optional_string(raw, "refresh_token")?,
-            None => None,
-        },
-        id_token: match field(input, "id_token") {
-            Some(raw) => parse_optional_string(raw, "id_token")?,
-            None => None,
-        },
+        scope: parse_optional_string(field(input, "scope"), "scope")?,
+        refresh_token: parse_optional_string(field(input, "refresh_token"), "refresh_token")?,
+        id_token: parse_optional_string(field(input, "id_token"), "id_token")?,
     })
 }
 
@@ -519,10 +582,10 @@ pub fn parse_client_information(value: Value) -> Result<OAuthClientInformation, 
             "client_id",
         )?)),
     )];
-    if let Some(raw) = field(input, "client_secret") {
-        let secret = parse_optional_string(raw, "client_secret")?;
-        updates.push(("client_secret", secret.map(Value::from)));
-    }
+    // Upstream `compact` drops the key when the validated value is
+    // undefined — including a present-but-absent `null`/`""` (v1.0.0).
+    let secret = parse_optional_string(field(input, "client_secret"), "client_secret")?;
+    updates.push(("client_secret", secret.map(Value::from)));
     for key in ["client_id_issued_at", "client_secret_expires_at"] {
         if let Some(raw) = field(input, key) {
             // `typeof input[key] === "number" ? input[key] : undefined`.
@@ -534,12 +597,10 @@ pub fn parse_client_information(value: Value) -> Result<OAuthClientInformation, 
             updates.push((key, number));
         }
     }
-    // `optionalStrings(...) ?? []`: absent becomes an empty array; a present
-    // null throws.
-    let redirect_uris = match field(input, "redirect_uris") {
-        Some(raw) => parse_strings(raw, "redirect_uris")?,
-        None => Vec::new(),
-    };
+    // `optionalStrings(...) ?? []` (v1.0.0): absent or `null` becomes an
+    // empty array.
+    let redirect_uris =
+        parse_strings_optional(field(input, "redirect_uris"), "redirect_uris")?.unwrap_or_default();
     updates.push(("redirect_uris", Some(strings_value(&redirect_uris))));
     let raw = patch_map(input, updates);
     Ok(OAuthClientInformation { raw })

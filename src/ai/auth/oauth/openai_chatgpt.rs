@@ -273,7 +273,18 @@ impl ChatGptCallbackServer {
     ) -> Result<ChatGptCallbackServer, AuthError> {
         let listener = tokio::net::TcpListener::bind((callback_host, callback_port))
             .await
-            .map_err(|error| AuthError::Operation(error.to_string()))?;
+            .map_err(
+                // An already-bound port is surfaced as AuthError::AddressInUse
+                // for the v1.0.0 targeted login failure (upstream checks
+                // error.code === EADDRINUSE).
+                |error| {
+                    if error.kind() == std::io::ErrorKind::AddrInUse {
+                        AuthError::AddressInUse(error.to_string())
+                    } else {
+                        AuthError::Operation(error.to_string())
+                    }
+                },
+            )?;
         let result = Waiter::new();
         let shutdown = CancellationToken::new();
         let task_shutdown = shutdown.clone();
@@ -542,7 +553,7 @@ fn credential_from_token_response(
         _ => {
             return Err(AuthError::Operation(
                 "OpenAI OAuth token response has invalid expires_in".to_string(),
-            ))
+            ));
         }
     };
     // `scope.trim().split(/\s+/).filter(Boolean)` — split_whitespace
@@ -650,35 +661,30 @@ async fn login_openai_chatgpt(
     let state = random_value();
     let nonce = random_value();
 
-    // `callback = await startCallbackServer(state)` — a failed bind degrades
-    // to manual-only login through the info notice.
-    let callback: Option<ChatGptCallbackServer> = match ChatGptCallbackServer::start(
+    // v1.0.0: without this server, the browser's callback would reach
+    // whatever else holds the port (another pending login or the Codex CLI),
+    // which rejects it as a state mismatch. Fail with a clear error instead
+    // of degrading to manual-only login.
+    let callback: ChatGptCallbackServer = match ChatGptCallbackServer::start(
         state.clone(),
         &oauth.callback_host,
         oauth.callback_port,
     )
     .await
     {
-        Ok(server) => Some(server),
-        Err(error) => {
-            let detail = match &error {
-                AuthError::Operation(message) => message.clone(),
-                other => other.to_string(),
-            };
-            interaction.notify(AuthEvent::Info {
-                // Upstream: `Could not listen on ${REDIRECT_URI}` — there the
-                // tried URI and REDIRECT_URI coincide; here the tried URI is
-                // the injected listener address, so report that.
-                message: format!(
-                    "Could not listen on http://{host}:{port}/auth/callback; paste the final \
-                         redirect URL to continue. {detail}",
-                    host = oauth.callback_host,
-                    port = oauth.callback_port,
-                ),
-                links: None,
-            });
-            None
+        Ok(server) => server,
+        Err(AuthError::AddressInUse(_)) => {
+            // Upstream: `Port ${CALLBACK_PORT} is in use, probably by an
+            // unfinished login in another pi session or by the Codex CLI.
+            // Cancel that login and try again.` The port here is the
+            // injected listener's.
+            return Err(AuthError::Operation(format!(
+                "Port {} is in use, probably by an unfinished login in another pi session or \
+                 by the Codex CLI. Cancel that login and try again.",
+                oauth.callback_port
+            )));
         }
+        Err(error) => return Err(error),
     };
 
     // `authorizationUrl.search = new URLSearchParams({...}).toString()` —
@@ -741,17 +747,14 @@ async fn login_openai_chatgpt(
     // manualCode)` — first settle wins, no interaction-signal arm (cancellation
     // surfaces through the server wait or the combined prompt signal).
     let outcome = async {
-        let result: Result<AuthorizationResult, AuthError> = match &callback {
-            Some(callback) => {
-                let callback_result = callback.wait();
-                tokio::pin!(callback_result);
-                tokio::select! {
-                    biased;
-                    settled = &mut callback_result => settled,
-                    parsed = &mut manual_code => parsed,
-                }
-            }
-            None => (&mut manual_code).await,
+        // The server always exists now (v1.0.0); the race is server vs
+        // manual paste.
+        let callback_result = callback.wait();
+        tokio::pin!(callback_result);
+        let result: Result<AuthorizationResult, AuthError> = tokio::select! {
+            biased;
+            settled = &mut callback_result => settled,
+            parsed = &mut manual_code => parsed,
         };
         let result = result?;
         interaction.notify(AuthEvent::Progress {
@@ -784,9 +787,7 @@ async fn login_openai_chatgpt(
     // Upstream finally: abort the manual prompt, close the server (and its
     // spare browser connections — see the module port notes).
     manual_abort.cancel();
-    if let Some(callback) = callback {
-        callback.close().await;
-    }
+    callback.close().await;
     outcome
 }
 
@@ -1725,10 +1726,12 @@ mod tests {
         );
     }
 
-    /// A failed callback-server bind degrades to manual-only login through
-    /// the info notice; a pasted full redirect URL completes the login.
+    /// v1.0.0: a taken callback port fails the login with the targeted
+    /// message instead of degrading to manual paste (the browser callback
+    /// would hit whatever else holds the port, which rejects it as a state
+    /// mismatch).
     #[tokio::test]
-    async fn bind_failure_degrades_to_manual_paste_login() {
+    async fn bind_failure_fails_the_login_when_the_port_is_taken() {
         let server = MockServer::start().await;
         mount_token_endpoint(&server, token_body_json(REQUIRED_SCOPE), 200).await;
         // Occupy the callback port so the bind fails.
@@ -1756,34 +1759,23 @@ mod tests {
             Arc::clone(&fake) as Arc<dyn AuthInteraction>,
             CancellationToken::new(),
         );
-        let (fake, interaction) = with_device_id((fake, base_interaction));
+        let (_fake, interaction) = with_device_id((fake, base_interaction));
 
-        let credential = tokio::time::timeout(Duration::from_secs(5), oauth.login(interaction))
+        // Upstream: `Port ${CALLBACK_PORT} is in use, probably by an
+        // unfinished login in another pi session or by the Codex CLI. Cancel
+        // that login and try again.`
+        let error = tokio::time::timeout(Duration::from_secs(5), oauth.login(interaction))
             .await
             .unwrap()
-            .unwrap();
-
-        // The info notice reports the blocked redirect URI (the OS error
-        // text after the prefix is platform-specific).
-        let events = fake.events.lock().unwrap().clone();
-        let prefix = format!(
-            "Could not listen on http://127.0.0.1:{port}/auth/callback; paste the final \
-             redirect URL to continue. "
-        );
-        assert!(
-            events.iter().any(
-                |event| matches!(event, AuthEvent::Info { message, .. } if message.starts_with(&prefix)),
-            ),
-            "missing bind-failure info notice: {events:?}"
-        );
-        // The manual paste exchanged the code.
-        assert_eq!(credential.access, "access-token");
+            .unwrap_err();
         assert_eq!(
-            credential.extra.get("clientId").and_then(Value::as_str),
-            Some("oaiapp_issued")
+            error,
+            AuthError::Operation(format!(
+                "Port {port} is in use, probably by an unfinished login in another pi session or by the Codex CLI. Cancel that login and try again."
+            ))
         );
-        // Only the token request happened (the callback server never bound).
-        assert_eq!(server.received_requests().await.unwrap().len(), 1);
+        // No token request happened (the callback server never bound).
+        assert_eq!(server.received_requests().await.unwrap().len(), 0);
         drop(blocker);
     }
 

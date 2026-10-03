@@ -22,9 +22,10 @@ use serde_json::{Map, Value};
 use tokio::sync::Mutex;
 
 use crate::mcp::oauth::errors::OAuthFlowError;
-use crate::mcp::oauth::flow::{CredentialKind, OAuthClientProvider};
+use crate::mcp::oauth::flow::{CredentialKind, OAuthClientMetadataDocument, OAuthClientProvider};
 use crate::mcp::oauth::types::{
-    OAuthClientInformationMixed, OAuthClientMetadata, OAuthDiscoveryState, OAuthTokens,
+    AuthorizationServerMetadata, OAuthClientInformationMixed, OAuthClientMetadata,
+    OAuthDiscoveryState, OAuthTokens,
 };
 
 /// Upstream `McpOAuthState`: the persisted state for one server URL. The raw
@@ -162,6 +163,14 @@ impl McpOAuthStateStore for MemoryOAuthStateStore {
     }
 }
 
+/// The `clientMetadataDocument` callback (upstream the optional method):
+/// resolves the Client ID Metadata Document for the server's metadata.
+pub type ClientMetadataDocumentFn = Arc<
+    dyn Fn(Option<&AuthorizationServerMetadata>) -> Option<OAuthClientMetadataDocument>
+        + Send
+        + Sync,
+>;
+
 /// Upstream `McpOAuthProviderOptions`.
 #[derive(Clone)]
 pub struct McpOAuthProviderOptions {
@@ -171,6 +180,8 @@ pub struct McpOAuthProviderOptions {
     /// `response_types` and `token_endpoint_auth_method` receive the upstream
     /// constructor defaults when absent.
     pub client_metadata: Map<String, Value>,
+    /// See `OAuthClientProvider::client_metadata_document` (v1.0.0).
+    pub client_metadata_document: Option<ClientMetadataDocumentFn>,
     pub client_id: Option<String>,
     pub client_secret: Option<String>,
     pub store: Option<Arc<dyn McpOAuthStateStore>>,
@@ -187,6 +198,8 @@ pub struct McpOAuthProviderOptions {
 pub struct McpOAuthProvider {
     redirect_url: String,
     client_metadata: OAuthClientMetadata,
+    /// See `OAuthClientProvider::client_metadata_document` (v1.0.0).
+    client_metadata_document: Option<ClientMetadataDocumentFn>,
     server_url: String,
     configured_client: Option<OAuthClientInformationMixed>,
     store: Arc<dyn McpOAuthStateStore>,
@@ -236,6 +249,7 @@ impl McpOAuthProvider {
         McpOAuthProvider {
             redirect_url,
             client_metadata: OAuthClientMetadata::from_raw(client_metadata),
+            client_metadata_document: options.client_metadata_document.clone(),
             server_url,
             configured_client,
             store: options
@@ -468,6 +482,15 @@ impl OAuthClientProvider for McpOAuthProvider {
 
     fn client_metadata(&self) -> OAuthClientMetadata {
         self.client_metadata.clone()
+    }
+
+    fn client_metadata_document(
+        &self,
+        metadata: Option<&AuthorizationServerMetadata>,
+    ) -> Option<OAuthClientMetadataDocument> {
+        self.client_metadata_document
+            .as_ref()
+            .and_then(|build| build(metadata))
     }
 
     fn state(&self) -> BoxFuture<'_, Result<String, OAuthFlowError>> {

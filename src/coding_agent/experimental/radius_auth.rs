@@ -24,6 +24,16 @@ pub const DEFAULT_RADIUS_GATEWAY: &str = "https://radius.pi.dev";
 /// Upstream `ENV_RADIUS_GATEWAY`.
 pub const ENV_RADIUS_GATEWAY: &str = "PI_RADIUS_GATEWAY";
 
+/// Upstream `core/radius.ts` `RADIUS_MCP_URL` (v1.0.0): MCP endpoint of the
+/// gateway the built-in Radius provider signs in to. Upstream computes
+/// `` `${normalizeRadiusGatewayUrl(DEFAULT_RADIUS_GATEWAY)}/mcp` `` at module
+/// load; the normalization of the vendored default is the constant below.
+pub const RADIUS_MCP_URL: &str = "https://radius.pi.dev/mcp";
+
+/// Upstream `core/radius.ts` `RADIUS_PROVIDER_ID`: the id of the built-in
+/// Radius login provider.
+pub const RADIUS_PROVIDER_ID: &str = "radius";
+
 /// Upstream `pi-ai` `normalizeRadiusGatewayUrl`: default the scheme to https
 /// and strip trailing slashes.
 pub fn normalize_radius_gateway_url(value: &str) -> String {

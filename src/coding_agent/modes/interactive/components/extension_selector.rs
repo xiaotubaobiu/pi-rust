@@ -168,6 +168,11 @@ impl ExtensionSelectorComponent {
         }
     }
 
+    /// The selected row (the radius login shimmer needs it).
+    pub fn selected_index(&self) -> usize {
+        self.selected_index
+    }
+
     /// Drive one countdown second (title update + expiry cancel).
     pub fn tick_countdown(&mut self) {
         if let Some(countdown) = self.countdown.as_mut() {

@@ -13,8 +13,10 @@
 //! `openBrowser` is an injected hook (host seam); the title/content rows are
 //! mounted through [`Self::content_children`].
 
+use std::rc::Rc;
 use std::sync::Arc;
 
+use crate::coding_agent::modes::interactive::components::auth_url::AuthUrlComponent;
 use crate::coding_agent::modes::interactive::components::model_selector::{key_hint, theme_fg};
 use crate::coding_agent::modes::interactive::components::support::Border;
 use crate::coding_agent::modes::interactive::theme::Theme;
@@ -45,6 +47,10 @@ pub type LoginCompleteCallback = Box<dyn FnMut(bool, Option<&str>)>;
 /// Upstream `LoginDialogComponent`.
 pub struct LoginDialogComponent {
     content_children: Vec<ComponentHandle>,
+    /// The shown sign-in URL, which `app.message.copy` copies (v1.0.0).
+    auth_url: Option<AuthUrlComponent>,
+    /// Render handle the auth-URL component shares (upstream the `TUI`).
+    auth_url_render: std::rc::Rc<dyn Fn()>,
     /// Shared input handle so submit can swap it for the submitted text row.
     input: ComponentHandle,
     input_shared: std::rc::Rc<std::cell::RefCell<Input>>,
@@ -52,7 +58,8 @@ pub struct LoginDialogComponent {
     request_open: bool,
     resolved_value: Option<Result<String, String>>,
     on_complete: LoginCompleteCallback,
-    request_render: Box<dyn FnMut()>,
+    /// Shared so the auth-URL component can request renders too.
+    request_render: std::rc::Rc<std::cell::RefCell<Box<dyn FnMut()>>>,
     open_browser: Option<Arc<dyn Fn(&str) + Send + Sync>>,
     theme: Arc<Theme>,
 }
@@ -75,8 +82,16 @@ impl LoginDialogComponent {
 
         let (input_handle, input_shared) =
             ComponentHandle::with_shared(Input::new(InputOptions::default()));
+        let request_render: std::rc::Rc<std::cell::RefCell<Box<dyn FnMut()>>> =
+            std::rc::Rc::new(std::cell::RefCell::new(request_render));
+        let auth_url_render: std::rc::Rc<dyn Fn()> = {
+            let request_render = std::rc::Rc::clone(&request_render);
+            Rc::new(move || (request_render.borrow_mut())())
+        };
         Self {
             content_children: Vec::new(),
+            auth_url: None,
+            auth_url_render,
             input: input_handle,
             input_shared,
             aborted: false,
@@ -156,27 +171,11 @@ impl LoginDialogComponent {
         self.content_children.clear();
         self.content_children
             .push(ComponentHandle::new(Spacer::new(1)));
-        let linked_url = format!("\x1b]8;;{url}\x07{url}\x1b]8;;\x07");
-        self.content_children
-            .push(ComponentHandle::new(Text::with_options(
-                &theme_fg(&self.theme, "accent", &linked_url),
-                1,
-                0,
-                None,
-            )));
-        let click_hint = if cfg!(target_os = "macos") {
-            "Cmd+click to open"
-        } else {
-            "Ctrl+click to open"
-        };
-        let hyperlink = format!("\x1b]8;;{url}\x07{click_hint}\x1b]8;;\x07");
-        self.content_children
-            .push(ComponentHandle::new(Text::with_options(
-                &theme_fg(&self.theme, "dim", &hyperlink),
-                1,
-                0,
-                None,
-            )));
+        self.auth_url = Some(AuthUrlComponent::new(
+            Arc::clone(&self.theme),
+            url,
+            Rc::clone(&self.auth_url_render),
+        ));
         if let Some(instructions) = instructions {
             self.content_children
                 .push(ComponentHandle::new(Spacer::new(1)));
@@ -191,11 +190,12 @@ impl LoginDialogComponent {
         if let Some(open_browser) = &self.open_browser {
             open_browser(url);
         }
-        (self.request_render)();
+        (self.request_render.borrow_mut())();
     }
 
     /// Upstream `showDeviceCode`.
     pub fn show_device_code(&mut self, info: &OAuthDeviceCodeInfo) {
+        self.auth_url = None;
         self.content_children.clear();
         self.content_children
             .push(ComponentHandle::new(Spacer::new(1)));
@@ -234,7 +234,7 @@ impl LoginDialogComponent {
                 0,
                 None,
             )));
-        (self.request_render)();
+        (self.request_render.borrow_mut())();
     }
 
     /// Upstream `showManualInput`.
@@ -260,7 +260,7 @@ impl LoginDialogComponent {
                 0,
                 None,
             )));
-        (self.request_render)();
+        (self.request_render.borrow_mut())();
         self.request_open = true;
     }
 
@@ -297,12 +297,13 @@ impl LoginDialogComponent {
                 None,
             )));
         self.input_shared.borrow_mut().set_value("");
-        (self.request_render)();
+        (self.request_render.borrow_mut())();
         self.request_open = true;
     }
 
     /// Upstream `showDetails`.
     pub fn show_details(&mut self, lines: &[&str]) {
+        self.auth_url = None;
         self.content_children.clear();
         self.content_children
             .push(ComponentHandle::new(Spacer::new(1)));
@@ -310,7 +311,7 @@ impl LoginDialogComponent {
             self.content_children
                 .push(ComponentHandle::new(Text::with_options(line, 1, 0, None)));
         }
-        (self.request_render)();
+        (self.request_render.borrow_mut())();
     }
 
     /// Upstream `showInfo`.
@@ -353,7 +354,7 @@ impl LoginDialogComponent {
                     None,
                 )));
         }
-        (self.request_render)();
+        (self.request_render.borrow_mut())();
     }
 
     /// Upstream `showWaiting`.
@@ -377,7 +378,7 @@ impl LoginDialogComponent {
                 0,
                 None,
             )));
-        (self.request_render)();
+        (self.request_render.borrow_mut())();
     }
 
     /// Upstream `showProgress`.
@@ -389,13 +390,23 @@ impl LoginDialogComponent {
                 0,
                 None,
             )));
-        (self.request_render)();
+        (self.request_render.borrow_mut())();
     }
 
     /// Upstream `handleInput`.
     pub fn handle_input(&mut self, key_data: &str) {
         if with_keybindings(|kb| kb.matches(key_data, "tui.select.cancel")) {
             self.cancel();
+            return;
+        }
+        if self.auth_url.is_some()
+            && with_keybindings(|kb| kb.matches(key_data, "app.message.copy"))
+        {
+            if let Some(auth_url) = self.auth_url.as_mut() {
+                // Upstream `void this.authUrl.copy()`; the clipboard write is
+                // awaited inline like the shell's other copy paths.
+                futures::executor::block_on(auth_url.copy());
+            }
             return;
         }
         // Upstream: Enter fires the input's onSubmit; the input widget itself
@@ -408,6 +419,9 @@ impl LoginDialogComponent {
         let mut lines = Vec::new();
         for child in &mut self.content_children {
             lines.extend(child.render(width));
+        }
+        if let Some(auth_url) = self.auth_url.as_mut() {
+            lines.extend(auth_url.render(width));
         }
         lines
     }
@@ -464,15 +478,18 @@ mod tests {
         );
 
         dialog.show_auth("https://auth.example.com", Some("Paste the code below"));
-        // showAuth clears the container; snapshot its rows before the next show
+        // showAuth clears the container; snapshot its rows before the next show.
+        // v1.0.0 the auth URL renders through the `AuthUrlComponent`, whose
+        // hyperlink helper terminates OSC 8 with ST instead of BEL.
         let auth_content = dialog.content_children(60).join("\n");
         assert!(
             auth_content.contains(
-                "\x1b]8;;https://auth.example.com\x07https://auth.example.com\x1b]8;;\x07"
+                "\x1b]8;;https://auth.example.com\x1b\\https://auth.example.com\x1b]8;;\x1b\\"
             ),
             "OSC8 hyperlink for the auth URL"
         );
         assert!(auth_content.contains("Ctrl+click to open"));
+        assert!(auth_content.contains("to copy"));
         assert!(auth_content.contains("Paste the code below"));
 
         dialog.show_device_code(&OAuthDeviceCodeInfo {

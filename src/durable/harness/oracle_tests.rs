@@ -434,6 +434,7 @@ fn oracle_prompt_plan() {
     let view = ContextView {
         head: Some(head_entry.clone()),
         entries: vec![head_entry],
+        contributions: Vec::new(),
         messages: Vec::new(),
     };
     let desired = vec![
@@ -456,6 +457,7 @@ fn oracle_prompt_plan() {
     let patch_view = ContextView {
         head: None,
         entries: Vec::new(),
+        contributions: Vec::new(),
         messages: vec![system_message(
             "",
             serde_json::json!({"tools": "Use tools carefully.", "skills": null}),

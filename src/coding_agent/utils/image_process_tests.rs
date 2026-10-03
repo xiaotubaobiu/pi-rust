@@ -99,7 +99,12 @@ fn max_dimensions_use_oriented_aspect_ratio_png_first_and_exact_hint() {
     let decoded = decode(&crate::tui::terminal_image::base64::decode(&data)).unwrap();
     assert_eq!((decoded.width(), decoded.height()), (20, 10));
     assert_eq!(mime, "image/png");
-    assert_eq!(hints,["[Image: original 100x50, displayed at 20x10. Multiply coordinates by 5.00 to map to original image.]"]);
+    assert_eq!(
+        hints,
+        [
+            "[Image: original 100x50, displayed at 20x10. Multiply coordinates by 5.00 to map to original image.]"
+        ]
+    );
 }
 #[test]
 fn exif_rotation_happens_before_dimension_limiting() {

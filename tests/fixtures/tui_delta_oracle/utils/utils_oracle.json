@@ -188,6 +188,128 @@
   "\u001b[41m",
   ""
  ],
+ "slice": [
+  {
+   "line": "\u001b[31mabcdef\u001b[0m",
+   "startCol": 0,
+   "length": 3,
+   "strict": false,
+   "text": "\u001b[31mabc",
+   "width": 3
+  },
+  {
+   "line": "\u001b[31mabcdef\u001b[0m",
+   "startCol": 3,
+   "length": 3,
+   "strict": false,
+   "text": "\u001b[31mdef",
+   "width": 3
+  },
+  {
+   "line": "\u001b[31mab\u001b[1mcdef\u001b[0m",
+   "startCol": 2,
+   "length": 2,
+   "strict": false,
+   "text": "\u001b[31m\u001b[1mcd",
+   "width": 2
+  },
+  {
+   "line": "\u001b[31ma\u001b[1mb\u001b[4mcdef\u001b[0m",
+   "startCol": 2,
+   "length": 2,
+   "strict": false,
+   "text": "\u001b[31m\u001b[1m\u001b[4mcd",
+   "width": 2
+  },
+  {
+   "line": "\u001b[31ma\u001b[1mb\u001b[4mcdef\u001b[0m",
+   "startCol": 2,
+   "length": 2,
+   "strict": true,
+   "text": "\u001b[31m\u001b[1m\u001b[4mcd",
+   "width": 2
+  },
+  {
+   "line": "\u001b]8;;u\u0007link text\u001b]8;;\u0007",
+   "startCol": 0,
+   "length": 4,
+   "strict": false,
+   "text": "\u001b]8;;u\u0007link",
+   "width": 4
+  },
+  {
+   "line": "\u001b]8;;u\u0007link text\u001b]8;;\u0007",
+   "startCol": 4,
+   "length": 5,
+   "strict": false,
+   "text": "\u001b]8;;u\u0007 text",
+   "width": 5
+  },
+  {
+   "line": "plain ascii slice",
+   "startCol": 6,
+   "length": 5,
+   "strict": false,
+   "text": "ascii",
+   "width": 5
+  },
+  {
+   "line": "日本語のテキスト",
+   "startCol": 1,
+   "length": 2,
+   "strict": false,
+   "text": "本",
+   "width": 2
+  },
+  {
+   "line": "日本語のテキスト",
+   "startCol": 1,
+   "length": 2,
+   "strict": true,
+   "text": "",
+   "width": 0
+  },
+  {
+   "line": "a\u001b[1mb\u001b[22mc",
+   "startCol": 1,
+   "length": 1,
+   "strict": false,
+   "text": "\u001b[1mb",
+   "width": 1
+  },
+  {
+   "line": "\u001b[38;5;4mhello\u001b[39m world",
+   "startCol": 5,
+   "length": 6,
+   "strict": false,
+   "text": "\u001b[38;5;4m\u001b[39m world",
+   "width": 6
+  },
+  {
+   "line": "\u001b[38;5;4mhello\u001b[39m world",
+   "startCol": 5,
+   "length": 6,
+   "strict": true,
+   "text": "\u001b[38;5;4m\u001b[39m world",
+   "width": 6
+  },
+  {
+   "line": "x",
+   "startCol": 0,
+   "length": 0,
+   "strict": false,
+   "text": "",
+   "width": 0
+  },
+  {
+   "line": "abc",
+   "startCol": 2,
+   "length": 10,
+   "strict": false,
+   "text": "c",
+   "width": 1
+  }
+ ],
  "separators": {
   "separatorTests": [
    {
@@ -377,8 +499,8 @@
   ]
  },
  "provenance": {
-  "utilsSha256": "5ecbc6c9b4850e78bf19de1fe8859b99b9c4c5f8a6384728d255a8e7e8a610ee",
-  "node": "v25.8.2",
+  "utilsSha256": "258ff73a0ff4d2b05f8a60515a9cc37eb96c9fc03a4072ac6db2906cad1862d9",
+  "node": "v22.14.0",
   "platform": "win32"
  }
 }

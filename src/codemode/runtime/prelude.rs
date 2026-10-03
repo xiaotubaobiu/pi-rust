@@ -17,6 +17,12 @@
 pub const MAX_STORE_VALUE_CHARS: usize = 256 * 1024;
 /// Upstream `MAX_STORE_TOTAL_CHARS` (1 MiB characters of JSON in total).
 pub const MAX_STORE_TOTAL_CHARS: usize = 1024 * 1024;
+/// Upstream `MAX_OUTPUT_CHARS` (16 MiB characters of text and base64 image
+/// data one script may produce).
+pub const MAX_OUTPUT_CHARS: usize = 16 * 1024 * 1024;
+/// Upstream `MAX_OUTPUT_ITEMS` (100,000 `text()`, `image()`, and `console`
+/// output items one script may produce).
+pub const MAX_OUTPUT_ITEMS: usize = 100_000;
 
 pub const PRELUDE_SOURCE: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),

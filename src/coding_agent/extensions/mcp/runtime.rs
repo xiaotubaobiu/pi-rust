@@ -119,15 +119,24 @@ fn is_transient_error(error: &McpClientError) -> bool {
     }
 }
 
-/// `MCP server "x" requires sign-in. Run /mcp to sign in.`
-fn sign_in_required_message(name: &str) -> String {
-    format!("MCP server \"{name}\" requires sign-in. Run /mcp to sign in.")
+/// `MCP server "x" requires sign-in. Run /mcp to sign in.` — with
+/// `auth.provider`, sign-in goes through that provider instead (v1.0.0).
+fn sign_in_required_message(entry: &McpServerEntry) -> String {
+    let provider = entry.config.auth_provider();
+    format!(
+        "MCP server \"{}\" requires sign-in. Run {} to sign in.",
+        entry.name,
+        match provider {
+            Some(provider) => format!("/login {provider}"),
+            None => "/mcp".to_string(),
+        }
+    )
 }
 
 /// HTTP servers authenticate with OAuth unless the config supplies an
-/// `Authorization` header (upstream `usesOAuth`).
+/// `Authorization` header or `auth` (upstream `usesOAuth`).
 pub fn uses_oauth(entry: &McpServerEntry) -> bool {
-    if entry.config.url().is_none() {
+    if entry.config.url().is_none() || entry.config.auth_provider().is_some() {
         return false;
     }
     !entry
@@ -301,6 +310,55 @@ struct ConnectionShared {
     stderr_tail: Option<String>,
 }
 
+/// One connection's auth source (upstream `this.authProvider`: either a full
+/// [`McpAuthProvider`] or, since v1.0.0, the read-only token resolver of
+/// `auth.provider`).
+#[derive(Clone)]
+enum ConnectionAuth {
+    /// OAuth with stored tokens and refreshes.
+    OAuth(Arc<McpAuthProvider>),
+    /// `auth.provider` (v1.0.0): read the pi provider's token on every
+    /// request, so the provider's refreshes apply; MCP stores no copy.
+    /// The provider name is already bound.
+    ProviderToken(Arc<dyn Fn() -> BoxFuture<'static, Option<String>> + Send + Sync>),
+}
+
+impl ConnectionAuth {
+    /// The provider surface the transport uses.
+    fn as_auth_provider(self: &Arc<Self>) -> Option<Arc<dyn AuthProvider>> {
+        match self.as_ref() {
+            ConnectionAuth::OAuth(provider) => Some(Arc::clone(provider) as Arc<dyn AuthProvider>),
+            ConnectionAuth::ProviderToken(resolver) => {
+                Some(Arc::new(ProviderTokenAuthProvider(Arc::clone(resolver))))
+            }
+        }
+    }
+
+    /// Resolves when no refresh is in flight, so shutdown does not drop
+    /// rotated tokens before they are saved (upstream `settled`).
+    fn settled(&self) -> BoxFuture<'_, ()> {
+        match self {
+            ConnectionAuth::OAuth(provider) => Box::pin(provider.settled()),
+            ConnectionAuth::ProviderToken(_) => Box::pin(async {}),
+        }
+    }
+}
+
+/// `{ token: async () => options.providerToken?.(provider) }`: no
+/// `onUnauthorized`, so step-up responses surface as ordinary errors.
+struct ProviderTokenAuthProvider(Arc<dyn Fn() -> BoxFuture<'static, Option<String>> + Send + Sync>);
+
+impl AuthProvider for ProviderTokenAuthProvider {
+    fn token(&self) -> BoxFuture<'_, Option<String>> {
+        Box::pin(async move { (self.0)().await })
+    }
+}
+
+/// Upstream `McpServerConnectionOptions.providerToken` (v1.0.0): the current
+/// token of a pi provider, for servers with `auth.provider`.
+pub type ProviderTokenResolver =
+    Arc<dyn Fn(&str) -> BoxFuture<'static, Option<String>> + Send + Sync>;
+
 /// One configured server. Reconnects lazily when a call finds the connection
 /// gone (upstream `McpServerConnection`, implementing `McpToolCaller` and
 /// `McpResourceServer`).
@@ -312,7 +370,7 @@ pub struct McpServerConnection {
     challenge_slot: Mutex<Option<OAuthChallenge>>,
     cwd: String,
     create_transport: McpTransportFactory,
-    auth_provider: Option<Arc<McpAuthProvider>>,
+    auth_provider: Option<Arc<ConnectionAuth>>,
     on_tools: OnToolsHandler,
     /// Called when `state`, `error`, or `tools` change.
     on_change: Option<OnChangeHandler>,
@@ -329,6 +387,9 @@ pub struct McpServerConnectionOptions {
     pub cwd: String,
     pub create_transport: McpTransportFactory,
     pub credentials: Arc<McpOAuthCredentialStore>,
+    /// The current token of a pi provider, for servers with `auth.provider`
+    /// (v1.0.0).
+    pub provider_token: Option<ProviderTokenResolver>,
     pub on_tools: OnToolsHandler,
     pub on_change: Option<OnChangeHandler>,
     pub log: Option<Arc<McpServerLog>>,
@@ -338,8 +399,9 @@ impl McpServerConnection {
     pub fn new(options: McpServerConnectionOptions) -> Arc<Self> {
         let entry = options.entry;
         let oauth_url = oauth_url_of(&entry);
+        let provider = entry.config.auth_provider().map(str::to_string);
         let challenge_slot: Arc<Mutex<Option<OAuthChallenge>>> = Arc::new(Mutex::new(None));
-        let auth_provider = oauth_url.map(|server_url| {
+        let auth_provider: Option<Arc<ConnectionAuth>> = if let Some(server_url) = &oauth_url {
             let credentials = Arc::clone(&options.credentials);
             let settings_entry = entry.clone();
             let settings: Arc<dyn Fn() -> Result<McpOAuthSettings, String> + Send + Sync> =
@@ -351,13 +413,31 @@ impl McpServerConnection {
                         .lock()
                         .expect("challenge slot cannot be poisoned") = Some(challenge.clone());
                 });
-            McpAuthProvider::create(
-                &server_url,
-                credentials.for_server(&server_url),
+            Some(Arc::new(ConnectionAuth::OAuth(McpAuthProvider::create(
+                server_url,
+                credentials.for_server(&entry.name, server_url),
                 settings,
                 on_challenge,
-            )
-        });
+            ))))
+        } else if let Some(provider_name) = provider {
+            // Read on every request, so the provider's refreshes apply; MCP
+            // stores no copy.
+            let resolver = options.provider_token.clone();
+            let token: Arc<dyn Fn() -> BoxFuture<'static, Option<String>> + Send + Sync> =
+                Arc::new(move || {
+                    let resolver = resolver.clone();
+                    let provider_name = provider_name.clone();
+                    Box::pin(async move {
+                        match resolver {
+                            Some(resolver) => resolver(&provider_name).await,
+                            None => None,
+                        }
+                    })
+                });
+            Some(Arc::new(ConnectionAuth::ProviderToken(token)))
+        } else {
+            None
+        };
         Arc::new_cyclic(|handle| McpServerConnection {
             entry,
             shared: Mutex::new(ConnectionShared {
@@ -567,7 +647,7 @@ impl McpServerConnection {
                     }
                     self.drop_client().await;
                     self.mark_needs_auth();
-                    return Err(sign_in_required_message(&self.entry.name));
+                    return Err(sign_in_required_message(&self.entry));
                 }
             }
         }
@@ -579,7 +659,7 @@ impl McpServerConnection {
             McpClientError::OAuth(OAuthFlowError::AuthorizationRequired(_))
         );
         authorization_required
-            || (self.oauth_url().is_some() && matches!(error, McpClientError::AuthRequired(_)))
+            || (self.auth_provider.is_some() && matches!(error, McpClientError::AuthRequired(_)))
     }
 
     async fn drop_client(&self) {
@@ -683,7 +763,7 @@ impl McpServerConnection {
             let provider: Option<Arc<dyn AuthProvider>> = self
                 .auth_provider
                 .as_ref()
-                .map(|provider| Arc::clone(provider) as Arc<dyn AuthProvider>);
+                .and_then(|provider| provider.as_auth_provider());
             (self.create_transport)(&self.entry, &self.cwd, provider)
                 .map_err(McpClientError::Other)?
         };
@@ -788,7 +868,7 @@ impl McpServerConnection {
     fn connect_failed(&self, error: McpClientError) -> String {
         if self.needs_sign_in(&error) && !self.lock().closed {
             self.mark_needs_auth();
-            return sign_in_required_message(&self.entry.name);
+            return sign_in_required_message(&self.entry);
         }
         let message = error.to_string();
         let combined = {
@@ -915,6 +995,13 @@ fn oauth_settings_of(entry: &McpServerEntry) -> McpOAuthSettings {
         callback_url: oauth.callback_url,
         scope: oauth.scope,
         client_name: oauth.client_name,
+        client_registration: oauth.client_registration,
+        // Upstream wraps the configured string with `new URL(...)`; parsing
+        // here keeps the same validate-first guarantee.
+        auth_server_metadata_url: oauth
+            .auth_server_metadata_url
+            .as_deref()
+            .and_then(|value| url::Url::parse(value).ok()),
     }
 }
 

@@ -1,6 +1,7 @@
-//! Port of `packages/server/src/types.ts` (64 lines, SHA256
-//! `cdec325901d0035ab381069e2dec9771027bde80025f4443c7fb87b145e46404`): the
-//! server option surface and the routing capability traits the host
+//! Port of `packages/server/src/types.ts` (SHA256
+//! `22868bac2fefc4d03f5c7253fd87304dcfb83ac3161fd0aa09edcec022561f91` @
+//! v1.0.0 `a276dabe5`): the server option surface, the server-local minimal
+//! `SessionMetadata`, and the routing capability traits the host
 //! application supplies.
 //!
 //! The upstream interfaces become Rust traits with `'static` boxed futures;
@@ -9,10 +10,9 @@
 //!
 //! - **S-A (metadata identity)** — upstream `ServerHost<TMetadata>` is
 //!   generic over the metadata record and hands the *same object* back to
-//!   `openSession`; the port carries the concrete
-//!   [`agent_core::harness::session::types::SessionMetadata`] value, so the
-//!   "passes concrete repository metadata" guarantee becomes value
-//!   equality.
+//!   `openSession`; the port carries the concrete [`SessionMetadata`]
+//!   value, so the "passes concrete repository metadata" guarantee is
+//!   value equality.
 //! - **S-B (context)** — upstream `Context`/`BACKGROUND_CONTEXT`/
 //!   `TODO_CONTEXT` are the existing `agent_core::chord_support` port;
 //!   `AbortSignal` is the repo's `tokio_util::sync::CancellationToken`
@@ -104,6 +104,20 @@ impl ServerOptions {
 /// futures below.
 pub type MaybePromiseFuture<T> = BoxFuture<'static, Result<T, OperationError>>;
 
+/// Upstream `SessionMetadata` (`types.ts:16-18`, added in v1.0.0): the
+/// minimal durable Session metadata the server needs for routing.
+/// Applications may extend it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SessionMetadata {
+    pub id: String,
+}
+
+impl SessionMetadata {
+    pub fn new(id: impl Into<String>) -> SessionMetadata {
+        SessionMetadata { id: id.into() }
+    }
+}
+
 /// Upstream `RoutedSessionAttachment` (`types.ts:23-34`): one presentation
 /// connection's live capability for a hosted Session.
 pub trait RoutedSessionAttachment: Send + Sync + 'static {
@@ -185,13 +199,10 @@ pub trait ServerHost: Send + Sync + 'static {
         &self,
         session_id: String,
         context: Context,
-    ) -> BoxFuture<
-        'static,
-        Result<crate::agent_core::harness::session::types::SessionMetadata, OperationError>,
-    >;
+    ) -> BoxFuture<'static, Result<SessionMetadata, OperationError>>;
     fn open_session(
         &self,
-        metadata: crate::agent_core::harness::session::types::SessionMetadata,
+        metadata: SessionMetadata,
         context: Context,
     ) -> BoxFuture<'static, Result<Arc<dyn RoutedSessionHandle>, OperationError>>;
 }

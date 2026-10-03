@@ -10,6 +10,7 @@ export {
 	colorToHex,
 	colorToOkhsl,
 	colorToOklch,
+	oklchColor,
 	colorToRgb,
 	foregroundAnsi,
 	indexedColor,

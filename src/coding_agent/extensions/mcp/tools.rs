@@ -51,7 +51,7 @@ pub fn to_tool_exposure(
     }
 }
 
-/// Provider tool names are limited to 64 characters of `[A-Za-z0-9_-]`.
+/// Provider tool names are limited to 64 characters of `[A-Za-z0-9_]`.
 const MAX_TOOL_NAME_LENGTH: usize = 64;
 /// Model-facing text of an MCP result beyond this is cut in the middle.
 pub const MCP_OUTPUT_MAX_BYTES: usize = 20 * 1024;
@@ -153,15 +153,17 @@ fn write_private(path: &std::path::Path, data: &[u8]) -> std::io::Result<()> {
 }
 
 /// `mcp__<server>__<tool>`, sanitized and shortened with a hash suffix when
-/// too long. `is_taken` reports names already used by a different MCP tool:
-/// sanitizing can map two tools to one name (`a.b` and `a_b`), and the second
-/// then gets the hash suffix too (upstream `createMcpToolName`).
+/// too long. Like Codex, everything but `[A-Za-z0-9_]` becomes `_` (v1.0.0),
+/// so the name is also the identifier codemode scripts call it by. `is_taken`
+/// reports names used by a different MCP tool: sanitizing can map two tools
+/// to one name (`a-b` and `a_b`), which then get the hash suffix (upstream
+/// `createMcpToolName`).
 pub fn create_mcp_tool_name(server: &str, tool: &str, is_taken: impl Fn(&str) -> bool) -> String {
     let raw = format!("mcp__{server}__{tool}");
     let name: String = raw
         .chars()
         .map(|character| {
-            if character.is_ascii_alphanumeric() || character == '_' || character == '-' {
+            if character.is_ascii_alphanumeric() || character == '_' {
                 character
             } else {
                 '_'

@@ -18,6 +18,49 @@ pub const ANTHROPIC_AUTH_TOKEN_ENV: &str = "ANTHROPIC_AUTH_TOKEN";
 pub const ANTHROPIC_OAUTH_TOKEN_ENV: &str = "ANTHROPIC_OAUTH_TOKEN";
 pub const ANTHROPIC_API_KEY_ENV: &str = "ANTHROPIC_API_KEY";
 
+/// Upstream workload identity federation variables (v1.0.0,
+/// `env-api-keys.ts:32-36`): the SDK exchanges the identity token for a
+/// short-lived access token and refreshes it itself. Last in line so keys and
+/// `ANTHROPIC_AUTH_TOKEN` keep winning, as in the SDK.
+pub const ANTHROPIC_FEDERATION_RULE_ID_ENV: &str = "ANTHROPIC_FEDERATION_RULE_ID";
+pub const ANTHROPIC_ORGANIZATION_ID_ENV: &str = "ANTHROPIC_ORGANIZATION_ID";
+pub const ANTHROPIC_SERVICE_ACCOUNT_ID_ENV: &str = "ANTHROPIC_SERVICE_ACCOUNT_ID";
+pub const ANTHROPIC_IDENTITY_TOKEN_FILE_ENV: &str = "ANTHROPIC_IDENTITY_TOKEN_FILE";
+pub const ANTHROPIC_WORKSPACE_ID_ENV: &str = "ANTHROPIC_WORKSPACE_ID";
+
+/// The federation config the three required variables produce (upstream
+/// `getAnthropicFederation` in `providers/anthropic.ts` +
+/// `anthropic-messages.ts`): `organization_id`, optional `workspace_id`, and
+/// the OIDC-federation authentication block. `None` when any required
+/// variable is missing. Port divergence (disclosed): upstream hands this to
+/// the Anthropic SDK, which performs and caches the token exchange; the
+/// port's request assembly does not run the SDK, so the exchange itself is
+/// not performed — the resolved config is the port's surface for it.
+pub fn anthropic_federation_config(
+    lookup: &dyn Fn(&str) -> Option<String>,
+) -> Option<serde_json::Value> {
+    use serde_json::json;
+    let federation_rule_id = lookup(ANTHROPIC_FEDERATION_RULE_ID_ENV)?;
+    let organization_id = lookup(ANTHROPIC_ORGANIZATION_ID_ENV)?;
+    let identity_token_file = lookup(ANTHROPIC_IDENTITY_TOKEN_FILE_ENV)?;
+    let mut authentication = json!({
+        "type": "oidc_federation",
+        "federation_rule_id": federation_rule_id,
+        "identity_token": { "source": "file", "path": identity_token_file },
+    });
+    if let Some(service_account_id) = lookup(ANTHROPIC_SERVICE_ACCOUNT_ID_ENV) {
+        authentication["service_account_id"] = json!(service_account_id);
+    }
+    let mut config = json!({
+        "organization_id": organization_id,
+        "authentication": authentication,
+    });
+    if let Some(workspace_id) = lookup(ANTHROPIC_WORKSPACE_ID_ENV) {
+        config["workspace_id"] = json!(workspace_id);
+    }
+    Some(config)
+}
+
 /// Upstream `getApiKeyEnvVars` (env-api-keys.ts:68-120), the full table.
 /// `None` for providers without an API-key env var (OAuth-only, ambient, or
 /// keyless providers).

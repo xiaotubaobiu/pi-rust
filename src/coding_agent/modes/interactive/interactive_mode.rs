@@ -56,6 +56,7 @@ use crate::ai::types::primitives::Usage;
 use crate::coding_agent::agent_session::{
     AgentSessionError, CycleDirection, ModelCycleResult, ScopedModel,
 };
+use crate::coding_agent::core::settings_manager::QuietStartup;
 use crate::coding_agent::extensions::types::StreamingDelivery;
 use crate::coding_agent::session_manager::SessionEntry;
 
@@ -1467,7 +1468,8 @@ impl ShellClock for SystemClock {
 /// `this.settingsManager.*` call surface). Implemented for the real
 /// [`crate::coding_agent::core::settings_manager::SettingsManager`] below.
 pub trait ShellSettings: Send + Sync {
-    fn quiet_startup(&self) -> bool;
+    /// Upstream `getQuietStartup()` (v1.0.0): `boolean | "header"`.
+    fn quiet_startup(&self) -> QuietStartup;
     fn show_terminal_progress(&self) -> bool;
     fn double_escape_action(&self) -> String;
     fn hide_thinking_block(&self) -> bool;
@@ -1786,7 +1788,6 @@ pub enum ComponentKind {
     ExtensionEditorDialog,
     Armin,
     Earendil,
-    Daxnuts,
 }
 
 impl ComponentKind {
@@ -1823,7 +1824,6 @@ impl ComponentKind {
             Self::ExtensionEditorDialog => "ExtensionEditorComponent",
             Self::Armin => "ArminComponent",
             Self::Earendil => "EarendilAnnouncementComponent",
-            Self::Daxnuts => "DaxnutsComponent",
         }
     }
 }
@@ -2182,6 +2182,11 @@ pub struct AuthProviderOption {
     pub login_label: Option<String>,
     /// `(type, source)` when the provider is configured.
     pub status: Option<(String, Option<String>)>,
+    /// Whether the OAuth sign-in is backed by a subscription (v1.0.0
+    /// `provider.auth.oauth.isSubscription === true`). `None` keeps the
+    /// "subscription" label of the captured oracles; upstream marks plain
+    /// accounts with `false` instead.
+    pub subscription: Option<bool>,
 }
 
 /// Upstream `getUsageCostBreakdown` row.

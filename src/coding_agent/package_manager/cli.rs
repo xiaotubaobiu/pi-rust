@@ -128,8 +128,12 @@ impl CommandOutcome {
 /// Upstream `getPackageCommandUsage`.
 pub fn get_package_command_usage(command: PackageCommand) -> String {
     match command {
-        PackageCommand::Install => format!("{APP_NAME} install <source> [-l] [--approve|--no-approve]"),
-        PackageCommand::Remove => format!("{APP_NAME} remove <source> [-l] [--approve|--no-approve]"),
+        PackageCommand::Install => {
+            format!("{APP_NAME} install <source> [-l] [--approve|--no-approve]")
+        }
+        PackageCommand::Remove => {
+            format!("{APP_NAME} remove <source> [-l] [--approve|--no-approve]")
+        }
         PackageCommand::Update => format!(
             "{APP_NAME} update [source|self|pi] [--self|--extensions|--models|--all] [--extension <source>] [--approve|--no-approve] [--force]"
         ),
@@ -1339,8 +1343,8 @@ pub fn handle_package_command(
                 let managed_install_root = get_active_managed_install_root(host)?;
                 if managed_install_root.is_some() && options.force {
                     return Ok(Some(CommandOutcome::fail(vec![format!(
-                            "Managed {APP_NAME} installations do not support --force; rerun the installer to repair this installation."
-                        )])));
+                        "Managed {APP_NAME} installations do not support --force; rerun the installer to repair this installation."
+                    )])));
                 }
                 let self_update_plan = get_self_update_plan(host, &mut stdout, options.force)?;
                 if !self_update_plan.should_run {
@@ -1374,8 +1378,8 @@ pub fn handle_package_command(
                 let install_method = host.detect_install_method();
                 if cfg!(windows) && install_method != "npm" && install_method != "pnpm" {
                     let mut stderr = vec![format!(
-                            "{APP_NAME} self-update on Windows is only supported for npm and pnpm installs."
-                        )];
+                        "{APP_NAME} self-update on Windows is only supported for npm and pnpm installs."
+                    )];
                     stderr.push(format!(
                         "Detected install method: {install_method}. Update {APP_NAME} manually."
                     ));
@@ -1443,6 +1447,25 @@ pub fn handle_package_command(
                     host.version(),
                     self_update_plan.version
                 ));
+                // Upstream v1.0.0: the pi.dev installer migrates global npm installs to a managed
+                // install that pins all dependencies. It does not migrate pnpm, yarn, or bun.
+                if install_method == "npm" {
+                    let installer_command = if cfg!(windows) {
+                        "powershell -c \"irm https://pi.dev/install.ps1 | iex\""
+                    } else {
+                        "curl -fsSL https://pi.dev/install.sh | sh"
+                    };
+                    stdout.push(String::new());
+                    stdout.push(format!(
+                        "This npm installation of {APP_NAME} does not pin its dependencies."
+                    ));
+                    stdout.push(
+                        "Run the installer to migrate to a managed installation that does:"
+                            .to_string(),
+                    );
+                    stdout.push(String::new());
+                    stdout.push(format!("  {installer_command}"));
+                }
             }
             Ok(Some(CommandOutcome::ok(stdout)))
         }

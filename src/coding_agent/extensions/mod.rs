@@ -162,9 +162,8 @@ pub use runner::{
     emit_project_trust_event, emit_session_shutdown_event, BoundaryDispatchResult, ExtensionRunner,
 };
 pub use tool_search::{
-    create_tool_search_description, create_tool_search_extension,
-    create_tool_search_tool_definition, tokenize, Bm25Ranker, ToolRanker, ToolSearchDocument,
-    ToolSearchMatch, ToolSearchTools,
+    create_tool_search_extension, create_tool_search_tool_definition, tokenize, Bm25Ranker,
+    ToolRanker, ToolSearchDocument, ToolSearchMatch, ToolSearchTools, TOOL_SEARCH_DESCRIPTION,
 };
 pub use types::{
     Extension, ExtensionCommandContext, ExtensionContext, ExtensionError, ExtensionLoadError,

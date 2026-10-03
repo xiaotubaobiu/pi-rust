@@ -1007,6 +1007,11 @@ pub struct NodeExecutionEnvOptions {
 }
 
 impl FileSystem for NodeExecutionEnv {
+    /// Every local environment sees the same files (v1.0.0).
+    fn id(&self) -> &str {
+        "node:local"
+    }
+
     fn cwd(&self) -> &str {
         &self.cwd
     }

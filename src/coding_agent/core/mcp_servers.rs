@@ -89,6 +89,35 @@ pub struct McpOAuthConfig {
     pub scope: Option<String>,
     /// `client_name` sent with dynamic client registration. Default: `pi`.
     pub client_name: Option<String>,
+    /// How pi identifies itself without `clientId` (v1.0.0). `dcr` (default):
+    /// dynamic client registration. `cimd`: pi's Client ID Metadata Document on
+    /// pi.dev.
+    pub client_registration: Option<McpClientRegistration>,
+    /// Authorization server metadata document (RFC 8414 or OpenID Connect
+    /// discovery) to use instead of discovery through the server (v1.0.0).
+    /// Must use https, except on loopback hosts.
+    pub auth_server_metadata_url: Option<String>,
+}
+
+/// Upstream `McpOAuthConfig.clientRegistration` (v1.0.0): how pi identifies
+/// itself without `clientId`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum McpClientRegistration {
+    /// `"dcr"` (default): dynamic client registration.
+    Dcr,
+    /// `"cimd"`: pi's Client ID Metadata Document on pi.dev, for authorization
+    /// servers that allow pi by that URL. The server must support it for public
+    /// clients, and the callback must use the default path `/callback`.
+    Cimd,
+}
+
+impl McpClientRegistration {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            McpClientRegistration::Dcr => "dcr",
+            McpClientRegistration::Cimd => "cimd",
+        }
+    }
 }
 
 /// One validated server entry. The transport lives in the raw map (upstream
@@ -112,6 +141,13 @@ impl McpServerConfig {
     /// The `toolExposure` overrides, in config order.
     pub fn tool_exposure(&self) -> &OrderedMap<McpExposure> {
         &self.tool_exposure
+    }
+
+    /// The validated entry, in original key order — the `{ ...config }` spread
+    /// base for project overrides and re-save merges (upstream spreads the
+    /// validated config object itself).
+    pub fn raw(&self) -> &OrderedMap<Value> {
+        &self.raw
     }
 
     fn field(&self, key: &str) -> Option<&Value> {
@@ -175,7 +211,25 @@ impl McpServerConfig {
             callback_url: string_field("callbackUrl"),
             scope: string_field("scope"),
             client_name: string_field("clientName"),
+            client_registration: object
+                .get("clientRegistration")
+                .and_then(Value::as_str)
+                .and_then(|value| match value {
+                    "dcr" => Some(McpClientRegistration::Dcr),
+                    "cimd" => Some(McpClientRegistration::Cimd),
+                    _ => None,
+                }),
+            auth_server_metadata_url: string_field("authServerMetadataUrl"),
         })
+    }
+
+    /// `auth.provider` (v1.0.0): the pi provider whose token replaces MCP
+    /// OAuth for this server.
+    pub fn auth_provider(&self) -> Option<&str> {
+        self.field("auth")
+            .and_then(Value::as_object)
+            .and_then(|auth| auth.get("provider"))
+            .and_then(Value::as_str)
     }
 
     /// `enabled`: set to false to keep the entry without connecting.
@@ -213,6 +267,12 @@ const SERVER_NAME_OK: fn(&str) -> bool = |name| {
             .bytes()
             .all(|byte| byte.is_ascii_alphanumeric() || byte == b'_' || byte == b'-')
 };
+
+/// Namespace of a server's tools: `mcp__<server>` with `-` replaced by `_`,
+/// like the tool names (upstream `mcpNamespace`, v1.0.0).
+pub fn mcp_namespace(server: &str) -> String {
+    format!("mcp__{}", server.replace('-', "_"))
+}
 
 fn validate_oauth(value: &Value) -> Option<String> {
     if value.is_null() {
@@ -257,6 +317,52 @@ fn validate_oauth(value: &Value) -> Option<String> {
             .unwrap_or(true);
         if !client_name.is_string() || empty {
             return Some("oauth.clientName must be a non-empty string".to_string());
+        }
+    }
+    // v1.0.0: clientRegistration. `dcr` is the default and always accepted.
+    if let Some(client_registration) = object.get("clientRegistration") {
+        let registration = client_registration.as_str();
+        if registration != Some("dcr") {
+            if registration != Some("cimd") {
+                return Some("oauth.clientRegistration must be \"dcr\" or \"cimd\"".to_string());
+            }
+            if object.get("clientId").is_some() || object.get("clientName").is_some() {
+                return Some(
+                    "oauth.clientRegistration \"cimd\" cannot be combined with oauth.clientId or oauth.clientName"
+                        .to_string(),
+                );
+            }
+            let callback = object
+                .get("callbackUrl")
+                .and_then(Value::as_str)
+                .and_then(|value| url::Url::parse(value).ok());
+            if let Some(callback) = callback {
+                if callback.host_str() == Some("[::1]") || callback.path() != "/callback" {
+                    return Some(
+                        "oauth.clientRegistration \"cimd\" requires oauth.callbackUrl on localhost or 127.0.0.1 with path /callback"
+                            .to_string(),
+                    );
+                }
+            }
+        }
+    }
+    // v1.0.0: authServerMetadataUrl — https, or http on a loopback host.
+    if let Some(metadata_url) = object.get("authServerMetadataUrl") {
+        let url = metadata_url
+            .as_str()
+            .and_then(|value| url::Url::parse(value).ok());
+        let valid = url
+            .map(|url| {
+                url.scheme() == "https"
+                    || (url.scheme() == "http"
+                        && LOOPBACK_HOSTS.contains(&url.host_str().unwrap_or_default()))
+            })
+            .unwrap_or(false);
+        if !valid {
+            return Some(
+                "oauth.authServerMetadataUrl must be an https URL, or http on localhost, 127.0.0.1, or [::1]"
+                    .to_string(),
+            );
         }
     }
     None
@@ -441,6 +547,26 @@ pub fn validate_mcp_server_config(
             if let Some(oauth_error) = validate_oauth(value.get("oauth").unwrap_or(&Value::Null)) {
                 return Err(format!("server \"{name}\": {oauth_error}"));
             }
+            // v1.0.0: `auth` sends a pi provider's token instead of MCP OAuth.
+            if let Some(auth) = value.get("auth") {
+                let provider = auth
+                    .as_object()
+                    .and_then(|auth| auth.get("provider"))
+                    .and_then(Value::as_str)
+                    .filter(|provider| !provider.is_empty());
+                if provider.is_none() {
+                    return Err(format!(
+                        "server \"{name}\": auth.provider must be a provider name"
+                    ));
+                }
+                let url = url::Url::parse(url).expect("validated URL");
+                let https = url.scheme() == "https";
+                if !https && !LOOPBACK_HOSTS.contains(&url.host_str().unwrap_or_default()) {
+                    return Err(format!(
+                        "server \"{name}\": auth requires an https URL, or http on localhost, 127.0.0.1, or [::1]"
+                    ));
+                }
+            }
             return Ok(McpServerConfig {
                 raw: value,
                 exposure,
@@ -618,20 +744,82 @@ mod tests {
     #[test]
     fn validation_error_messages_are_upstream_exact() {
         let cases: Vec<(String, OrderedMap<Value>, &str)> = vec![
-            ("bad name!".to_string(), config(vec![]), "invalid server name \"bad name!\" (use letters, digits, \"_\" and \"-\")"),
-            ("s".to_string(), config(vec![("exposure", json!("nope"))]), "server \"s\": exposure must be one of \"codemode\", \"deferred\", \"direct\", \"hidden\""),
-            ("s".to_string(), config(vec![("toolExposure", json!(5))]), "server \"s\": toolExposure must map tool names to exposures"),
-            ("s".to_string(), config(vec![("toolExposure", json!({"t": "no"}))]), "server \"s\": toolExposure \"t\" must be one of \"codemode\", \"deferred\", \"direct\", \"hidden\""),
-            ("s".to_string(), config(vec![("enabled", json!("yes"))]), "server \"s\": enabled must be a boolean"),
-            ("s".to_string(), config(vec![("timeout", json!(0))]), "server \"s\": timeout must be a positive number of seconds"),
-            ("s".to_string(), config(vec![("type", json!("sse")), ("command", json!("x"))]), "server \"s\": legacy SSE transport is not supported; use the streamable HTTP URL"),
-            ("s".to_string(), config(vec![("url", json!("ftp://x"))]), "server \"s\": url must be an http or https URL"),
-            ("s".to_string(), config(vec![("url", json!("https://x")), ("headers", json!(5))]), "server \"s\": headers must map names to strings"),
-            ("s".to_string(), config(vec![("url", json!("https://x")), ("oauth", json!({"callbackPort": 0}))]), "server \"s\": oauth.callbackPort must be a port number"),
-            ("s".to_string(), config(vec![("url", json!("https://x")), ("oauth", json!({"callbackUrl": "https://x/cb"}))]), "server \"s\": oauth.callbackUrl must be an http URI on localhost, 127.0.0.1, or [::1] without query or fragment"),
-            ("s".to_string(), config(vec![("command", json!("x")), ("args", json!([1]))]), "server \"s\": args must be an array of strings"),
-            ("s".to_string(), config(vec![("command", json!("x")), ("env", json!({"A": 1}))]), "server \"s\": env must map names to strings"),
-            ("s".to_string(), config(vec![]), "server \"s\" needs either \"command\" (stdio) or \"url\" (streamable HTTP)"),
+            (
+                "bad name!".to_string(),
+                config(vec![]),
+                "invalid server name \"bad name!\" (use letters, digits, \"_\" and \"-\")",
+            ),
+            (
+                "s".to_string(),
+                config(vec![("exposure", json!("nope"))]),
+                "server \"s\": exposure must be one of \"codemode\", \"deferred\", \"direct\", \"hidden\"",
+            ),
+            (
+                "s".to_string(),
+                config(vec![("toolExposure", json!(5))]),
+                "server \"s\": toolExposure must map tool names to exposures",
+            ),
+            (
+                "s".to_string(),
+                config(vec![("toolExposure", json!({"t": "no"}))]),
+                "server \"s\": toolExposure \"t\" must be one of \"codemode\", \"deferred\", \"direct\", \"hidden\"",
+            ),
+            (
+                "s".to_string(),
+                config(vec![("enabled", json!("yes"))]),
+                "server \"s\": enabled must be a boolean",
+            ),
+            (
+                "s".to_string(),
+                config(vec![("timeout", json!(0))]),
+                "server \"s\": timeout must be a positive number of seconds",
+            ),
+            (
+                "s".to_string(),
+                config(vec![("type", json!("sse")), ("command", json!("x"))]),
+                "server \"s\": legacy SSE transport is not supported; use the streamable HTTP URL",
+            ),
+            (
+                "s".to_string(),
+                config(vec![("url", json!("ftp://x"))]),
+                "server \"s\": url must be an http or https URL",
+            ),
+            (
+                "s".to_string(),
+                config(vec![("url", json!("https://x")), ("headers", json!(5))]),
+                "server \"s\": headers must map names to strings",
+            ),
+            (
+                "s".to_string(),
+                config(vec![
+                    ("url", json!("https://x")),
+                    ("oauth", json!({"callbackPort": 0})),
+                ]),
+                "server \"s\": oauth.callbackPort must be a port number",
+            ),
+            (
+                "s".to_string(),
+                config(vec![
+                    ("url", json!("https://x")),
+                    ("oauth", json!({"callbackUrl": "https://x/cb"})),
+                ]),
+                "server \"s\": oauth.callbackUrl must be an http URI on localhost, 127.0.0.1, or [::1] without query or fragment",
+            ),
+            (
+                "s".to_string(),
+                config(vec![("command", json!("x")), ("args", json!([1]))]),
+                "server \"s\": args must be an array of strings",
+            ),
+            (
+                "s".to_string(),
+                config(vec![("command", json!("x")), ("env", json!({"A": 1}))]),
+                "server \"s\": env must map names to strings",
+            ),
+            (
+                "s".to_string(),
+                config(vec![]),
+                "server \"s\" needs either \"command\" (stdio) or \"url\" (streamable HTTP)",
+            ),
         ];
         for (name, raw, expected) in cases {
             assert_eq!(

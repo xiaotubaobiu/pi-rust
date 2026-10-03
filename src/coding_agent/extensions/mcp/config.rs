@@ -42,6 +42,9 @@ pub struct McpServerEntry {
     /// registered with `pi.registerMcpServer()`. Changes to extension servers
     /// are not saved.
     pub scope: Option<McpConfigScope>,
+    /// Project `mcp.json` with an override of this global server's `enabled`,
+    /// `exposure`, or `toolExposure` (v1.0.0).
+    pub override_: Option<String>,
 }
 
 /// Upstream `"global" | "project" | "extension"`.
@@ -70,6 +73,9 @@ pub struct LoadedMcpConfig {
     /// `None` is upstream `undefined` (default true).
     pub auto_enable_codemode: Option<bool>,
     pub errors: Vec<String>,
+    /// The project `mcp.json` when the project is trusted, where `/mcp` saves
+    /// project overrides (v1.0.0). `None` is upstream `undefined`.
+    pub project_config: Option<String>,
 }
 
 fn is_record(value: &Value) -> bool {
@@ -156,6 +162,45 @@ fn read_config_file(path: &str, scope: McpConfigScope, state: &mut McpConfigStat
                 .push(format!("{path}: server \"{name}\" must be an object"));
             continue;
         }
+        // v1.0.0: a project entry without `command`, `url`, or `type`
+        // overrides only `enabled`, `exposure`, and `toolExposure` of the
+        // global server with the same name.
+        if scope == McpConfigScope::Project && is_override(&value) {
+            let base = state.servers.iter().find(|(existing, _)| *existing == name);
+            let extra: Vec<&String> = value
+                .as_object()
+                .expect("record checked")
+                .keys()
+                .filter(|key| !OVERRIDE_KEYS.contains(&key.as_str()))
+                .collect();
+            let Some((_, base_entry)) = base else {
+                state.errors.push(format!(
+                    "{path}: server \"{name}\" needs \"command\" or \"url\", or a global server to override"
+                ));
+                continue;
+            };
+            if !extra.is_empty() {
+                state.errors.push(format!(
+                    "{path}: server \"{name}\": an override can only set {}",
+                    OVERRIDE_KEYS.join(", ")
+                ));
+                continue;
+            }
+            let mut merged = base_entry.config.raw().clone();
+            for (key, entry_value) in value.as_object().expect("record checked") {
+                merged.insert(key.clone(), entry_value.clone());
+            }
+            match validate_mcp_server_config(&name, &merged) {
+                Ok(config) => {
+                    let mut entry = base_entry.clone();
+                    entry.config = config;
+                    entry.override_ = Some(path.to_string());
+                    state.set(entry);
+                }
+                Err(error) => state.errors.push(format!("{path}: {error}")),
+            }
+            continue;
+        }
         let raw = OrderedMap::from_pairs(
             value
                 .as_object()
@@ -165,15 +210,53 @@ fn read_config_file(path: &str, scope: McpConfigScope, state: &mut McpConfigStat
                 .collect::<Vec<_>>(),
         );
         match validate_mcp_server_config(&name, &raw) {
-            Ok(config) => state.set(McpServerEntry {
-                name,
-                config,
-                source: path.to_string(),
-                scope: Some(scope),
-            }),
+            Ok(config) => {
+                // Names that differ only in `-` and `_` would share a
+                // namespace.
+                let clash = state.servers.iter().find(|(other, _)| {
+                    other != &name
+                        && crate::coding_agent::core::mcp_servers::mcp_namespace(other)
+                            == crate::coding_agent::core::mcp_servers::mcp_namespace(&name)
+                });
+                if let Some((clash, _)) = clash {
+                    state.errors.push(format!(
+                        "{path}: server \"{name}\" conflicts with \"{clash}\""
+                    ));
+                    continue;
+                }
+                if scope == McpConfigScope::Project
+                    && config.url().is_some()
+                    && config.auth_provider().is_some()
+                {
+                    state.errors.push(format!(
+                        "{path}: server \"{name}\": auth is only allowed in the global mcp.json"
+                    ));
+                    continue;
+                }
+                state.set(McpServerEntry {
+                    name,
+                    config,
+                    source: path.to_string(),
+                    scope: Some(scope),
+                    override_: None,
+                });
+            }
             Err(error) => state.errors.push(format!("{path}: {error}")),
         }
     }
+}
+
+/// Override-only keys of a project entry (upstream `OVERRIDE_KEYS`).
+const OVERRIDE_KEYS: [&str; 3] = ["enabled", "exposure", "toolExposure"];
+
+/// Whether an entry overrides a server defined elsewhere instead of defining
+/// one (upstream `isOverride`).
+fn is_override(value: &Value) -> bool {
+    let object = value.as_object();
+    let Some(object) = object else {
+        return false;
+    };
+    !object.contains_key("command") && !object.contains_key("url") && !object.contains_key("type")
 }
 
 /// Upstream `loadMcpConfig` options.
@@ -193,17 +276,22 @@ pub fn load_mcp_config(options: LoadedMcpConfigOptions) -> LoadedMcpConfig {
         McpConfigScope::Global,
         &mut state,
     );
-    if options.project_trusted {
-        read_config_file(
-            &path_join(&options.cwd, &format!("{CONFIG_DIR_NAME}/mcp.json")),
-            McpConfigScope::Project,
-            &mut state,
-        );
+    let project_config = if options.project_trusted {
+        Some(path_join(
+            &options.cwd,
+            &format!("{CONFIG_DIR_NAME}/mcp.json"),
+        ))
+    } else {
+        None
+    };
+    if let Some(project_config) = &project_config {
+        read_config_file(project_config, McpConfigScope::Project, &mut state);
     }
     LoadedMcpConfig {
         servers: state.servers.into_iter().map(|(_, entry)| entry).collect(),
         auto_enable_codemode: state.auto_enable_codemode,
         errors: state.errors,
+        project_config,
     }
 }
 
@@ -229,46 +317,79 @@ pub(crate) fn exposure_json_name(exposure: McpExposure) -> &'static str {
     exposure_str(exposure)
 }
 
-/// Change one server's settings in the `mcp.json` that defines it. Other
-/// content is kept; the file is rewritten with its indentation (upstream
-/// `updateMcpServerConfig`).
+/// Change one server's settings in the `mcp.json` that defines or overrides
+/// it. With `override_missing`, a missing entry is added as an override.
+/// Overrides keep default values, since they replace the global server's.
+/// Other content is kept; the file is rewritten with its indentation
+/// (upstream `updateMcpServerConfig`).
 pub fn update_mcp_server_config(
     path: &str,
     name: &str,
     patch: McpServerConfigPatch,
+    override_missing: bool,
 ) -> Result<(), String> {
-    edit_mcp_servers(path, |servers, _parsed| {
-        let record = servers
-            .as_deref()
-            .and_then(|servers| servers.get(name))
-            .ok_or_else(|| format!("{path} does not define MCP server \"{name}\""))?;
-        if !is_record(record) {
-            return Err(format!("{path} does not define MCP server \"{name}\""));
-        }
-        let mut server = OrderedMap::from_pairs(
-            record
-                .as_object()
-                .expect("record checked")
-                .iter()
-                .map(|(key, value)| (key.clone(), value.clone()))
-                .collect::<Vec<_>>(),
-        );
+    edit_mcp_servers(path, |mut servers, parsed| {
+        let existing = servers.as_deref().and_then(|s| s.get(name)).cloned();
+        let mut server: OrderedMap<Value> = match existing {
+            Some(record) if is_record(&record) => OrderedMap::from_pairs(
+                record
+                    .as_object()
+                    .expect("record checked")
+                    .iter()
+                    .map(|(key, value)| (key.clone(), value.clone()))
+                    .collect::<Vec<_>>(),
+            ),
+            Some(_) => return Err(format!("{path} does not define MCP server \"{name}\"")),
+            None => {
+                if !override_missing {
+                    return Err(format!("{path} does not define MCP server \"{name}\""));
+                }
+                // With `override_missing`, a missing entry is added as an
+                // override: in the `mcpServers` record when one exists, else
+                // directly in the document (upstream
+                // `parsed.mcpServers = { ...servers, [name]: {} }`).
+                match &mut servers {
+                    Some(map) => {
+                        map.insert(name.to_string(), Value::Object(serde_json::Map::new()));
+                    }
+                    None => {
+                        let mut fresh = serde_json::Map::new();
+                        fresh.insert(name.to_string(), Value::Object(serde_json::Map::new()));
+                        parsed.insert("mcpServers".to_string(), Value::Object(fresh));
+                    }
+                }
+                OrderedMap::new()
+            }
+        };
+        // An override replaces the global server's values, so its defaults
+        // are kept instead of deleted.
+        let keep_defaults = is_override(&Value::Object(to_json_map(&server)));
         if let Some(enabled) = patch.enabled {
-            if enabled {
+            if enabled && !keep_defaults {
                 server = ordered_map_without(server, "enabled");
             } else {
-                server.insert("enabled", Value::Bool(false));
+                server.insert("enabled", Value::Bool(enabled));
             }
         }
         if let Some(exposure) = patch.exposure {
-            if exposure == McpExposure::Codemode {
+            if exposure == McpExposure::Codemode && !keep_defaults {
                 server = ordered_map_without(server, "exposure");
             } else {
                 server.insert("exposure", Value::from(exposure_str(exposure)));
             }
         }
-        if let Some(servers) = servers {
-            servers.insert(name.to_string(), Value::Object(to_json_map(&server)));
+        let patched = Value::Object(to_json_map(&server));
+        match &mut servers {
+            Some(map) => {
+                map.insert(name.to_string(), patched);
+            }
+            None => {
+                if let Some(mcp_servers) =
+                    parsed.get_mut("mcpServers").and_then(Value::as_object_mut)
+                {
+                    mcp_servers.insert(name.to_string(), patched);
+                }
+            }
         }
         Ok(true)
     })
@@ -600,6 +721,7 @@ mod tests {
                 enabled: Some(false),
                 exposure: Some(McpExposure::Direct),
             },
+            false,
         )
         .unwrap();
         let text = std::fs::read_to_string(&path).unwrap();
@@ -615,12 +737,14 @@ mod tests {
                 enabled: Some(true),
                 exposure: Some(McpExposure::Codemode),
             },
+            false,
         )
         .unwrap();
         let text = std::fs::read_to_string(&path).unwrap();
         assert!(text.contains("\"fs\": {\n\t\t\t\"command\": \"npx\"\n\t\t}"));
         let error =
-            update_mcp_server_config(&path, "other", McpServerConfigPatch::default()).unwrap_err();
+            update_mcp_server_config(&path, "other", McpServerConfigPatch::default(), false)
+                .unwrap_err();
         assert_eq!(
             error,
             format!("{path} does not define MCP server \"other\"")

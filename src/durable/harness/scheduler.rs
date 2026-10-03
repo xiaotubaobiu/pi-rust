@@ -1554,7 +1554,7 @@ impl TaskScheduler {
                 TaskState::Completing { .. } | TaskState::Terminal { .. } => {
                     return Err(PlainFailure::new(
                         "migrating a terminal task is not supported",
-                    ))
+                    ));
                 }
             };
             Ok(migrated)

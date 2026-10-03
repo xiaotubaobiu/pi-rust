@@ -154,9 +154,37 @@ pub async fn get_powershell_config_with(host: &ShellDiscovery) -> Result<ShellCo
     if !host.windows {
         return Err("The powershell tool is only available on Windows.".into());
     }
-    let shell=match find_executable("pwsh.exe",host).await {
-        Some(shell)=>shell,
-        None=>find_executable("powershell.exe",host).await.ok_or("No PowerShell executable found. Install PowerShell or add powershell.exe/pwsh.exe to PATH.")?,
+    let shell = match find_executable("pwsh.exe", host).await {
+        Some(shell) => shell,
+        None => {
+            match find_executable("powershell.exe", host).await {
+                Some(shell) => shell,
+                None => {
+                    // Well-known install locations as a last resort: when
+                    // tests (or any cargo-spawned process) run, cargo
+                    // prepends `target\debug\...` build-output dirs to PATH,
+                    // and a `where` scan across those thousands of
+                    // C-artifact files (Defender-amplified) blows past the
+                    // discovery timeout on dev machines. Upstream's lookup
+                    // trace above is untouched; these documented install
+                    // paths only fire after both lookups miss.
+                    for known in [
+                        r"C:\Program Files\PowerShell\7\pwsh.exe",
+                        r"C:\Program Files (x86)\PowerShell\7\pwsh.exe",
+                        r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe",
+                    ] {
+                        if (host.exists)(known) {
+                            return Ok(ShellConfig {
+                                shell: known.to_string(),
+                                args: POWERSHELL_ARGS.iter().map(|s| (*s).into()).collect(),
+                                command_transport: None,
+                            });
+                        }
+                    }
+                    return Err("No PowerShell executable found. Install PowerShell or add powershell.exe/pwsh.exe to PATH.".into());
+                }
+            }
+        }
     };
     Ok(ShellConfig {
         shell,

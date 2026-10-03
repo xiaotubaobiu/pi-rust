@@ -34,6 +34,7 @@ use crate::ai::types::Model;
 use crate::coding_agent::core::http_dispatcher::{
     format_http_idle_timeout_ms, HTTP_IDLE_TIMEOUT_CHOICES,
 };
+use crate::coding_agent::core::settings_manager::QuietStartup;
 use crate::coding_agent::modes::interactive::system_theme::SYSTEM_THEME_NAME;
 use crate::coding_agent::modes::interactive::theme::{parse_auto_theme_setting, Theme};
 use crate::tui::component::Component;
@@ -233,7 +234,7 @@ pub struct SettingsConfig {
     pub editor_padding_x: u32,
     pub output_pad: u8,
     pub autocomplete_max_visible: u32,
-    pub quiet_startup: bool,
+    pub quiet_startup: QuietStartup,
     pub default_project_trust: String,
     pub clear_on_shrink: bool,
     pub show_terminal_progress: bool,
@@ -275,7 +276,7 @@ pub struct SettingsCallbacks {
     pub on_editor_padding_x_change: Box<dyn FnMut(u32) + Send>,
     pub on_output_pad_change: Box<dyn FnMut(u8) + Send>,
     pub on_autocomplete_max_visible_change: Box<dyn FnMut(u32) + Send>,
-    pub on_quiet_startup_change: Box<dyn FnMut(bool) + Send>,
+    pub on_quiet_startup_change: Box<dyn FnMut(QuietStartup) + Send>,
     pub on_default_project_trust_change: Box<dyn FnMut(&str) + Send>,
     pub on_clear_on_shrink_change: Box<dyn FnMut(bool) + Send>,
     pub on_show_terminal_progress_change: Box<dyn FnMut(bool) + Send>,
@@ -1914,9 +1915,16 @@ impl SettingsSelectorComponent {
         items.push(SelectorItem {
             id: "quiet-startup".into(),
             label: "Quiet startup".into(),
-            description: Some("Disable verbose printing at startup".into()),
-            current_value: bool_str(config.quiet_startup),
-            values: vec!["true".into(), "false".into()],
+            description: Some(
+                "Disable verbose printing at startup (header: keep only the startup header)".into(),
+            ),
+            // Upstream `String(config.quietStartup)`: "true" | "header" | "false".
+            current_value: match config.quiet_startup {
+                QuietStartup::Full => "true".to_string(),
+                QuietStartup::Header => "header".to_string(),
+                QuietStartup::Off => "false".to_string(),
+            },
+            values: vec!["true".into(), "header".into(), "false".into()],
             submenu: None,
         });
         items.push(SelectorItem {
@@ -2067,7 +2075,9 @@ impl SettingsSelectorComponent {
         items.push(SelectorItem {
             id: "tui-mode".into(),
             label: "TUI mode".into(),
-            description: Some("Interface layout; fullscreen mode is experimental".into()),
+            description: Some(
+                "Interface layout; regular mode uses the terminal's normal scrollback".into(),
+            ),
             current_value: config.tui_mode.clone(),
             values: vec!["regular".into(), "fullscreen".into()],
             submenu: None,
@@ -2376,7 +2386,11 @@ fn build_dispatch_on_change(mut callbacks: SettingsCallbacks) -> Box<dyn FnMut(&
         "mermaid-rendering" => (callbacks.on_mermaid_rendering_mode_change)(new_value),
         "cache-miss-notices" => (callbacks.on_show_cache_miss_notices_change)(new_value == "true"),
         "collapse-changelog" => (callbacks.on_collapse_changelog_change)(new_value == "true"),
-        "quiet-startup" => (callbacks.on_quiet_startup_change)(new_value == "true"),
+        "quiet-startup" => (callbacks.on_quiet_startup_change)(match new_value {
+            "header" => QuietStartup::Header,
+            "true" => QuietStartup::Full,
+            _ => QuietStartup::Off,
+        }),
         "install-telemetry" => (callbacks.on_enable_install_telemetry_change)(new_value == "true"),
         "default-project-trust" => {
             if let Some((trust, _)) = DEFAULT_PROJECT_TRUST_LABELS

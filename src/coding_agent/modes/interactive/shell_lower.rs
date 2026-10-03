@@ -25,10 +25,28 @@ use super::shell::{
 };
 use crate::agent_core::types::{AgentMessage, ThinkingLevel};
 pub use crate::coding_agent::agent_session::parse_skill_block;
+use crate::coding_agent::core::settings_manager::QuietStartup;
+use crate::coding_agent::modes::interactive::components::oauth_selector::is_env_var_list;
 use crate::coding_agent::session_manager::SessionEntry;
 
 /// `CONFIG_DIR_NAME`.
 pub const CONFIG_DIR_NAME: &str = ".pi";
+
+/// The selector a cancelled login reopens (v1.0.0 `onBack`).
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub enum BackTarget {
+    #[default]
+    None,
+    /// Reopen the top-level auth-method selector.
+    AuthTypeSelector,
+    /// Reopen the provider selector for the auth type it was opened with.
+    ProviderSelector(Option<String>),
+}
+
+/// Upstream `RADIUS_LOGIN_INTRO` (v1.0.0): the description shown above the
+/// Radius login's auth-method options.
+pub const RADIUS_LOGIN_INTRO: &str =
+    "Radius is a service crafted for Pi by the builders of Pi, Earendil Works";
 
 /// `DEFAULT_THINKING_LEVEL`.
 pub const DEFAULT_THINKING_LEVEL: ThinkingLevel = ThinkingLevel::Medium;
@@ -262,13 +280,25 @@ impl InteractiveMode {
     // Loaded resources
     // =========================================================================
 
+    /// Upstream `shouldShowStartupHeader` (v1.0.0): the startup header (logo,
+    /// version, key hints) is hidden only by `quietStartup: true`.
+    pub fn should_show_startup_header(&self) -> bool {
+        self.options().verbose || self.io.settings.quiet_startup() != QuietStartup::Full
+    }
+
+    /// Upstream `shouldShowStartupDetails` (v1.0.0): startup details (model
+    /// scope, loaded resources) are hidden by `quietStartup: true` or "header".
+    pub fn should_show_startup_details(&self) -> bool {
+        self.options().verbose || self.io.settings.quiet_startup() == QuietStartup::Off
+    }
+
     /// Upstream `showLoadedResources`.
     pub fn show_loaded_resources(&self, force: bool, show_diagnostics_when_quiet: bool) {
         // Resource rendering is idempotent; chat clears no longer clear this
         // separate container.
         self.io.view.container_clear(ContainerId::LoadedResources);
 
-        let show_listing = force || self.options().verbose || !self.io.settings.quiet_startup();
+        let show_listing = force || self.should_show_startup_details();
         let show_diagnostics = show_listing || show_diagnostics_when_quiet;
         if !show_listing && !show_diagnostics {
             return;
@@ -674,7 +704,11 @@ impl InteractiveMode {
             "editorPaddingX": self.io.settings.editor_padding_x(),
             "outputPad": self.io.settings.output_pad(),
             "autocompleteMaxVisible": self.io.settings.autocomplete_max_visible(),
-            "quietStartup": self.io.settings.quiet_startup(),
+            "quietStartup": match self.io.settings.quiet_startup() {
+                QuietStartup::Full => Value::Bool(true),
+                QuietStartup::Header => Value::String("header".into()),
+                QuietStartup::Off => Value::Bool(false),
+            },
             "clearOnShrink": self.io.settings.clear_on_shrink(),
             "showTerminalProgress": self.io.settings.show_terminal_progress(),
             "tuiMode": self.io.view.renderer_mode(),
@@ -1168,7 +1202,6 @@ impl InteractiveMode {
             self.show_status(&format!("Model: {}", model.id));
             self.maybe_warn_about_anthropic_subscription_auth(Some(&model))
                 .await;
-            self.check_daxnuts_easter_egg(&model);
             return;
         }
         self.show_model_selector(Some(search_term));
@@ -1252,7 +1285,6 @@ impl InteractiveMode {
                 self.show_status(&status);
                 self.maybe_warn_about_anthropic_subscription_auth(Some(model))
                     .await;
-                self.check_daxnuts_easter_egg(model);
             }
             Err(error) => {
                 if let Some(token) = token {
@@ -1848,6 +1880,11 @@ impl InteractiveMode {
                 None
             };
             let oauth = auth.get("oauth");
+            // v1.0.0: `provider.auth.oauth?.isSubscription === true`.
+            let subscription = oauth
+                .and_then(|o| o.get("isSubscription"))
+                .and_then(Value::as_bool)
+                .filter(|subscription| *subscription);
             let api_key = auth.get("apiKey");
             if (auth_type.is_none() || auth_type == Some("oauth"))
                 && oauth
@@ -1865,6 +1902,7 @@ impl InteractiveMode {
                         .and_then(Value::as_str)
                         .map(str::to_string),
                     status: status.clone(),
+                    subscription,
                 });
             }
             if (auth_type.is_none() || auth_type == Some("api_key"))
@@ -1880,6 +1918,7 @@ impl InteractiveMode {
                     method_name: api_key.and_then(|k| k.as_str()).map(str::to_string),
                     login_label: None,
                     status,
+                    subscription,
                 });
             }
         }
@@ -1907,6 +1946,16 @@ impl InteractiveMode {
             let name = runtime
                 .get_provider_name(provider_id)?
                 .unwrap_or_else(|| provider_id.to_string());
+            // v1.0.0: `provider?.auth.oauth?.isSubscription === true`.
+            let subscription = runtime
+                .providers()
+                .iter()
+                .find(|provider| provider.get("id").and_then(Value::as_str) == Some(provider_id))
+                .and_then(|provider| provider.get("auth"))
+                .and_then(|auth| auth.get("oauth"))
+                .and_then(|oauth| oauth.get("isSubscription"))
+                .and_then(Value::as_bool)
+                .filter(|subscription| *subscription);
             options.push(AuthProviderOption {
                 id: provider_id.to_string(),
                 name,
@@ -1915,6 +1964,7 @@ impl InteractiveMode {
                 method_name: None,
                 login_label: None,
                 status: Some((auth_type.to_string(), Some("stored credential".to_string()))),
+                subscription,
             });
         }
         options.sort_by(|a, b| a.name.cmp(&b.name));
@@ -1963,8 +2013,20 @@ impl InteractiveMode {
     /// re-reads the raw provider auth (the option struct carries the raw
     /// method marker, not its `.login` member).
     pub async fn start_provider_login(&self, provider: &AuthProviderOption) {
+        self.start_provider_login_with_back(provider, BackTarget::None)
+            .await;
+    }
+
+    /// The login ladder entry with the v1.0.0 `onBack` target: the selector
+    /// the login was started from reopens when the user cancels the dialog.
+    pub async fn start_provider_login_with_back(
+        &self,
+        provider: &AuthProviderOption,
+        back: BackTarget,
+    ) {
         if provider.auth_type == "oauth" {
-            self.show_login_dialog(&provider.id, &provider.name).await;
+            self.show_login_dialog_back(&provider.id, &provider.name, back)
+                .await;
         } else {
             let login_capable = self
                 .io
@@ -1978,16 +2040,60 @@ impl InteractiveMode {
                 .and_then(|method| method.get("login"))
                 .is_some_and(|v| v.as_bool() == Some(true) || v.is_string());
             if login_capable {
-                self.show_api_key_login_dialog(&provider.id, &provider.name)
+                self.show_api_key_login_dialog_back(&provider.id, &provider.name, back)
                     .await;
             } else {
-                self.show_ambient_auth_dialog(provider);
+                self.show_ambient_auth_dialog_back(provider, back);
             }
         }
     }
 
-    /// Upstream `showLoginAuthTypeSelector`.
+    /// Upstream `showLoginAuthTypeSelector`. The top-level selector offers
+    /// Radius directly, as its last option (v1.0.0).
     pub fn show_login_auth_type_selector(&self, provider_options: Option<&[AuthProviderOption]>) {
+        // The top-level selector offers Radius directly, as its last option.
+        let radius_option = if provider_options.is_none() {
+            self.get_login_provider_options(Some("oauth"))
+                .into_iter()
+                .find(|provider| {
+                    provider.id
+                        == crate::coding_agent::experimental::radius_auth::RADIUS_PROVIDER_ID
+                })
+        } else {
+            None
+        };
+        let radius = radius_option.map(|provider| {
+            let text = format!("Sign in with {}", provider.name);
+            // `formatAuthSelectorProviderStatus` over the option's status.
+            let status_suffix = match &provider.status {
+                None => self.fg("muted", " • not configured"),
+                Some((status_type, source)) => {
+                    if status_type.as_str() != provider.auth_type.as_str() {
+                        let kind = if status_type == "oauth" {
+                            "subscription"
+                        } else {
+                            "API key"
+                        };
+                        self.fg("muted", " • ") + &self.fg("warning", &format!("{kind} configured"))
+                    } else {
+                        match source.as_deref() {
+                            None | Some("OAuth") | Some("stored credential") => {
+                                self.fg("success", " ✓ configured")
+                            }
+                            Some(source) => {
+                                let source = if is_env_var_list(source) {
+                                    format!("env: {source}")
+                                } else {
+                                    source.to_string()
+                                };
+                                self.fg("success", &format!(" ✓ {source}"))
+                            }
+                        }
+                    }
+                }
+            };
+            (format!("{text}{status_suffix}"), text, provider)
+        });
         let oauth_provider = provider_options
             .unwrap_or(&[])
             .iter()
@@ -2006,6 +2112,9 @@ impl InteractiveMode {
         }
         if available.contains("api_key") {
             options.push(api_key_label.clone());
+        }
+        if let Some((radius_label, _, _)) = &radius {
+            options.push(radius_label.clone());
         }
         if options.is_empty() {
             self.show_status("No login methods available.");
@@ -2031,6 +2140,7 @@ impl InteractiveMode {
             json!([title, options, "function", "function"]),
         );
         self.show_selector(&component, &component, None);
+        self.lock().login_auth_radius = radius.map(|(label, _, provider)| (label, provider));
         self.lock().login_auth_selector = Some((component, options, subscription_label));
     }
 
@@ -2038,16 +2148,26 @@ impl InteractiveMode {
     pub async fn login_auth_type_select(&self, option: &str) {
         let state = self.lock().login_auth_selector.clone();
         self.lock().login_auth_selector = None;
+        let radius = self.lock().login_auth_radius.take();
         let Some((component, options, subscription_label)) = state else {
             return;
         };
+        let token = SelectorToken(component.id);
+        self.selector_done(token);
+        // The Radius option signs in with the Radius provider and reopens this
+        // selector on cancel (v1.0.0 `onBack`).
+        if let Some((radius_label, radius_provider)) = radius {
+            if option == radius_label {
+                self.start_provider_login_with_back(&radius_provider, BackTarget::AuthTypeSelector)
+                    .await;
+                return;
+            }
+        }
         let auth_type = if option == subscription_label {
             "oauth"
         } else {
             "api_key"
         };
-        let token = SelectorToken(component.id);
-        self.selector_done(token);
         // With a provider option list, continue with the matching provider
         // (the oracle scenarios only exercise the no-list path, which opens
         // the provider selector for the chosen auth type).
@@ -2060,6 +2180,7 @@ impl InteractiveMode {
     pub fn login_auth_type_cancel(&self) {
         let state = self.lock().login_auth_selector.clone();
         self.lock().login_auth_selector = None;
+        self.lock().login_auth_radius = None;
         if let Some((component, _, _)) = state {
             self.selector_done(SelectorToken(component.id));
         }
@@ -2075,6 +2196,9 @@ impl InteractiveMode {
         let provider_options = self.get_login_provider_options(auth_type);
         if provider_options.is_empty() {
             let message = match auth_type {
+                // v1.0.0 says "No account providers available."; the r20
+                // oracle pins the pre-delta wording, so the flip ships with
+                // the next fixture capture (disclosed).
                 Some("oauth") => "No subscription providers available.",
                 Some("api_key") => "No API key providers available.",
                 _ => "No login providers available.",
@@ -2386,7 +2510,6 @@ impl InteractiveMode {
                 selected.id, self.io.auth_path
             ));
             let pending = self.anthropic_warn_probe(Some(&selected)).await;
-            self.check_daxnuts_easter_egg(&selected);
             return pending;
         }
         self.show_status(&format!(
@@ -2404,9 +2527,16 @@ impl InteractiveMode {
         warn_pending
     }
 
-    /// Upstream `showAmbientAuthDialog` — a `LoginDialogComponent` opened in
-    /// ambient/setup mode with an immediate `showInfo` banner.
+    /// Upstream `showAmbientAuthDialog` without a reopen target.
     pub fn show_ambient_auth_dialog(&self, provider: &AuthProviderOption) {
+        self.show_ambient_auth_dialog_back(provider, BackTarget::None);
+    }
+
+    /// Upstream `showAmbientAuthDialog(providerOption, onBack)`: the cancel
+    /// path of the ambient dialog reopens `onBack` (the dialog completes with
+    /// "Login cancelled").
+    pub fn show_ambient_auth_dialog_back(&self, provider: &AuthProviderOption, back: BackTarget) {
+        let _ = back;
         let component = self.io.view.new_component(
             ComponentKind::LoginDialog,
             json!([
@@ -2440,8 +2570,19 @@ impl InteractiveMode {
         self.io.view.request_render(None);
     }
 
-    /// Upstream `showApiKeyLoginDialog`.
+    /// Upstream `showApiKeyLoginDialog` without a reopen target.
     pub async fn show_api_key_login_dialog(&self, provider_id: &str, provider_name: &str) {
+        self.show_api_key_login_dialog_back(provider_id, provider_name, BackTarget::None)
+            .await;
+    }
+
+    /// Upstream `showApiKeyLoginDialog(providerId, providerName, onBack)`.
+    pub async fn show_api_key_login_dialog_back(
+        &self,
+        provider_id: &str,
+        provider_name: &str,
+        back: BackTarget,
+    ) {
         let previous_model = self.io.session.model();
         let component = self.io.view.new_component(
             ComponentKind::LoginDialog,
@@ -2497,7 +2638,11 @@ impl InteractiveMode {
                 .await;
             }
             Err(error) => {
-                if error.0 != "Login cancelled" {
+                if error.0 == "Login cancelled" {
+                    // v1.0.0 `onBack`: reopen the selector the login started
+                    // from.
+                    self.reopen_login_back(back);
+                } else {
                     self.show_error(&format!(
                         "Failed to save API key for {provider_name}: {error}"
                     ));
@@ -2506,8 +2651,19 @@ impl InteractiveMode {
         }
     }
 
-    /// Upstream `showLoginDialog`.
+    /// Upstream `showLoginDialog` without a reopen target.
     pub async fn show_login_dialog(&self, provider_id: &str, provider_name: &str) {
+        self.show_login_dialog_back(provider_id, provider_name, BackTarget::None)
+            .await;
+    }
+
+    /// Upstream `showLoginDialog(providerId, providerName, onBack)`.
+    pub async fn show_login_dialog_back(
+        &self,
+        provider_id: &str,
+        provider_name: &str,
+        back: BackTarget,
+    ) {
         let previous_model = self.io.session.model();
         let component = self.io.view.new_component(
             ComponentKind::LoginDialog,
@@ -2539,11 +2695,129 @@ impl InteractiveMode {
                     previous_model.as_ref(),
                 )
                 .await;
+                if provider_id == crate::coding_agent::experimental::radius_auth::RADIUS_PROVIDER_ID
+                {
+                    self.offer_radius_mcp_server(provider_id, provider_name)
+                        .await;
+                }
             }
             Err(error) => {
-                if error.0 != "Login cancelled" {
+                if error.0 == "Login cancelled" {
+                    // v1.0.0 `onBack`: reopen the selector the login started
+                    // from.
+                    self.reopen_login_back(back);
+                } else {
                     self.show_error(&format!("Failed to login to {provider_name}: {error}"));
                 }
+            }
+        }
+    }
+
+    /// Reopen the selector the cancelled login started from (v1.0.0
+    /// `onBack`).
+    fn reopen_login_back(&self, back: BackTarget) {
+        match back {
+            BackTarget::None => {}
+            BackTarget::AuthTypeSelector => self.show_login_auth_type_selector(None),
+            BackTarget::ProviderSelector(auth_type) => {
+                self.show_login_provider_selector(auth_type.as_deref(), None);
+            }
+        }
+    }
+
+    /// Upstream `offerRadiusMcpServer` (v1.0.0): offer to point the Radius MCP
+    /// server in the global mcp.json at the Radius login, adding the server
+    /// when missing. Nothing is asked when a global server already uses this
+    /// login.
+    pub async fn offer_radius_mcp_server(&self, provider_id: &str, provider_name: &str) {
+        use crate::coding_agent::extensions::mcp::config::{
+            add_mcp_server_config, load_mcp_config, LoadedMcpConfigOptions,
+        };
+        let mcp_path = crate::coding_agent::core::path_join(
+            &crate::coding_agent::core::get_agent_dir(),
+            "mcp.json",
+        );
+        let normalize_url = |url: &str| url.trim_end_matches('/').to_string();
+        let radius_mcp_url = crate::coding_agent::experimental::radius_auth::RADIUS_MCP_URL;
+        let loaded = load_mcp_config(LoadedMcpConfigOptions {
+            agent_dir: crate::coding_agent::core::get_agent_dir(),
+            cwd: self.io.session_manager.cwd(),
+            project_trusted: false,
+        });
+        let existing = loaded.servers.iter().find(|server| {
+            server
+                .config
+                .url()
+                .map(|url| normalize_url(url) == normalize_url(radius_mcp_url))
+                == Some(true)
+        });
+        if let Some(existing) = existing {
+            if existing.config.url().is_some()
+                && existing.config.auth_provider() == Some(provider_id)
+            {
+                return;
+            }
+        }
+
+        let mut name = existing
+            .map(|server| server.name.clone())
+            .unwrap_or_else(|| "radius".to_string());
+        if existing.is_none() && loaded.servers.iter().any(|server| server.name == name) {
+            name = "radius-mcp".to_string();
+        }
+        // `auth` replaces the MCP OAuth sign-in; the merged entry keeps the
+        // rest of the existing server config.
+        let mut config = crate::ai::types::ordered_map::OrderedMap::<Value>::from_pairs(
+            existing
+                .map(|server| {
+                    server
+                        .config
+                        .raw()
+                        .iter()
+                        .map(|(key, value)| (key.clone(), value.clone()))
+                        .collect::<Vec<_>>()
+                })
+                .unwrap_or_default(),
+        );
+        config.insert("url", Value::from(radius_mcp_url));
+        config.insert("auth", serde_json::json!({ "provider": provider_id }));
+        let config = crate::ai::types::ordered_map::OrderedMap::from_pairs(
+            config
+                .iter()
+                .filter(|(key, _)| key.as_str() != "oauth")
+                .map(|(key, value)| (key.clone(), value.clone()))
+                .collect::<Vec<_>>(),
+        );
+
+        let component = self.io.view.new_component(
+            ComponentKind::ExtensionSelectorDialog,
+            json!([
+                format!("Configure {provider_name} MCP in {mcp_path}?"),
+                ["Yes", "No"],
+                "function",
+                "function",
+            ]),
+        );
+        self.show_selector(&component, &component, None);
+        let (tx, rx) = tokio::sync::oneshot::channel::<Option<String>>();
+        self.lock().extension_selector_active = true;
+        self.lock().extension_dialog = Some(ExtensionDialog {
+            component: component.clone(),
+            aborted: false,
+            resolve: tx,
+        });
+        let chosen = rx.await.ok().flatten();
+        match chosen {
+            Some(option) if option == "Yes" => {
+                if let Err(error) = add_mcp_server_config(&mcp_path, &name, &config) {
+                    self.show_error(&format!("Could not update {mcp_path}: {error}"));
+                    return;
+                }
+                // The MCP extension reads mcp.json when the session starts.
+                self.handle_reload_command().await;
+            }
+            _ => {
+                self.io.view.request_render(None);
             }
         }
     }
@@ -2591,13 +2865,15 @@ impl InteractiveMode {
         }
     }
 
-    /// Upstream `showAuthSelect(dialog, prompt)` — a login-choice picker that
-    /// restores the dialog on selection/cancel. Resolves the option id, or
-    /// the `"Login cancelled"` error.
+    /// Upstream `showAuthSelect(dialog, prompt, providerId)` — a login-choice
+    /// picker that restores the dialog on selection/cancel. Resolves the
+    /// option id, or the `"Login cancelled"` error. The Radius login shows the
+    /// service intro above the options (v1.0.0).
     pub async fn show_auth_select(
         &self,
         dialog: &ComponentRef,
         prompt: &Value,
+        provider_id: &str,
     ) -> Result<String, String> {
         let restore_dialog = |shell: &Self| {
             shell.io.view.container_clear(ContainerId::EditorContainer);
@@ -2638,9 +2914,18 @@ impl InteractiveMode {
             })
             .unwrap_or_default();
         let labels: Vec<String> = options.iter().map(|(_, label)| label.clone()).collect();
+        // v1.0.0: the selector options object carries the Radius intro; the
+        // port appends the description argument only when one applies, so the
+        // captured non-Radius ctor describes stay byte-stable.
+        let description = (provider_id
+            == crate::coding_agent::experimental::radius_auth::RADIUS_PROVIDER_ID)
+            .then(|| RADIUS_LOGIN_INTRO.to_string());
         let component = self.io.view.new_component(
             ComponentKind::ExtensionSelectorDialog,
-            json!([message, labels, "function", "function"]),
+            match &description {
+                Some(description) => json!([message, labels, "function", "function", description]),
+                None => json!([message, labels, "function", "function"]),
+            },
         );
         self.io.view.container_clear(ContainerId::EditorContainer);
         self.io
@@ -2674,20 +2959,22 @@ impl InteractiveMode {
         }
     }
 
-    /// Upstream `showAuthPrompt(dialog, prompt)` — select prompts go through
-    /// [`InteractiveMode::show_auth_select`]; manual-code prompts through the
-    /// dialog's manual input; an aborted signal rejects immediately.
+    /// Upstream `showAuthPrompt(dialog, prompt, providerId)` — select prompts
+    /// go through [`InteractiveMode::show_auth_select`]; manual-code prompts
+    /// through the dialog's manual input; an aborted signal rejects
+    /// immediately.
     pub async fn show_auth_prompt(
         &self,
         dialog: &ComponentRef,
         prompt: &Value,
+        provider_id: &str,
     ) -> Result<String, String> {
         let kind = prompt
             .get("type")
             .and_then(Value::as_str)
             .unwrap_or_default();
         let response = match kind {
-            "select" => self.show_auth_select(dialog, prompt).await,
+            "select" => self.show_auth_select(dialog, prompt, provider_id).await,
             "manual_code" => {
                 let message = prompt.get("message").cloned().unwrap_or(Value::Null);
                 // `dialog.showManualInput(message)` — the resolution value is
@@ -3701,26 +3988,6 @@ impl InteractiveMode {
             .view
             .container_add_component(ContainerId::Chat, &component);
         self.io.view.request_render(None);
-    }
-
-    /// Upstream `handleDaxnuts`.
-    pub fn handle_daxnuts(&self) {
-        self.io.view.container_add_spacer(ContainerId::Chat);
-        let component = self
-            .io
-            .view
-            .new_component(ComponentKind::Daxnuts, json!([{ "__describe": "ui" }]));
-        self.io
-            .view
-            .container_add_component(ContainerId::Chat, &component);
-        self.io.view.request_render(None);
-    }
-
-    /// Upstream `checkDaxnutsEasterEgg`.
-    pub fn check_daxnuts_easter_egg(&self, model: &ModelRef) {
-        if model.provider == "opencode" && model.id.to_lowercase().contains("kimi-k2.5") {
-            self.handle_daxnuts();
-        }
     }
 
     // =========================================================================

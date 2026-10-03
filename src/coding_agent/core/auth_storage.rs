@@ -321,9 +321,11 @@ fn map_store_error(error: ModelsStoreError) -> AuthError {
 fn map_auth_error(error: AuthError) -> ModelsStoreError {
     match error {
         AuthError::Cancelled => ModelsStoreError::Cancelled,
-        AuthError::Storage(message) | AuthError::Operation(message) => {
-            ModelsStoreError::Storage(message)
-        }
+        AuthError::Storage(message)
+        | AuthError::Operation(message)
+        // Ripple of the v1.0.0 AuthError::AddressInUse variant (OAuth
+        // callback-port-in-use detection); same storage-error channel.
+        | AuthError::AddressInUse(message) => ModelsStoreError::Storage(message),
         AuthError::Models(models_error) => ModelsStoreError::Storage(models_error.to_string()),
     }
 }

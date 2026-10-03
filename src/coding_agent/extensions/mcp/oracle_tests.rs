@@ -540,6 +540,7 @@ fn oracle_config_update() {
             enabled: Some(false),
             exposure: None,
         },
+        false,
     )
     .unwrap();
     update_mcp_server_config(
@@ -549,6 +550,7 @@ fn oracle_config_update() {
             enabled: None,
             exposure: Some(McpExposure::Deferred),
         },
+        false,
     )
     .unwrap();
     update_mcp_server_config(
@@ -558,6 +560,7 @@ fn oracle_config_update() {
             enabled: Some(true),
             exposure: Some(McpExposure::Codemode),
         },
+        false,
     )
     .unwrap();
     assert_eq!(
@@ -580,6 +583,7 @@ fn oracle_config_update() {
             enabled: Some(false),
             exposure: Some(McpExposure::Hidden),
         },
+        false,
     )
     .unwrap();
     assert_eq!(
@@ -594,6 +598,7 @@ fn oracle_config_update() {
         &two_space.to_string_lossy(),
         "missing",
         super::config::McpServerConfigPatch::default(),
+        false,
     )
     .unwrap_err();
     let oracle_error = oracle["update_missing"].as_str().unwrap();
@@ -609,6 +614,7 @@ fn oracle_config_update() {
         &broken.to_string_lossy(),
         "fs",
         super::config::McpServerConfigPatch::default(),
+        false,
     )
     .unwrap_err();
     let oracle_error = oracle["update_broken"].as_str().unwrap();

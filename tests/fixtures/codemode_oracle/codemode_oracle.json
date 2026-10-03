@@ -2,7 +2,7 @@
   "meta": {
     "upstream": "pi @ 2bbfcca43",
     "piCodemode": "0.99.1",
-    "node": "v25.8.2",
+    "node": "v22.14.0",
     "quickjsWasmSha256": "see codemode_oracle.manifest.json",
     "durationMsPinnedTo": 0
   },
@@ -200,8 +200,8 @@
       "error": {
         "kind": "script",
         "name": "TypeError",
-        "message": "not a function",
-        "stack": "TypeError: not a function\n    at <anonymous> (codemode.js:1:40)"
+        "message": "tools.nope does not exist. Available: add, echo, fail, fail_string, pending, slow_add. ALL_TOOLS lists every tool; searchTools(query) finds tools by topic. Check for a member with \"nope\" in tools.",
+        "stack": "TypeError: tools.nope does not exist. Available: add, echo, fail, fail_string, pending, slow_add. ALL_TOOLS lists every tool; searchTools(query) finds tools by topic. Check for a member with \"nope\" in tools.\n    at <anonymous> (codemode.js:1:35)"
       }
     },
     {
@@ -242,7 +242,7 @@
         "code": "try {\n  store(\"big\", \"x\".repeat(256 * 1024 + 1));\n  return \"stored\";\n} catch (error) {\n  return { name: error.name, message: error.message };\n}"
       },
       "ok": true,
-      "valueJson": "{\"name\":\"RangeError\",\"message\":\"store(\\\"big\\\") value exceeds 262144 characters of JSON\"}",
+      "valueJson": "{\"name\":\"RangeError\",\"message\":\"store(\\\"big\\\") value has 262147 characters of JSON, more than the limit of 262144. store() is for small state such as IDs or summaries. Show images with image(), keep large data in variables, or write it to a file with a tool.\"}",
       "output": [],
       "calls": [],
       "callNamesPinned": true,

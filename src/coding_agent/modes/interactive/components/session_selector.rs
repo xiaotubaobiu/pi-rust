@@ -763,7 +763,9 @@ impl SessionList {
                 if self.show_cwd {
                     format!("  No named sessions found. Press {toggle_key} to show all.")
                 } else {
-                    format!("  No named sessions in current folder. Press {toggle_key} to show all, or Tab to view all.")
+                    format!(
+                        "  No named sessions in current folder. Press {toggle_key} to show all, or Tab to view all."
+                    )
                 }
             } else if self.show_cwd {
                 // "All" scope - no sessions anywhere that match filter

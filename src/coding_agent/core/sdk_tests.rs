@@ -980,8 +980,11 @@ async fn headers_snapshot_runner_before_auth_while_other_hooks_read_current_runn
 #[tokio::test]
 async fn real_sdk_prompt_through_http_provider_awaits_hooks_and_persists_result() {
     let server = wiremock::MockServer::start().await;
-    let body=concat!("data: {\"id\":\"r15\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"sdk response\"},\"finish_reason\":null}]}\n\n",
-        "data: {\"id\":\"r15\",\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"stop\"}]}\n\n", "data: [DONE]\n\n");
+    let body = concat!(
+        "data: {\"id\":\"r15\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"sdk response\"},\"finish_reason\":null}]}\n\n",
+        "data: {\"id\":\"r15\",\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"stop\"}]}\n\n",
+        "data: [DONE]\n\n"
+    );
     wiremock::Mock::given(wiremock::matchers::method("POST"))
         .and(wiremock::matchers::path("/v1/chat/completions"))
         .respond_with(

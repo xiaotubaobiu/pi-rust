@@ -355,9 +355,109 @@
   }
  ],
  "colorMode": [],
+ "kittyPlacement": [
+  {
+   "imageId": 7,
+   "register": {
+    "imageId": 7,
+    "columns": 10,
+    "rows": 6,
+    "widthPx": 90,
+    "heightPx": 108
+   },
+   "line": "\u001b_Ga=T,f=100,q=2,c=10,r=6,i=7;a2l0dHktcGxhY2VtZW50LXByb2JlLXBheWxvYWQtMDEyMzQ1Njc4OQ==\u001b\\",
+   "placementRows": 6,
+   "unknownLine": "\u001b_Ga=T,f=100,i=424242,q=2;a2l0dHktcGxhY2VtZW50LXByb2JlLXBheWxvYWQtMDEyMzQ1Njc4OQ==\u001b\\",
+   "placement": {
+    "imageId": 7,
+    "transmissionGeneration": 1,
+    "transmissionBytes": 88,
+    "estimatedDecodedBytes": 38880,
+    "rows": 6,
+    "sequence": "\u001b_Ga=p,q=2,c=10,r=6,i=7\u001b\\",
+    "replacementLine": "\u001b_Ga=p,q=2,c=10,r=6,i=7\u001b\\"
+   },
+   "croppedLine": "\u001b_Ga=T,f=100,q=2,c=10,i=7,y=18,h=90,r=5;a2l0dHktcGxhY2VtZW50LXByb2JlLXBheWxvYWQtMDEyMzQ1Njc4OQ==\u001b\\",
+   "croppedPlacementRows": 5,
+   "croppedPlacementRowsField": 5,
+   "cropGrid": [
+    [
+     0,
+     6
+    ],
+    [
+     2,
+     2
+    ],
+    [
+     4,
+     0
+    ],
+    [
+     0,
+     3
+    ],
+    [
+     5,
+     5
+    ]
+   ],
+   "crops": [
+    "\u001b_Ga=T,f=100,q=2,c=10,r=6,i=7;a2l0dHktcGxhY2VtZW50LXByb2JlLXBheWxvYWQtMDEyMzQ1Njc4OQ==\u001b\\",
+    "\u001b_Ga=T,f=100,q=2,c=10,i=7,y=36,h=36,r=2;a2l0dHktcGxhY2VtZW50LXByb2JlLXBheWxvYWQtMDEyMzQ1Njc4OQ==\u001b\\",
+    "\u001b_Ga=T,f=100,q=2,c=10,r=6,i=7;a2l0dHktcGxhY2VtZW50LXByb2JlLXBheWxvYWQtMDEyMzQ1Njc4OQ==\u001b\\",
+    "\u001b_Ga=T,f=100,q=2,c=10,i=7,y=0,h=54,r=3;a2l0dHktcGxhY2VtZW50LXByb2JlLXBheWxvYWQtMDEyMzQ1Njc4OQ==\u001b\\",
+    "\u001b_Ga=T,f=100,q=2,c=10,i=7,y=90,h=18,r=1;a2l0dHktcGxhY2VtZW50LXByb2JlLXBheWxvYWQtMDEyMzQ1Njc4OQ==\u001b\\"
+   ]
+  },
+  {
+   "imageId": 9,
+   "register": {
+    "imageId": 9,
+    "columns": 4,
+    "rows": 1,
+    "widthPx": 36,
+    "heightPx": 18
+   },
+   "line": "\u001b_Ga=T,f=100,q=2,c=4,r=1,i=9;a2l0dHktcGxhY2VtZW50LXByb2JlLXBheWxvYWQtMDEyMzQ1Njc4OQ==\u001b\\",
+   "placementRows": 1,
+   "unknownLine": "\u001b_Ga=T,f=100,i=424242,q=2;a2l0dHktcGxhY2VtZW50LXByb2JlLXBheWxvYWQtMDEyMzQ1Njc4OQ==\u001b\\",
+   "placement": {
+    "imageId": 9,
+    "transmissionGeneration": 2,
+    "transmissionBytes": 87,
+    "estimatedDecodedBytes": 2592,
+    "rows": 1,
+    "sequence": "\u001b_Ga=p,q=2,c=4,r=1,i=9\u001b\\",
+    "replacementLine": "\u001b_Ga=p,q=2,c=4,r=1,i=9\u001b\\"
+   },
+   "croppedLine": "\u001b_Ga=T,f=100,q=2,c=4,r=1,i=9;a2l0dHktcGxhY2VtZW50LXByb2JlLXBheWxvYWQtMDEyMzQ1Njc4OQ==\u001b\\",
+   "croppedPlacementRows": 1,
+   "croppedPlacementRowsField": 1,
+   "cropGrid": [
+    [
+     0,
+     1
+    ],
+    [
+     1,
+     1
+    ],
+    [
+     0,
+     2
+    ]
+   ],
+   "crops": [
+    "\u001b_Ga=T,f=100,q=2,c=4,r=1,i=9;a2l0dHktcGxhY2VtZW50LXByb2JlLXBheWxvYWQtMDEyMzQ1Njc4OQ==\u001b\\",
+    "\u001b_Ga=T,f=100,q=2,c=4,r=1,i=9;a2l0dHktcGxhY2VtZW50LXByb2JlLXBheWxvYWQtMDEyMzQ1Njc4OQ==\u001b\\",
+    "\u001b_Ga=T,f=100,q=2,c=4,r=1,i=9;a2l0dHktcGxhY2VtZW50LXByb2JlLXBheWxvYWQtMDEyMzQ1Njc4OQ==\u001b\\"
+   ]
+  }
+ ],
  "provenance": {
-  "terminalImageSha256": "b901b8df0ad84e04ac0ee612c419b45d960430f63d2bdaa974c8dd9d89f3e6e5",
-  "node": "v25.8.2",
+  "terminalImageSha256": "26beb4d4154a6a7fc800d40af39cde8984749d14096756182faba4af0380093d",
+  "node": "v22.14.0",
   "platform": "win32"
  }
 }

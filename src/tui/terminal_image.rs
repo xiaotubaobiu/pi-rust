@@ -60,8 +60,8 @@ pub use crate::tui::colors::TerminalColorMode;
 pub use kitty::{
     crop_kitty_image_line, delete_all_kitty_images, delete_all_kitty_placements,
     delete_kitty_image, encode_kitty, get_kitty_image_metadata, get_kitty_image_placement,
-    register_kitty_image_metadata, KittyImageMetadata, KittyImagePlacement, KittyImageRegistry,
-    KittyOptions,
+    get_kitty_image_placement_rows, register_kitty_image_metadata, KittyImageMetadata,
+    KittyImagePlacement, KittyImageRegistry, KittyOptions,
 };
 
 /// Upstream `TerminalCapabilities`.

@@ -16,6 +16,7 @@ pub mod api;
 pub mod auth;
 pub mod cli_auth;
 pub mod cost;
+pub mod estimate;
 pub mod frame;
 pub mod images;
 pub mod json_parse;

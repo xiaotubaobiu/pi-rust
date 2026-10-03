@@ -24,10 +24,10 @@ use super::loader::{
 };
 use super::runner::ExtensionRunner;
 use super::tool_search::{
-    create_tool_search_description, create_tool_search_document, create_tool_search_extension,
-    create_tool_search_tool_definition, tokenize, Bm25Ranker, ToolRanker,
+    create_tool_search_document, create_tool_search_extension, create_tool_search_tool_definition,
+    tokenize, Bm25Ranker, ToolRanker, TOOL_SEARCH_DESCRIPTION,
 };
-use super::types::{self, ExecuteToolOptions, ToolExposure, ToolInfo, ToolLoadout, ToolNamespace};
+use super::types::{self, ExecuteToolOptions, ToolExposure, ToolInfo, ToolNamespace};
 use crate::coding_agent::core::event_bus::EventBusController;
 
 fn oracle() -> Value {
@@ -238,33 +238,16 @@ fn tool_search_bm25() {
 
 #[test]
 fn tool_search_description() {
-    let observed = vec![
-        create_tool_search_description(&[]),
-        create_tool_search_description(&[]),
-        create_tool_search_description(&[ToolNamespace {
-            name: "mcp__docs".into(),
-            description: Some("Documentation server\nsecond line".into()),
-            instructions: None,
-        }]),
-        create_tool_search_description(&[ToolNamespace {
-            name: "mcp__docs".into(),
-            description: Some("  padded first\r\nsecond  ".into()),
-            instructions: None,
-        }]),
-        create_tool_search_description(&[
-            ToolNamespace {
-                name: "mcp__jira".into(),
-                description: None,
-                instructions: None,
-            },
-            ToolNamespace {
-                name: "mcp__ci".into(),
-                description: Some("\nstarts blank".into()),
-                instructions: None,
-            },
-        ]),
-    ];
-    assert_eq!(json!(observed), expected("tool_search_description"));
+    // v1.0.0 replaced `createToolSearchDescription(sources)` with the constant
+    // `TOOL_SEARCH_DESCRIPTION`; the captured oracle case predates it and the
+    // per-source listing it pinned no longer exists (the description stays
+    // stable while tools register).
+    assert!(TOOL_SEARCH_DESCRIPTION.starts_with("# Tool discovery\n\n"));
+    assert!(TOOL_SEARCH_DESCRIPTION.contains(
+        "Some of the tools, such as tools of MCP servers, may not have been provided to you upfront",
+    ));
+    assert!(TOOL_SEARCH_DESCRIPTION.contains("always use `tool_search`."));
+    assert!(!TOOL_SEARCH_DESCRIPTION.contains("None currently enabled."));
 }
 
 #[test]
@@ -478,84 +461,9 @@ fn placeholder_tool(name: &str) -> crate::agent_core::types::AgentTool {
     }
 }
 
-#[test]
-fn tool_search_prepare_loadout() {
-    let expected_prepare = expected("tool_search_prepare_loadout");
-    let definition = create_tool_search_tool_definition(Default::default());
-    let namespace = ToolNamespace {
-        name: "mcp__docs".into(),
-        description: Some("Docs".into()),
-        instructions: Some("Use me".into()),
-    };
-    let to_json = |changes: &types::ToolLoadoutChanges| {
-        // Upstream omits `undefined` fields from the changes object.
-        let mut object = serde_json::Map::new();
-        if let Some(descriptions) = &changes.descriptions {
-            object.insert("descriptions".to_string(), json!(descriptions));
-        }
-        if let Some(hidden) = &changes.hidden_declarations {
-            object.insert("hiddenDeclarations".to_string(), json!(hidden));
-        }
-        Value::Object(object)
-    };
-
-    let mut exposures = types::OrderedMap::new();
-    exposures.set("doc_search", ToolExposure::Codemode);
-    exposures.set("doc_other", ToolExposure::Deferred);
-    exposures.set("deferred_plain", ToolExposure::Deferred);
-    let mut namespaces = types::OrderedMap::new();
-    namespaces.set("doc_search", namespace.clone());
-    namespaces.set("doc_other", namespace.clone());
-    let loadout = ToolLoadout::new(
-        Vec::new(),
-        Vec::new(),
-        vec![
-            placeholder_tool("tool_search"),
-            placeholder_tool("doc_search"),
-            placeholder_tool("direct_thing"),
-            placeholder_tool("doc_other"),
-            placeholder_tool("deferred_plain"),
-        ],
-        exposures,
-        namespaces,
-    );
-    let changes = (definition.prepare_loadout.as_ref().unwrap())(&loadout).unwrap();
-    assert_eq!(to_json(&changes), expected_prepare["changes"]);
-    assert_eq!(
-        definition.description,
-        expected_prepare["descriptionWithoutSources"]
-    );
-    assert_eq!(
-        changes
-            .descriptions
-            .as_ref()
-            .unwrap()
-            .get(super::tool_search::TOOL_SEARCH_TOOL_NAME)
-            .map(String::as_str),
-        expected_prepare["rewrittenDescription"].as_str()
-    );
-
-    let mut all_direct = types::OrderedMap::new();
-    for name in ["doc_search", "doc_other", "deferred_plain"] {
-        all_direct.set(name, ToolExposure::Direct);
-    }
-    let mut all_namespaces = types::OrderedMap::new();
-    for name in ["doc_search", "doc_other"] {
-        all_namespaces.set(name, namespace.clone());
-    }
-    let direct_loadout = ToolLoadout::new(
-        Vec::new(),
-        Vec::new(),
-        Vec::new(),
-        all_direct,
-        all_namespaces,
-    );
-    let direct_changes = (definition.prepare_loadout.as_ref().unwrap())(&direct_loadout).unwrap();
-    assert_eq!(
-        to_json(&direct_changes),
-        expected_prepare["changesWhenOnlyDirect"]
-    );
-}
+// v1.0.0 removed `tool_search`'s `prepareLoadout` (the description no longer
+// lists the searchable namespaces); the `tool_search_prepare_loadout` oracle
+// case and its replay went with it.
 
 #[test]
 fn tool_search_extension_registration() {

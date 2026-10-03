@@ -120,42 +120,54 @@ pub fn derive_context(
         return Ok(ContextView {
             head: None,
             entries: Vec::new(),
+            contributions: Vec::new(),
             messages: Vec::new(),
         });
     };
     let head = bounds.head.clone();
     let range = scan_range(storage, conversation_id, &bounds, context)?;
     let mut edits: BTreeMap<EntryId, ContextEdit> = BTreeMap::new();
+    // Edits of every entry in the range count, including older head markers
+    // that `selectActive()` drops.
     for entry in &range {
         for edit in entry.edits.clone().unwrap_or_default() {
             edits.insert(edit.target, edit);
         }
     }
     let entries = select_active(head.as_ref(), &range);
+    // Per entry (v1.0.0): its messages after edits and excluded stop reasons,
+    // before tool result ordering.
     let mut messages: Vec<Message> = Vec::new();
+    let mut contributions: Vec<Vec<Message>> = Vec::with_capacity(entries.len());
     for entry in &entries {
         let edit = edits.get(&entry.id);
-        if matches!(edit, Some(edit) if edit.action == ContextEditAction::Omit) {
-            continue;
-        }
-        let contributed: Vec<Message> = match edit {
-            Some(edit) if edit.action == ContextEditAction::Replace => {
-                edit.messages.clone().unwrap_or_default()
+        let contributed: Vec<Message> = if matches!(edit, Some(edit) if edit.action == ContextEditAction::Omit)
+        {
+            Vec::new()
+        } else {
+            match edit {
+                Some(edit) if edit.action == ContextEditAction::Replace => {
+                    edit.messages.clone().unwrap_or_default()
+                }
+                _ => entry.model.clone().unwrap_or_default(),
             }
-            _ => entry.model.clone().unwrap_or_default(),
         };
+        let mut contribution: Vec<Message> = Vec::with_capacity(contributed.len());
         for message in contributed {
             if let Message::Assistant(assistant) = &message {
                 if EXCLUDED_STOP_REASONS.contains(&assistant.stop_reason) {
                     continue;
                 }
             }
-            messages.push(message);
+            messages.push(message.clone());
+            contribution.push(message);
         }
+        contributions.push(contribution);
     }
     Ok(ContextView {
         head,
         entries,
+        contributions,
         messages: order_tool_results(messages),
     })
 }
@@ -220,10 +232,11 @@ fn select_active(head: Option<&EntryRecord>, range: &[EntryRecord]) -> Vec<Entry
 }
 
 /// Place each assistant's tool results directly after it in call order
-/// (`context.ts` `orderToolResults`). Results are taken from the messages
-/// before the next assistant; a missing result is synthesized and unmatched
-/// results are dropped.
-fn order_tool_results(messages: Vec<Message>) -> Vec<Message> {
+/// (`context.ts` `orderToolResults`, `pub` upstream since v1.0.0 — the
+/// compaction module's `summarizedMessages` reuses it). Results are taken
+/// from the messages before the next assistant; a missing result is
+/// synthesized and unmatched results are dropped.
+pub(crate) fn order_tool_results(messages: Vec<Message>) -> Vec<Message> {
     let mut ordered: Vec<Message> = Vec::new();
     let mut index = 0;
     while index < messages.len() {

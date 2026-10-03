@@ -184,6 +184,12 @@ pub trait TextLineReader: Send + Sync {
 /// Portable filesystem capability (`env/index.ts` `FileSystem`). Operations
 /// return failures rather than throwing.
 pub trait FileSystem: Send + Sync {
+    /// The file namespace (v1.0.0): equal ids see the same files at the same
+    /// paths, whatever their `cwd`. Every local Node environment shares one
+    /// id; each container or remote host has its own.
+    fn id(&self) -> &str {
+        "local"
+    }
     fn cwd(&self) -> &str;
     fn absolute_path(&self, path: &str, context: &Context) -> Result<String, FileError>;
     fn join_path(&self, parts: &[&str], context: &Context) -> Result<String, FileError>;

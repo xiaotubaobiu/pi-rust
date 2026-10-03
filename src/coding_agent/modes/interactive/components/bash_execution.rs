@@ -21,7 +21,9 @@ use crate::coding_agent::modes::interactive::components::loader::Loader;
 use crate::coding_agent::modes::interactive::components::model_selector::{
     key_hint, key_text, theme_fg,
 };
-use crate::coding_agent::modes::interactive::components::visual_truncate::truncate_to_visual_lines;
+use crate::coding_agent::modes::interactive::components::visual_truncate::{
+    truncate_to_visual_lines, Keep,
+};
 use crate::coding_agent::modes::interactive::theme::Theme;
 use crate::coding_agent::utils::ansi::strip_ansi;
 use crate::tui::component::Component;
@@ -71,7 +73,8 @@ pub struct PreviewPayload {
 
 impl PreviewPayload {
     pub fn render(&self, width: usize) -> Vec<String> {
-        truncate_to_visual_lines(&self.styled_input, self.max_lines, width, 1).visual_lines
+        truncate_to_visual_lines(&self.styled_input, self.max_lines, width, 1, Keep::End)
+            .visual_lines
     }
 }
 

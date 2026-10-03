@@ -262,6 +262,26 @@ impl AuthInteraction for OracleInteraction {
 }
 
 fn oracle_interaction(respond: Respond) -> (Arc<OracleInteraction>, ProviderAuthInteraction) {
+    // The v1.0.0 Anthropic login-method select is answered with the browser
+    // flow at the fake level (recorded), so per-scenario responders only see
+    // the later prompts. Gated on the copy_code option, unique to the
+    // Anthropic select: the Codex login has its own select the scenario
+    // responders answer themselves.
+    let respond: Respond = Box::new(move |prompt| {
+        if let crate::ai::auth::types::AuthPromptKind::Select { options, .. } = &prompt.kind {
+            let is_anthropic = options.iter().any(|option| option.id == "copy_code");
+            if let Some(browser) = options
+                .iter()
+                .find(|option| option.id == "browser")
+                .filter(|_| is_anthropic)
+            {
+                let id = browser.id.clone();
+                return Box::pin(async move { Ok(id) })
+                    as BoxFuture<'static, Result<String, AuthError>>;
+            }
+        }
+        respond(prompt)
+    });
     let fake = Arc::new(OracleInteraction {
         auth_url: Arc::new(Mutex::new(None)),
         events: Mutex::new(Vec::new()),
@@ -276,7 +296,16 @@ fn oracle_interaction(respond: Respond) -> (Arc<OracleInteraction>, ProviderAuth
 }
 
 fn hanging_respond() -> Respond {
-    Box::new(|prompt| {
+    Box::new(move |prompt| {
+        // The v1.0.0 login-method select is answered with the browser flow;
+        // later prompts hang like a real pending UI.
+        if let crate::ai::auth::types::AuthPromptKind::Select { options, .. } = prompt.kind {
+            if let Some(browser) = options.iter().find(|option| option.id == "browser") {
+                let id = browser.id.clone();
+                return Box::pin(async move { Ok(id) })
+                    as BoxFuture<'static, Result<String, AuthError>>;
+            }
+        }
         Box::pin(async move {
             prompt.signal.unwrap_or_default().cancelled().await;
             Err(AuthError::Cancelled)
@@ -288,12 +317,20 @@ fn hanging_respond() -> Respond {
 type SuffixFn = Arc<dyn Fn(&str, &str) -> String + Send + Sync>;
 
 /// A responder that pastes the final redirect URL built from the emitted
-/// authorize URL, with the pasted query suffix.
+/// authorize URL, with the pasted query suffix. The v1.0.0 login-method
+/// select is answered with the browser flow; later prompts paste.
 fn pasting_respond(auth_url_slot: Arc<Mutex<Option<String>>>, suffix: SuffixFn) -> Respond {
-    Box::new(move |_prompt| {
+    Box::new(move |prompt| {
         let slot = Arc::clone(&auth_url_slot);
         let suffix = Arc::clone(&suffix);
         Box::pin(async move {
+            if let crate::ai::auth::types::AuthPromptKind::Select { options, .. } = prompt.kind {
+                let browser = options
+                    .iter()
+                    .find(|option| option.id == "browser")
+                    .expect("browser login option");
+                return Ok(browser.id.clone());
+            }
             let auth_url = loop {
                 if let Some(auth_url) = slot.lock().unwrap().clone() {
                     break auth_url;
@@ -1145,6 +1182,7 @@ mod openai_chatgpt {
 
         let (message, placeholder) = {
             let prompts = fake.prompts.lock().unwrap();
+            // The method select precedes the manual prompt (v1.0.0).
             let AuthPromptKind::ManualCode {
                 message,
                 placeholder,
@@ -1902,10 +1940,11 @@ mod anthropic {
         assert_upstream_error(&error, fixture["loginError"].as_str().unwrap());
         let (message, placeholder) = {
             let prompts = fake.prompts.lock().unwrap();
+            // The method select precedes the manual prompt (v1.0.0).
             let AuthPromptKind::ManualCode {
                 message,
                 placeholder,
-            } = &prompts[0].kind
+            } = &prompts[1].kind
             else {
                 panic!("expected a manual_code prompt");
             };
@@ -2554,6 +2593,7 @@ mod openrouter {
         // The manual prompt shape.
         let (message, placeholder) = {
             let prompts = fake.prompts.lock().unwrap();
+            // The method select precedes the manual prompt (v1.0.0).
             let AuthPromptKind::ManualCode {
                 message,
                 placeholder,

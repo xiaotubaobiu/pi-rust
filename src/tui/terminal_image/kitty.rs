@@ -95,6 +95,9 @@ pub struct KittyImagePlacement {
     pub transmission_generation: u64,
     pub transmission_bytes: usize,
     pub estimated_decoded_bytes: u64,
+    /// Rows covered by the placement (v1.0.0): the command's explicit `r=`,
+    /// else the registered metadata's rows.
+    pub rows: usize,
     pub sequence: String,
     pub replacement_line: String,
 }
@@ -126,10 +129,9 @@ fn header(line: &str) -> Option<(usize, usize, &str)> {
     Some((start, end, &line[controls_start..end - 1]))
 }
 
-/// The `(?:^|,)i=(\d+)(?:,|$)` extraction: `i=` as a whole comma field with
-/// ASCII digits only.
-fn image_id(line: &str) -> Option<u64> {
-    let (_, _, controls) = header(line)?;
+/// The `(?:^|,)i=(\d+)(?:,|$)` extraction over raw controls text: `i=` as a
+/// whole comma field with ASCII digits only.
+fn image_id_in_controls(controls: &str) -> Option<u64> {
     controls.split(',').find_map(|field| {
         let digits = field.strip_prefix("i=")?;
         if digits.is_empty() || !digits.bytes().all(|c| c.is_ascii_digit()) {
@@ -137,6 +139,12 @@ fn image_id(line: &str) -> Option<u64> {
         }
         digits.parse().ok()
     })
+}
+
+/// `image_id_in_controls` over a full line (first header's controls).
+fn image_id(line: &str) -> Option<u64> {
+    let (_, _, controls) = header(line)?;
+    image_id_in_controls(controls)
 }
 
 /// Whole-field membership — `(?:^|,)m=1(?:,|$)` on comma-separated controls.
@@ -166,6 +174,16 @@ impl KittyImageRegistry {
             .copied()
     }
 
+    /// Upstream `getRegisteredKittyImageMetadataFromControls` (v1.0.0): the
+    /// registered metadata for the `i=` field of `controls` alone.
+    fn registered_for_controls(&self, controls: &str) -> Option<Registered> {
+        let id = image_id_in_controls(controls)?;
+        self.entries
+            .iter()
+            .find(|item| item.metadata.image_id == id)
+            .copied()
+    }
+
     /// Upstream `getKittyImageMetadata`.
     pub fn get(&self, line: &str) -> Option<KittyImageMetadata> {
         self.registered(line).map(|item| item.metadata)
@@ -181,7 +199,7 @@ impl KittyImageRegistry {
     /// placement-only command from the first header's controls.
     pub fn placement(&self, line: &str) -> Option<KittyImagePlacement> {
         let (match_start, _, controls) = header(line)?;
-        let registered = self.registered(line)?;
+        let registered = self.registered_for_controls(controls)?;
         let mut command_start = match_start;
         let mut command_controls = controls.to_owned();
         let transmission_end = loop {
@@ -219,6 +237,7 @@ impl KittyImageRegistry {
             estimated_decoded_bytes: registered.metadata.width_px as u64
                 * registered.metadata.height_px as u64
                 * 4,
+            rows: kitty_image_rows_from_controls(controls, registered.metadata.rows),
             replacement_line: format!(
                 "{}{}{}",
                 &line[..match_start],
@@ -298,4 +317,37 @@ pub fn crop_kitty_image_line(line: &str, hidden_rows: i64, visible_rows: i64) ->
         .lock()
         .unwrap()
         .crop(line, hidden_rows, visible_rows)
+}
+
+/// Upstream `getExplicitKittyImageRows` (v1.0.0): the `(?:^|,)r=(\d+)
+/// (?:,|$)` field, kept only when positive.
+fn explicit_kitty_image_rows(controls: &str) -> Option<usize> {
+    let digits = controls
+        .split(',')
+        .find_map(|field| field.strip_prefix("r="))?;
+    if digits.is_empty() || !digits.bytes().all(|c| c.is_ascii_digit()) {
+        return None;
+    }
+    let rows: usize = digits.parse().ok()?;
+    (rows > 0).then_some(rows)
+}
+
+/// Upstream `getKittyImageRowsFromControls` (v1.0.0).
+fn kitty_image_rows_from_controls(controls: &str, fallback_rows: usize) -> usize {
+    explicit_kitty_image_rows(controls).unwrap_or(fallback_rows)
+}
+
+/// Upstream `getKittyImagePlacementRows` (v1.0.0): read the number of rows
+/// covered by an image placement without scanning its payload — the
+/// command's explicit `r=`, else the registered metadata's rows.
+pub fn get_kitty_image_placement_rows(line: &str) -> Option<usize> {
+    let (_, _, controls) = header(line)?;
+    if let Some(rows) = explicit_kitty_image_rows(controls) {
+        return Some(rows);
+    }
+    REGISTRY
+        .lock()
+        .unwrap()
+        .registered_for_controls(controls)
+        .map(|registered| registered.metadata.rows)
 }

@@ -269,7 +269,7 @@ pub fn relay_web_socket_url(gateway: &str, server_id: &str) -> Result<String, St
             return Err(format!(
                 "Unsupported Radius gateway protocol: {}:",
                 url.scheme()
-            ))
+            ));
         }
     }
     Ok(url.to_string())

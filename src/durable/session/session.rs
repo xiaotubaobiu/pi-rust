@@ -557,7 +557,7 @@ impl Session {
             _ => {
                 return Err(PlainError::new(
                     "Session.snapshotAsOf() requires a conversation document",
-                ))
+                ));
             }
         };
         let _line = self.line.lock().await;
@@ -775,6 +775,11 @@ impl Session {
                         continue;
                     }
                     let frame_ops = observed_operations(&observed, version.as_ref(), value, &ops.0);
+                    // A migration-only base changes nothing for an observer
+                    // of the new version (v1.0.0).
+                    if frame_ops.is_empty() {
+                        continue;
+                    }
                     attachment.advance(value.clone(), frame_ops, context.clone());
                 }
             })

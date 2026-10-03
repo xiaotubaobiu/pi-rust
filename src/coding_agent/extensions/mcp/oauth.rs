@@ -38,15 +38,20 @@ use crate::mcp::oauth::callback::{
 };
 use crate::mcp::oauth::discovery::parse_www_authenticate;
 use crate::mcp::oauth::errors::{McpOAuthAuthorizationRequiredError, OAuthFlowError};
-use crate::mcp::oauth::flow::{authorize_mcp, OAuthFlowOptions, OAuthFlowResult};
+use crate::mcp::oauth::flow::{authorize_mcp, step_up_scope, OAuthFlowOptions, OAuthFlowResult};
 use crate::mcp::oauth::provider::{
     McpOAuthProvider, McpOAuthProviderOptions, McpOAuthState, McpOAuthStateStore,
 };
 use crate::mcp::oauth::types::OAuthChallenge;
 use crate::mcp::protocol::jsonrpc::McpClientError;
 
+use sha2::Digest as _;
+
 const CALLBACK_HOST: &str = "127.0.0.1";
 const CALLBACK_PATH: &str = "/callback";
+/// Where pi.dev serves pi's Client ID Metadata Documents: `client.json` and
+/// `<callback ID>/client.json` (v1.0.0).
+const CLIENT_METADATA_BASE_URL: &str = "https://pi.dev/oauth";
 /// Redirect URI for refreshes when none is stored. Refreshing never redirects
 /// the user.
 const FALLBACK_REDIRECT_URL: &str = "http://127.0.0.1/callback";
@@ -76,6 +81,10 @@ pub struct McpOAuthSettings {
     pub scope: Option<String>,
     /// `client_name` for dynamic client registration. Default: `APP_NAME`.
     pub client_name: Option<String>,
+    /// See `McpOAuthConfig.clientRegistration` (v1.0.0).
+    pub client_registration: Option<crate::coding_agent::core::mcp_servers::McpClientRegistration>,
+    /// See `McpOAuthConfig.authServerMetadataUrl` (v1.0.0).
+    pub auth_server_metadata_url: Option<url::Url>,
 }
 
 /// Where the loopback callback server listens and the redirect URI it serves
@@ -260,40 +269,57 @@ impl McpOAuthCredentialStore {
             .unwrap_or_else(|_| server_url.to_string())
     }
 
-    /// Upstream `forServer(serverUrl)`.
-    pub fn for_server(self: &Arc<Self>, server_url: &str) -> Arc<McpOAuthFileServerStore> {
+    /// Upstream `forServer(name, serverUrl)`: keyed by name and URL, so
+    /// servers sharing a URL keep separate accounts, with takeover of the
+    /// legacy URL-only key written by older versions.
+    pub fn for_server(
+        self: &Arc<Self>,
+        name: &str,
+        server_url: &str,
+    ) -> Arc<McpOAuthFileServerStore> {
+        let (key, legacy_key) = store_keys(name, server_url);
         Arc::new(McpOAuthFileServerStore {
             store: Arc::clone(self),
-            key: Self::normalized_key(server_url),
+            key,
+            legacy_key,
         })
     }
 
     /// The stored tokens of a server, for noticing sign-ins done by another
-    /// process (upstream `tokens`).
-    pub async fn tokens(&self, server_url: &str) -> Option<Value> {
-        self.read()
-            .await
-            .ok()?
-            .get(&Self::normalized_key(server_url))
+    /// process. Does not take over legacy state (upstream `tokens`).
+    pub async fn tokens(&self, name: &str, server_url: &str) -> Option<Value> {
+        let (key, legacy_key) = store_keys(name, server_url);
+        let states = self.read().await.ok()?;
+        states
+            .get(&key)
+            .or_else(|| states.get(&legacy_key))
             .and_then(|state| state.get("tokens"))
             .cloned()
     }
 
-    /// Returns whether credentials were stored for the server (upstream
-    /// `remove`).
-    pub async fn remove(&self, server_url: &str) -> bool {
-        let key = Self::normalized_key(server_url);
-        let exists = self
-            .read()
-            .await
-            .map(|states| states.contains_key(&key))
-            .unwrap_or(false);
-        if !exists {
+    /// Returns whether credentials were stored for the server. Removes legacy
+    /// state the server would take over (upstream `remove`).
+    pub async fn remove(&self, name: &str, server_url: &str) -> bool {
+        let (key, legacy_key) = store_keys(name, server_url);
+        let stored = {
+            let states = match self.read().await {
+                Ok(states) => states,
+                Err(_) => return false,
+            };
+            if states.contains_key(&key) {
+                Some(key)
+            } else if states.contains_key(&legacy_key) {
+                Some(legacy_key)
+            } else {
+                None
+            }
+        };
+        let Some(stored) = stored else {
             return false;
-        }
+        };
         let _ = self
             .write(move |states| {
-                states.remove(&key);
+                states.remove(&stored);
             })
             .await;
         true
@@ -306,19 +332,70 @@ impl Default for McpOAuthCredentialStore {
     }
 }
 
+/// Keys of a server's state: by name and URL, so servers sharing a URL keep
+/// separate accounts, and the legacy key by URL alone, written by older
+/// versions (upstream `storeKeys`).
+fn store_keys(name: &str, server_url: &str) -> (String, String) {
+    let legacy_key = McpOAuthCredentialStore::normalized_key(server_url);
+    let key = format!(
+        "{}|{legacy_key}",
+        crate::coding_agent::core::mcp_servers::mcp_namespace(name)
+    );
+    (key, legacy_key)
+}
+
 /// The file-backed per-server store.
 pub struct McpOAuthFileServerStore {
     store: Arc<McpOAuthCredentialStore>,
     key: String,
+    legacy_key: String,
 }
 
 impl McpOAuthStateStore for McpOAuthFileServerStore {
     fn load(&self) -> BoxFuture<'_, Option<McpOAuthState>> {
         Box::pin(async move {
-            let states = self.store.read().await.ok()?;
-            states
-                .get(&self.key)
-                .map(|raw| McpOAuthState::from_raw(raw.as_object().cloned().unwrap_or_default()))
+            // Upstream: one `withLock` reads and, on the first load of a
+            // server with legacy URL-keyed state, takes the legacy state over.
+            // The first server to load legacy state takes it over; others with
+            // the same URL sign in again.
+            let key = self.key.clone();
+            let legacy_key = self.legacy_key.clone();
+            let backend = self.store.backend();
+            let state = backend
+                .with_lock_async(
+                    move |current| {
+                        Box::pin(async move {
+                            let mut states = parse_states(current)
+                                .map_err(crate::ai::models::store::ModelsStoreError::Storage)?;
+                            if let Some(state) = states.get(&key) {
+                                return Ok((state.clone(), None));
+                            }
+                            match states.remove(&legacy_key) {
+                                Some(state) => {
+                                    states.insert(key, state.clone());
+                                    let next = format!(
+                                        "{}\n",
+                                        super::config::stringify_indent(&states, "  ")
+                                    );
+                                    Ok((state, Some(next)))
+                                }
+                                None => Ok((Value::Null, None)),
+                            }
+                        })
+                            as BoxFuture<
+                                'static,
+                                Result<
+                                    (Value, Option<String>),
+                                    crate::ai::models::store::ModelsStoreError,
+                                >,
+                            >
+                    },
+                    &crate::ai::models::store::ModelsStoreOperationOptions::NONE,
+                )
+                .await
+                .ok()?;
+            (state != Value::Null)
+                .then(|| McpOAuthState::from_raw(state.as_object().cloned().unwrap_or_default()))
         })
     }
 
@@ -429,6 +506,75 @@ fn registered_redirect_urls(
         .unwrap_or_default()
 }
 
+/// 12 characters identifying an MCP server URL in callback paths, computed
+/// like Codex does (v1.0.0 `callbackId`): `sha256(url.href)[..9]` as
+/// base64url.
+fn callback_id(server_url: &str) -> String {
+    let mut url = url::Url::parse(server_url).expect("validated server URL");
+    url.set_fragment(None);
+    let digest = sha2::Sha256::digest(url.to_string().as_bytes());
+    // Node `digest.subarray(0, 9).toString("base64url")`: 12 unpadded
+    // base64url characters. 9 bytes = 3 groups of 3, so no padding bits.
+    const ALPHABET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+    let mut output = String::with_capacity(12);
+    for chunk in digest[..9].chunks(3) {
+        let a = chunk[0] as u32;
+        let b = chunk.get(1).copied().unwrap_or(0) as u32;
+        let c = chunk.get(2).copied().unwrap_or(0) as u32;
+        let triple = (a << 16) | (b << 8) | c;
+        for shift in [18, 12, 6, 0] {
+            output.push(ALPHABET[((triple >> shift) & 0x3f) as usize] as char);
+        }
+    }
+    output
+}
+
+/// pi's Client ID Metadata Document, for `clientRegistration: "cimd"`, chosen
+/// like Codex chooses its own (v1.0.0 `clientMetadataDocument`). The
+/// configuration ensures the default callback path. Without the `iss`
+/// parameter in authorization responses (RFC 9207), the redirect URI and the
+/// document are specific to the MCP server, so a response cannot be mixed up
+/// with one from another authorization server (RFC 9700 section 4.4.2.2).
+///
+/// Upstream throws when the server does not support CIMD for public clients;
+/// the port's document callback has no error channel, so the check is
+/// reported through sign-in failure where the caller can see it and falls
+/// back to dynamic registration otherwise (disclosed divergence).
+fn client_metadata_document(
+    server_url: &str,
+    redirect_url: &str,
+    metadata: Option<&crate::mcp::oauth::types::AuthorizationServerMetadata>,
+) -> Option<crate::mcp::oauth::flow::OAuthClientMetadataDocument> {
+    let metadata = metadata?;
+    let supported = metadata
+        .client_id_metadata_document_supported()
+        .unwrap_or(false);
+    let public_clients = metadata
+        .token_endpoint_auth_methods_supported()
+        .unwrap_or_default()
+        .iter()
+        .any(|method| method == "none");
+    if !supported || !public_clients {
+        return None;
+    }
+    if metadata
+        .authorization_response_iss_parameter_supported()
+        .unwrap_or(false)
+    {
+        return Some(crate::mcp::oauth::flow::OAuthClientMetadataDocument {
+            url: format!("{CLIENT_METADATA_BASE_URL}/client.json"),
+            redirect_url: redirect_url.to_string(),
+        });
+    }
+    let id = callback_id(server_url);
+    let mut redirect = url::Url::parse(redirect_url).expect("redirect URL is a valid URL");
+    redirect.set_path(&format!("{CALLBACK_PATH}/{id}"));
+    Some(crate::mcp::oauth::flow::OAuthClientMetadataDocument {
+        url: format!("{CLIENT_METADATA_BASE_URL}/{id}/client.json"),
+        redirect_url: redirect.to_string(),
+    })
+}
+
 fn create_provider(
     server_url: &str,
     store: Arc<dyn McpOAuthStateStore>,
@@ -446,10 +592,31 @@ fn create_provider(
                 .unwrap_or_else(|| "pi".to_string()),
         ),
     );
+    let client_metadata_document: Option<crate::mcp::oauth::provider::ClientMetadataDocumentFn> =
+        (settings.client_registration
+            == Some(crate::coding_agent::core::mcp_servers::McpClientRegistration::Cimd))
+        .then(|| {
+            let server_url = server_url.to_string();
+            let redirect_url = redirect_url.to_string();
+            Arc::new(
+                move |metadata: Option<&crate::mcp::oauth::types::AuthorizationServerMetadata>| {
+                    client_metadata_document(&server_url, &redirect_url, metadata)
+                },
+            )
+                as Arc<
+                    dyn Fn(
+                            Option<&crate::mcp::oauth::types::AuthorizationServerMetadata>,
+                        )
+                            -> Option<crate::mcp::oauth::flow::OAuthClientMetadataDocument>
+                        + Send
+                        + Sync,
+                >
+        });
     McpOAuthProvider::new(McpOAuthProviderOptions {
         server_url: server_url.to_string(),
         redirect_url: redirect_url.to_string(),
         client_metadata,
+        client_metadata_document,
         client_id: settings.client_id.clone(),
         client_secret: settings.client_secret.clone(),
         store: Some(store),
@@ -593,6 +760,11 @@ impl McpAuthProvider {
                             resource_metadata_url: challenge
                                 .as_ref()
                                 .and_then(|challenge| challenge.resource_metadata_url.clone()),
+                            // v1.0.0: a configured metadata document replaces
+                            // discovery here too.
+                            authorization_server_metadata_url: settings
+                                .auth_server_metadata_url
+                                .clone(),
                             scope: challenge
                                 .as_ref()
                                 .and_then(|challenge| challenge.scope.clone()),
@@ -778,15 +950,30 @@ impl McpSignInError {
     }
 }
 
-fn code_from_redirect_url(input: &str, state: &str) -> Result<String, McpSignInError> {
+/// The `code` and `iss` of an authorization response pasted by the user
+/// (v1.0.0 `responseFromRedirectUrl`).
+type AuthorizationResponse = (String, Option<String>);
+
+fn response_from_redirect_url(
+    input: &str,
+    state: &str,
+    redirect_url: &url::Url,
+) -> Result<AuthorizationResponse, McpSignInError> {
     let url = match url::Url::parse(input.trim()) {
         Ok(url) => url,
         Err(_) => {
             return Err(McpSignInError::Failed(
                 "Expected the full redirect URL from the browser address bar".to_string(),
-            ))
+            ));
         }
     };
+    // A server-specific redirect URI tells authorization servers apart, so it
+    // must match exactly.
+    if url.origin() != redirect_url.origin() || url.path() != redirect_url.path() {
+        return Err(McpSignInError::Failed(
+            "The redirect URL does not match this sign-in's redirect URI".to_string(),
+        ));
+    }
     let query: HashMap<String, String> = url
         .query_pairs()
         .map(|(key, value)| (key.into_owned(), value.into_owned()))
@@ -802,7 +989,10 @@ fn code_from_redirect_url(input: &str, state: &str) -> Result<String, McpSignInE
         ));
     }
     match query.get("code").filter(|code| !code.is_empty()) {
-        Some(code) => Ok(code.clone()),
+        Some(code) => Ok((
+            code.clone(),
+            query.get("iss").filter(|iss| !iss.is_empty()).cloned(),
+        )),
         None => Err(McpSignInError::Failed(
             "The redirect URL does not contain an authorization code".to_string(),
         )),
@@ -810,25 +1000,40 @@ fn code_from_redirect_url(input: &str, state: &str) -> Result<String, McpSignInE
 }
 
 /// Wait for the browser callback or a pasted redirect URL, whichever comes
-/// first (upstream `waitForAuthorizationCode`).
-async fn wait_for_authorization_code(
+/// first (upstream `waitForAuthorizationResponse`).
+async fn wait_for_authorization_response(
     callback: &OAuthCallbackServer,
     state: &str,
+    redirect_url: &url::Url,
     prompt: &dyn McpSignInPrompt,
-) -> Result<String, McpSignInError> {
+) -> Result<AuthorizationResponse, McpSignInError> {
     let controller = Arc::new(AbortSignal::new());
-    let from_browser = callback.wait_for_callback(state);
+    let from_browser = callback.wait_for_callback(state, Some(redirect_url.path().to_string()));
     let from_user = {
         let controller = Arc::clone(&controller);
-        async move { prompt.prompt_for_redirect_url(controller).await }
+        let redirect_url = redirect_url.clone();
+        let state = state.to_string();
+        async move {
+            prompt
+                .prompt_for_redirect_url(controller)
+                .await
+                .and_then(|input| {
+                    let trimmed = input.trim();
+                    (!trimmed.is_empty()).then(|| trimmed.to_string())
+                })
+                .map(|input| response_from_redirect_url(&input, &state, &redirect_url))
+        }
     };
     let result = tokio::select! {
         result = from_browser => match result {
-            Ok(callback_result) => Ok(callback_result.code),
+            Ok(callback_result) => Ok((
+                callback_result.code,
+                callback_result.iss.filter(|iss| !iss.is_empty()),
+            )),
             Err(error) => Err(McpSignInError::Failed(error)),
         },
         input = from_user => match input {
-            Some(input) if !input.trim().is_empty() => code_from_redirect_url(&input, state),
+            Some(result) => result,
             _ => Err(McpSignInError::Cancelled),
         },
     };
@@ -842,6 +1047,7 @@ async fn wait_for_authorization_code(
 /// (upstream `listenForCallback`).
 async fn listen_for_callback(
     settings: &CallbackSettings,
+    extra_paths: &[String],
     port: Option<u16>,
     required: bool,
 ) -> Result<OAuthCallbackServer, String> {
@@ -853,11 +1059,13 @@ async fn listen_for_callback(
             oauth_error_html(message, details.as_deref())
         }
     });
+    let extra_paths = (!extra_paths.is_empty()).then(|| extra_paths.to_vec());
     let options = |port: Option<u16>| OAuthCallbackServerOptions {
         host: Some(settings.host.clone()),
         redirect_host: Some(settings.redirect_host.clone()),
         port,
         path: Some(settings.path.clone()),
+        extra_paths: extra_paths.clone(),
         timeout_ms: None,
         render_page: Some(Arc::clone(&render_page)),
     };
@@ -883,6 +1091,12 @@ pub async fn sign_in_mcp_server(
     prompt: Arc<dyn McpSignInPrompt>,
 ) -> Result<(), McpSignInError> {
     let stored = store.load().await;
+    // A server asking for more scope gets the missing scopes on top of its
+    // current grant in the browser flow.
+    let step_up = challenge
+        .as_ref()
+        .and_then(|challenge| challenge.error.as_deref())
+        == Some("insufficient_scope");
     let callback_options = callback_settings(&settings).map_err(McpSignInError::Failed)?;
     // Reuse the port of the registered redirect URI so the registered client
     // stays valid.
@@ -893,8 +1107,17 @@ pub async fn sign_in_mcp_server(
             .first()
             .and_then(|registered| url::Url::parse(registered).ok().and_then(|url| url.port()))
     });
+    // v1.0.0: the Client ID Metadata Document's redirect URI, when used.
+    let cimd = settings.client_registration
+        == Some(crate::coding_agent::core::mcp_servers::McpClientRegistration::Cimd);
+    let extra_paths: Vec<String> = if cimd {
+        vec![format!("{CALLBACK_PATH}/{}", callback_id(server_url))]
+    } else {
+        Vec::new()
+    };
     let callback = listen_for_callback(
         &callback_options,
+        &extra_paths,
         preferred_port,
         callback_options.port.is_some(),
     )
@@ -904,19 +1127,34 @@ pub async fn sign_in_mcp_server(
         .fixed_redirect_url
         .clone()
         .unwrap_or_else(|| callback.redirect_url().to_string());
+    // The scope granted so far, which a step-up challenge extends (the
+    // challenge may list only the missing scopes).
+    let stored_scope: Option<String> = stored
+        .as_ref()
+        .and_then(|state| state.tokens())
+        .and_then(|tokens| tokens.scope.clone());
     let flow_for = |mut options: OAuthFlowOptions| {
         options.server_url = server_url.to_string();
         options.resource_metadata_url = challenge
             .as_ref()
             .and_then(|challenge| challenge.resource_metadata_url.clone());
+        options.authorization_server_metadata_url = settings.auth_server_metadata_url.clone();
         // A server asking for more scope gets it on top of the configured
-        // scope.
-        options.scope = merge_scopes(&[
-            settings.scope.as_deref(),
+        // scope and, since the challenge may list only the missing scopes, on
+        // top of the scope granted so far.
+        let step_up_scope = if step_up {
+            step_up_scope(
+                stored_scope.as_deref(),
+                challenge
+                    .as_ref()
+                    .and_then(|challenge| challenge.scope.as_deref()),
+            )
+        } else {
             challenge
                 .as_ref()
-                .and_then(|challenge| challenge.scope.as_deref()),
-        ]);
+                .and_then(|challenge| challenge.scope.clone())
+        };
+        options.scope = merge_scopes(&[settings.scope.as_deref(), step_up_scope.as_deref()]);
         options
     };
     let result: Result<(), McpSignInError> = async {
@@ -925,8 +1163,19 @@ pub async fn sign_in_mcp_server(
             // Every sign-in gets a fresh `state` parameter.
             raw.remove("oauthState");
             // A registered client cannot use another redirect URI, and its
-            // tokens belong to it.
-            if settings.client_id.is_none() && !registered.contains(&redirect_url) {
+            // tokens belong to it. A Client ID Metadata Document is not
+            // stored, so with one, a stored client was registered before and
+            // is replaced.
+            let keep_client = settings.client_id.is_some()
+                || if cimd {
+                    stored
+                        .as_ref()
+                        .and_then(|state| state.client_information())
+                        .is_none()
+                } else {
+                    registered.contains(&redirect_url)
+                };
+            if !keep_client {
                 raw.remove("clientInformation");
                 raw.remove("tokens");
                 raw.remove("tokensExpireAt");
@@ -950,12 +1199,8 @@ pub async fn sign_in_mcp_server(
         );
         // A refresh keeps the granted scope; a server asking for more needs
         // the browser flow.
-        let skip_refresh = challenge
-            .as_ref()
-            .and_then(|challenge| challenge.error.as_deref())
-            == Some("insufficient_scope");
         let flow = flow_for(OAuthFlowOptions {
-            skip_refresh,
+            skip_refresh: step_up,
             ..OAuthFlowOptions::default()
         });
         if matches!(
@@ -977,10 +1222,27 @@ pub async fn sign_in_mcp_server(
             .state()
             .await
             .map_err(|error| McpSignInError::Failed(error.to_string()))?;
+        // The flow picks the redirect URI, which may be specific to the MCP
+        // server.
+        let authorization_redirect_url = authorization_url
+            .query_pairs()
+            .find(|(key, _)| key == "redirect_uri")
+            .map(|(_, value)| value.into_owned())
+            .and_then(|value| url::Url::parse(&value).ok())
+            .unwrap_or_else(|| {
+                url::Url::parse(&redirect_url).expect("redirect URL is a valid URL")
+            });
         prompt.show_authorization_url(&authorization_url);
-        let code = wait_for_authorization_code(&callback, &state, prompt.as_ref()).await?;
+        let (code, iss) = wait_for_authorization_response(
+            &callback,
+            &state,
+            &authorization_redirect_url,
+            prompt.as_ref(),
+        )
+        .await?;
         let flow = flow_for(OAuthFlowOptions {
             authorization_code: Some(code),
+            iss,
             ..OAuthFlowOptions::default()
         });
         authorize_mcp(&provider, flow)

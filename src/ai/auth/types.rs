@@ -122,6 +122,11 @@ pub enum AuthError {
     /// Failure propagated from a `modify` callback or auth flow (upstream
     /// rejections propagate unchanged).
     Operation(String),
+    /// The OAuth callback server's port is already bound (v1.0.0): upstream
+    /// detects Node's `EADDRINUSE` `error.code` at the login call site to
+    /// fail with a targeted message instead of falling back to manual paste.
+    /// Carries the bind failure text.
+    AddressInUse(String),
     /// Typed [`ModelsError`] from an auth flow, propagated unchanged through
     /// `modify`: upstream throws `ModelsError` from the resolve flow's refresh
     /// callback and re-wraps only the *other* store failures, so the two must
@@ -135,6 +140,7 @@ impl fmt::Display for AuthError {
             AuthError::Cancelled => write!(f, "auth operation cancelled"),
             AuthError::Storage(message) => write!(f, "credential storage failure: {message}"),
             AuthError::Operation(message) => write!(f, "auth operation failed: {message}"),
+            AuthError::AddressInUse(message) => write!(f, "auth operation failed: {message}"),
             AuthError::Models(error) => write!(f, "{error}"),
         }
     }

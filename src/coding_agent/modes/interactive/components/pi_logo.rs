@@ -46,3 +46,27 @@ pub fn pi_logo_lines(theme: &Theme) -> (String, String) {
     let bottom = format!("{blue}█▀{RESET} {yellow}█{RESET}");
     (top, bottom)
 }
+
+/// Whether the terminal renders the half-block logo correctly. Apple Terminal
+/// draws gaps between rows and misaligns the half blocks, so it gets the text
+/// wordmark instead (v1.0.0 `supportsPiLogo`).
+pub fn supports_pi_logo() -> bool {
+    !crate::tui::terminal::is_apple_terminal_session()
+}
+
+/// Text fallback for the logo: "Pi" with the logo's coral and yellow
+/// (v1.0.0 `piWordmark`).
+pub fn pi_wordmark(theme: &Theme) -> String {
+    let mode = theme.get_color_mode();
+    let fg = |r: f64, g: f64, b: f64| -> String {
+        match rgb_color(r, g, b) {
+            Ok(color) => foreground_ansi(color, mode),
+            Err(_) => String::new(),
+        }
+    };
+    format!(
+        "{}P{RESET}{}i{RESET}",
+        fg(228.0, 138.0, 122.0),
+        fg(234.0, 182.0, 93.0)
+    )
+}

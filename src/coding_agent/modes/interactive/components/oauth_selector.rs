@@ -26,6 +26,10 @@ pub struct AuthSelectorProvider {
     pub auth_type: AuthType,
     pub method_name: Option<String>,
     pub status: Option<AuthStatus>,
+    /// Whether the provider's OAuth sign-in is backed by a subscription
+    /// (v1.0.0). `Some(false)` labels it as an account; `None` keeps the
+    /// "subscription" label.
+    pub subscription: Option<bool>,
 }
 
 /// Upstream `authType: "oauth" | "api_key"`.
@@ -52,11 +56,50 @@ pub struct AuthStatus {
     pub source: Option<String>,
 }
 
-/// Upstream `formatAuthSelectorProviderType`.
-pub fn format_auth_selector_provider_type(auth_type: AuthType) -> String {
+/// Upstream `formatAuthSelectorProviderType`. `subscription === false` labels
+/// an OAuth provider as an "account" (v1.0.0).
+pub fn format_auth_selector_provider_type(
+    auth_type: AuthType,
+    subscription: Option<bool>,
+) -> String {
     match auth_type {
-        AuthType::OAuth => "subscription".to_string(),
         AuthType::ApiKey => "API key".to_string(),
+        AuthType::OAuth => match subscription {
+            Some(false) => "account".to_string(),
+            _ => "subscription".to_string(),
+        },
+    }
+}
+
+/// Themed suffix describing whether and how a login option is configured, for
+/// example " ✓ configured" (v1.0.0 `formatAuthSelectorProviderStatus`).
+pub fn format_auth_selector_provider_status(
+    theme: &Theme,
+    provider: &AuthSelectorProvider,
+) -> String {
+    let Some(status) = &provider.status else {
+        return theme_fg(theme, "muted", " • not configured");
+    };
+    if status.status_type != provider.auth_type {
+        let label = format!(
+            "{} configured",
+            format_auth_selector_provider_type(status.status_type, provider.subscription)
+        );
+        return theme_fg(theme, "muted", " • ") + &theme_fg(theme, "warning", &label);
+    }
+    match &status.source {
+        None => theme_fg(theme, "success", " ✓ configured"),
+        Some(source) if source == "OAuth" || source == "stored credential" => {
+            theme_fg(theme, "success", " ✓ configured")
+        }
+        Some(source) => {
+            let source = if is_env_var_list(source) {
+                format!("env: {source}")
+            } else {
+                source.clone()
+            };
+            theme_fg(theme, "success", &format!(" ✓ {source}"))
+        }
     }
 }
 
@@ -218,14 +261,17 @@ impl OAuthSelectorComponent {
                 continue;
             };
             let is_selected = i == self.selected_index;
-            let status_indicator = self.format_status_indicator(provider);
+            let status_indicator = format_auth_selector_provider_status(&self.theme, provider);
             let auth_type_label = if self.show_auth_type_labels {
                 theme_fg(
                     &self.theme,
                     "muted",
                     &format!(
                         " [{}]",
-                        format_auth_selector_provider_type(provider.auth_type)
+                        format_auth_selector_provider_type(
+                            provider.auth_type,
+                            provider.subscription
+                        )
                     ),
                 )
             } else {
@@ -267,34 +313,6 @@ impl OAuthSelectorComponent {
         self.list_rows = rows;
     }
 
-    fn format_status_indicator(&self, provider: &AuthSelectorProvider) -> String {
-        let Some(status) = &provider.status else {
-            return theme_fg(&self.theme, "muted", " • unconfigured");
-        };
-        if status.status_type != provider.auth_type {
-            let label = match status.status_type {
-                AuthType::OAuth => "subscription configured",
-                AuthType::ApiKey => "API key configured",
-            };
-            return theme_fg(&self.theme, "muted", " • ")
-                + &theme_fg(&self.theme, "warning", label);
-        }
-        match &status.source {
-            None => theme_fg(&self.theme, "success", " ✓ configured"),
-            Some(source) if source == "OAuth" || source == "stored credential" => {
-                theme_fg(&self.theme, "success", " ✓ configured")
-            }
-            Some(source) => {
-                let source = if is_env_var_list(source) {
-                    format!("env: {source}")
-                } else {
-                    source.clone()
-                };
-                theme_fg(&self.theme, "success", &format!(" ✓ {source}"))
-            }
-        }
-    }
-
     /// The rendered list rows (deterministic face).
     pub fn list_lines(&self) -> &[String] {
         &self.list_rows
@@ -327,7 +345,7 @@ impl OAuthSelectorComponent {
 }
 
 /// `/^[A-Z][A-Z0-9_]*(?:, [A-Z][A-Z0-9_]*)*$/` — env-var-list detection.
-fn is_env_var_list(source: &str) -> bool {
+pub(crate) fn is_env_var_list(source: &str) -> bool {
     let mut parts = source.split(", ");
     let Some(first) = parts.next() else {
         return false;
@@ -399,6 +417,7 @@ mod tests {
                     status_type: AuthType::OAuth,
                     source: Some("OAuth".into()),
                 }),
+                subscription: None,
             },
             AuthSelectorProvider {
                 id: "openai".into(),
@@ -409,6 +428,7 @@ mod tests {
                     status_type: AuthType::ApiKey,
                     source: Some("ENV_VAR,OTHER_ENV".into()),
                 }),
+                subscription: None,
             },
             AuthSelectorProvider {
                 id: "kimi".into(),
@@ -419,6 +439,7 @@ mod tests {
                     status_type: AuthType::OAuth,
                     source: Some("stored credential".into()),
                 }),
+                subscription: None,
             },
             AuthSelectorProvider {
                 id: "gemini".into(),
@@ -429,6 +450,7 @@ mod tests {
                     status_type: AuthType::OAuth,
                     source: Some("Google OAuth".into()),
                 }),
+                subscription: None,
             },
             AuthSelectorProvider {
                 id: "bare".into(),
@@ -436,6 +458,7 @@ mod tests {
                 auth_type: AuthType::ApiKey,
                 method_name: None,
                 status: None,
+                subscription: None,
             },
             AuthSelectorProvider {
                 id: "local".into(),
@@ -446,6 +469,7 @@ mod tests {
                     status_type: AuthType::ApiKey,
                     source: Some("config file".into()),
                 }),
+                subscription: None,
             },
         ]
     }
@@ -456,11 +480,11 @@ mod tests {
     #[test]
     fn oauth_selector_matches_oracle() {
         assert_eq!(
-            format_auth_selector_provider_type(AuthType::OAuth),
+            format_auth_selector_provider_type(AuthType::OAuth, None),
             "subscription"
         );
         assert_eq!(
-            format_auth_selector_provider_type(AuthType::ApiKey),
+            format_auth_selector_provider_type(AuthType::ApiKey, None),
             "API key"
         );
 
@@ -487,7 +511,8 @@ mod tests {
         assert!(login_rows
             .iter()
             .any(|l| l.contains("subscription configured")));
-        assert!(login_rows.iter().any(|l| l.contains(" • unconfigured")));
+        // v1.0.0 reworded the unconfigured indicator to "not configured".
+        assert!(login_rows.iter().any(|l| l.contains(" • not configured")));
 
         sel.handle_input("\x1b[B");
         sel.handle_input("n");

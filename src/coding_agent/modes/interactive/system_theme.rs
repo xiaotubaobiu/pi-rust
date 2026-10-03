@@ -22,7 +22,7 @@
 
 use std::collections::HashMap;
 
-use crate::tui::colors::{color_to_rgb, okhsl_color};
+use crate::tui::colors::{color_to_oklch, color_to_rgb, okhsl_color, oklch_color};
 use crate::tui::oklab::{oklab_to_okhsl_lightness, rgb_to_okhsl, rgb_to_oklab};
 use crate::tui::terminal_colors::RgbColor;
 
@@ -813,17 +813,63 @@ fn okhsl_of(color: Rgb) -> [f64; 3] {
     rgb_to_okhsl([f64::from(color.r), f64::from(color.g), f64::from(color.b)])
 }
 
+/// A terminal color's OKHSL channels and its OKLCH chroma (upstream
+/// `SourceColor`, v1.0.0).
+#[derive(Debug, Clone, Copy)]
+struct SourceColor {
+    h: f64,
+    s: f64,
+    l: f64,
+    chroma: f64,
+}
+
+/// Upstream `sourceOf` (v1.0.0): the OKHSL channels plus the color's OKLCH
+/// chroma, so [`anchored`] can also cap chroma at the source's.
+fn source_of(color: Rgb) -> SourceColor {
+    let [h, s, l] = okhsl_of(color);
+    let chroma = color_to_oklch(crate::tui::colors::Color::Rgb {
+        r: f64::from(color.r),
+        g: f64::from(color.g),
+        b: f64::from(color.b),
+    })
+    .c;
+    SourceColor { h, s, l, chroma }
+}
+
 /// A source color's hue at another OKHSL lightness. Its saturation applies at
 /// its own lightness and falls off toward black and white along the family's
 /// saturation curve, never rising above it.
-fn anchored(source: [f64; 3], family: &Family, lightness: f64, saturation: f64) -> Rgb {
-    let anchor = saturation_curve(family, source[2]);
+///
+/// v1.0.0: OKHSL saturation is relative to the most chroma sRGB allows at a
+/// lightness, so the same saturation can mean more chroma elsewhere
+/// (Catppuccin Frappe's pink #f4b8e4, chroma 0.089, would become #eb76d1,
+/// 0.180, at the lightness the accent needs). Chroma is therefore also capped
+/// at the source's, with the same falloff.
+fn anchored(source: SourceColor, family: &Family, lightness: f64, saturation: f64) -> Rgb {
+    let anchor = saturation_curve(family, source.l);
     let falloff = if anchor > 0.0 {
         (saturation_curve(family, lightness) / anchor).min(1.0)
     } else {
         1.0
     };
-    okhsl(source[0], source[1] * falloff * saturation, lightness)
+    let color = okhsl(source.h, source.s * falloff * saturation, lightness);
+    let cap = source.chroma * falloff * saturation;
+    let channels = color_to_oklch(crate::tui::colors::Color::Rgb {
+        r: f64::from(color.r),
+        g: f64::from(color.g),
+        b: f64::from(color.b),
+    });
+    if channels.c <= cap {
+        color
+    } else {
+        let oklch = oklch_color(channels.l, cap, source.h).expect("oklch arguments are in range");
+        let [r, g, b] = color_to_rgb(oklch);
+        RgbColor {
+            r: r.round() as u8,
+            g: g.round() as u8,
+            b: b.round() as u8,
+        }
+    }
 }
 
 /// Move a text color toward white or black until it reaches the WCAG minimum
@@ -900,7 +946,7 @@ pub fn generate_system_theme_colors(input: &SystemThemeInput) -> SystemThemeColo
         .map(|palette| {
             palette
                 .iter()
-                .map(|color| okhsl_of(*color))
+                .map(|color| source_of(*color))
                 .collect::<Vec<_>>()
         });
 
@@ -1104,7 +1150,7 @@ pub fn generate_system_theme_colors(input: &SystemThemeInput) -> SystemThemeColo
                     continue;
                 }
                 text = Some(anchored(
-                    okhsl_of(foreground),
+                    source_of(foreground),
                     family_named("neutral"),
                     oklab_to_okhsl_lightness(needed),
                     saturation,

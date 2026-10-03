@@ -737,6 +737,18 @@ pub enum DefaultProjectTrust {
     Never,
 }
 
+/// Upstream `QuietStartup` (v1.0.0): `true` hides all startup output,
+/// `"header"` keeps only the startup header, `false` shows everything.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum QuietStartup {
+    /// Upstream `false` (the default): startup header and details.
+    Off,
+    /// Upstream `"header"`: only the startup header.
+    Header,
+    /// Upstream `true`: no startup output.
+    Full,
+}
+
 /// Upstream `TreeFilterMode` (whitelist-validated on read).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TreeFilterMode {
@@ -1955,19 +1967,29 @@ impl SettingsManager {
         Self::save(&mut inner);
     }
 
-    pub fn get_quiet_startup(&self) -> bool {
-        self.lock()
-            .settings
-            .get("quietStartup")
-            .and_then(SettingsValue::as_bool)
-            .unwrap_or(false)
+    /// Upstream `getQuietStartup()` (v1.0.0): returns the stored `true`/`"header"`
+    /// value, anything else (including invalid values) as `false`.
+    pub fn get_quiet_startup(&self) -> QuietStartup {
+        match self.lock().settings.get("quietStartup") {
+            Some(SettingsValue::Bool(true)) => QuietStartup::Full,
+            Some(SettingsValue::Str(s)) if s == "header" => QuietStartup::Header,
+            _ => QuietStartup::Off,
+        }
     }
 
-    pub fn set_quiet_startup(&self, quiet: bool) {
+    pub fn set_quiet_startup(&self, quiet: QuietStartup) {
         let mut inner = self.lock();
-        inner
-            .global_settings
-            .set("quietStartup", SettingsValue::Bool(quiet));
+        match quiet {
+            QuietStartup::Full => inner
+                .global_settings
+                .set("quietStartup", SettingsValue::Bool(true)),
+            QuietStartup::Header => inner
+                .global_settings
+                .set("quietStartup", SettingsValue::str("header")),
+            QuietStartup::Off => inner
+                .global_settings
+                .set("quietStartup", SettingsValue::Bool(false)),
+        }
         inner.modified_fields.insert("quietStartup");
         Self::save(&mut inner);
     }
@@ -2297,7 +2319,8 @@ impl SettingsManager {
         Self::save(&mut inner);
     }
 
-    /// Upstream `getTuiMode()` — only `"fullscreen"` is recognized.
+    /// Upstream `getTuiMode()` (v1.0.0) — only `"regular"` is recognized;
+    /// the default flips to fullscreen.
     pub fn get_tui_mode(&self) -> TuiMode {
         let inner = self.lock();
         match inner
@@ -2305,8 +2328,8 @@ impl SettingsManager {
             .get("tuiMode")
             .and_then(SettingsValue::as_str)
         {
-            Some("fullscreen") => TuiMode::Fullscreen,
-            _ => TuiMode::Regular,
+            Some("regular") => TuiMode::Regular,
+            _ => TuiMode::Fullscreen,
         }
     }
 

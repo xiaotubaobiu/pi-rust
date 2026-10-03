@@ -541,6 +541,10 @@ pub struct AgentSessionConfig {
     pub cache_warmer: Option<Arc<crate::coding_agent::core::cache_warmer::CacheWarmer>>,
     /// Initial active built-in tool names. Default: [read, bash, edit, write].
     pub initial_active_tool_names: Option<Vec<String>>,
+    /// Whether the initial tools come from the `defaultTools` setting. When
+    /// true, reload activates tools newly added to the setting. Tools removed
+    /// from it stay active (v1.0.0 `usesDefaultTools`).
+    pub uses_default_tools: Option<bool>,
     /// Optional allowlist of tool names. When provided, only these tool names
     /// are exposed.
     pub allowed_tool_names: Option<Vec<String>>,
@@ -729,6 +733,14 @@ pub struct AgentSession {
         Mutex<OrderedMap<Arc<crate::coding_agent::extensions::types::ToolDefinition>>>,
     cwd: String,
     initial_active_tool_names: Option<Vec<String>>,
+    /// Tools of the restored or reloaded loadout that are not registered yet,
+    /// such as tools of MCP servers that are still connecting. They are
+    /// activated when they are registered, and dropped when
+    /// [`Self::set_active_tools_by_name`] deactivates a tool or the next
+    /// agent run starts (v1.0.0 `_pendingToolNames`).
+    pending_tool_names: Mutex<std::collections::BTreeSet<String>>,
+    /// Upstream `_usesDefaultTools` (v1.0.0).
+    uses_default_tools: bool,
     allowed_tool_names: Option<HashSet<String>>,
     excluded_tool_names: Option<HashSet<String>>,
     base_tools_override: Option<Vec<Arc<AgentTool>>>,
@@ -816,6 +828,7 @@ impl AgentSession {
             model_runtime,
             cache_warmer,
             initial_active_tool_names,
+            uses_default_tools,
             allowed_tool_names,
             excluded_tool_names,
             base_tools_override,
@@ -856,6 +869,8 @@ impl AgentSession {
             base_tool_definitions: Mutex::new(OrderedMap::new()),
             cwd,
             initial_active_tool_names,
+            pending_tool_names: Mutex::new(std::collections::BTreeSet::new()),
+            uses_default_tools: uses_default_tools.unwrap_or(false),
             allowed_tool_names: allowed_tool_names.map(|names| names.into_iter().collect()),
             excluded_tool_names: excluded_tool_names.map(|names| names.into_iter().collect()),
             base_tools_override: if base_tools_override.is_empty() {
@@ -2144,6 +2159,22 @@ impl AgentSession {
     /// rebuilds the system prompt to reflect the new tool set; changes take
     /// effect on the next agent turn.
     pub fn set_active_tools_by_name(&self, tool_names: Vec<String>) {
+        let previous = self.get_active_tool_names();
+        self.set_active_tools_inner(tool_names);
+        // A loadout that deactivates a tool replaces the restored one, whose
+        // pending tools are dropped. One that only adds tools, like activating
+        // tool_search, keeps them.
+        let active: HashSet<String> = self.get_active_tool_names().into_iter().collect();
+        if previous.iter().any(|name| !active.contains(name)) {
+            self.pending_tool_names
+                .lock()
+                .expect("pending tools lock")
+                .clear();
+        }
+    }
+
+    /// Upstream `_setActiveTools`.
+    fn set_active_tools_inner(&self, tool_names: Vec<String>) {
         let registry = self.tool_registry.lock().expect("tool registry lock");
         let mut tools: Vec<Arc<AgentTool>> = Vec::new();
         let mut valid_tool_names: Vec<String> = Vec::new();
@@ -2154,8 +2185,26 @@ impl AgentSession {
             }
         }
         drop(registry);
+        for tool in &valid_tool_names {
+            self.pending_tool_names
+                .lock()
+                .expect("pending tools lock")
+                .remove(tool);
+        }
         self.agent.state().tools = tools;
         self.rebuild_system_prompt(valid_tool_names);
+    }
+
+    /// Upstream `_isAllowedTool`.
+    fn is_allowed_tool(&self, name: &str) -> bool {
+        (self
+            .allowed_tool_names
+            .as_ref()
+            .is_none_or(|allowed| allowed.contains(name)))
+            && !self
+                .excluded_tool_names
+                .as_ref()
+                .is_some_and(|excluded| excluded.contains(name))
     }
 
     /// Upstream `get isCompacting`: whether compaction or branch
@@ -2428,8 +2477,14 @@ impl AgentSession {
     }
 
     /// Upstream `_restoreToolsFromTranscript`: restore the active tool loadout
-    /// declared by the session transcript, if it declares one.
+    /// declared by the session transcript, if it declares one. Names the
+    /// loadout declares but that are not registered yet (allowed only) stay
+    /// pending until they register (v1.0.0).
     fn restore_tools_from_transcript(&self) {
+        self.pending_tool_names
+            .lock()
+            .expect("pending tools lock")
+            .clear();
         let context = self
             .session_manager
             .lock()
@@ -2456,6 +2511,11 @@ impl AgentSession {
             .filter_map(|name| registry.get(name).cloned())
             .collect();
         drop(registry);
+        *self.pending_tool_names.lock().expect("pending tools lock") = tool_names
+            .iter()
+            .filter(|name| self.is_allowed_tool(name))
+            .cloned()
+            .collect();
         self.agent.state().tools = tools;
         self.rebuild_system_prompt(tool_names);
     }
@@ -2471,6 +2531,13 @@ impl AgentSession {
         self.agent_run_abort_requested
             .store(false, Ordering::SeqCst);
         self.record_selection();
+        // The run records the loadout in the transcript; restored tools that
+        // did not register by now are dropped, so a tool that never registers
+        // does not stay pending (v1.0.0).
+        self.pending_tool_names
+            .lock()
+            .expect("pending tools lock")
+            .clear();
         self.is_agent_run_active.store(true, Ordering::SeqCst);
         let _ = self.idle_tx.send(false);
         let result: Result<(), anyhow::Error> = async {
@@ -3824,14 +3891,22 @@ impl AgentSession {
             }
         }
 
-        let unique: Vec<String> = {
+        let mut unique: Vec<String> = {
             let mut seen = HashSet::new();
             next_active_tool_names
                 .into_iter()
                 .filter(|name| seen.insert(name.clone()))
                 .collect()
         };
-        self.set_active_tools_by_name(unique);
+        // Pending tools that are registered now become active (v1.0.0).
+        unique.extend(
+            self.pending_tool_names
+                .lock()
+                .expect("pending tools lock")
+                .iter()
+                .cloned(),
+        );
+        self.set_active_tools_inner(unique);
     }
 
     fn base_tool_definitions_filtered(
@@ -5840,6 +5915,26 @@ impl AgentSession {
         )
         .await;
         old_runner.invalidate(None);
+        // v1.0.0: activate tools newly added to `defaultTools` (when the
+        // initial tools came from it). Removed ones stay active, and tools
+        // disabled during the session stay disabled unless the setting newly
+        // adds them.
+        const DEFAULT_TOOL_NAMES: [&str; 4] = ["read", "bash", "edit", "write"];
+        let default_tool_names = || -> Vec<String> {
+            self.settings_manager
+                .get_default_tools()
+                .unwrap_or_else(|| {
+                    DEFAULT_TOOL_NAMES
+                        .iter()
+                        .map(|name| name.to_string())
+                        .collect()
+                })
+        };
+        let previous_default_tools: HashSet<String> = if self.uses_default_tools {
+            default_tool_names().into_iter().collect()
+        } else {
+            HashSet::new()
+        };
         self.settings_manager.reload();
         self.sync_queue_modes_from_settings();
         // `resetApiProviders` seam: pi-ai keeps a module-global provider
@@ -5850,8 +5945,26 @@ impl AgentSession {
             .expect("resource loader lock")
             .reload_without_trust()
             .map_err(AgentSessionError::Upstream)?;
+        let added_default_tools: Vec<String> = if self.uses_default_tools {
+            default_tool_names()
+                .into_iter()
+                .filter(|name| !previous_default_tools.contains(name))
+                .collect()
+        } else {
+            Vec::new()
+        };
+        // Tools the new extensions register later, such as MCP tools, are
+        // pending until then.
+        {
+            let mut pending = self.pending_tool_names.lock().expect("pending tools lock");
+            for name in self.get_active_tool_names() {
+                pending.insert(name);
+            }
+        }
+        let mut active_tool_names = self.get_active_tool_names();
+        active_tool_names.extend(added_default_tools);
         self.build_runtime(BuildRuntimeOptions {
-            active_tool_names: Some(self.get_active_tool_names()),
+            active_tool_names: Some(active_tool_names),
             flag_values: Some(previous_flag_values),
             include_all_extension_tools: true,
         });
@@ -6743,6 +6856,13 @@ impl ProviderRegistryHandle for ModelRegistryHandle {
     fn unregister_provider(&self, name: &str) -> Result<(), String> {
         self.0.runtime().unregister_provider_sync(name);
         Ok(())
+    }
+
+    fn get_api_key_for_provider(
+        self: Arc<Self>,
+        provider: String,
+    ) -> futures::future::BoxFuture<'static, Option<String>> {
+        Box::pin(async move { self.0.get_api_key_for_provider(&provider).await })
     }
 }
 

@@ -200,6 +200,7 @@ fn native_session(
         custom_tools: vec![],
         model_runtime: models.clone(),
         initial_active_tool_names: Some(vec![]),
+        uses_default_tools: None,
         allowed_tool_names: None,
         excluded_tool_names: None,
         base_tools_override: vec![],

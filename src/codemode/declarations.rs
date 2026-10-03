@@ -211,7 +211,7 @@ pub fn render_tool_signature(tool: &Declarable, input_max_chars: Option<usize>) 
     format!(
         "{}(args: {input}): Promise<{}>;",
         to_codemode_identifier(&tool.name),
-        output_type(tool.output_schema.as_ref())
+        render_tool_output_type(tool.output_schema.as_ref())
     )
 }
 
@@ -265,7 +265,11 @@ pub fn mcp_structured_content_schema(
     }
 }
 
-fn output_type(schema: Option<&CodemodeJsonSchema>) -> String {
+/// The type a tool call resolves to (upstream `renderToolOutputType`):
+/// `CallToolResult<T>` for MCP output schemas (needs
+/// [`MCP_TYPESCRIPT_PREAMBLE`]), the schema's type otherwise, and `unknown`
+/// without a schema.
+pub fn render_tool_output_type(schema: Option<&CodemodeJsonSchema>) -> String {
     if let Some(structured) = mcp_structured_content_schema(schema) {
         let ty = schema_to_type(&structured, None);
         return if ty == "unknown" {

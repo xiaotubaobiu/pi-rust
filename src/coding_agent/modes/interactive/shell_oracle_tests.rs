@@ -16,7 +16,7 @@
 //! `"undefined"` where the JS driver passed `undefined`.
 
 use std::collections::BTreeMap;
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, AtomicU8, Ordering};
 use std::sync::{Arc, Mutex};
 
 use serde_json::{json, Value};
@@ -37,6 +37,7 @@ use super::shell::{
 use super::theme::{load_builtin_theme, ColorMode};
 use crate::agent_core::types::{AgentMessage, ThinkingLevel};
 use crate::coding_agent::agent_session::{AgentSessionError, CycleDirection, ModelCycleResult};
+use crate::coding_agent::core::settings_manager::QuietStartup;
 use crate::coding_agent::extensions::types::StreamingDelivery;
 use crate::coding_agent::package_manager::{
     CommandError, CommandRunner, DefaultPackageManager, PackageManagerOptions, PackageSourceEntry,
@@ -686,7 +687,7 @@ impl ShellEditor for RecEditor {
 
 struct RecSettings {
     shared_log: Log,
-    quiet_startup: AtomicBool,
+    quiet_startup: AtomicU8,
     warnings_anthropic: AtomicBool,
     hide_thinking_block: AtomicBool,
     /// Upper-oracle knobs (drive-set overrides; defaults keep the r20
@@ -703,7 +704,7 @@ impl RecSettings {
     fn new(log: Log) -> Self {
         Self {
             shared_log: log,
-            quiet_startup: AtomicBool::new(false),
+            quiet_startup: AtomicU8::new(0),
             warnings_anthropic: AtomicBool::new(true),
             hide_thinking_block: AtomicBool::new(false),
             show_terminal_progress: AtomicBool::new(false),
@@ -717,8 +718,12 @@ impl RecSettings {
 }
 
 impl ShellSettings for RecSettings {
-    fn quiet_startup(&self) -> bool {
-        self.quiet_startup.load(Ordering::SeqCst)
+    fn quiet_startup(&self) -> QuietStartup {
+        match self.quiet_startup.load(Ordering::SeqCst) {
+            1 => QuietStartup::Header,
+            2 => QuietStartup::Full,
+            _ => QuietStartup::Off,
+        }
     }
     fn show_terminal_progress(&self) -> bool {
         self.show_terminal_progress.load(Ordering::SeqCst)
@@ -3034,6 +3039,7 @@ mod lower_oracle {
                 method_name: None,
                 login_label: None,
                 status: None,
+                subscription: None,
             });
         });
     }
@@ -3062,6 +3068,7 @@ mod lower_oracle {
                     "message": "Pick one",
                     "options": [{"id": "a", "label": "A"}, {"id": "b", "label": "B"}],
                 }),
+                "anthropic",
             ));
             resolver.join().expect("resolver");
             assert_eq!(result, Ok("b".to_string()));
@@ -3083,6 +3090,7 @@ mod lower_oracle {
                     "message": "Pick one",
                     "options": [{"id": "a", "label": "A"}],
                 }),
+                "anthropic",
             ));
             resolver.join().expect("resolver");
             if let Err(error) = result {
@@ -3106,6 +3114,7 @@ mod lower_oracle {
                     "message": "Pick one",
                     "options": [{"id": "a", "label": "A"}],
                 }),
+                "anthropic",
             ));
             resolver.join().expect("resolver");
             assert_eq!(result, Ok("a".to_string()));
@@ -3122,6 +3131,7 @@ mod lower_oracle {
             let result = futures::executor::block_on(shell.show_auth_prompt(
                 &dialog,
                 &json!({ "type": "manual_code", "message": "Enter code" }),
+                "anthropic",
             ));
             assert!(result.is_ok());
         });
@@ -3141,6 +3151,7 @@ mod lower_oracle {
                     "message": "Enter code",
                     "signal": { "aborted": true },
                 }),
+                "anthropic",
             ));
             if let Err(error) = result {
                 rec(log, json!(["caught", error]));
@@ -3803,28 +3814,11 @@ mod lower_oracle {
         );
     }
 
-    #[test]
-    fn easter_eggs() {
-        replay("easter.daxnuts", |shell, _, _| {
-            shell.check_daxnuts_easter_egg(&ModelRef {
-                provider: "opencode".to_string(),
-                id: "kimi-k2.5-instruct".to_string(),
-                name: None,
-                api: None,
-                reasoning: false,
-            });
-            shell.check_daxnuts_easter_egg(&ModelRef {
-                provider: "opencode".to_string(),
-                id: "other".to_string(),
-                name: None,
-                api: None,
-                reasoning: false,
-            });
-            shell.handle_armin_says_hi();
-            shell.handle_demented_delves();
-            shell.handle_daxnuts();
-        });
-    }
+    // v1.0.0 removed the daxnuts easter egg (component, `handleDaxnuts`, and
+    // `checkDaxnutsEasterEgg`); the `easter.daxnuts` recording in the r20
+    // fixture predates it and its replay went with the code. The armin and
+    // demented-delves handlers it also drove are covered by their component
+    // oracles.
 
     // -- reload -------------------------------------------------------------------------
 

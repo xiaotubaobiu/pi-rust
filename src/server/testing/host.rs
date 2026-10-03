@@ -1,14 +1,16 @@
-//! Port of `packages/server/src/testing/host.ts` (215 lines, SHA256
-//! `627979793dac2b98568c03d9ed6d57ee1d0c05cd77106808a4478a93836db14a`): the
-//! controllable `ServerHost` double, the observable `TestHarness` session
-//! handle, and the session-management server service used by the conformance
-//! tests.
+//! Port of `packages/server/src/testing/host.ts` (SHA256
+//! `269b0eb8411f19e9efe318ba7437b668fc6171648e5d8e9e7a1d801604281dfa` @
+//! v1.0.0 `a276dabe5`): the controllable `ServerHost` double, the observable
+//! `TestHarness` session handle, and the session-management server service
+//! used by the conformance tests.
 //!
 //! Upstream counters are plain mutable fields driven from the event loop;
 //! the port guards them with atomics/mutexes. `Deferred<T>` becomes a
-//! oneshot-backed shared future. `MemorySessionRepo` is the already-ported
-//! `agent_core` implementation.
+//! oneshot-backed shared future. Since v1.0.0 the host keeps a plain
+//! `sessions` map instead of a `MemorySessionRepo`, and `TestHarness` holds
+//! only the session's metadata (it no longer owns a repo session to close).
 
+use std::collections::HashMap;
 use std::sync::atomic::{AtomicI64, Ordering};
 use std::sync::{Arc, Mutex};
 
@@ -17,17 +19,13 @@ use futures::FutureExt;
 use tokio::sync::oneshot;
 
 use crate::agent_core::chord_support::Context;
-use crate::agent_core::harness::session::memory::{
-    MemorySessionFacade, MemorySessionRepo, MemorySessionRepoOptions,
-};
-use crate::agent_core::harness::session::types::{Session, SessionCreateOptions, SessionMetadata};
 use crate::chord::types::ServiceCall;
 
 use super::super::errors::OperationError;
 use super::super::types::{
     PublishCallback, RoutedServerPresentation, RoutedServerServiceAttachment,
     RoutedServerServiceHost, RoutedSessionAttachment, RoutedSessionHandle, ServerHost,
-    TerminatedSignal,
+    SessionMetadata, TerminatedSignal,
 };
 
 /// The chord-side JSON value tree.
@@ -136,9 +134,9 @@ impl RoutedSessionAttachment for HarnessLease {
 }
 
 /// Shared `TestHarness` state (upstream the instance fields,
-/// `host.ts:27-41`).
+/// `host.ts:26-40`: `metadata`, `closed`, `termination`, and the counters).
 struct HarnessCore {
-    session: Arc<MemorySessionFacade>,
+    metadata: SessionMetadata,
     closed: Deferred<()>,
     termination: Deferred<Option<OperationError>>,
     attached_clients: AtomicI64,
@@ -194,19 +192,19 @@ impl HarnessCore {
     }
 }
 
-/// Upstream `TestHarness` (`host.ts:27-117`).
+/// Upstream `TestHarness` (`host.ts:26-111`).
 pub struct TestHarness {
     core: Arc<HarnessCore>,
     terminated_signal: Shared<BoxFuture<'static, Option<OperationError>>>,
 }
 
 impl TestHarness {
-    pub fn new(session: Arc<MemorySessionFacade>) -> Arc<TestHarness> {
+    pub fn new(metadata: SessionMetadata) -> Arc<TestHarness> {
         let termination: Deferred<Option<OperationError>> = Deferred::new();
         let terminated_signal = termination.promise();
         Arc::new(TestHarness {
             core: Arc::new(HarnessCore {
-                session,
+                metadata,
                 closed: Deferred::new(),
                 termination,
                 attached_clients: AtomicI64::new(0),
@@ -224,7 +222,12 @@ impl TestHarness {
         })
     }
 
-    /// `host.ts:32` `attachedClients`.
+    /// `host.ts:26` `metadata`.
+    pub fn metadata(&self) -> &SessionMetadata {
+        &self.core.metadata
+    }
+
+    /// `host.ts:31` `attachedClients`.
     pub fn attached_clients(&self) -> i64 {
         self.core.attached_clients.load(Ordering::SeqCst)
     }
@@ -294,9 +297,9 @@ impl TestHarness {
         self.terminated_signal.clone()
     }
 
-    /// `host.ts:101-104` `terminate(error)`.
+    /// `host.ts:96-98` `terminate(error)`: only the termination promise;
+    /// the harness holds no session to close.
     pub async fn terminate(&self, error: OperationError) {
-        let _ = self.core.session.close(Context::background()).await;
         self.core.termination.resolve(Some(error));
     }
 
@@ -340,7 +343,7 @@ impl RoutedSessionHandle for TestHarness {
         Some(self.terminated_signal.clone())
     }
 
-    fn close(&self, context: Context) -> BoxFuture<'static, Result<(), OperationError>> {
+    fn close(&self, _context: Context) -> BoxFuture<'static, Result<(), OperationError>> {
         let core = self.core.clone();
         Box::pin(async move {
             core.close_count.fetch_add(1, Ordering::SeqCst);
@@ -361,21 +364,11 @@ impl RoutedSessionHandle for TestHarness {
             if let Some(error) = failure {
                 return Err(error);
             }
-            core.session
-                .close(context)
-                .await
-                .map_err(|error| OperationError::Other(upstream_anyhow_message(&error)))?;
             core.closed.resolve(());
             core.termination.resolve(None);
             Ok(())
         })
     }
-}
-
-/// Renders an `anyhow::Error` like the upstream `Error.message` (no
-/// `: {cause}` suffix chains).
-fn upstream_anyhow_message(error: &anyhow::Error) -> String {
-    error.to_string()
 }
 
 /// Upstream `createTestServerServices` (`host.ts:119-149`): the
@@ -440,33 +433,30 @@ impl RoutedServerServiceAttachment for TestServerServicesAttachment {
 }
 
 /// Shared `TestServerHost` state (upstream the instance fields,
-/// `host.ts:151-158`).
+/// `host.ts:148-156`).
 struct HostCore {
     server_services: Mutex<Arc<dyn RoutedServerServiceHost>>,
-    repo: MemorySessionRepo,
-    harnesses: Mutex<std::collections::HashMap<String, Vec<Arc<TestHarness>>>>,
+    sessions: Mutex<HashMap<String, SessionMetadata>>,
+    harnesses: Mutex<HashMap<String, Vec<Arc<TestHarness>>>>,
     open_session_count: AtomicI64,
     next_open_session_error: Mutex<Option<OperationError>>,
     next_harness_close_error: Mutex<Option<OperationError>>,
     next_open_session_gate: Mutex<Option<OpenGate>>,
 }
 
-/// Upstream `TestServerHost` (`host.ts:151-215`).
+/// Upstream `TestServerHost` (`host.ts:146-193`).
 pub struct TestServerHost {
     core: Arc<HostCore>,
 }
 
 impl TestServerHost {
-    /// `new TestServerHost()` — a memory repo with the fixed
-    /// `now: () => 1` clock.
+    /// `new TestServerHost()`.
     pub fn new() -> Arc<TestServerHost> {
         Arc::new(TestServerHost {
             core: Arc::new(HostCore {
                 server_services: Mutex::new(create_test_server_services()),
-                repo: MemorySessionRepo::new(MemorySessionRepoOptions {
-                    now: Some(Arc::new(|| 1)),
-                }),
-                harnesses: Mutex::new(std::collections::HashMap::new()),
+                sessions: Mutex::new(HashMap::new()),
+                harnesses: Mutex::new(HashMap::new()),
                 open_session_count: AtomicI64::new(0),
                 next_open_session_error: Mutex::new(None),
                 next_harness_close_error: Mutex::new(None),
@@ -475,12 +465,16 @@ impl TestServerHost {
         })
     }
 
-    /// `host.ts:153` `repo`.
-    pub fn repo(&self) -> &MemorySessionRepo {
-        &self.core.repo
+    /// `host.ts:150` `sessions` — the metadata per session id.
+    pub fn sessions(&self) -> HashMap<String, SessionMetadata> {
+        self.core
+            .sessions
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .clone()
     }
 
-    /// `host.ts:154` `harnesses` — the harnesses per session id.
+    /// `host.ts:151` `harnesses` — the harnesses per session id.
     pub fn harnesses(&self, id: &str) -> Vec<Arc<TestHarness>> {
         self.core
             .harnesses
@@ -500,12 +494,12 @@ impl TestServerHost {
             .len()
     }
 
-    /// `host.ts:155` `openSessionCount`.
+    /// `host.ts:152` `openSessionCount`.
     pub fn open_session_count(&self) -> i64 {
         self.core.open_session_count.load(Ordering::SeqCst)
     }
 
-    /// `host.ts:156` `nextOpenSessionError`.
+    /// `host.ts:153` `nextOpenSessionError`.
     pub fn set_next_open_session_error(&self, error: Option<OperationError>) {
         *self
             .core
@@ -514,7 +508,7 @@ impl TestServerHost {
             .unwrap_or_else(std::sync::PoisonError::into_inner) = error;
     }
 
-    /// `host.ts:157` `nextHarnessCloseError`.
+    /// `host.ts:154` `nextHarnessCloseError`.
     pub fn set_next_harness_close_error(&self, error: Option<OperationError>) {
         *self
             .core
@@ -534,30 +528,15 @@ impl TestServerHost {
             .unwrap_or_else(std::sync::PoisonError::into_inner) = services;
     }
 
-    /// `host.ts:197-202` `seed(id, parentSessionId)`.
-    pub async fn seed(
-        &self,
-        id: &str,
-        parent_session_id: Option<&str>,
-    ) -> Result<SessionMetadata, OperationError> {
-        let session = self
-            .core
-            .repo
-            .create(
-                SessionCreateOptions {
-                    id: Some(id.to_string()),
-                    parent_session_id: parent_session_id.map(str::to_string),
-                },
-                Context::background(),
-            )
-            .await
-            .map_err(|error| OperationError::Other(error.to_string()))?;
-        let metadata = session.metadata().clone();
-        session
-            .close(Context::background())
-            .await
-            .map_err(|error| OperationError::Other(error.to_string()))?;
-        Ok(metadata)
+    /// `host.ts:175-178` `seed(id = "session-1")`: register the metadata.
+    pub fn seed(&self, id: &str) -> SessionMetadata {
+        let metadata = SessionMetadata::new(id);
+        self.core
+            .sessions
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .insert(id.to_string(), metadata.clone());
+        metadata
     }
 
     /// `host.ts:204-208` `gateNextOpenSession`.
@@ -601,31 +580,24 @@ impl ServerHost for TestServerHost {
     ) -> BoxFuture<'static, Result<SessionMetadata, OperationError>> {
         let core = self.core.clone();
         Box::pin(async move {
-            let matches: Vec<SessionMetadata> = core
-                .repo
-                .list()
-                .map_err(|error| OperationError::Other(error.to_string()))?
-                .into_iter()
-                .filter(|metadata| metadata.id == session_id)
-                .collect();
-            match matches.len() {
-                0 => Err(OperationError::Server(
-                    crate::server::errors::ServerError::session_not_found(Some(format!(
-                        "Unknown session: {session_id}"
-                    ))),
-                )),
-                1 => Ok(matches.into_iter().next().expect("one match")),
-                _ => Err(OperationError::Server(
-                    crate::server::errors::ServerError::session_ambiguous(),
-                )),
-            }
+            let metadata = core
+                .sessions
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
+                .get(&session_id)
+                .cloned();
+            metadata.ok_or_else(|| {
+                OperationError::Server(crate::server::errors::ServerError::session_not_found(Some(
+                    format!("Unknown session: {session_id}"),
+                )))
+            })
         })
     }
 
     fn open_session(
         &self,
         metadata: SessionMetadata,
-        context: Context,
+        _context: Context,
     ) -> BoxFuture<'static, Result<Arc<dyn RoutedSessionHandle>, OperationError>> {
         let core = self.core.clone();
         Box::pin(async move {
@@ -639,46 +611,43 @@ impl ServerHost for TestServerHost {
                 gate.entered.resolve(());
                 let _ = gate.release.promise().await;
             }
-            let session = core
-                .repo
-                .open(&metadata, context.clone())
-                .await
-                .map_err(|error| OperationError::Other(error.to_string()))?;
-            let result: Result<Arc<TestHarness>, OperationError> = async {
-                if let Some(error) = core
-                    .next_open_session_error
-                    .lock()
-                    .unwrap_or_else(std::sync::PoisonError::into_inner)
-                    .take()
-                {
-                    return Err(error);
-                }
-                let harness = TestHarness::new(session.clone());
-                if let Some(error) = core
-                    .next_harness_close_error
-                    .lock()
-                    .unwrap_or_else(std::sync::PoisonError::into_inner)
-                    .take()
-                {
-                    harness.set_fail_close(Some(error));
-                }
-                core.harnesses
-                    .lock()
-                    .unwrap_or_else(std::sync::PoisonError::into_inner)
-                    .entry(metadata.id.clone())
-                    .or_default()
-                    .push(harness.clone());
-                Ok(harness)
+            if !core
+                .sessions
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
+                .contains_key(&metadata.id)
+            {
+                return Err(OperationError::Server(
+                    crate::server::errors::ServerError::session_not_found(Some(format!(
+                        "Unknown session: {}",
+                        metadata.id
+                    ))),
+                ));
             }
-            .await;
-            match result {
-                Ok(harness) => Ok(harness as Arc<dyn RoutedSessionHandle>),
-                Err(error) => {
-                    // `catch { await session.close(context); throw }`
-                    let _ = session.close(context).await;
-                    Err(error)
-                }
+            if let Some(error) = core
+                .next_open_session_error
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
+                .take()
+            {
+                return Err(error);
             }
+            let harness = TestHarness::new(metadata.clone());
+            if let Some(error) = core
+                .next_harness_close_error
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
+                .take()
+            {
+                harness.set_fail_close(Some(error));
+            }
+            core.harnesses
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
+                .entry(metadata.id.clone())
+                .or_default()
+                .push(harness.clone());
+            Ok(harness as Arc<dyn RoutedSessionHandle>)
         })
     }
 }

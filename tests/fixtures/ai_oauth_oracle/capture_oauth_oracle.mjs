@@ -224,6 +224,13 @@ function cloneEvent(event) {
 
 // A flow interaction recording events and answering prompts through the
 // driver closure.
+// v1.0.0: the Anthropic login prompts the method select first; this wrapper
+// always answers it with the browser flow and hands later prompts to `impl`.
+// Other flows never emit a select, so wrapping is a no-op there.
+const selectAware = (impl) => async (prompt) => {
+  if (prompt && prompt.type === "select") return "browser";
+  return impl(prompt);
+};
 function makeInteraction({ promptImpl, deviceId } = {}) {
   const events = [];
   const controller = new AbortController();
@@ -733,25 +740,29 @@ const outFiles = {};
       if (event.type === "auth_url") authorizeHolder.url = event.url;
       originalNotify(event);
     };
-    const credential = await oauth.login(interaction, interaction.options);
-    const info = events.find((event) => event.type === "info");
-    scenarios.bindFailureManualPaste = {
-      infoPrefix: info?.message.slice(0, info.message.indexOf(". ") + 2),
-      infoIsPlatformSpecificSuffix: true,
-      authorize: callbackPathOf(authorizeHolder.url),
-      tokenRequest: captured[0],
+    let credential;
+    let bindError = null;
+    try {
+      credential = await oauth.login(interaction, interaction.options);
+    } catch (error) {
+      bindError = error.message;
+    }
+    // v1.0.0: a taken callback port fails the login instead of degrading to
+    // manual paste (the browser callback would hit whatever else holds the
+    // port, which rejects it as a state mismatch). No authorize URL is
+    // emitted and no token request happens.
+    scenarios.bindFailurePortTaken = {
+      error: bindError,
       credential,
-      errorTextPlatformSpecific: true,
     };
     blocker.close();
   }
 
   // Manual-paste validation errors (pure authorizationResultFromManualInput
-  // paths, exercised through the login surface with the port blocked).
+  // paths, exercised through the login surface with the callback server
+  // healthy; v1.0.0 a blocked port would fail the login before any paste).
   {
     const validationCases = {};
-    const blocker = http.createServer(() => {});
-    await new Promise((resolve) => blocker.listen(1455, "127.0.0.1", resolve));
     for (const [name, pasted] of Object.entries({
       not_a_url: "garbage",
       wrong_origin: "http://127.0.0.1:9999/auth/callback?code=c&state=s",
@@ -770,7 +781,6 @@ const outFiles = {};
       try { await oauth.login(interaction, interaction.options); } catch (error) { failure = error.message; }
       validationCases[name] = failure;
     }
-    blocker.close();
     scenarios.manualValidation = validationCases;
   }
 
@@ -1000,7 +1010,7 @@ const outFiles = {};
     const authorizeHolder = { url: undefined };
     const events = [];
     const { interaction } = makeInteraction({
-      promptImpl: async () => new Promise(() => {}),
+      promptImpl: selectAware(async () => new Promise(() => {})),
     });
     const originalNotify = interaction.notify;
     interaction.notify = (event) => {
@@ -1034,7 +1044,7 @@ const outFiles = {};
     installFetch(() => stubResponse(TOKEN_JSON));
     const authorizeHolder = { url: undefined };
     const { interaction, controller } = makeInteraction({
-      promptImpl: async () => new Promise(() => {}),
+      promptImpl: selectAware(async () => new Promise(() => {})),
     });
     const originalNotify = interaction.notify;
     interaction.notify = (event) => {
@@ -1057,10 +1067,10 @@ const outFiles = {};
     __log("scenario step");
     installFetch(() => stubResponse(TOKEN_JSON));
     const { interaction } = makeInteraction({
-      promptImpl: async (prompt) => {
+      promptImpl: selectAware(async (prompt) => {
         if (prompt.type !== "manual_code") throw new Error(`Unexpected prompt: ${prompt.type}`);
         return "http://localhost:53692/callback?code=x&state=wrong-state";
-      },
+      }),
     });
     let loginError = null;
     try { await oauth.login(interaction); } catch (error) { loginError = error.message; }
@@ -1079,10 +1089,10 @@ const outFiles = {};
     await new Promise((resolve) => blocker.listen(53692, "127.0.0.1", resolve));
     const authorizeHolder = { url: undefined };
     const { interaction } = makeInteraction({
-      promptImpl: async (prompt) => {
+      promptImpl: selectAware(async (prompt) => {
         if (!authorizeHolder.url) throw new Error("authorize URL not emitted before the prompt");
         return pasteAnswer(authorizeHolder.url, `code=manual-code&state=${new URL(authorizeHolder.url).searchParams.get("state")}`);
-      },
+      }),
     });
     const originalNotify = interaction.notify;
     interaction.notify = (event) => {
@@ -1102,7 +1112,7 @@ const outFiles = {};
     const captured = installFetch(() => stubResponse("denied", 400));
     const authorizeHolder = { url: undefined };
     const { interaction } = makeInteraction({
-      promptImpl: async () => "the-code",
+      promptImpl: selectAware(async () => "the-code"),
     });
     const originalNotify = interaction.notify;
     interaction.notify = (event) => {
@@ -1414,7 +1424,7 @@ const outFiles = {};
     installFetch(() => stubResponse({ key: "unused" }));
     const authorizeHolder = { url: undefined };
     const { interaction } = makeInteraction({
-      promptImpl: async () => new Promise(() => {}),
+      promptImpl: selectAware(async () => new Promise(() => {})),
     });
     const originalNotify = interaction.notify;
     interaction.notify = (event) => {

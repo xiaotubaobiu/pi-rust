@@ -1556,7 +1556,7 @@ impl Transaction {
                 (0..core.plans.len())
                     .filter(|plan_index| {
                         let plan = &core.plans[*plan_index];
-                        plan_publishes(plan.retire, plan.change.as_ref())
+                        plan_publishes(plan)
                     })
                     .filter_map(|plan_index| match core.plans[plan_index].record.scope() {
                         DocumentScope::Task { task_id } => Some(task_id),
@@ -1589,7 +1589,7 @@ impl Transaction {
             for plan_index in 0..core.plans.len() {
                 let plan_publishes = {
                     let plan = &core.plans[plan_index];
-                    plan_publishes(plan.retire, plan.change.as_ref())
+                    plan_publishes(plan)
                 };
                 if !plan_publishes {
                     continue;
@@ -1872,13 +1872,16 @@ fn prepared_value(prepared: &Prepared) -> serde_json::Map<String, Value> {
 
 /// Whether adoption publishes the plan (`transaction.ts` `publishes`): every
 /// creation, copy, and retirement, and a loaded incarnation that changed.
-fn plan_publishes(retire: bool, change: Option<&PlanChange>) -> bool {
-    if retire {
+/// Whether adoption publishes the plan (v1.0.0): every creation, copy, and
+/// retirement, and a loaded incarnation that writes content, which includes a
+/// migration-only base so observers of the older shape receive the new value.
+fn plan_publishes(plan: &DocumentPlan) -> bool {
+    if plan.retire {
         return true;
     }
-    match change {
+    match &plan.change {
         None => true,
-        Some(change) => change.loaded.is_none() || !change.prepared.ops.is_empty(),
+        Some(change) => change.loaded.is_none() || plan.content.is_some(),
     }
 }
 

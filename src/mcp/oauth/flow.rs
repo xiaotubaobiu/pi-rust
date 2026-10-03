@@ -35,7 +35,7 @@ use crate::mcp::oauth::discovery::{
 };
 use crate::mcp::oauth::errors::{
     McpOAuthAuthorizationRequiredError, OAuthError, OAuthFlowError, OAuthInsecureEndpointError,
-    OAuthRegistrationError,
+    OAuthIssuerMismatchError, OAuthRegistrationError,
 };
 use crate::mcp::oauth::types::{
     parse_client_information, parse_oauth_tokens, AuthorizationServerMetadata,
@@ -54,6 +54,14 @@ pub type AddClientAuthentication = Arc<
         + Send
         + Sync,
 >;
+
+/// Upstream `OAuthClientMetadataDocument` (v1.0.0): a Client ID Metadata
+/// Document — an https URL used as `client_id`, and a redirect URI it lists.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OAuthClientMetadataDocument {
+    pub url: String,
+    pub redirect_url: String,
+}
 
 /// Ordered `application/x-www-form-urlencoded` pairs with `URLSearchParams`
 /// semantics: `set` replaces the first match in position or appends, and the
@@ -104,8 +112,16 @@ pub trait OAuthClientProvider: Send + Sync {
     /// Upstream `clientMetadata`.
     fn client_metadata(&self) -> OAuthClientMetadata;
 
-    /// Upstream optional `clientMetadataUrl` (client-id metadata document).
-    fn client_metadata_url(&self) -> Option<String> {
+    /// Upstream optional `clientMetadataDocument` (v1.0.0): a Client ID
+    /// Metadata Document to identify as instead of registering dynamically,
+    /// or `None` to register. Called when no client information is stored;
+    /// the document is not stored. `metadata` is `None` when the
+    /// authorization server has none; check
+    /// `client_id_metadata_document_supported`.
+    fn client_metadata_document(
+        &self,
+        _metadata: Option<&AuthorizationServerMetadata>,
+    ) -> Option<OAuthClientMetadataDocument> {
         None
     }
 
@@ -199,8 +215,16 @@ impl CredentialKind {
 pub struct OAuthFlowOptions {
     pub server_url: String,
     pub authorization_code: Option<String>,
+    /// `iss` parameter of the authorization response that delivered
+    /// `authorization_code` (RFC 9207) — v1.0.0.
+    pub iss: Option<String>,
     pub scope: Option<String>,
     pub resource_metadata_url: Option<Url>,
+    /// Authorization server metadata document to use instead of discovery,
+    /// for servers that advertise a wrong authorization server or none. It
+    /// is trusted as configured. Must use https, except on loopback —
+    /// v1.0.0.
+    pub authorization_server_metadata_url: Option<Url>,
     pub fetch: Option<McpFetch>,
     pub skip_issuer_validation: bool,
     /// Go straight to the authorization redirect instead of refreshing stored
@@ -654,7 +678,17 @@ async fn run_flow(
         fetch: options.fetch.clone(),
         protocol_version: None,
     };
-    let cached = provider.discovery_state().await;
+    // v1.0.0: with a configured metadata URL, discovery is not cached, so
+    // changing the URL applies at once.
+    let metadata_url = match &options.authorization_server_metadata_url {
+        Some(url) => Some(secure_endpoint(url.as_ref())?),
+        None => None,
+    };
+    let cached = if metadata_url.is_some() {
+        None
+    } else {
+        provider.discovery_state().await
+    };
     let discovered = match cached.filter(|cached| !cached.authorization_server_url.is_empty()) {
         Some(cached) => {
             let metadata = match cached.authorization_server_metadata {
@@ -682,88 +716,92 @@ async fn run_flow(
                     .resource_metadata_url
                     .clone()
                     .map(|url| url.to_string()),
+                metadata_url.as_ref().map(|url| url.to_string()),
                 options.skip_issuer_validation,
             )
             .await?
         }
     };
-    provider
-        .save_discovery_state(OAuthDiscoveryState {
-            authorization_server_url: discovered.authorization_server_url.clone(),
-            authorization_server_metadata: discovered.authorization_server_metadata.clone(),
-            resource_metadata: discovered.resource_metadata.clone(),
-            resource_metadata_url: options
-                .resource_metadata_url
-                .as_ref()
-                .map(|url| url.to_string()),
-        })
-        .await?;
+    if metadata_url.is_none() {
+        provider
+            .save_discovery_state(OAuthDiscoveryState {
+                authorization_server_url: discovered.authorization_server_url.clone(),
+                authorization_server_metadata: discovered.authorization_server_metadata.clone(),
+                resource_metadata: discovered.resource_metadata.clone(),
+                resource_metadata_url: options
+                    .resource_metadata_url
+                    .as_ref()
+                    .map(|url| url.to_string()),
+            })
+            .await?;
+    }
     let metadata = discovered.authorization_server_metadata.clone();
     let resource = select_resource(&options.server_url, discovered.resource_metadata.as_ref())?;
-    let scope = options
-        .scope
-        .clone()
-        .or_else(|| {
+    // `||`, not `??` (v1.0.0): an empty scope (for example from
+    // `scopes_supported: []`) falls through to the next source.
+    let scope = {
+        let from_options = options.scope.clone().filter(|scope| !scope.is_empty());
+        from_options.or_else(|| {
             discovered
                 .resource_metadata
                 .as_ref()
                 .map(|metadata| metadata.scopes_supported().join(" "))
+                .filter(|scope| !scope.is_empty())
         })
-        .or_else(|| provider.client_metadata().scope());
-    let mut client = provider.client_information().await;
-    if client.is_none() {
-        if options.authorization_code.is_some() {
+    }
+    .or_else(|| provider.client_metadata().scope());
+    let stored = provider.client_information().await;
+    let client_document = if stored.is_none() {
+        provider.client_metadata_document(metadata.as_ref())
+    } else {
+        None
+    };
+    if let Some(document) = &client_document {
+        let parsed =
+            Url::parse(&document.url).map_err(|error| OAuthFlowError::Other(error.to_string()))?;
+        if parsed.scheme() != "https" || parsed.path() == "/" {
             return Err(OAuthFlowError::Other(
-                "OAuth client information is missing during code exchange".to_string(),
+                "Invalid OAuth client metadata URL".to_string(),
             ));
         }
-        let metadata_document_supported = metadata
-            .as_ref()
-            .and_then(|metadata| metadata.client_id_metadata_document_supported())
-            == Some(true);
-        let client_metadata_url = provider.client_metadata_url();
-        if metadata_document_supported {
-            if let Some(url) = client_metadata_url {
-                let parsed =
-                    Url::parse(&url).map_err(|error| OAuthFlowError::Other(error.to_string()))?;
-                if parsed.scheme() != "https" || parsed.path() == "/" {
+    }
+    let client = match stored {
+        Some(stored) => stored,
+        None => {
+            if let Some(document) = &client_document {
+                let mut raw = Map::new();
+                raw.insert("client_id".to_string(), Value::from(document.url.clone()));
+                OAuthClientInformationMixed::from_raw(raw)
+            } else {
+                if options.authorization_code.is_some() {
                     return Err(OAuthFlowError::Other(
-                        "Invalid OAuth client metadata URL".to_string(),
+                        "OAuth client information is missing during code exchange".to_string(),
                     ));
                 }
-                let mut raw = Map::new();
-                raw.insert("client_id".to_string(), Value::from(url));
-                let information = OAuthClientInformationMixed::from_raw(raw);
-                if provider.saves_client_information() {
-                    provider
-                        .save_client_information(information.clone())
-                        .await?;
+                if !provider.saves_client_information() {
+                    return Err(OAuthFlowError::Other(
+                        "OAuth client information cannot be persisted".to_string(),
+                    ));
                 }
-                client = Some(information);
-            } else {
-                return Err(OAuthFlowError::Other(
-                    "Invalid OAuth client metadata URL".to_string(),
-                ));
+                let registered = register_client(
+                    &discovered.authorization_server_url,
+                    metadata.as_ref(),
+                    &provider.client_metadata(),
+                    scope.as_deref(),
+                    options.fetch.clone(),
+                )
+                .await?;
+                provider.save_client_information(registered.clone()).await?;
+                registered
             }
-        } else {
-            if !provider.saves_client_information() {
-                return Err(OAuthFlowError::Other(
-                    "OAuth client information cannot be persisted".to_string(),
-                ));
-            }
-            let registered = register_client(
-                &discovered.authorization_server_url,
-                metadata.as_ref(),
-                &provider.client_metadata(),
-                scope.as_deref(),
-                options.fetch.clone(),
-            )
-            .await?;
-            provider.save_client_information(registered.clone()).await?;
-            client = Some(registered);
         }
-    }
-    let client = client.expect("client information is set above");
+    };
+    // The document's redirect URI may differ from the provider's, for
+    // example by a server-specific path (v1.0.0).
+    let redirect_url = client_document
+        .as_ref()
+        .map(|document| document.redirect_url.clone())
+        .unwrap_or_else(|| provider.redirect_url());
     let token_options = TokenRequestOptions {
         metadata: metadata.clone(),
         client_information: Some(client.clone()),
@@ -772,16 +810,34 @@ async fn run_flow(
         fetch: options.fetch.clone(),
     };
     if let Some(code) = options.authorization_code.clone() {
+        // RFC 9207 (v1.0.0): never send a code from another authorization
+        // server to this one.
+        if let Some(issuer_metadata) = &metadata {
+            let iss_check_required = options.iss.is_some()
+                || issuer_metadata.authorization_response_iss_parameter_supported() == Some(true);
+            if iss_check_required
+                && options.iss.as_deref() != Some(issuer_metadata.issuer().as_str())
+            {
+                return Err(OAuthFlowError::IssuerMismatch(
+                    OAuthIssuerMismatchError::new(issuer_metadata.issuer(), options.iss.clone()),
+                ));
+            }
+        }
         let code_verifier = provider.code_verifier().await?;
         let tokens = exchange_authorization_code(
             &discovered.authorization_server_url,
             &token_options,
             &code,
             &code_verifier,
-            &provider.redirect_url(),
+            &redirect_url,
         )
         .await?;
-        provider.save_tokens(tokens).await?;
+        // A response without `scope` grants the requested scope (RFC 6749
+        // §5.1, v1.0.0). Callers pass the options of the authorization
+        // request, so `scope` is what was requested.
+        provider
+            .save_tokens(with_scope(tokens, scope.as_deref()))
+            .await?;
         return Ok(OAuthFlowResult::Authorized);
     }
     let existing = if options.skip_refresh {
@@ -789,25 +845,31 @@ async fn run_flow(
     } else {
         provider.tokens().await
     };
-    if let Some(refresh_token) = existing.and_then(|tokens| tokens.refresh_token) {
-        match refresh_authorization(
-            &discovered.authorization_server_url,
-            &token_options,
-            &refresh_token,
-        )
-        .await
-        {
-            Ok(tokens) => {
-                provider.save_tokens(tokens).await?;
-                return Ok(OAuthFlowResult::Authorized);
-            }
-            Err(error) => {
-                if error.is_insecure_endpoint() {
-                    return Err(error);
+    if let Some(existing) = existing {
+        if let Some(refresh_token) = existing.refresh_token.clone() {
+            match refresh_authorization(
+                &discovered.authorization_server_url,
+                &token_options,
+                &refresh_token,
+            )
+            .await
+            {
+                Ok(tokens) => {
+                    // A refresh without `scope` keeps the scope of the grant
+                    // (RFC 6749 §6, v1.0.0).
+                    provider
+                        .save_tokens(with_scope(tokens, existing.scope.as_deref()))
+                        .await?;
+                    return Ok(OAuthFlowResult::Authorized);
                 }
-                if let OAuthFlowError::OAuth(oauth_error) = &error {
-                    if oauth_error.code != "server_error" {
+                Err(error) => {
+                    if error.is_insecure_endpoint() {
                         return Err(error);
+                    }
+                    if let OAuthFlowError::OAuth(oauth_error) = &error {
+                        if oauth_error.code != "server_error" {
+                            return Err(error);
+                        }
                     }
                 }
             }
@@ -818,7 +880,7 @@ async fn run_flow(
         &discovered.authorization_server_url,
         metadata.as_ref(),
         &client,
-        &provider.redirect_url(),
+        &redirect_url,
         scope.as_deref(),
         state.as_deref(),
         resource.as_deref(),
@@ -829,6 +891,40 @@ async fn run_flow(
         .redirect_to_authorization(authorization_url)
         .await?;
     Ok(OAuthFlowResult::Redirect)
+}
+
+/// Upstream `withScope` (v1.0.0): a response without `scope` keeps the
+/// granted/requested one.
+fn with_scope(tokens: OAuthTokens, scope: Option<&str>) -> OAuthTokens {
+    if tokens.scope.is_none() {
+        if let Some(scope) = scope {
+            if !scope.is_empty() {
+                return OAuthTokens {
+                    scope: Some(scope.to_string()),
+                    ..tokens
+                };
+            }
+        }
+    }
+    tokens
+}
+
+/// Upstream `stepUpScope` (v1.0.0): scopes for a step-up authorization — the
+/// challenged scopes plus the ones granted so far, since a challenge may
+/// list only the missing scopes and a token with just those would lose
+/// access the old one had (SEP-2350). Without challenged scopes, `None`
+/// lets the flow pick its default.
+pub fn step_up_scope(granted: Option<&str>, challenged: Option<&str>) -> Option<String> {
+    let challenged = challenged.filter(|scope| !scope.is_empty())?;
+    let mut scopes: Vec<String> = Vec::new();
+    for part in [granted, Some(challenged)] {
+        for scope in part.unwrap_or_default().split_whitespace() {
+            if !scope.is_empty() && !scopes.iter().any(|seen| seen == scope) {
+                scopes.push(scope.to_string());
+            }
+        }
+    }
+    Some(scopes.join(" "))
 }
 
 /// Upstream `authorizeMcp`: one automatic retry with invalidated credentials
@@ -924,15 +1020,26 @@ impl AuthProvider for AdaptedOAuthProvider {
             let future = match existing {
                 Some(future) => future,
                 None => {
+                    let provider = Arc::clone(&self.shared.provider);
+                    // v1.0.0 (SEP-2350): a step-up authorization asks for the
+                    // challenged scopes plus the ones granted so far.
+                    let scope = if insufficient_scope {
+                        let granted: Option<OAuthTokens> = provider.tokens().await;
+                        step_up_scope(
+                            granted.as_ref().and_then(|tokens| tokens.scope.as_deref()),
+                            challenge.scope.as_deref(),
+                        )
+                    } else {
+                        challenge.scope.clone()
+                    };
                     let options = OAuthFlowOptions {
                         server_url: context.server_url.to_string(),
                         resource_metadata_url: challenge.resource_metadata_url.clone(),
-                        scope: challenge.scope.clone(),
+                        scope,
                         fetch: Some(Arc::clone(&context.fetch)),
                         skip_refresh: insufficient_scope,
                         ..OAuthFlowOptions::default()
                     };
-                    let provider = Arc::clone(&self.shared.provider);
                     let shared = Arc::clone(&self.shared);
                     // The future clears the slot itself (upstream's
                     // `.finally`), so every Shared observer sees the cleared

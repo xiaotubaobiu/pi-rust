@@ -1,6 +1,7 @@
 //! Port of upstream `@earendil-works/pi-codemode`
-//! (`pi/packages/codemode/src`, upstream HEAD `2bbfcca43`): a sandboxed
-//! JavaScript runtime where the only capability is calling injected tools.
+//! (`pi/packages/codemode/src`, upstream HEAD `a276dabe5`, **v1.0.0**): a
+//! sandboxed JavaScript runtime where the only capability is calling
+//! injected tools.
 //!
 //! Provenance map (upstream file → submodule), byte-identical logic:
 //!
@@ -46,13 +47,15 @@ pub mod types;
 mod codemode_oracle_tests;
 
 pub use declarations::{
-    mcp_structured_content_schema, render_declarations, render_tool_sample, render_tool_signature,
-    schema_to_type, Declarable, RenderDeclarationsOptions, DEFAULT_INPUT_SCHEMA_MAX_CHARS,
-    MCP_TYPESCRIPT_PREAMBLE,
+    mcp_structured_content_schema, render_declarations, render_tool_output_type,
+    render_tool_sample, render_tool_signature, schema_to_type, Declarable,
+    RenderDeclarationsOptions, DEFAULT_INPUT_SCHEMA_MAX_CHARS, MCP_TYPESCRIPT_PREAMBLE,
 };
 pub use identifier::to_codemode_identifier;
 pub use runtime::engine::{CodemodeSandbox, NO_TIMEOUT};
-pub use runtime::prelude::{MAX_STORE_TOTAL_CHARS, MAX_STORE_VALUE_CHARS};
+pub use runtime::prelude::{
+    MAX_OUTPUT_CHARS, MAX_OUTPUT_ITEMS, MAX_STORE_TOTAL_CHARS, MAX_STORE_VALUE_CHARS,
+};
 pub use source::{
     parse_codemode_source, CodemodeSourceError, CODEMODE_OPTIONS_PREFIX, CODEMODE_SOURCE_GRAMMAR,
 };

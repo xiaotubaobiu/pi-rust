@@ -46,13 +46,13 @@ mod provenance {
     pub const WHEEL_SCROLL: &str =
         "a969a50d0a3627fde0052f766443e3668a6355b3ecf312ea078025080d303f82";
     pub const TUI: &str = "92dcb7f5f9a3a9575421d8de366be5cc78890be8df38d86c4ed3c0d77c7f88a4";
-    pub const UTILS: &str = "5ecbc6c9b4850e78bf19de1fe8859b99b9c4c5f8a6384728d255a8e7e8a610ee";
+    pub const UTILS: &str = "258ff73a0ff4d2b05f8a60515a9cc37eb96c9fc03a4072ac6db2906cad1862d9";
     pub const LATEX: &str = "c4ef99bef1d3a54c73006912c9a7fa67ef99412b4f6cd28d608cf0e07b38cece";
     pub const AUTOCOMPLETE: &str =
-        "609b8ff2149e6e78e3bbc49c04d75016960b604a80702acfec59d40bbe32244d";
+        "7391902f35b60c3467ceb5eccc86e0954a388ea1012455c1a7ea8f7325de773b";
     pub const FUZZY: &str = "0ae2bedc6a4f043d875ec415202a6e3d9e45405741359d7d2dc2855240dff633";
     pub const TERMINAL_IMAGE: &str =
-        "b901b8df0ad84e04ac0ee612c419b45d960430f63d2bdaa974c8dd9d89f3e6e5";
+        "26beb4d4154a6a7fc800d40af39cde8984749d14096756182faba4af0380093d";
     pub const EDITOR: &str = "30a47fd49042579be7b85262677df62d4ff37a8f9a3a0e6c41ce3cf1d402b9c3";
     pub const KEYS: &str = "b972facce4233a4623239fc38029e28cae15d0fb326558c0c09dc02cf4345fa7";
     pub const TERMINAL_COLORS: &str =
@@ -826,6 +826,26 @@ fn utils_delta_oracle_matches() {
             "getActiveBackgroundAnsi {index}"
         );
     }
+    // v1.0.0 sliceWithWidth: ANSI codes from before the range precede codes at
+    // the boundary.
+    for case in oracle["slice"].as_array().expect("rows") {
+        let (text, width) = utils::slice_with_width(
+            case["line"].as_str().unwrap(),
+            case["startCol"].as_u64().unwrap() as usize,
+            case["length"].as_u64().unwrap() as usize,
+            case["strict"].as_bool().unwrap(),
+        );
+        assert_eq!(
+            text,
+            case["text"].as_str().unwrap(),
+            "sliceWithWidth text for {case}"
+        );
+        assert_eq!(
+            width,
+            case["width"].as_u64().unwrap() as usize,
+            "sliceWithWidth width for {case}"
+        );
+    }
 }
 
 #[test]
@@ -1022,6 +1042,17 @@ fn autocomplete_delta_oracle_matches() {
 #[test]
 fn autocomplete_skill_bare_name_matching() {
     let oracle = oracle(AUTOCOMPLETE_ORACLE);
+    // The v1.0.0 cursor-before-the-slash rows fall through to file completion,
+    // so the provider works over a hermetic mirror of the capture tree (the
+    // capture creates the same layout under its temp dir).
+    let skill_base = std::env::temp_dir().join(format!("tui-delta-skill-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&skill_base);
+    std::fs::create_dir_all(skill_base.join("sub")).unwrap();
+    std::fs::create_dir_all(skill_base.join("Folder Names")).unwrap();
+    std::fs::create_dir_all(skill_base.join("z-last")).unwrap();
+    for file in ["readme.md", "sub/file-one.ts", "z-last/zebra.txt", "app.js"] {
+        std::fs::write(skill_base.join(file), "x").unwrap();
+    }
     let skill_rows: Vec<&Value> = oracle["commands"]
         .as_array()
         .expect("rows")
@@ -1056,13 +1087,18 @@ fn autocomplete_skill_bare_name_matching() {
                 argument_hint: None,
             },
         ],
-        std::env::temp_dir(),
+        skill_base.clone(),
         None,
     );
     for case in skill_rows {
         let text = case["text"].as_str().unwrap();
-        let suggestions =
-            provider.get_suggestions(&[text.to_string()], 0, text.chars().count(), false);
+        // v1.0.0 rows record the cursor column (code points); earlier rows
+        // placed it at the end of the text.
+        let cursor = case["cursor"]
+            .as_u64()
+            .map(|n| n as usize)
+            .unwrap_or_else(|| text.chars().count());
+        let suggestions = provider.get_suggestions(&[text.to_string()], 0, cursor, false);
         let actual = suggestions.map(|suggestions| {
             (
                 suggestions.prefix,
@@ -1092,6 +1128,7 @@ fn autocomplete_skill_bare_name_matching() {
         });
         assert_eq!(actual, expected, "skill commands for {text:?}");
     }
+    let _ = std::fs::remove_dir_all(&skill_base);
 }
 
 // ---------------------------------------------------------------------------
@@ -1164,6 +1201,117 @@ fn terminal_image_delta_oracle_matches() {
             case["colorMode"].as_str().unwrap(),
             "colorMode for {env:?}"
         );
+    }
+
+    // v1.0.0 Kitty placement-row helpers. The registry is process-global, so
+    // every case re-registers its image exactly like the capture does.
+    for case in oracle["kittyPlacement"].as_array().expect("rows") {
+        let register = &case["register"];
+        terminal_image::register_kitty_image_metadata(terminal_image::KittyImageMetadata {
+            image_id: register["imageId"].as_u64().unwrap(),
+            columns: register["columns"].as_u64().unwrap() as usize,
+            rows: register["rows"].as_u64().unwrap() as usize,
+            width_px: register["widthPx"].as_u64().unwrap() as usize,
+            height_px: register["heightPx"].as_u64().unwrap() as usize,
+        });
+        let line = case["line"].as_str().unwrap();
+        let payload = line
+            .split_once(';')
+            .expect("kitty header")
+            .1
+            .split("\x1b\\")
+            .next()
+            .expect("kitty payload")
+            .to_string();
+        // Transmission re-encodes to the captured line (single-shot chunk).
+        assert_eq!(
+            terminal_image::encode_kitty(
+                &payload,
+                terminal_image::KittyOptions {
+                    columns: Some(register["columns"].as_u64().unwrap() as usize),
+                    rows: Some(register["rows"].as_u64().unwrap() as usize),
+                    image_id: Some(register["imageId"].as_u64().unwrap()),
+                    move_cursor: None,
+                },
+            ),
+            line,
+            "encodeKitty for image {}",
+            case["imageId"]
+        );
+        // Placement rows: the registered rows; unknown images give None.
+        assert_eq!(
+            terminal_image::get_kitty_image_placement_rows(line),
+            case["placementRows"].as_u64().map(|n| n as usize),
+            "placementRows for image {}",
+            case["imageId"]
+        );
+        assert_eq!(
+            terminal_image::get_kitty_image_placement_rows(case["unknownLine"].as_str().unwrap()),
+            case["unknownLinePlacementRows"]
+                .as_u64()
+                .map(|n| n as usize),
+            "unknown placementRows for image {}",
+            case["imageId"]
+        );
+        // Placement summary: sequence, byte counts, rows, replacement line.
+        let placement = terminal_image::get_kitty_image_placement(line).expect("placement");
+        let expected = &case["placement"];
+        assert_eq!(placement.image_id, expected["imageId"].as_u64().unwrap());
+        assert_eq!(
+            placement.transmission_bytes,
+            expected["transmissionBytes"].as_u64().unwrap() as usize
+        );
+        assert_eq!(
+            placement.estimated_decoded_bytes,
+            expected["estimatedDecodedBytes"].as_u64().unwrap()
+        );
+        assert_eq!(
+            placement.rows,
+            expected["rows"].as_u64().unwrap() as usize,
+            "placement.rows for image {}",
+            case["imageId"]
+        );
+        assert_eq!(placement.sequence, expected["sequence"].as_str().unwrap());
+        assert_eq!(
+            placement.replacement_line,
+            expected["replacementLine"].as_str().unwrap()
+        );
+        // The cropped line carries explicit r=/y=/h= controls; its placement
+        // rows come from the controls, not the registry.
+        let cropped = case["croppedLine"].as_str().unwrap();
+        assert_eq!(
+            terminal_image::get_kitty_image_placement_rows(cropped),
+            case["croppedPlacementRows"].as_u64().map(|n| n as usize),
+            "cropped placementRows for image {}",
+            case["imageId"]
+        );
+        let cropped_placement =
+            terminal_image::get_kitty_image_placement(cropped).expect("cropped placement");
+        assert_eq!(
+            cropped_placement.rows,
+            case["croppedPlacementRowsField"].as_u64().unwrap() as usize,
+            "cropped placement.rows for image {}",
+            case["imageId"]
+        );
+        // Crop grid: recorded (hidden, visible) row pairs -> exact cropped
+        // transmissions.
+        let crop_grid: Vec<(i64, i64)> = case["cropGrid"]
+            .as_array()
+            .expect("cropGrid")
+            .iter()
+            .map(|pair| (pair[0].as_i64().unwrap(), pair[1].as_i64().unwrap()))
+            .collect();
+        for ((hidden, visible), expected_crop) in crop_grid
+            .iter()
+            .zip(case["crops"].as_array().expect("crops"))
+        {
+            assert_eq!(
+                terminal_image::crop_kitty_image_line(line, *hidden, *visible),
+                expected_crop.as_str().unwrap(),
+                "cropKittyImageLine(line, {hidden}, {visible}) for image {}",
+                case["imageId"]
+            );
+        }
     }
 }
 

@@ -282,7 +282,7 @@ impl FileLockGuard {
                     return Ok(Self {
                         path: path.to_path_buf(),
                         released: false,
-                    })
+                    });
                 }
                 Err(CreateExclusiveError::Exists) => {
                     if Instant::now() >= deadline {

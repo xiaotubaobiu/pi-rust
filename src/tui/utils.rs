@@ -903,7 +903,11 @@ pub fn slice_with_width(
     while i < line.len() {
         if let Some(ansi) = extract_ansi_code(line, i) {
             if current_col >= start_col && current_col < end_col {
+                // Keep original order (v1.0.0): codes from before the range
+                // must precede codes at the boundary.
+                result.push_str(&pending_ansi);
                 result.push_str(ansi);
+                pending_ansi.clear();
             } else if current_col < start_col {
                 pending_ansi.push_str(ansi);
             }

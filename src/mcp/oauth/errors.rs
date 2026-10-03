@@ -97,29 +97,35 @@ impl From<OAuthError> for OAuthFlowError {
     }
 }
 
-/// Upstream `OAuthIssuerMismatchError`.
+/// Upstream `OAuthIssuerMismatchError` (v1.0.0: `received` is `None` when an
+/// authorization response lacks the `iss` parameter its server promised,
+/// RFC 9207).
 #[derive(Debug, Clone, PartialEq)]
 pub struct OAuthIssuerMismatchError {
     pub expected: String,
-    pub received: String,
+    pub received: Option<String>,
 }
 
 impl OAuthIssuerMismatchError {
-    pub fn new(expected: impl Into<String>, received: impl Into<String>) -> Self {
+    pub fn new(expected: impl Into<String>, received: Option<String>) -> Self {
         OAuthIssuerMismatchError {
             expected: expected.into(),
-            received: received.into(),
+            received,
         }
     }
 }
 
 impl fmt::Display for OAuthIssuerMismatchError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let received = match &self.received {
+            Some(received) => serde_json::to_string(received).unwrap_or_default(),
+            None => "none".to_string(),
+        };
         write!(
             formatter,
             "OAuth issuer mismatch: expected {}, received {}",
             serde_json::to_string(&self.expected).unwrap_or_default(),
-            serde_json::to_string(&self.received).unwrap_or_default(),
+            received,
         )
     }
 }

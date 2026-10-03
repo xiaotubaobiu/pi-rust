@@ -1255,7 +1255,13 @@ mod tests {
         let result = tokio::time::timeout(Duration::from_secs(10), oauth.login(interaction))
             .await
             .unwrap();
-        assert!(matches!(result.unwrap_err(), AuthError::Operation(_)));
+        // The bind failure surfaces as AddressInUse since v1.0.0 (the
+        // shared server classifies the taken port; upstream carries Node's
+        // EADDRINUSE error object through the same channel).
+        assert!(matches!(
+            result.unwrap_err(),
+            AuthError::Operation(_) | AuthError::AddressInUse(_)
+        ));
         // The failure happens before the authorize URL is emitted.
         assert!(fake.auth_url.lock().unwrap().is_none());
     }

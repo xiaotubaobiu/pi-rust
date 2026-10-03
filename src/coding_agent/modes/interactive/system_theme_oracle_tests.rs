@@ -16,11 +16,13 @@ const ORACLE: &str = include_str!(
     "../../../../tests/fixtures/coding_agent_theme_delta_oracle/oracle/system_theme_oracle.json"
 );
 
-/// The upstream sources the capture executed (source-of-truth pin).
+/// The upstream sources the capture executed (source-of-truth pin). The
+/// v1.0.0 `system-theme.ts` adds the OKLab-lightness recipe and the chroma
+/// cap of `anchored`.
 const SOURCE_SHAS: &[(&str, &str)] = &[
     (
         "system-theme.ts",
-        "7234770316787805fa49595537c5f9e60bf9d5fe006a0fa2a8e596baff7c6adb",
+        "877a3dc24fd194f2dc5ee9efe8f1699acdcdac6defa197009bc7b39920bbb729",
     ),
     (
         "colors.ts",
@@ -109,6 +111,17 @@ fn replay_generation_scenarios() {
     }
 }
 
+/// Compare a Rust luminance against the JS-captured oracle. `powf` may round
+/// to a neighboring double differently between the V8 runtime that captured
+/// the oracle and the MSVC CRT this test runs under (1 ulp on the lum grid,
+/// e.g. lum(128)); the arithmetic is otherwise identical, so a 1-ulp window
+/// keeps the oracle byte-comparable without weakening the color outputs
+/// (which still compare exactly).
+fn assert_lum_eq(left: f64, right: f64, context: &str) {
+    let ulp = f64::EPSILON * left.abs().max(1.0);
+    assert!((left - right).abs() <= ulp, "{context}: {left} != {right}");
+}
+
 #[test]
 fn replay_appearance_luminance_and_contrast_grids() {
     let oracle: Value = serde_json::from_str(ORACLE).expect("oracle parses");
@@ -127,13 +140,13 @@ fn replay_appearance_luminance_and_contrast_grids() {
     for row in oracle["lumGrid"].as_array().expect("lum grid") {
         let v = row["v"].as_f64().expect("v");
         if let Some(lum) = row["lum"].as_f64() {
-            assert_eq!(relative_luminance(u8([v, v, v])), lum, "lum({v})");
+            assert_lum_eq(relative_luminance(u8([v, v, v])), lum, &format!("lum({v})"));
         }
         if let Some(lum) = row["lumChannel"].as_f64() {
-            assert_eq!(
+            assert_lum_eq(
                 relative_luminance(u8([255.0, v, 0.0])),
                 lum,
-                "lum(255,{v},0)"
+                &format!("lum(255,{v},0)"),
             );
         }
     }

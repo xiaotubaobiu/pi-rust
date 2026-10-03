@@ -189,7 +189,7 @@ pub fn read_plugin_package_profile(
             return Err(format!(
                 "Could not read experimental plugin package profile {}",
                 path.display()
-            ))
+            ));
         }
     };
     let parsed: Value = serde_json::from_str(&text).map_err(|_| {

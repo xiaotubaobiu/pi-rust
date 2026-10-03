@@ -331,7 +331,10 @@ async fn async_events_send_user_message_reports_error_after_await_instead_of_dro
     let error = bounded(receive.recv()).await.unwrap();
     assert_eq!(error.extension_path, "<runtime>");
     assert_eq!(error.event, "send_user_message");
-    assert_eq!(error.error,"Agent is already processing. Specify streamingBehavior ('steer' or 'followUp') to queue the message.");
+    assert_eq!(
+        error.error,
+        "Agent is already processing. Specify streamingBehavior ('steer' or 'followUp') to queue the message."
+    );
     assert_eq!(snapshot(&trace).len(), 2);
     assert_eq!(test.faux.state().lock().unwrap().call_count, 0);
     test.session

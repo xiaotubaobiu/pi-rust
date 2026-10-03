@@ -68,20 +68,32 @@ pub struct OAuthCallbackServerOptions {
     pub redirect_host: Option<String>,
     pub port: Option<u16>,
     pub path: Option<String>,
+    /// More paths that receive the callback, for example a server-specific
+    /// path of a redirect URI (v1.0.0).
+    pub extra_paths: Option<Vec<String>>,
     pub timeout_ms: Option<u64>,
     /// Render the browser page as HTML. Default: a plain-text message.
     pub render_page: Option<RenderPage>,
 }
 
-/// The pending map: state -> the sender resolving that waiter.
-type PendingMap = HashMap<String, tokio::sync::oneshot::Sender<Result<OAuthCallback, String>>>;
+/// The pending map: state -> the sender resolving that waiter, with the
+/// exact path the waiter expects (v1.0.0; `None` accepts any listed path).
+type PendingMap = HashMap<
+    String,
+    (
+        tokio::sync::oneshot::Sender<Result<OAuthCallback, String>>,
+        Option<String>,
+    ),
+>;
 
 /// The `onRedirect`-style page renderer (upstream `renderPage`).
 pub type RenderPage = Arc<dyn Fn(&OAuthCallbackPage) -> String + Send + Sync>;
 
 struct CallbackServerShared {
     redirect_url: String,
-    path: String,
+    /// The paths that receive the callback (v1.0.0): `path` plus
+    /// `extraPaths`.
+    paths: Vec<String>,
     timeout_ms: u64,
     render_page: Option<RenderPage>,
     pending: std::sync::Mutex<PendingMap>,
@@ -119,9 +131,13 @@ impl OAuthCallbackServer {
             redirect_host
         };
         let redirect_url = format!("http://{host_in_url}:{port}{path}");
+        let mut paths = vec![path];
+        if let Some(extra_paths) = &options.extra_paths {
+            paths.extend(extra_paths.iter().cloned());
+        }
         let shared = Arc::new(CallbackServerShared {
             redirect_url,
-            path,
+            paths,
             timeout_ms: options.timeout_ms.unwrap_or(5 * 60_000),
             render_page: options.render_page,
             pending: std::sync::Mutex::new(HashMap::new()),
@@ -147,13 +163,17 @@ impl OAuthCallbackServer {
         &self.redirect_url
     }
 
-    /// Upstream `waitForCallback(state)`: resolves with the browser redirect
-    /// for `state`, or errors after the timeout or on `close()`. Registration
-    /// is synchronous (upstream throws for a duplicate state at call time);
-    /// the returned future is 'static.
+    /// Upstream `waitForCallback(state, path?)` (v1.0.0): resolves with the
+    /// browser redirect for `state`, or errors after the timeout or on
+    /// `close()`. With `path`, a response on another path fails, so a
+    /// server-specific redirect URI can tell authorization servers apart
+    /// (RFC 9700 section 4.4.2.2). Registration is synchronous (upstream
+    /// throws for a duplicate state at call time); the returned future is
+    /// 'static.
     pub fn wait_for_callback(
         &self,
         state: &str,
+        path: Option<String>,
     ) -> BoxFuture<'static, Result<OAuthCallback, String>> {
         let shared = Arc::clone(&self.shared);
         let state = state.to_string();
@@ -166,7 +186,7 @@ impl OAuthCallbackServer {
                 return Box::pin(async { Err("OAuth state is already pending".to_string()) });
             }
             let (sender, receiver) = tokio::sync::oneshot::channel();
-            pending.insert(state.clone(), sender);
+            pending.insert(state.clone(), (sender, path));
             receiver
         };
         Box::pin(async move {
@@ -197,7 +217,7 @@ impl OAuthCallbackServer {
                 .pending
                 .lock()
                 .expect("pending map cannot be poisoned");
-            for (_, sender) in pending.drain() {
+            for (_, (sender, _)) in pending.drain() {
                 let _ = sender.send(Err("OAuth callback server closed".to_string()));
             }
         }
@@ -260,7 +280,7 @@ async fn handle_request(
             return;
         }
     };
-    if url.path() != shared.path {
+    if !shared.paths.iter().any(|path| path == url.path()) {
         reply(
             stream,
             shared,
@@ -282,7 +302,7 @@ async fn handle_request(
             .expect("pending map cannot be poisoned");
         state.as_ref().and_then(|state| pending.remove(state))
     };
-    let Some(sender) = sender else {
+    let Some((sender, expected_path)) = sender else {
         reply(
             stream,
             shared,
@@ -295,6 +315,26 @@ async fn handle_request(
         .await;
         return;
     };
+    // v1.0.0: a response on another path fails the waiter, so a
+    // server-specific redirect URI can tell authorization servers apart.
+    if let Some(expected_path) = &expected_path {
+        if url.path() != expected_path {
+            let _ = sender.send(Err(
+                "The authorization response arrived on another redirect URI".to_string(),
+            ));
+            reply(
+                stream,
+                shared,
+                400,
+                &OAuthCallbackPage::Error {
+                    message: "Unexpected redirect URI".to_string(),
+                    details: None,
+                },
+            )
+            .await;
+            return;
+        }
+    }
     if let Some(error) = first_pair(&pairs, "error") {
         let description = first_pair(&pairs, "error_description").unwrap_or_else(|| error.clone());
         let _ = sender.send(Err(description.clone()));

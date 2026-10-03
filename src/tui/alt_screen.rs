@@ -13,6 +13,8 @@ use std::sync::OnceLock;
 
 use regex::Regex;
 
+use crate::tui::terminal_image::{get_kitty_image_placement_rows, is_image_line};
+
 pub const ENTER_ALT_SCREEN: &str = "\x1b[?1049h";
 pub const EXIT_ALT_SCREEN: &str = "\x1b[?1049l";
 pub const DISABLE_AUTOWRAP: &str = "\x1b[?7l";
@@ -42,6 +44,12 @@ impl AltScreenState {
     pub fn new() -> Self {
         Self::default()
     }
+
+    /// Upstream `getScreenLines()` (v1.0.0): the lines of the last rendered
+    /// frame, one per terminal row, as written to the terminal.
+    pub fn screen_lines(&self) -> Vec<String> {
+        self.previous_screen.clone()
+    }
 }
 
 /// One alternate-screen frame: the exact write sequence for the terminal.
@@ -57,11 +65,12 @@ pub struct AltScreenFrame {
 /// Options for [`compute_alt_screen_frame_with_options`].
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct AltScreenFrameOptions {
-    /// Upstream `clearRowsBeforeKittyImages`: WezTerm erases intersecting
-    /// Kitty image cells when a later EL clears a covered row, so frames that
-    /// place images separate clearing from drawing. Text-only frames and every
-    /// other terminal keep the interleaved output.
-    pub clear_rows_before_kitty_images: bool,
+    /// Upstream `isWezTerm` (v1.0.0): WezTerm erases intersecting Kitty image
+    /// cells when a later row write touches a covered row, so such frames draw
+    /// image placements after every clear and text write.
+    pub is_wezterm: bool,
+    /// Upstream `this.imageProtocol` (`Some("kitty")` or `None`).
+    pub image_protocol: Option<&'static str>,
 }
 
 /// Upstream `doRender`: diff `screen` against the previous frame.
@@ -84,7 +93,8 @@ pub fn compute_alt_screen_frame(
     )
 }
 
-/// Upstream `doRender` with the WezTerm Kitty-image frame option.
+/// Upstream `doRender` with the terminal-image frame inputs (v1.0.0: the
+/// WezTerm detection and the active image protocol).
 pub fn compute_alt_screen_frame_with_options(
     state: &mut AltScreenState,
     screen: Vec<String>,
@@ -108,6 +118,35 @@ pub fn compute_alt_screen_frame_with_options(
         || state.previous_screen_width != width
         || state.previous_screen_height != height;
 
+    // v1.0.0: per-row change flags drive both image redraw triggers.
+    let changed_rows: Vec<bool> = (0..height)
+        .map(|row| Some(&screen[row]) != state.previous_screen.get(row))
+        .collect();
+    let image_anchors_need_redraw = screen.iter().enumerate().any(|(row, line)| {
+        changed_rows[row]
+            && (is_image_line(line)
+                || is_image_line(
+                    state
+                        .previous_screen
+                        .get(row)
+                        .map(String::as_str)
+                        .unwrap_or(""),
+                ))
+    });
+    let image_cells_need_redraw = !image_anchors_need_redraw
+        && options.is_wezterm
+        && options.image_protocol == Some("kitty")
+        && changed_rows.iter().any(|changed| *changed)
+        && screen.iter().enumerate().any(|(row, line)| {
+            let Some(placement_rows) = get_kitty_image_placement_rows(line) else {
+                return false;
+            };
+            (row..(row + placement_rows).min(height))
+                .any(|covered_row| changed_rows.get(covered_row).copied().unwrap_or(false))
+        });
+    let images_need_redraw = image_anchors_need_redraw || image_cells_need_redraw;
+    let redraw_images = full_redraw || images_need_redraw;
+
     let mut ops: Vec<String> = Vec::new();
     if full_redraw {
         state.full_redraws += 1;
@@ -117,32 +156,43 @@ pub fn compute_alt_screen_frame_with_options(
         ops.push(BEGIN_SYNCHRONIZED_OUTPUT.to_string());
     }
 
-    // WezTerm erases intersecting Kitty image cells when a later EL clears a
-    // covered row. Only separate clearing from drawing for WezTerm frames that
-    // place images; preserve the existing interleaved output for text-only
-    // frames and every other terminal.
-    let clear_rows_before_kitty_images = options.clear_rows_before_kitty_images;
-    if clear_rows_before_kitty_images {
+    // v1.0.0: WezTerm erases intersecting Kitty image cells when a later row
+    // write touches a covered row. Draw image placements after every clear
+    // and text write so nothing later intersects them; preserve the existing
+    // interleaved output for text-only frames and every other terminal.
+    let draw_kitty_images_last = redraw_images
+        && options.image_protocol == Some("kitty")
+        && screen.iter().any(|line| is_image_line(line))
+        && options.is_wezterm;
+    let unchanged = |row: usize| {
+        !full_redraw && !images_need_redraw && state.previous_screen.get(row) == screen.get(row)
+    };
+    if draw_kitty_images_last {
         for row in 0..height {
-            let current = screen.get(row).cloned().unwrap_or_default();
-            if !full_redraw && state.previous_screen.get(row) == Some(&current) {
+            if unchanged(row) {
                 continue;
             }
             ops.push(format!("\x1b[{};1H\x1b[2K", row + 1));
         }
-    }
-
-    for row in 0..height {
-        let current = screen.get(row).cloned().unwrap_or_default();
-        if !full_redraw && state.previous_screen.get(row) == Some(&current) {
-            continue;
+        for (row, line) in screen.iter().enumerate() {
+            if unchanged(row) || is_image_line(line) {
+                continue;
+            }
+            ops.push(format!("\x1b[{};1H{}", row + 1, line));
         }
-        let clear = if clear_rows_before_kitty_images {
-            ""
-        } else {
-            "\x1b[2K"
-        };
-        ops.push(format!("\x1b[{};1H{clear}{current}", row + 1));
+        for (row, line) in screen.iter().enumerate() {
+            if unchanged(row) || !is_image_line(line) {
+                continue;
+            }
+            ops.push(format!("\x1b[{};1H{}", row + 1, line));
+        }
+    } else {
+        for (row, line) in screen.iter().enumerate() {
+            if unchanged(row) {
+                continue;
+            }
+            ops.push(format!("\x1b[{};1H\x1b[2K{}", row + 1, line));
+        }
     }
 
     if let Some((row, col)) = cursor_pos {

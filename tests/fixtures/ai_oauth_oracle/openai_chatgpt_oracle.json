@@ -18,7 +18,7 @@
       "status": 200,
       "contentType": "text/html; charset=utf-8",
       "cacheControl": null,
-      "body": "<!doctype html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\" />\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n  <title>Authentication successful</title>\n  <style>\n    :root {\n      --text: #fafafa;\n      --text-dim: #a1a1aa;\n      --page-bg: #09090b;\n      --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\";\n      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace;\n    }\n    * { box-sizing: border-box; }\n    html { color-scheme: dark; }\n    body {\n      margin: 0;\n      min-height: 100vh;\n      display: flex;\n      align-items: center;\n      justify-content: center;\n      padding: 24px;\n      background: var(--page-bg);\n      color: var(--text);\n      font-family: var(--font-sans);\n      text-align: center;\n    }\n    main {\n      width: 100%;\n      max-width: 560px;\n      display: flex;\n      flex-direction: column;\n      align-items: center;\n      justify-content: center;\n    }\n    .logo {\n      width: 72px;\n      height: 72px;\n      display: block;\n      margin-bottom: 24px;\n    }\n    h1 {\n      margin: 0 0 10px;\n      font-size: 28px;\n      line-height: 1.15;\n      font-weight: 650;\n      color: var(--text);\n    }\n    p {\n      margin: 0;\n      line-height: 1.7;\n      color: var(--text-dim);\n      font-size: 15px;\n    }\n    .details {\n      margin-top: 16px;\n      font-family: var(--font-mono);\n      font-size: 13px;\n      color: var(--text-dim);\n      white-space: pre-wrap;\n      word-break: break-word;\n    }\n  </style>\n</head>\n<body>\n  <main>\n    <div class=\"logo\"><svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 800 800\" aria-hidden=\"true\"><path fill=\"#fff\" fill-rule=\"evenodd\" d=\"M165.29 165.29 H517.36 V400 H400 V517.36 H282.65 V634.72 H165.29 Z M282.65 282.65 V400 H400 V282.65 Z\"/><path fill=\"#fff\" d=\"M517.36 400 H634.72 V634.72 H517.36 Z\"/></svg></div>\n    <h1>Authentication successful</h1>\n    <p>ChatGPT authentication completed. You can close this window.</p>\n    \n  </main>\n</body>\n</html>"
+      "body": "<!doctype html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\" />\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n  <title>Authentication successful</title>\n  <style>\n    :root {\n      --text: #fafafa;\n      --text-dim: #a1a1aa;\n      --page-bg: #09090b;\n      --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\";\n      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace;\n    }\n    * { box-sizing: border-box; }\n    html { color-scheme: dark; }\n    body {\n      margin: 0;\n      min-height: 100vh;\n      display: flex;\n      align-items: center;\n      justify-content: center;\n      padding: 24px;\n      background: var(--page-bg);\n      color: var(--text);\n      font-family: var(--font-sans);\n      text-align: center;\n    }\n    main {\n      width: 100%;\n      max-width: 560px;\n      display: flex;\n      flex-direction: column;\n      align-items: center;\n      justify-content: center;\n    }\n    .logo {\n      width: 72px;\n      height: 72px;\n      display: block;\n      margin-bottom: 24px;\n    }\n    h1 {\n      margin: 0 0 10px;\n      font-size: 28px;\n      line-height: 1.15;\n      font-weight: 650;\n      color: var(--text);\n    }\n    p {\n      margin: 0;\n      line-height: 1.7;\n      color: var(--text-dim);\n      font-size: 15px;\n    }\n    .details {\n      margin-top: 16px;\n      font-family: var(--font-mono);\n      font-size: 13px;\n      color: var(--text-dim);\n      white-space: pre-wrap;\n      word-break: break-word;\n    }\n  </style>\n</head>\n<body>\n  <main>\n    <div class=\"logo\"><svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 800 800\" aria-hidden=\"true\"><path fill=\"#F09082\" d=\"M165.29 165.29H517.36V400H400V282.65H165.29Z\"/><path fill=\"#4D9ABF\" d=\"M165.29 282.65H282.65V400H400V517.36H282.65V634.72H165.29Z\"/><path fill=\"#F1BE58\" d=\"M517.36 400H634.72V634.72H517.36Z\"/></svg></div>\n    <h1>Authentication successful</h1>\n    <p>ChatGPT authentication completed. You can close this window.</p>\n    \n  </main>\n</body>\n</html>"
     },
     "tokenRequest": {
       "url": "https://auth.openai.com/api/accounts/oauth/token",
@@ -51,7 +51,7 @@
       "status": 400,
       "contentType": "text/html; charset=utf-8",
       "cacheControl": null,
-      "body": "<!doctype html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\" />\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n  <title>Authentication failed</title>\n  <style>\n    :root {\n      --text: #fafafa;\n      --text-dim: #a1a1aa;\n      --page-bg: #09090b;\n      --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\";\n      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace;\n    }\n    * { box-sizing: border-box; }\n    html { color-scheme: dark; }\n    body {\n      margin: 0;\n      min-height: 100vh;\n      display: flex;\n      align-items: center;\n      justify-content: center;\n      padding: 24px;\n      background: var(--page-bg);\n      color: var(--text);\n      font-family: var(--font-sans);\n      text-align: center;\n    }\n    main {\n      width: 100%;\n      max-width: 560px;\n      display: flex;\n      flex-direction: column;\n      align-items: center;\n      justify-content: center;\n    }\n    .logo {\n      width: 72px;\n      height: 72px;\n      display: block;\n      margin-bottom: 24px;\n    }\n    h1 {\n      margin: 0 0 10px;\n      font-size: 28px;\n      line-height: 1.15;\n      font-weight: 650;\n      color: var(--text);\n    }\n    p {\n      margin: 0;\n      line-height: 1.7;\n      color: var(--text-dim);\n      font-size: 15px;\n    }\n    .details {\n      margin-top: 16px;\n      font-family: var(--font-mono);\n      font-size: 13px;\n      color: var(--text-dim);\n      white-space: pre-wrap;\n      word-break: break-word;\n    }\n  </style>\n</head>\n<body>\n  <main>\n    <div class=\"logo\"><svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 800 800\" aria-hidden=\"true\"><path fill=\"#fff\" fill-rule=\"evenodd\" d=\"M165.29 165.29 H517.36 V400 H400 V517.36 H282.65 V634.72 H165.29 Z M282.65 282.65 V400 H400 V282.65 Z\"/><path fill=\"#fff\" d=\"M517.36 400 H634.72 V634.72 H517.36 Z\"/></svg></div>\n    <h1>Authentication failed</h1>\n    <p>OpenAI OAuth registration callback did not contain an issued client ID</p>\n    \n  </main>\n</body>\n</html>"
+      "body": "<!doctype html>\n<html lang=\"en\">\n<head>\n  <meta charset=\"utf-8\" />\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />\n  <title>Authentication failed</title>\n  <style>\n    :root {\n      --text: #fafafa;\n      --text-dim: #a1a1aa;\n      --page-bg: #09090b;\n      --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\";\n      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace;\n    }\n    * { box-sizing: border-box; }\n    html { color-scheme: dark; }\n    body {\n      margin: 0;\n      min-height: 100vh;\n      display: flex;\n      align-items: center;\n      justify-content: center;\n      padding: 24px;\n      background: var(--page-bg);\n      color: var(--text);\n      font-family: var(--font-sans);\n      text-align: center;\n    }\n    main {\n      width: 100%;\n      max-width: 560px;\n      display: flex;\n      flex-direction: column;\n      align-items: center;\n      justify-content: center;\n    }\n    .logo {\n      width: 72px;\n      height: 72px;\n      display: block;\n      margin-bottom: 24px;\n    }\n    h1 {\n      margin: 0 0 10px;\n      font-size: 28px;\n      line-height: 1.15;\n      font-weight: 650;\n      color: var(--text);\n    }\n    p {\n      margin: 0;\n      line-height: 1.7;\n      color: var(--text-dim);\n      font-size: 15px;\n    }\n    .details {\n      margin-top: 16px;\n      font-family: var(--font-mono);\n      font-size: 13px;\n      color: var(--text-dim);\n      white-space: pre-wrap;\n      word-break: break-word;\n    }\n  </style>\n</head>\n<body>\n  <main>\n    <div class=\"logo\"><svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 800 800\" aria-hidden=\"true\"><path fill=\"#F09082\" d=\"M165.29 165.29H517.36V400H400V282.65H165.29Z\"/><path fill=\"#4D9ABF\" d=\"M165.29 282.65H282.65V400H400V517.36H282.65V634.72H165.29Z\"/><path fill=\"#F1BE58\" d=\"M517.36 400H634.72V634.72H517.36Z\"/></svg></div>\n    <h1>Authentication failed</h1>\n    <p>OpenAI OAuth registration callback did not contain an issued client ID</p>\n    \n  </main>\n</body>\n</html>"
     },
     "loginError": "Login cancelled",
     "tokenRequestCount": 0
@@ -113,46 +113,8 @@
     "prompted": false,
     "fetchCount": 0
   },
-  "bindFailureManualPaste": {
-    "infoIsPlatformSpecificSuffix": true,
-    "authorize": {
-      "client_id": "dynamic_agent_client",
-      "agent_name_hint": "Pi",
-      "ext_agent_host_id": "urn:uuid:e61bbe28-07ef-466d-8e5d-a344f94ab305",
-      "response_type": "code",
-      "redirect_uri": "http://127.0.0.1:1455/auth/callback",
-      "resource": "https://api.openai.com/v1",
-      "scope": "openid profile email offline_access resource.invoke chatgpt.tokens.use.direct",
-      "state": "ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8",
-      "code_challenge": "6oZqdX5MOLq_qBJ8vppAnT4fk6AP8UiP9zX8-Rev_9A",
-      "code_challenge_method": "S256",
-      "nonce": "QEFCQ0RFRkdISUpLTE1OT1BRUlNUVVZXWFlaW1xdXl8"
-    },
-    "tokenRequest": {
-      "url": "https://auth.openai.com/api/accounts/oauth/token",
-      "method": "POST",
-      "headers": {
-        "accept": "application/json",
-        "content-type": "application/x-www-form-urlencoded"
-      },
-      "body": "grant_type=authorization_code&client_id=oaiapp_issued&code=authorization-code&code_verifier=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8&redirect_uri=http%3A%2F%2F127.0.0.1%3A1455%2Fauth%2Fcallback&resource=https%3A%2F%2Fapi.openai.com%2Fv1"
-    },
-    "credential": {
-      "type": "oauth",
-      "access": "access-token",
-      "refresh": "refresh-token",
-      "expires": 1758243420000,
-      "clientId": "oaiapp_issued",
-      "scopes": [
-        "openid",
-        "profile",
-        "email",
-        "offline_access",
-        "resource.invoke",
-        "chatgpt.tokens.use.direct"
-      ]
-    },
-    "errorTextPlatformSpecific": true
+  "bindFailurePortTaken": {
+    "error": "Port 1455 is in use, probably by an unfinished login in another pi session or by the Codex CLI. Cancel that login and try again."
   },
   "manualValidation": {
     "not_a_url": "Paste the full callback URL from the browser",

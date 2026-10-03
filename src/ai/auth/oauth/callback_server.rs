@@ -360,14 +360,23 @@ pub(crate) async fn start_oauth_callback_server<T: Clone + Send + Sync + 'static
     }
 
     // `server.listen(options.port, options.host)`; the promise rejects on a
-    // bind error.
+    // bind error. An already-bound port is surfaced as
+    // [`AuthError::AddressInUse`] so the login flows can give the v1.0.0
+    // targeted failure (upstream checks `error.code === "EADDRINUSE"`).
     let listener = tokio::net::TcpListener::bind((options.host.as_str(), options.port))
         .await
         .map_err(|error| {
-            AuthError::Operation(format!(
-                "Failed to start the OAuth callback server on {}:{}: {error}",
-                options.host, options.port
-            ))
+            if error.kind() == std::io::ErrorKind::AddrInUse {
+                AuthError::AddressInUse(format!(
+                    "Failed to start the OAuth callback server on {}:{}: {error}",
+                    options.host, options.port
+                ))
+            } else {
+                AuthError::Operation(format!(
+                    "Failed to start the OAuth callback server on {}:{}: {error}",
+                    options.host, options.port
+                ))
+            }
         })?;
     let address = listener.local_addr().map_err(|_| {
         // Upstream `throw new Error("OAuth callback server did not bind to TCP")`
@@ -897,7 +906,9 @@ mod tests {
         }))
         .await
         .unwrap_err();
-        assert!(matches!(error, AuthError::Operation(_)), "{error:?}");
+        // A taken port is the v1.0.0 AddressInUse variant; other bind
+        // failures stay generic Operations.
+        assert!(matches!(error, AuthError::AddressInUse(_)), "{error:?}");
         assert!(error.to_string().contains(&port.to_string()));
         drop(blocker);
     }

@@ -1425,11 +1425,12 @@ fn validate_list_page(
             return Err(invalid(format!("Invalid entry in MCP {method} result")));
         }
     }
+    // Some servers (v1.0.0) end pagination with `null` or `""` instead of
+    // omitting the cursor; both count as absent.
     let next_cursor = match object.get("nextCursor") {
-        // `value.nextCursor !== undefined && typeof !== "string"`: a null
-        // cursor fails validation (JSON has no undefined).
-        None => None,
-        Some(cursor) if cursor.is_string() => Some(cursor.as_str().expect("string").to_string()),
+        None | Some(Value::Null) => None,
+        Some(Value::String(cursor)) if cursor.is_empty() => None,
+        Some(Value::String(cursor)) => Some(cursor.clone()),
         Some(_) => return Err(invalid(format!("Invalid MCP {method} cursor"))),
     };
     Ok(ListPage {

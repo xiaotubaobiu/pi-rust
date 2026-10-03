@@ -587,16 +587,22 @@ fn convert_assistant_items(
                 let call_id = segments.next().unwrap_or("").to_string();
                 let mut item_id: Option<String> = segments.next().map(str::to_string);
                 let custom_input_property = options.grammar_tool_input_properties.get(&call.name);
-                let starts_with_fc = item_id.as_deref().is_some_and(|id| id.starts_with("fc_"));
-                // For different-model messages drop fc_* item ids to avoid
-                // OpenAI's reasoning pairing validation (it tracks which
-                // fc_* ids were paired with rs_* reasoning items). When
-                // replaying custom-tool calls as a function_call also drop
-                // non-fc_* ids such as ctc_* custom-tool ids, because
-                // function_call item ids must be fc_*.
-                if (is_different_model && starts_with_fc)
-                    || (custom_input_property.is_none() && !starts_with_fc)
-                {
+                // For different-model messages drop item ids to avoid OpenAI's
+                // reasoning pairing validation (it tracks which item ids were
+                // paired with rs_* reasoning items). Also drop ids that do not
+                // match the replayed item type (v1.0.0): function_call ids must
+                // be fc_* and custom_tool_call ids must be ctc_*. Foreign tool
+                // call ids are normalized to fc_*, and a call can switch
+                // between the two types when grammar tool support differs.
+                let item_id_prefix = if custom_input_property.is_none() {
+                    "fc_"
+                } else {
+                    "ctc_"
+                };
+                let has_expected_prefix = item_id
+                    .as_deref()
+                    .is_some_and(|id| id.starts_with(item_id_prefix));
+                if is_different_model || !has_expected_prefix {
                     item_id = None;
                 }
                 let namespace = if is_same_model {

@@ -172,8 +172,8 @@
  ],
  "provenance": {
   "latexSha256": "c4ef99bef1d3a54c73006912c9a7fa67ef99412b4f6cd28d608cf0e07b38cece",
-  "utilsSha256": "5ecbc6c9b4850e78bf19de1fe8859b99b9c4c5f8a6384728d255a8e7e8a610ee",
-  "node": "v25.8.2",
+  "utilsSha256": "258ff73a0ff4d2b05f8a60515a9cc37eb96c9fc03a4072ac6db2906cad1862d9",
+  "node": "v22.14.0",
   "platform": "win32"
  }
 }

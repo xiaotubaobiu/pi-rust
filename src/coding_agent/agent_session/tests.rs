@@ -571,6 +571,7 @@ async fn create_test_session(
         custom_tools: Vec::new(),
         model_runtime,
         initial_active_tool_names: None,
+        uses_default_tools: None,
         allowed_tool_names: None,
         excluded_tool_names: None,
         base_tools_override: Vec::new(),

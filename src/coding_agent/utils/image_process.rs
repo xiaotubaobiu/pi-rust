@@ -185,6 +185,53 @@ pub fn convert_to_png(base64_data: &str, mime_type: &str) -> Option<(String, Str
     Some((encode_base64(&png_bytes), "image/png".to_string()))
 }
 
+/// Upstream `ImageTranscoder` (from `@earendil-works/pi-tui`): base64 image in,
+/// base64 PNG out (`None` when the bytes cannot be decoded).
+pub type PngTranscoder = std::sync::Arc<dyn Fn(&str) -> Option<String> + Send + Sync>;
+
+/// Upstream `loadPngTranscoder` (v1.0.0 `image-convert.ts`): a synchronous PNG
+/// transcoder over the native decode/re-encode path. Upstream returns
+/// `undefined` when photon cannot load; the native port always decodes, so the
+/// `Option` tracks the decode failure of an individual image instead.
+pub fn load_png_transcoder() -> Option<PngTranscoder> {
+    Some(std::sync::Arc::new(|base64_data: &str| {
+        let bytes = crate::tui::terminal_image::base64::decode(base64_data);
+        convert_image_bytes_to_png(&bytes).map(|png_bytes| encode_base64(&png_bytes))
+    }))
+}
+
+static PNG_TRANSCODER: std::sync::OnceLock<PngTranscoder> = std::sync::OnceLock::new();
+static PNG_TRANSCODER_REGISTERED: std::sync::atomic::AtomicBool =
+    std::sync::atomic::AtomicBool::new(false);
+
+/// Read the transcoder registered by [`ensure_png_transcoder`].
+pub fn registered_png_transcoder() -> Option<&'static PngTranscoder> {
+    PNG_TRANSCODER.get()
+}
+
+/// Upstream `ensurePngTranscoder` (v1.0.0 `image-convert.ts`): on Kitty-protocol
+/// terminals, register the PNG transcoder once so non-PNG images render, then run
+/// `on_registered`. Not called when already registered or the terminal is not
+/// kitty. Upstream registers into pi-tui's global `setImageTranscoder` slot; the
+/// Rust tui kitty path decodes in-process and has no such slot, so registration
+/// lands in this module's slot (readable via [`registered_png_transcoder`]) with
+/// identical once/kitty gating and callback semantics.
+pub fn ensure_png_transcoder(on_registered: impl FnOnce()) {
+    use std::sync::atomic::Ordering;
+    if PNG_TRANSCODER_REGISTERED.load(Ordering::Acquire)
+        || crate::tui::terminal_image::get_capabilities().images != Some("kitty")
+    {
+        return;
+    }
+    let Some(transcoder) = load_png_transcoder() else {
+        return;
+    };
+    if PNG_TRANSCODER.set(transcoder).is_ok() {
+        PNG_TRANSCODER_REGISTERED.store(true, Ordering::Release);
+        on_registered();
+    }
+}
+
 /// Upstream `resizeImageInProcess`: resize to fit within the max dimensions and
 /// encoded file size. Returns `None` when the image cannot be decoded or cannot
 /// be resized below `max_bytes`.

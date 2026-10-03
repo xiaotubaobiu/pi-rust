@@ -745,7 +745,9 @@ fn create_discovery_globals(
                             limit as usize
                         }
                         _ => {
-                            return Err("searchTools() limit must be a positive integer".to_string())
+                            return Err(
+                                "searchTools() limit must be a positive integer".to_string()
+                            );
                         }
                     },
                 };

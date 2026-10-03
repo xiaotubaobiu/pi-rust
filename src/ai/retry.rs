@@ -398,13 +398,15 @@ const NON_RETRYABLE_PROVIDER_LIMIT_PATTERNS: [&str; 9] = [
     "subscription_sharing_usage_limit_exceeded",
 ];
 
-/// Upstream `RETRYABLE_PROVIDER_ERROR_PATTERN` alternatives (retry.ts:26-92):
+/// Upstream `RETRYABLE_PROVIDER_ERROR_PATTERN` alternatives (retry.ts:26-93):
 /// generic provider load, HTTP-status, transport, and stream-truncation
 /// failures, plus explicit retry guidance. Each entry uses only literals,
 /// `.` (any character), and `?` (optional previous character).
-const RETRYABLE_PROVIDER_ERROR_PATTERNS: [&str; 45] = [
+const RETRYABLE_PROVIDER_ERROR_PATTERNS: [&str; 46] = [
     "overloaded",
     "currently experiencing high demand",
+    // Generic provider capacity error (v1.0.0).
+    "model is at capacity",
     "rate.?limit",
     "too many requests",
     "429",

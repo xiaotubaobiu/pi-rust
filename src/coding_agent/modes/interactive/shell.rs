@@ -24,6 +24,7 @@ use std::sync::{Arc, Mutex, RwLock};
 
 use serde_json::{json, Value};
 
+use super::interactive_mode::AuthProviderOption;
 use super::interactive_mode::{
     cache_miss_notice_text, compaction_cost_notice_text, count_dropped_thinking_blocks,
     is_anthropic_subscription_auth_key, CacheMiss, CompactionCostKind, CompactionCostNotice,
@@ -252,6 +253,9 @@ pub struct ShellState {
     pub session_selector: Option<ComponentRef>,
     pub trust_selector: Option<ComponentRef>,
     pub login_auth_selector: Option<(ComponentRef, Vec<String>, String)>,
+    /// The Radius option of the top-level auth-type selector (v1.0.0): the
+    /// full option label and the provider option it starts.
+    pub login_auth_radius: Option<(String, AuthProviderOption)>,
     pub login_auth_selected: Option<String>,
     pub login_provider_selector: Option<ComponentRef>,
     pub logout_selector: Option<ComponentRef>,

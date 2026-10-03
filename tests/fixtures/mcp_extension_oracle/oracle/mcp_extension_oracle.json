@@ -278,7 +278,7 @@
       "name": "tool_names",
       "observed": {
         "basic": "mcp__docs__search",
-        "sanitized": "mcp__my_server-1__a_b_c",
+        "sanitized": "mcp__my_server_1__a_b_c",
         "unicode": "mcp__s__t_st",
         "taken": "mcp__s__a_b_407e8e5c",
         "taken_hash": "407e8e5c",

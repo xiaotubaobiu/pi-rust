@@ -1,6 +1,8 @@
-// Captures v0.99.1 utils.ts delta behavior from the REAL upstream module:
-// visibleWidth fast paths, extractAnsiCode refactoring, and the autocomplete
-// separator/boundary regexes (CJK punctuation).
+// Captures v1.0.0 utils.ts delta behavior from the REAL upstream module:
+// visibleWidth fast paths, extractAnsiCode refactoring, the autocomplete
+// separator/boundary regexes (CJK punctuation), and sliceWithWidth's ANSI
+// order at slice boundaries (v1.0.0: codes from before the range must
+// precede codes at the boundary).
 import { writeFileSync, readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
@@ -9,9 +11,10 @@ import {
   extractAnsiCode,
   wrapTextWithAnsi,
   getActiveBackgroundAnsi,
+  sliceWithWidth,
 } from "./utils.ts";
 
-const out = { visibleWidth: [], extractAnsiCode: [], wrap: [], activeBackground: [], separators: {} };
+const out = { visibleWidth: [], extractAnsiCode: [], wrap: [], activeBackground: [], slice: [], separators: {} };
 
 const widthInputs = [
   "\x1b[38;5;4mhello\x1b[39m world",
@@ -61,6 +64,32 @@ out.activeBackground = [
   "\x1b[7;41mx y",
   "no codes",
 ].map((input) => getActiveBackgroundAnsi(input));
+
+// sliceWithWidth at ANSI boundaries (v1.0.0 ordering fix): pending codes from
+// before the range must precede a code at the boundary; a code in range takes
+// them along. Covers plain, boundary-exact, pending+boundary, wide chars,
+// hyperlinks, and strict edge cases.
+const sliceInputs = [
+  ["\x1b[31mabcdef\x1b[0m", 0, 3, false],
+  ["\x1b[31mabcdef\x1b[0m", 3, 3, false],
+  ["\x1b[31mab\x1b[1mcdef\x1b[0m", 2, 2, false],
+  ["\x1b[31ma\x1b[1mb\x1b[4mcdef\x1b[0m", 2, 2, false],
+  ["\x1b[31ma\x1b[1mb\x1b[4mcdef\x1b[0m", 2, 2, true],
+  ["\x1b]8;;u\x07link text\x1b]8;;\x07", 0, 4, false],
+  ["\x1b]8;;u\x07link text\x1b]8;;\x07", 4, 5, false],
+  ["plain ascii slice", 6, 5, false],
+  ["日本語のテキスト", 1, 2, false],
+  ["日本語のテキスト", 1, 2, true],
+  ["a\x1b[1mb\x1b[22mc", 1, 1, false],
+  ["\x1b[38;5;4mhello\x1b[39m world", 5, 6, false],
+  ["\x1b[38;5;4mhello\x1b[39m world", 5, 6, true],
+  ["x", 0, 0, false],
+  ["abc", 2, 10, false],
+];
+for (const [line, startCol, length, strict] of sliceInputs) {
+  const sliced = sliceWithWidth(line, startCol, length, strict);
+  out.slice.push({ line, startCol, length, strict, text: sliced.text, width: sliced.width });
+}
 
 // The autocomplete separator/boundary regexes exported by the delta.
 const { autocompleteSeparatorRegex, autocompleteBoundaryRegex, cjkBreakRegex } =

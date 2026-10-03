@@ -11,8 +11,8 @@ use std::sync::{Arc, Mutex};
 use futures::future::BoxFuture;
 use serde_json::Value;
 
+use super::types::SessionMetadata;
 use crate::agent_core::chord_support::Context;
-use crate::agent_core::harness::session::types::SessionMetadata;
 use crate::chord::services::wire::{
     create_service_subscribe_call, create_service_unsubscribe_call, decode_service_control_call,
     ServiceControlCall,
@@ -521,7 +521,7 @@ fn oracle_truncated_final_frame() {
 fn oracle_handshake_skips_sessions() {
     tokio_test().block_on(async {
         let host = TestServerHost::new();
-        host.seed("session-1", None).await.unwrap();
+        host.seed("session-1");
         let server = create_server(host.clone());
         let (client, frames) = connect(&server);
         client.hello().await.unwrap();
@@ -555,7 +555,7 @@ fn oracle_attach_unknown() {
 fn oracle_wrong_server() {
     tokio_test().block_on(async {
         let host = TestServerHost::new();
-        host.seed("session-1", None).await.unwrap();
+        host.seed("session-1");
         let server = create_server(host.clone());
         let (client, frames) = connect(&server);
         client.hello().await.unwrap();
@@ -624,7 +624,7 @@ fn oracle_invalid_call() {
 fn oracle_session_not_attached() {
     tokio_test().block_on(async {
         let host = TestServerHost::new();
-        host.seed("session-1", None).await.unwrap();
+        host.seed("session-1");
         let server = create_server(host);
         let (client, frames) = connect(&server);
         client.hello().await.unwrap();
@@ -653,7 +653,7 @@ fn oracle_session_not_attached() {
 fn oracle_session_service_ok() {
     tokio_test().block_on(async {
         let host = TestServerHost::new();
-        host.seed("session-1", None).await.unwrap();
+        host.seed("session-1");
         let server = create_server(host.clone());
         let (client, frames) = connect(&server);
         client.hello().await.unwrap();
@@ -691,8 +691,8 @@ fn oracle_session_service_ok() {
 fn oracle_stale_attachment() {
     tokio_test().block_on(async {
         let host = TestServerHost::new();
-        host.seed("session-1", None).await.unwrap();
-        host.seed("session-2", None).await.unwrap();
+        host.seed("session-1");
+        host.seed("session-2");
         let server = create_server(host.clone());
         let (client, frames) = connect(&server);
         client.hello().await.unwrap();
@@ -732,7 +732,7 @@ fn oracle_stale_attachment() {
 fn oracle_opaque_result() {
     tokio_test().block_on(async {
         let host = TestServerHost::new();
-        host.seed("session-1", None).await.unwrap();
+        host.seed("session-1");
         let server = create_server(host.clone());
         let (client, frames) = connect(&server);
         client.hello().await.unwrap();
@@ -764,7 +764,7 @@ fn oracle_opaque_result() {
 fn oracle_internal_error() {
     tokio_test().block_on(async {
         let host = TestServerHost::new();
-        host.seed("session-1", None).await.unwrap();
+        host.seed("session-1");
         let server = create_server(host.clone());
         let (client, frames) = connect(&server);
         client.hello().await.unwrap();
@@ -796,7 +796,7 @@ fn oracle_internal_error() {
 fn oracle_duplicate_request_id() {
     tokio_test().block_on(async {
         let host = TestServerHost::new();
-        host.seed("session-1", None).await.unwrap();
+        host.seed("session-1");
         let server = create_server(host.clone());
         let (client, frames) = connect(&server);
         client.hello().await.unwrap();

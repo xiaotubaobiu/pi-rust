@@ -745,6 +745,16 @@ pub trait ProviderRegistryHandle: Send + Sync {
     fn unregister_virtual_model(&self, _provider: &str, _id: &str) -> Result<(), HandlerError> {
         Ok(())
     }
+    /// Upstream `modelRegistry.getApiKeyForProvider(provider)` (v1.0.0): the
+    /// current API key of a pi provider, which MCP servers with
+    /// `auth.provider` send instead of OAuth tokens. `None` when the provider
+    /// has no key.
+    fn get_api_key_for_provider(
+        self: std::sync::Arc<Self>,
+        _provider: String,
+    ) -> futures::future::BoxFuture<'static, Option<String>> {
+        Box::pin(async { None })
+    }
 }
 
 /// Registry-less stand-in (no-op defaults).

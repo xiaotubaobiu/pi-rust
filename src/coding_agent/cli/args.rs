@@ -178,7 +178,12 @@ pub fn normalize_session_name(value: &str) -> Option<String> {
 }
 
 fn split_trimmed_list(value: &str) -> Vec<String> {
-    value.split(',').map(|s| s.trim().to_string()).collect()
+    // Upstream v1.0.0: `--models` drops empty patterns after trimming.
+    value
+        .split(',')
+        .map(|s| s.trim().to_string())
+        .filter(|pattern| !pattern.is_empty())
+        .collect()
 }
 
 fn split_trimmed_nonempty_list(value: &str) -> Vec<String> {
@@ -390,7 +395,9 @@ pub fn parse_args(args: &[String]) -> Args {
                     i += 1;
                     result.diagnostics.push(Diagnostic {
                         kind: DiagnosticType::Error,
-                        message: format!("Invalid TUI mode \"{invalid_mode}\". Valid values: regular, fullscreen"),
+                        message: format!(
+                            "Invalid TUI mode \"{invalid_mode}\". Valid values: regular, fullscreen"
+                        ),
                     });
                 }
                 _ => {
@@ -504,7 +511,7 @@ Commands:
   {APP_NAME} <command> --help          Show help for install/remove/uninstall/update/list/config/auth/mcp
 
 Options:
-  --provider <name>              Provider name (default: google)
+  --provider <name>              Provider to search for --model (requires --model)
   --model <pattern>              Model pattern or ID (supports \"provider/id\" and optional \":<thinking>\")
   --api-key <key>                API key (defaults to env vars)
   --system-prompt <text>         System prompt (default: coding assistant prompt)
@@ -541,7 +548,7 @@ Options:
   --export <file>                Export session file to HTML and exit
   --list-models [search]         List available models (with optional fuzzy search)
   --verbose                      Force verbose startup (overrides quietStartup setting)
-  --tui-mode <mode>              TUI mode: regular (default) or fullscreen
+  --tui-mode <mode>              TUI mode: fullscreen (default) or regular
   --approve, -a                  Trust project-local files for this run
   --no-approve, -na              Ignore project-local files for this run
   --offline                      Disable startup network operations (same as PI_OFFLINE=1)

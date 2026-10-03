@@ -76,7 +76,11 @@ fn list_to_json(list: &[crate::ai::auth::types::CredentialInfo]) -> serde_json::
 /// (Display adds the crate's storage/operation prefixes).
 fn message_of(error: &AuthError) -> &str {
     match error {
-        AuthError::Storage(message) | AuthError::Operation(message) => message,
+        AuthError::Storage(message)
+        | AuthError::Operation(message)
+        // Ripple of the v1.0.0 AuthError::AddressInUse variant; the bind
+        // failure text rides in the message like Operation's.
+        | AuthError::AddressInUse(message) => message,
         AuthError::Cancelled => "cancelled",
         AuthError::Models(models_error) => models_error.to_string().leak(),
     }

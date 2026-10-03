@@ -732,8 +732,84 @@ pub struct ContextView {
     /// Raw active entries: the head marker followed by non-head entries from
     /// its head through the tail.
     pub entries: Vec<EntryRecord>,
+    /// Per entry of `entries` (v1.0.0), its model messages after edits and
+    /// excluded stop reasons, before tool result ordering.
+    pub contributions: Vec<Vec<Message>>,
     /// Model context for the next provider request.
     pub messages: Vec<Message>,
+}
+
+/// Why a compaction runs (v1.0.0): `compact()`, a threshold in generation
+/// preparation, or a context overflow (`harness/types.ts`
+/// `CompactionReason`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum CompactionReason {
+    #[serde(rename = "manual")]
+    Manual,
+    #[serde(rename = "threshold")]
+    Threshold,
+    #[serde(rename = "overflow")]
+    Overflow,
+}
+
+impl CompactionReason {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            CompactionReason::Manual => "manual",
+            CompactionReason::Threshold => "threshold",
+            CompactionReason::Overflow => "overflow",
+        }
+    }
+}
+
+/// Automatic compaction thresholds (v1.0.0, spec §8.7); manual compaction
+/// ignores `enabled` (`harness/types.ts` `CompactionPolicy`).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CompactionPolicy {
+    /// Threshold and overflow compaction.
+    pub enabled: bool,
+    /// Room kept free for the answer: generation blocks to compact above
+    /// `contextWindow - reserveTokens`.
+    pub reserve_tokens: i64,
+    /// Approximate size of the recent context a summary keeps verbatim.
+    pub keep_recent_tokens: i64,
+    /// Background compaction starts `backgroundTokens` below the blocking
+    /// threshold; `0` disables it.
+    pub background_tokens: i64,
+}
+
+/// `entryId` of a blocking compaction's summary, or the `submissionId` of a
+/// conversation-owned compaction's summary write; both absent when nothing
+/// was compacted (`harness/types.ts` `CompactionResult`).
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CompactionResult {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub entry_id: Option<EntryId>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub submission_id: Option<SubmissionId>,
+}
+
+/// What `HarnessOptions.env` builds an environment for (v1.0.0,
+/// `harness/types.ts` `EnvTarget`).
+#[derive(Debug, Clone)]
+pub struct EnvTarget {
+    pub conversation_id: ConversationId,
+    /// The conversation's agent `cwd`.
+    pub cwd: Option<String>,
+}
+
+/// Committed document reads (`harness/types.ts` `DocumentReader`, erased to
+/// the port's synchronous reads): read one conversation document's current
+/// value by kind, and one task document's current value by kind.
+pub trait DocumentReads: Send + Sync {
+    fn read_conversation_doc(
+        &self,
+        kind: &str,
+        conversation_id: ConversationId,
+    ) -> Result<Value, PlainError>;
+    fn read_task_doc(&self, kind: &str, task_id: TaskId) -> Result<Value, PlainError>;
 }
 
 /// `Conversation.entries` query without the conversation ID
