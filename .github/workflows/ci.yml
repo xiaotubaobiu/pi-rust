@@ -28,6 +28,11 @@ jobs:
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL /usr/local/share/boost || true
           sudo docker image prune -af || true
           df -h /
+      # The test binary of this crate (~880k lines) exceeds the 7 GB runner's
+      # memory in the GNU ld link phase; lld cuts the linker peak ~10x.
+      - name: Install lld (ubuntu)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq lld
       - run: cargo fmt --check
       - run: cargo clippy --all-targets -- -D warnings
       # serial matches the verified gate protocol; parallel load on shared
@@ -35,3 +40,4 @@ jobs:
       - run: cargo test -- --test-threads=1
         env:
           NO_PROXY: 127.0.0.1,localhost
+          RUSTFLAGS: ${{ runner.os == 'Linux' && '-C link-arg=-fuse-ld=lld' || '' }}
