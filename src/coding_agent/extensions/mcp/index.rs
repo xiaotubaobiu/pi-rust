@@ -310,13 +310,11 @@ pub fn render_servers_section(servers: &[McpServerListing]) -> Option<String> {
         kept -= 1;
     }
     // Each description also takes a ": " separator.
-    let per_server = if kept == 0 {
-        0
-    } else {
-        (MAX_SERVERS_SECTION_CHARS.saturating_sub(size(kept)) / kept)
-            .saturating_sub(2)
-            .min(MAX_SERVER_DESCRIPTION_CHARS)
-    };
+    let per_server = (MAX_SERVERS_SECTION_CHARS.saturating_sub(size(kept)))
+        .checked_div(kept)
+        .unwrap_or(0)
+        .saturating_sub(2)
+        .min(MAX_SERVER_DESCRIPTION_CHARS);
     let mut lines: Vec<String> = Vec::new();
     for (index, server) in listed.iter().take(kept).enumerate() {
         let summary = if per_server > 0 {
