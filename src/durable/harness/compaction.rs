@@ -474,7 +474,7 @@ mod tests {
     /// Text of about `tokens` estimated tokens, starting with `label`.
     fn text(label: &str, tokens: usize) -> String {
         let repeat = tokens.saturating_mul(4).saturating_sub(label.len() + 1);
-        format!("{label} {}", "x".repeat(repeat.max(0)))
+        format!("{label} {}", "x".repeat(repeat))
     }
 
     fn user(content: &str) -> Message {
