@@ -2670,3 +2670,10 @@ WORK_LOG追加前缀：386287 bytes / cadeaf51fe906e35a1531ffc26058289e7d44c061d
 - pi-durable: ALL 57 upstream files ported across 4 phases (9a types/storage/session, 9b env/tasks/truncate/harness-foundations, 9c harness-complete/sqlite, 9d tools/testing). Divergences D1-D30 disclosed in module docs.
 - UPSTREAM DELTA MIGRATION IS COMPLETE: every package (tui/ai/agent/chord/protocol/client/server/telemetry/coding-agent/mcp/codemode/durable) now matches pi@2bbfcca43 (v0.99.1).
 - Next: close-out (WSL unix-cfg gate, CI double-green, README/version v0.2.0, tag + 4-platform release).
+
+## 2026-10-03 wave-10: alignment closeout — CI double-green, v0.2.0 prep
+- W1 WSL gate: unix fixes mirrored (7 files: cfg-gated imports, question_mark/collapsible_match/while_let_loop, MAIN_SEPARATOR test paths, oracle backslash normalization, ENOENT case-insensitive compare); linux whole-lib 5457/0 + clippy 0.
+- Sibling-upstream drift check (mcp manifest) now skips when the pi checkout is absent (CI).
+- CI OOM round 2: crate growth to ~880k lines re-broke the 7GB runners; test profile now debug=0 + codegen-units=256, ubuntu links with lld (-C link-arg=-fuse-ld=lld; GNU ld OOMd on the ~500MB test binary). chord emission timing test clamped with a 20ms floor (1ms noise floor on quiet machines).
+- CI double-green run 37105041564 (ubuntu 30m38s + windows 51m18s). Version 0.2.0; README bilingual capability sections added (mcp/codemode/system theme/durable/tool-search/classifiers).
+- Tagging v0.2.0 -> release.yml 4-platform build.
