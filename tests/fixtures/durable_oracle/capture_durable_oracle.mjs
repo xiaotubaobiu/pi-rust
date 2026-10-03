@@ -78,16 +78,19 @@ function stageDir(srcRoot, outRoot) {
       '"@earendil-works/pi-ai/utils/transcript"',
       JSON.stringify(pathToFileURL(path.join(aiUtilsOut, "transcript.ts")).href),
     );
-    // Harness slice staging shims (disclosed): `harness/live.ts` re-exports
-    // `convertPartial` from `generation.ts`, which pulls the whole pi-ai
-    // model/stream surface. The port defers `settleSchedulerOutcome` with
-    // the scheduler slice, so the staged copy drops that one function (and
-    // its import) while every other export stays byte-identical.
-    if (rel === "harness/live.ts") {
-      stagedText = stagedText.replace(/import \{ convertPartial \} from "\.\/generation\.ts";\r?\n/, "");
-      stagedText = stagedText.replace(/\/\*\*\r?\n \* Harness cleanup for a terminal outcome[\s\S]*$/, "");
-      manifest.substitutions[rel] = "settleSchedulerOutcome deferred (scheduler slice): import + function removed";
-    }
+    stagedText = stagedText.replaceAll(
+      '"@earendil-works/pi-ai/utils/retry"',
+      JSON.stringify(pathToFileURL(path.join(aiUtilsOut, "retry.ts")).href),
+    );
+    stagedText = stagedText.replaceAll(
+      '"@earendil-works/pi-ai/utils/validation"',
+      JSON.stringify(pathToFileURL(path.join(aiUtilsOut, "validation.ts")).href),
+    );
+    // Harness slice staging shims (disclosed): the earlier slice staged
+    // `harness/live.ts` without `settleSchedulerOutcome` (its `convertPartial`
+    // dependency pulled the pi-ai surface before the retry/validation stubs
+    // existed). The facade slice restores the staged file byte-identical; the
+    // pi-ai utils now stage with the disclosed validation stub.
     if (stagedText !== text) {
       manifest.substitutions[rel] = "workspace specifier rewritten to staged file URL";
     }
@@ -105,19 +108,37 @@ stageDir(chordSrc, chordOut);
 stageDir(durableSrc, durableOut);
 manifest.staged.sort((a, b) => (a.file < b.file ? -1 : 1));
 
-// Stage the two pi-ai util files the harness prompt module uses at runtime
-// (`utils/transcript.ts` -> `utils/text.ts`; everything else is type-only
-// and erased by --experimental-strip-types). Hashed for provenance like the
-// durable/chord staging.
+// Stage the pi-ai util files the harness modules use at runtime
+// (`utils/transcript.ts` and `utils/retry.ts` verbatim; everything else is
+// type-only and erased by --experimental-strip-types). `utils/validation.ts`
+// needs the `typebox` package, which the staging environment does not ship;
+// the staged copy is a disclosed passthrough stub (the byte-oracle scenarios
+// only feed schema-valid arguments, so coercion is not exercised). Hashed for
+// provenance like the durable/chord staging.
 const aiSrc = path.join(upstreamRoot, "packages", "ai", "src", "utils");
 fs.mkdirSync(aiUtilsOut, { recursive: true });
-for (const name of ["transcript.ts", "text.ts"]) {
+for (const name of ["transcript.ts", "text.ts", "retry.ts"]) {
   const text = fs.readFileSync(path.join(aiSrc, name), "utf8");
   fs.writeFileSync(path.join(aiUtilsOut, name), text);
   manifest.staged.push({
     file: `packages/ai/src/utils/${name}`,
     sha256: createHash("sha256").update(text, "utf8").digest("hex"),
   });
+}
+{
+  const original = fs.readFileSync(path.join(aiSrc, "validation.ts"), "utf8");
+  manifest.staged.push({
+    file: "packages/ai/src/utils/validation.ts",
+    sha256: createHash("sha256").update(original, "utf8").digest("hex"),
+  });
+  manifest.substitutions["packages/ai/src/utils/validation.ts"] =
+    "typebox unavailable in staging: validateToolArguments replaced with a passthrough stub (coercion not exercised by the scenarios)";
+  const stub = `import type { Tool, ToolCall } from "../types.ts";
+export function validateToolArguments(tool: Tool, call: ToolCall): ToolCall["arguments"] {
+  return call.arguments;
+}
+`;
+  fs.writeFileSync(path.join(aiUtilsOut, "validation.ts"), stub);
 }
 manifest.staged.sort((a, b) => (a.file < b.file ? -1 : 1));
 
@@ -558,8 +579,198 @@ const output_bound = {
   formatSize: [formatSize(512), formatSize(2048), formatSize(3 * 1024 * 1024)],
 };
 
+// ─── Scenario 7: scheduler decision grids (probe task state machine) ────────
+const { TaskScheduler } = await import(durableUrl("harness/scheduler.ts"));
+const { createRegistry } = await import(durableUrl("harness/registry.ts"));
+
+const scenario7Dir = path.join(staging, "scenario7");
+fs.mkdirSync(scenario7Dir, { recursive: true });
+const storage7 = await JsonlStorage.open(scenario7Dir, fileSystemShim, BACKGROUND, {});
+const session7 = createSession(storage7);
+const registry7 = createRegistry();
+
+// A probe task with two phases: `run` records durable progress once, then
+// completes; `wait` parks on another task with `allSettled`.
+let probePhases = {};
+const probeTaskToken = {
+  definition: {
+    name: "probe",
+    version: 1,
+    initial: () => ({ phase: "run", steps: 0 }),
+    phases: {
+      run: async (task, runtime, context) => {
+        const steps = task.state.checkpoint.steps;
+        await runtime.commit(async (tx) => {
+          const record = await tx.task(task.id);
+          const checkpoint = { phase: "run", steps: steps + 1 };
+          if (steps + 1 >= 2) {
+            return { status: "terminal", outcome: { status: "completed", result: { steps: steps + 1 } } };
+          }
+          return { status: "running", checkpoint };
+        }, context);
+      },
+    },
+    abort: async () => {},
+  },
+};
+// Replace the registry's probe registration token (the registry starts with
+// built-ins only; probes are added through tasks.add).
+const probes = { probe: probeTaskToken };
+const registryAdd = {
+  snapshot: () => ({
+    ...registry7.snapshot(),
+    task: (name) => probes[name] ?? registry7.snapshot().task(name),
+  }),
+  subscribe: () => () => {},
+};
+
+let reportLog7 = [];
+const scheduler7 = new TaskScheduler({
+  session: session7,
+  storage: storage7,
+  registry: registryAdd,
+  models: undefined,
+  env: undefined,
+  now: () => 1758240010000,
+  report: (error) => reportLog7.push(error.message),
+  settleOutcome: async () => {},
+  withdrawInputs: async () => {},
+  conversation: async () => undefined,
+  context: BACKGROUND,
+});
+await scheduler7.open(BACKGROUND);
+
+const probeConversation = await session7.commitWith(async (tx) => {
+  const record = await tx.createRootConversation();
+  return record;
+}, BACKGROUND);
+const probeTaskId = await session7.commitWith(async (tx) => {
+  return tx.createTask(probeTaskToken, { n: 1 }, { ownership: { kind: "conversation" }, conversationId: probeConversation.id });
+}, BACKGROUND);
+scheduler7.resume();
+const probeSettled = await scheduler7.waitForTask(probeTaskId, BACKGROUND);
+
+// Blocked grid: a task whose kind has no registered definition, one with a
+// too-old definition, and one whose migration fails.
+const oldVersionTask = {
+  definition: {
+    name: "oldish",
+    version: 1,
+    initial: () => ({ phase: "run" }),
+    phases: {},
+    abort: async () => {},
+  },
+};
+const newerNoMigrate = {
+  definition: {
+    name: "oldish",
+    version: 2,
+    initial: () => ({ phase: "run" }),
+    phases: {},
+    abort: async () => {},
+  },
+};
+probes.oldish = oldVersionTask;
+const oldishId = await session7.commitWith(async (tx) => {
+  return tx.createTask(oldVersionTask, {}, { ownership: { kind: "conversation" }, conversationId: probeConversation.id });
+}, BACKGROUND);
+probes.oldish = newerNoMigrate;
+const inspection7 = await scheduler7.inspect(registryAdd.snapshot());
+const inspectionGrid = inspection7.tasks.map((entry) => ({
+  kind: entry.record.kind,
+  state: entry.state,
+})).sort((left, right) => (left.kind < right.kind ? -1 : left.kind > right.kind ? 1 : 0));
+
+// Orphan grid: abort a task no definition can take.
+probes.oldish = undefined;
+const orphanResult = await scheduler7.abort(oldishId, BACKGROUND);
+const orphanRecord = await storage7.task(oldishId, BACKGROUND);
+
+const scheduler_grids = {
+  probeSettled: {
+    id: probeSettled.id,
+    kind: probeSettled.kind,
+    state: probeSettled.state,
+  },
+  inspectionGrid,
+  orphan: {
+    abortResult: orphanResult,
+    state: orphanRecord.state,
+  },
+  reportLog: reportLog7,
+};
+await session7.close(BACKGROUND);
+
+// ─── Scenario 8: submissions state machine ──────────────────────────────────
+const { Submissions } = await import(durableUrl("harness/submissions.ts"));
+const { startRun } = await import(durableUrl("harness/generation.ts"));
+
+const scenario8Dir = path.join(staging, "scenario8");
+fs.mkdirSync(scenario8Dir, { recursive: true });
+const storage8 = await JsonlStorage.open(scenario8Dir, fileSystemShim, BACKGROUND, {});
+const session8 = createSession(storage8);
+await session8.commitWith(async (tx) => {
+  await tx.createRootConversation();
+}, BACKGROUND);
+const generationTask8 = (await import(durableUrl("harness/generation.ts"))).GenerationTask;
+const generationProbes = { "pi.generation": generationTask8 };
+let resumeCount8 = 0;
+const submissions8 = new Submissions(
+  session8,
+  storage8,
+  () => 1758240020000,
+  () => { resumeCount8 += 1; },
+);
+// Idle input path: places a user entry, creates a placed submission, starts
+// a run. The generation task itself is never scheduled (no scheduler), so
+// the live run record stands.
+const idleInput = await submissions8.submit(1, { type: "input", content: "hello" }, BACKGROUND);
+const idleInputRecord = await storage8.submission(idleInput.id, BACKGROUND);
+const liveDoc8 = await session8.snapshot((await import(durableUrl("harness/live.ts"))).LiveDoc, 1, BACKGROUND);
+// Busy steer path.
+const steer = await submissions8.submit(1, { type: "input", content: "steer me", whenBusy: "steer" }, BACKGROUND);
+const steerRecord = await storage8.submission(steer.id, BACKGROUND);
+// Busy follow-up path.
+const followUp = await submissions8.submit(1, { type: "input", content: "follow up", whenBusy: "followUp" }, BACKGROUND);
+const followUpRecord = await storage8.submission(followUp.id, BACKGROUND);
+// Busy reject path.
+let busyError = null;
+try {
+  await submissions8.submit(1, { type: "input", content: "nope", whenBusy: "reject" }, BACKGROUND);
+} catch (error) {
+  busyError = { name: error.name, message: error.message };
+}
+// Request-id dedup.
+const dedup1 = await submissions8.submit(1, { type: "input", content: "once", requestId: "req-1" }, BACKGROUND);
+const dedup2 = await submissions8.submit(1, { type: "input", content: "once", requestId: "req-1" }, BACKGROUND);
+// Queued write path.
+const queuedWrite = await submissions8.submit(1, { type: "write", entry: { kind: "note", data: { text: "w" } } }, BACKGROUND);
+const queuedWriteRecord = await storage8.submission(queuedWrite.id, BACKGROUND);
+// Withdraw the steer.
+const steerAbort = await submissions8.abort(steer.id, BACKGROUND, 1);
+const steerAfterAbort = await storage8.submission(steer.id, BACKGROUND);
+// Wait on the idle input (it settles only when a generation ends; assert the
+// placed state here).
+const placedStatus = await submissions8.status(idleInput.id, BACKGROUND);
+
+const submissions_state = {
+  resumeCount: resumeCount8,
+  idleInput: idleInputRecord,
+  liveRun: liveDoc8?.run ?? null,
+  steer: steerRecord,
+  followUp: followUpRecord,
+  busyReject: busyError,
+  dedup: { first: dedup1.id, second: dedup2.id, same: dedup1.id === dedup2.id },
+  queuedWrite: queuedWriteRecord,
+  steerAbort,
+  steerAfterAbort,
+  placedStatus: placedStatus.status,
+};
+await session8.close(BACKGROUND);
+
+const oracle = { commit_bytes, document_bytes, read_after_write, harness_docs, prompt_plan, output_bound, scheduler_grids, submissions_state };
+
 // ─── Emit ───────────────────────────────────────────────────────────────────
-const oracle = { commit_bytes, document_bytes, read_after_write, harness_docs, prompt_plan, output_bound };
 const outDir = fileURLToPath(new URL(".", import.meta.url));
 fs.writeFileSync(path.join(outDir, "durable_oracle.json"), JSON.stringify(oracle, null, 2) + "\n");
 fs.writeFileSync(

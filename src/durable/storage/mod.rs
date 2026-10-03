@@ -17,8 +17,10 @@ use crate::agent_core::chord_support::context::Context;
 
 pub mod jsonl;
 pub mod memory;
+pub mod sqlite;
 
 pub use memory::{MemoryStorage, PreparedMemoryCommit};
+pub use sqlite::{SqliteStorage, SQLITE_MIGRATIONS as SQLITE_STORAGE_MIGRATIONS};
 
 use super::ids::Seq;
 use super::types::{

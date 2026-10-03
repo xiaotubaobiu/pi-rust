@@ -16,6 +16,10 @@ use tokio::sync::Notify;
 
 use crate::agent_core::chord_support::context::Context;
 use crate::chord::delta::Op;
+use crate::chord::services::errors::ChordError;
+use crate::chord::types::{
+    ReplicatedStateSource, ReplicatedStateSourceAttachment, ReplicatedStateSourceFrame,
+};
 
 use super::super::types::{WatchEnd, WatchEndReason};
 
@@ -74,14 +78,15 @@ impl CommittedStateSource {
     }
 
     /// `attach()` (`observation.ts:37-47`): one exact-frame attachment with a
-    /// bounded pending queue.
-    pub fn attach(self: &Arc<Self>) -> Arc<SessionSourceAttachment> {
+    /// bounded pending queue. Upstream throws synchronously on a closed
+    /// source; the port returns `Err`.
+    pub fn attach(self: &Arc<Self>) -> Result<Arc<SessionSourceAttachment>, ChordError> {
         let mut core = self
             .core
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
         if core.closed {
-            panic!("State source is closed");
+            return Err(ChordError::Type("State source is closed".to_owned()));
         }
         let snapshot = AttachmentSnapshot {
             value: core.value.clone().unwrap_or(Value::Null),
@@ -103,7 +108,7 @@ impl CommittedStateSource {
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner()) = Some(Arc::downgrade(&attachment));
         core.attachments.push(Arc::clone(&attachment));
-        attachment
+        Ok(attachment)
     }
 
     /// `advance(value, ops, context)` (`observation.ts:49-63`).
@@ -241,23 +246,28 @@ pub struct SessionSourceAttachment {
 }
 
 impl SessionSourceAttachment {
-    /// `activate(listener)` (`observation.ts:89-97`).
-    pub fn activate(&self, listener: FrameListener) {
+    /// `activate(listener)` (`observation.ts:89-97`): single-use; upstream
+    /// throws on a second activation or a disposed attachment, so the port
+    /// returns `Err` with the same messages.
+    pub fn activate(&self, listener: FrameListener) -> Result<(), ChordError> {
         {
             let mut core = self
                 .core
                 .lock()
                 .unwrap_or_else(|poisoned| poisoned.into_inner());
             if core.activated {
-                panic!("State attachment is already active");
+                return Err(ChordError::Type(
+                    "State attachment is already active".to_owned(),
+                ));
             }
             if core.disposed {
-                panic!("State attachment is disposed");
+                return Err(ChordError::Type("State attachment is disposed".to_owned()));
             }
             core.activated = true;
             core.listener = Some(listener);
         }
         self.drain();
+        Ok(())
     }
 
     /// `publish(frame)` (`observation.ts:99-117`): queue and drain. The
@@ -699,3 +709,67 @@ fn clone_end(end: &WatchEnd) -> WatchEnd {
 
 /// The JSON object observed by document watches (`types.ts` `DocumentWatch`).
 pub type DocumentWatchValue = serde_json::Map<String, Value>;
+
+/// The chord source-attachment adapter over one [`SessionSourceAttachment`]:
+/// the trait's `Box<Self>` methods against the port's shared handle, and the
+/// frame's cursor read off the attachment snapshot at delivery time
+/// (`withAttachmentCursor` puts it there).
+struct SourceAttachmentAdapter(Arc<SessionSourceAttachment>);
+
+impl ReplicatedStateSourceAttachment for SourceAttachmentAdapter {
+    fn snapshot(&self) -> (crate::chord::types::JsonValue, u64) {
+        let snapshot = self
+            .0
+            .snapshot
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        (snapshot.value.clone(), snapshot.cursor as u64)
+    }
+
+    fn activate(
+        self: Box<Self>,
+        listener: Box<dyn FnMut(ReplicatedStateSourceFrame) + Send>,
+    ) -> Result<(), ChordError> {
+        let snapshot = Arc::clone(&self.0);
+        // The chord listener contract is `FnMut` (not `Sync`); a shared mutex
+        // restores the shared-handle listener's `Sync` bound. Frames arrive
+        // one at a time under the attachment core lock, so the lock never
+        // contends.
+        let listener = Mutex::new(listener);
+        self.0.activate(Arc::new(move |frame: WatchFrame| {
+            let cursor = snapshot
+                .snapshot
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner())
+                .cursor as u64;
+            (listener
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner()))(
+                ReplicatedStateSourceFrame {
+                    cursor,
+                    value: frame.value,
+                    ops: frame.ops,
+                    context: frame.context,
+                },
+            );
+        }))
+    }
+
+    fn dispose(self: Box<Self>) -> Result<(), ChordError> {
+        self.0.dispose();
+        Ok(())
+    }
+}
+
+/// A [`CommittedStateSource`] is an authoritative immutable revision source
+/// for the chord `replicatedState(source)` surface (`observation.ts`
+/// `CommittedStateSource` implements `ReplicatedStateSource`).
+impl ReplicatedStateSource for CommittedStateSource {
+    fn attach(
+        self: std::sync::Arc<Self>,
+    ) -> Result<Box<dyn ReplicatedStateSourceAttachment>, ChordError> {
+        Ok(Box::new(SourceAttachmentAdapter(
+            CommittedStateSource::attach(&self)?,
+        )))
+    }
+}

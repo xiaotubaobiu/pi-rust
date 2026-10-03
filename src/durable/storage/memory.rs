@@ -916,17 +916,21 @@ impl MemoryStorage {
                         "Document {id} delta has no base"
                     )));
                 };
-                if let DocumentContent::Base {
-                    version: previous_version,
-                    ..
-                } = &previous.content
-                {
-                    if previous_version != version {
-                        return Err(StorageError::generic(format!(
-                            "Document {id} version transition requires a base"
-                        )));
+                // Every revision carries the incarnation's definition version,
+                // deltas included; a delta continues the chain when it names
+                // the same version (upstream `previous.version !==
+                // action.content.version` over `revisions.at(-1)`).
+                let previous_version = match &previous.content {
+                    DocumentContent::Base {
+                        version: previous_version,
+                        ..
                     }
-                } else {
+                    | DocumentContent::Delta {
+                        version: previous_version,
+                        ..
+                    } => *previous_version,
+                };
+                if previous_version != *version {
                     return Err(StorageError::generic(format!(
                         "Document {id} version transition requires a base"
                     )));

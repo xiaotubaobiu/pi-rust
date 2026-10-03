@@ -522,6 +522,19 @@ pub enum TaskStatus {
     Terminal,
 }
 
+impl TaskStatus {
+    /// The discriminant's wire text.
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            TaskStatus::Pending => "pending",
+            TaskStatus::Running => "running",
+            TaskStatus::Waiting => "waiting",
+            TaskStatus::Completing => "completing",
+            TaskStatus::Terminal => "terminal",
+        }
+    }
+}
+
 /// Complete replacement record for one durable task state machine (`types.ts`
 /// `TaskRecord`). Wire order is the `Tx.createTask` literal
 /// (`{id, conversationId, kind, version, input, owner?, background,

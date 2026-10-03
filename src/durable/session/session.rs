@@ -14,9 +14,12 @@
 //! - **D8 (async commits).** `commit_with` takes an async closure over
 //!   `&Transaction`; the upstream `T | Promise<T>` union is the future's
 //!   natural form.
-//! - **D9 (documentState).** The `documentState()` detached-`replicatedState`
-//!   surface is deferred to the harness slice (its consumers live there);
-//!   `watchDoc` / `snapshot` / `snapshotAsOf` are ported.
+//! - **D9 (documentState).** The `documentState()` detached state surface is
+//!   resolved with [`Session::document_state`], the chord
+//!   `replicatedState(source)` constructor split into
+//!   [`crate::chord::api::replicated_state_from_source`] (Rust has no
+//!   duck-typed overloads); `watchDoc` / `snapshot` / `snapshotAsOf` are
+//!   unchanged.
 
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, AtomicI64, Ordering};
@@ -157,6 +160,10 @@ impl TransactionHost for SessionHost {
 
 type CommitListener = Arc<dyn Fn(&CommitPublication, &Context) + Send + Sync>;
 type CloseListener = Arc<dyn Fn() + Send + Sync>;
+
+/// `#attachDocument`'s result: the attached observer plus its release
+/// (`detach` upstream).
+type AttachmentWithRelease = (Attachment, Box<dyn Fn() + Send + Sync>);
 
 struct SessionState {
     documents: HashMap<String, Arc<LoadedDocument>>,
@@ -624,7 +631,10 @@ impl Session {
         let Some(loaded) = loaded else {
             return Ok(None);
         };
-        let (attachment, detach) = self.attach_document(definition, &loaded, false)?;
+        // `this.#attachDocument(...).observer` (`session.ts:285-289`): the
+        // watch owns the release and unsubscribes when it terminates.
+        let (attachment, _release_owned_by_watch) =
+            self.attach_document(definition, &loaded, true)?;
         let watch = attachment
             .as_watch()
             .cloned()
@@ -637,22 +647,59 @@ impl Session {
                 watch_handle.cancel();
             });
         }
-        detach();
         Ok(Some(watch))
+    }
+
+    /// `documentState(token, ...)` over the resolved address
+    /// (`session.ts:212-237`): a disposable read-only Chord state of one
+    /// committed document incarnation, or `None` when the address is vacant.
+    pub async fn document_state(
+        self: &Arc<Self>,
+        definition: &DocDefinition,
+        owner: Option<i64>,
+        key: Option<&str>,
+        context: Context,
+    ) -> Result<Option<Arc<crate::chord::services::state::AttachedReplicatedState>>, PlainError>
+    {
+        self.assert_usable()?;
+        let resolved = resolve_address(definition, owner, key)?;
+        let _line = self.line.lock().await;
+        self.assert_healthy()?;
+        let loaded = self.load_document(definition, &resolved.id, &resolved.address, &context)?;
+        let Some(loaded) = loaded else {
+            return Ok(None);
+        };
+        let (attachment, detach) = self.attach_document(definition, &loaded, false)?;
+        let source = match &attachment {
+            Attachment::Source(source) => Arc::clone(source),
+            Attachment::Watch(_) => unreachable!("documentState attaches a state source"),
+        };
+        // `replicatedState(source)` (`session.ts:228`); a construction
+        // failure releases the attachment before propagating.
+        match crate::chord::api::replicated_state_from_source(
+            source,
+            crate::chord::types::ReplicatedStateSourceOptions::default(),
+        ) {
+            Ok(state) => Ok(Some(state)),
+            Err(error) => {
+                detach();
+                Err(PlainError::new(error.message()))
+            }
+        }
     }
 
     /// `#attachDocument` (`session.ts:574-625`): attach an observer to one
     /// committed incarnation; check the definition, then forward this
-    /// incarnation's committed changes and close. Returns the attachment and
-    /// the detach closure (`observer` + `detach` upstream). `as_watch` selects
-    /// the watch constructor (`create` upstream).
-    #[allow(clippy::type_complexity)]
+    /// incarnation's committed changes and close. The returned closure is the
+    /// observer's `release` (`detach` upstream): it removes both
+    /// subscriptions, and the observer invokes it on its own termination.
+    /// `as_watch` selects the watch constructor (`create` upstream).
     fn attach_document(
         self: &Arc<Self>,
         definition: &DocDefinition,
         loaded: &Arc<LoadedDocument>,
         as_watch: bool,
-    ) -> Result<(Attachment, Box<dyn Fn() + Send + Sync>), PlainError> {
+    ) -> Result<AttachmentWithRelease, PlainError> {
         check_record_scope(definition, &document_create_of_record(&loaded.record))?;
         let stored_version = loaded
             .core
@@ -665,6 +712,27 @@ impl Session {
             stored_version,
         )?;
         let record_id = loaded.record.id;
+        // The observer's release: unsubscribe once, whether invoked by the
+        // observer's termination or returned to the caller. A Weak back
+        // reference keeps the Session → listener → release cycle from leaking
+        // (upstream relies on GC for the same cycle).
+        let subscription: Arc<Mutex<Option<(u64, u64)>>> = Arc::new(Mutex::new(None));
+        let make_release = |session: &Arc<Session>| -> Box<dyn Fn() + Send + Sync> {
+            let session = Arc::downgrade(session);
+            let subscription = Arc::clone(&subscription);
+            Box::new(move || {
+                if let Some((commit_id, close_id)) = subscription
+                    .lock()
+                    .unwrap_or_else(|p| p.into_inner())
+                    .take()
+                {
+                    if let Some(session) = session.upgrade() {
+                        session.unsubscribe_commits(commit_id);
+                        session.unsubscribe_close(close_id);
+                    }
+                }
+            })
+        };
         // A document state's frames carry no caller cancellation; a watch
         // observes its own cancellation (`frameContext` upstream — resolved
         // at the publisher since the source's frames strip the signal).
@@ -672,11 +740,14 @@ impl Session {
         let attachment = if as_watch {
             Attachment::Watch(Arc::new(CommittedWatch::new(
                 loaded.value(),
-                Box::new(|| {}),
+                make_release(self),
                 None,
             )))
         } else {
-            Attachment::Source(CommittedStateSource::new(loaded.value(), Box::new(|| {})))
+            Attachment::Source(CommittedStateSource::new(
+                loaded.value(),
+                Box::new(make_release(self)),
+            ))
         };
         let shared = match &attachment {
             Attachment::Source(source) => SharedAttachment::Source(Arc::clone(source)),
@@ -715,13 +786,10 @@ impl Session {
                 attachment.close_session();
             }
         }))?;
-        let detach: Box<dyn Fn() + Send + Sync> = {
-            let session = Arc::clone(self);
-            Box::new(move || {
-                session.unsubscribe_commits(commit_id);
-                session.unsubscribe_close(close_id);
-            })
-        };
+        *subscription
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner()) = Some((commit_id, close_id));
+        let detach = make_release(self);
         Ok((attachment, detach))
     }
 

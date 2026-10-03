@@ -76,7 +76,7 @@ pub async fn render_sections(
     sections: &[PromptSection],
     input: &PromptInput,
     shown: &[(String, String)],
-    report: &dyn Fn(&PlainError),
+    report: &(dyn Fn(&PlainError) + Send + Sync),
     context: &Context,
 ) -> Result<Vec<(String, String)>, PlainError> {
     let mut desired: Vec<(String, String)> = Vec::new();

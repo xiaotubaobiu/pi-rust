@@ -51,20 +51,20 @@ struct WaitersInner<T> {
 /// encoded bytes (every upstream key is an ID or name) and identifies waiters
 /// by handle.
 pub struct Waiters<T> {
-    inner: Mutex<WaitersInner<T>>,
+    inner: Arc<Mutex<WaitersInner<T>>>,
 }
 
 impl<T> Default for Waiters<T> {
     fn default() -> Self {
         Waiters {
-            inner: Mutex::new(WaitersInner {
+            inner: Arc::new(Mutex::new(WaitersInner {
                 sets: HashMap::new(),
-            }),
+            })),
         }
     }
 }
 
-impl<T: Clone + Send> Waiters<T> {
+impl<T: Clone + Send + 'static> Waiters<T> {
     pub fn new() -> Self {
         Self::default()
     }
@@ -73,6 +73,15 @@ impl<T: Clone + Send> Waiters<T> {
     /// An already-aborted context returns [`WaiterError::Cancelled`]
     /// immediately (upstream rejects with `signal.reason`).
     pub async fn add(&self, key: &str, context: &Context) -> Result<T, WaiterError> {
+        self.register(key, context)?.wait().await
+    }
+
+    /// The registration half of [`Waiters::add`]: enqueue the waiter without
+    /// awaiting it. The scheduler and submissions register on the Session
+    /// line and settle outside it, so the port splits the upstream
+    /// promise-returning `add` in two (divergence disclosed in the scheduler
+    /// module docs).
+    pub fn register(&self, key: &str, context: &Context) -> Result<WaiterHandle<T>, WaiterError> {
         if let Some(signal) = context.abort_signal() {
             if signal.is_cancelled() {
                 return Err(WaiterError::Cancelled);
@@ -94,19 +103,28 @@ impl<T: Clone + Send> Waiters<T> {
                 .or_default()
                 .push(Arc::clone(&waiter));
         }
-        tokio::select! {
-            result = rx => result.map_err(|_| WaiterError::Cancelled),
-            _ = waiter.settled.cancelled() => Err(WaiterError::Cancelled),
-            _ = wait_abort(context) => {
-                // `onAbort` (`harness/util.ts:20-25`): remove the waiter, drop
-                // the empty set, reject.
-                self.detach(key, &waiter);
-                waiter.settled.cancel();
-                Err(WaiterError::Cancelled)
-            }
-        }
+        let waiter_for_detach = Arc::clone(&waiter);
+        let key = key.to_owned();
+        let inner = Arc::clone(&self.inner);
+        Ok(WaiterHandle {
+            rx,
+            settled: waiter.settled.clone(),
+            abort: context.abort_signal(),
+            detach: Box::new(move || {
+                let mut inner = inner
+                    .lock()
+                    .unwrap_or_else(|poisoned| poisoned.into_inner());
+                if let Some(set) = inner.sets.get_mut(&key) {
+                    set.retain(|candidate| !Arc::ptr_eq(candidate, &waiter_for_detach));
+                    if set.is_empty() {
+                        inner.sets.remove(&key);
+                    }
+                }
+            }),
+        })
     }
 
+    #[allow(dead_code)]
     fn detach(&self, key: &str, waiter: &Arc<Waiter<T>>) {
         let mut inner = self
             .inner
@@ -173,6 +191,50 @@ impl<T: Clone + Send> Waiters<T> {
     }
 }
 
+/// One registered waiter awaiting settlement (`Waiters::add` split in two):
+/// the reply channel, the shared settled flag, the caller's abort signal, and
+/// the detach that removes it from its set.
+pub struct WaiterHandle<T> {
+    rx: oneshot::Receiver<T>,
+    settled: CancellationToken,
+    abort: Option<tokio_util::sync::CancellationToken>,
+    detach: Box<dyn FnOnce() + Send>,
+}
+
+impl<T: Clone + Send + 'static> WaiterHandle<T> {
+    /// Await settlement (`add`'s tail): the reply, the shared settle, or the
+    /// caller's abort (`onAbort`: remove the waiter, drop the empty set,
+    /// reject).
+    pub async fn wait(self) -> Result<T, WaiterError> {
+        let WaiterHandle {
+            rx,
+            settled,
+            abort,
+            detach,
+        } = self;
+        // Biased, value first: `resolve` sends the value and then cancels the
+        // settled token, so both are ready when the waiter is woken after
+        // settlement — the value must win (upstream resolves the promise).
+        tokio::select! {
+            biased;
+            result = rx => result.map_err(|_| WaiterError::Cancelled),
+            _ = settled.cancelled() => Err(WaiterError::Cancelled),
+            _ = wait_for(abort) => {
+                detach();
+                settled.cancel();
+                Err(WaiterError::Cancelled)
+            }
+        }
+    }
+}
+
+async fn wait_for(token: Option<tokio_util::sync::CancellationToken>) {
+    match token {
+        Some(token) => token.cancelled().await,
+        None => std::future::pending().await,
+    }
+}
+
 /// Failure of a [`Waiters`] wait: the context was cancelled or the wait was
 /// dropped by [`Waiters::reject_all`] / Harness close.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -180,10 +242,10 @@ pub enum WaiterError {
     Cancelled,
 }
 
-async fn wait_abort(context: &Context) {
-    match context.abort_signal() {
-        Some(signal) => signal.cancelled().await,
-        None => std::future::pending().await,
+impl From<WaiterError> for super::errors::PlainError {
+    fn from(error: WaiterError) -> Self {
+        let _ = error;
+        super::errors::PlainError::new(closed_error().to_string())
     }
 }
 

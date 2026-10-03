@@ -59,8 +59,10 @@
 //!   a shared `Arc<Transaction>` — the port-idiomatic resolution of the
 //!   upstream `T | Promise<T>` union.
 //! - **D9 (documentState).** The `Session.documentState()` detached
-//!   replicated-state surface is deferred to the harness slice (its consumers
-//!   live there); `watchDoc` / `snapshot` / `snapshotAsOf` are ported.
+//!   replicated-state surface resolves over the already-ported chord
+//!   [`crate::chord::api::replicated_state_from_source`] (the port of
+//!   `replicatedState(source)`); `watchDoc` / `snapshot` / `snapshotAsOf`
+//!   are unchanged.
 //!
 //! Per-file divergences are documented in the child modules
 //! ([`storage::jsonl`] std-fs shim, [`session::observation`] scheduling).
@@ -118,22 +120,33 @@ pub use truncate::{
 };
 
 // Harness slice re-exports over the modules that exist.
-pub use harness::config::{default_retry_policy, ConversationConfigState};
+
+// Facade re-exports for the full upstream `index.ts` surface (phase 3).
 pub use harness::context::{
     active_entries, capture_context_bounds, derive_context, read_context, ContextBounds,
 };
+pub use harness::events::{watch_events, AgentEvent, AgentEventStream};
+pub use harness::harness::open as open_harness;
+pub use harness::harness::Conversation;
 pub use harness::inbox::{
     apply_boundary, is_stale, prepare_boundary, remove_inbox_item, withdraw_queued_inputs, At,
     Boundary, BoundaryResult, InboxItem, InputMode,
 };
+pub use harness::json::assign_json;
 pub use harness::live::{
-    clear_progress, end_run, finish_slot, read_live, tool_slot, tools_of, SlotStatus, ToolSlot,
+    clear_progress, delete_generation, delete_tools, end_run, finish_slot, generation_of_draft,
+    push_slot_diagnostics, read_live, run_of, run_of_draft, set_generation, set_slot_field,
+    set_slot_running, set_slot_task_id, set_tools, settle_scheduler_outcome, slot_index_of,
+    tools_of_draft, SlotStatus, ToolSlot, RUN_TASK_KINDS, TOOL_TASK_KIND,
 };
 pub use harness::output::{
     bound_output, sanitize_output, BoundedOutput, OutputBuffer, OutputLimits, OutputSlice,
     Progress, MIN_PROGRESS_INTERVAL_MS, PROGRESS_BYTES_PER_SECOND,
 };
 pub use harness::prompt::{desired_tools, plan_system_entries, render_sections, replay_sections};
+pub use harness::registry::{builtin_setup, builtin_tasks, create_registry, BUILTIN_SETUP_KEY};
+pub use harness::scheduler::{InvocationBinding, TaskScheduler, TaskSchedulerOptions};
+pub use harness::submissions::Submissions;
 pub use harness::types::{
     AbortResult, AbortSubmissionResult, AbortTaskResult, BlockedReason, ContextView,
     ConversationAbortOptions, ConversationHandle, ConversationRetryPolicy,
@@ -143,4 +156,3 @@ pub use harness::types::{
     ToolDiagnosticSeverity, ToolExecutionApiLike, ToolExecutionMode, ToolExecutionResult,
     ToolRegistration, WhenBusy,
 };
-pub use harness::usage::{add_usage, add_usage_state, record_usage, UsageState};

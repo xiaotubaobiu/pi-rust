@@ -172,8 +172,11 @@ pub enum ToolDiagnosticSeverity {
 
 /// Result of one tool execution (`harness/types.ts`
 /// `ToolExecutionResult`). In-memory only; the persisted form is the
-/// `pi.tool-result` entry.
-#[derive(Debug, Clone, PartialEq, Default)]
+/// `pi.tool-result` entry. The hook payloads serialize this shape (D14);
+/// field order follows the upstream result literal (content, isError,
+/// details, diagnostics, usage, control).
+#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ToolExecutionResult {
     /// `None`: the retained `output()` text becomes the content.
     pub content: Option<Vec<crate::ai::types::TextOrImageBlock>>,
@@ -378,12 +381,11 @@ impl std::fmt::Debug for ToolRegistration {
 pub type ApiFuture<T> = Pin<Box<dyn Future<Output = Result<T, PlainError>> + Send + 'static>>;
 
 /// `ToolExecutionApi.commit(change, context)` with the change erased: the
-/// closure receives the transaction and resolves with a JSON result.
-pub type ErasedCommitChange = Arc<
-    dyn Fn(Arc<Transaction>) -> Pin<Box<dyn Future<Output = Result<Value, PlainError>> + Send>>
-        + Send
-        + Sync,
->;
+/// closure receives the transaction and resolves with a JSON result. The
+/// upstream change is `async` only because transaction operations are (D5);
+/// the port's erased change is synchronous over the transaction and the
+/// runtime commit awaits nothing inside it.
+pub type ErasedCommitChange = Arc<dyn Fn(&Transaction) -> Result<Value, PlainError> + Send + Sync>;
 
 /// Operations available to one tool invocation (`harness/types.ts`
 /// `ToolExecutionApi`). A plain object upstream, so a wrapper can pass
@@ -547,10 +549,10 @@ pub trait RegistryReaderLike: Send + Sync {
 /// `ConversationSetup`): `(tx, conversation, registry)`.
 pub type ConversationSetup = Arc<
     dyn Fn(
-            Arc<Transaction>,
-            ConversationRecord,
+            &Transaction,
+            &ConversationRecord,
             Arc<dyn RegistrySnapshotLike>,
-        ) -> super::prompt::SetupFuture
+        ) -> Result<(), PlainError>
         + Send
         + Sync,
 >;
@@ -558,7 +560,7 @@ pub type ConversationSetup = Arc<
 /// Runs inside the creating commit, after the conversation and its
 /// configuration exist (`harness/types.ts` `ConversationInit`).
 pub type ConversationInit =
-    Arc<dyn Fn(Arc<Transaction>, ConversationId) -> super::prompt::SetupFuture + Send + Sync>;
+    Arc<dyn Fn(&Transaction, ConversationId) -> Result<(), PlainError> + Send + Sync>;
 
 /// `ConversationCreateOptions` (`harness/types.ts`).
 #[derive(Clone)]
@@ -582,15 +584,77 @@ pub struct HarnessOptions {
 /// D15 (model access). Upstream `HarnessOptions.models` is the pi-ai
 /// `Models` service consumed directly by the generation task; the port
 /// abstracts the operations the built-in task uses behind this handle so the
-/// harness slice carries no provider coupling.
+/// harness slice carries no provider coupling: resolution, `streamSimple`
+/// (the simple event stream plus its terminal `result()`), and the deferred
+/// fetch/cancel pair. All operations take the caller's cancellation signal
+/// separately, like upstream's per-call options.
 pub trait ModelsHandle: Send + Sync {
     fn get_model(&self, provider: &str, model_id: &str) -> Option<Arc<dyn ModelHandle>>;
+    /// `Models.streamSimple(model, {messages}, options)` with `signal`
+    /// factored out of the options.
+    fn stream_simple(
+        &self,
+        model: Arc<dyn ModelHandle>,
+        messages: Vec<Message>,
+        options: SimpleStreamRequest,
+    ) -> SimpleStreamResult;
+    /// `Models.fetchDeferred(model, handle, { signal })`.
+    fn fetch_deferred(
+        &self,
+        model: Arc<dyn ModelHandle>,
+        handle: crate::ai::types::DeferredHandle,
+        signal: Option<tokio_util::sync::CancellationToken>,
+    ) -> ApiFuture<crate::ai::types::AssistantMessage>;
+    /// `Models.cancelDeferred(model, handle, { signal })`.
+    fn cancel_deferred(
+        &self,
+        model: Arc<dyn ModelHandle>,
+        handle: crate::ai::types::DeferredHandle,
+        signal: Option<tokio_util::sync::CancellationToken>,
+    ) -> ApiFuture<()>;
 }
 
 /// The subset of a resolved model the generation task uses.
 pub trait ModelHandle: Send + Sync {
     fn provider(&self) -> &str;
     fn model_id(&self) -> &str;
+}
+
+/// Upstream `SimpleStreamOptions` (`{...streamOptions, signal, reasoning?}`):
+/// the configured request options with the thinking level the configuration
+/// selected, and the caller's signal.
+#[derive(Debug, Clone, Default)]
+pub struct SimpleStreamRequest {
+    pub options: ConversationStreamOptions,
+    /// Absent for `thinkingLevel: "off"` and for an unconfigured level.
+    pub reasoning: Option<ModelThinkingLevel>,
+    pub signal: Option<tokio_util::sync::CancellationToken>,
+}
+
+/// One `streamSimple` event (`pi-ai` simple mode): the accumulated partial
+/// message tagged with the event kind (`done` / `error` terminate the
+/// stream; every other kind carries content deltas).
+#[derive(Debug, Clone)]
+pub struct SimpleStreamEvent {
+    pub kind: SimpleStreamEventKind,
+    pub partial: crate::ai::types::AssistantMessage,
+}
+
+/// `streamSimple` event kinds the generation task distinguishes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SimpleStreamEventKind {
+    Delta,
+    Done,
+    Error,
+}
+
+/// The stream plus its terminal result (`events` iterator + `events.result()`).
+pub struct SimpleStreamResult {
+    pub events: std::pin::Pin<
+        Box<dyn futures::Stream<Item = Result<SimpleStreamEvent, PlainError>> + Send + 'static>,
+    >,
+    /// Resolves with the terminal message.
+    pub result: ApiFuture<crate::ai::types::AssistantMessage>,
 }
 
 /// Live task and what the scheduler would do with it under the current

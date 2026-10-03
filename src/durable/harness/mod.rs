@@ -19,12 +19,23 @@
 
 pub mod config;
 pub mod context;
+pub mod events;
+pub mod generation;
+// Upstream file `harness/harness.ts` keeps the doubled segment name.
+#[allow(clippy::module_inception)]
+pub mod harness;
 pub mod inbox;
+pub mod json;
 pub mod live;
 pub mod output;
 pub mod prompt;
+pub mod registry;
+pub mod scheduler;
+pub mod submissions;
+pub mod tool;
 pub mod types;
 pub mod usage;
+pub mod view;
 
 #[cfg(test)]
 mod oracle_tests;

@@ -103,6 +103,7 @@ image_native = { package = "image", version = "=0.25.10", default-features = fal
 # default level 6) + CRC-32. Already in the dependency tree via the `png`
 # codec, so no new lock entries; pinned exact like the other in-tree reuse.
 flate2 = "=1.1.9"
+rusqlite = { version = "=0.32.1", features = ["bundled"] }
 
 # Native output-guard errno codes on Unix; already cached transitively.
 [target.'cfg(unix)'.dependencies]

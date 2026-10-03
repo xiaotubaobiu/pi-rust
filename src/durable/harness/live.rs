@@ -4,10 +4,11 @@
 //!
 //! Divergences (structural, disclosed): upstream mutates the typed
 //! `Draft<LiveState>` document value; the port mutates the same JSON through
-//! `serde_json` maps, so key deletion (`delete live.run`) maps to map
-//! removal. `settleSchedulerOutcome` is deferred with the scheduler slice
-//! (it consumes `convertPartial` from `generation.ts` and `SchedulerOutcome`
-//! from `scheduler.ts`).
+//! [`DocumentDraft`] path writes, so each upstream field assignment maps to a
+//! set/delete at the same key (Chord diffs string leaves itself), and
+//! `settleSchedulerOutcome` lives here with the scheduler slice
+//! (it consumes `convertPartial` from `generation.rs` and the scheduler's
+//! outcome shape).
 
 use std::sync::Arc;
 
@@ -16,8 +17,10 @@ use serde_json::{Map, Value};
 use super::super::documents::{define_doc, DefinitionScope, DocToken};
 use super::super::errors::PlainError;
 use super::super::ids::{EntryId, SubmissionId, TaskId};
-use super::super::session::transaction::DocumentDraft;
-use super::super::types::{DocumentFork, DocumentHistory, JsonObject, SubmissionSettlement};
+use super::super::session::transaction::{DocumentDraft, Transaction};
+use super::super::types::{
+    DocumentFork, DocumentHistory, JsonObject, SubmissionSettlement, TaskOutcome, TaskRecord,
+};
 
 /// Presentation of one tool call of the current round (`live.ts`
 /// `ToolSlot`). Wire order `{callId, name, taskId?, status, output?,
@@ -168,16 +171,25 @@ pub fn live_doc() -> DocToken {
     .expect("the built-in live document definition is valid")
 }
 
-/// Read the live state out of a draft.
-pub fn read_live(draft: &DocumentDraft) -> Result<JsonObject, PlainError> {
-    Ok(draft
+/// Read the live value out of a draft (`None` before its first write).
+pub fn read_live(draft: &DocumentDraft) -> Result<Option<Value>, PlainError> {
+    draft
         .read(&[])
-        .map_err(|error| PlainError::new(error.message().to_string()))?
-        .and_then(|value| value.as_object().cloned())
-        .unwrap_or_default())
+        .map_err(|error| PlainError::new(error.message().to_string()))
 }
 
-/// The stored `run` of a live state (`{taskId, inputs}`), if present.
+/// Built-in task kinds that can own `pi.live.run` (`RUN_TASK_KINDS`).
+pub const RUN_TASK_KINDS: [&str; 1] = ["pi.generation"];
+/// The built-in tool task kind (`TOOL_TASK_KIND`).
+pub const TOOL_TASK_KIND: &str = "pi.tool";
+
+type Seg = crate::chord::delta::Seg;
+
+fn error_of(error: crate::chord::delta::TrackerError) -> PlainError {
+    PlainError::new(error.message())
+}
+
+/// The stored `run` of a live value (`{taskId, inputs}`), if present.
 pub fn run_of(live: &JsonObject) -> Option<(TaskId, Vec<SubmissionId>)> {
     let run = live.get("run").and_then(Value::as_object)?;
     let task_id = run.get("taskId").and_then(Value::as_i64)?;
@@ -189,76 +201,238 @@ pub fn run_of(live: &JsonObject) -> Option<(TaskId, Vec<SubmissionId>)> {
     Some((task_id, inputs))
 }
 
-/// The stored `generation.attempt`, if present.
-pub fn generation_attempt(live: &JsonObject) -> Option<f64> {
-    live.get("generation")
-        .and_then(Value::as_object)
-        .and_then(|generation| generation.get("attempt"))
-        .and_then(Value::as_f64)
+/// The stored `run` of a live draft, if present.
+pub fn run_of_draft(
+    draft: &DocumentDraft,
+) -> Result<Option<(TaskId, Vec<SubmissionId>)>, PlainError> {
+    Ok(read_live(draft)?
+        .and_then(|value| value.as_object().cloned())
+        .and_then(|live| run_of(&live)))
+}
+
+/// The `generation` object of a live draft, if present.
+pub fn generation_of_draft(draft: &DocumentDraft) -> Result<Option<JsonObject>, PlainError> {
+    Ok(read_live(draft)?
+        .and_then(|generation| generation.get("generation").cloned())
+        .and_then(|value| value.as_object().cloned()))
+}
+
+/// Set `generation` to one whole object (`live.generation = {...}`).
+pub fn set_generation(draft: &DocumentDraft, value: JsonObject) -> Result<(), PlainError> {
+    draft
+        .set(
+            &[Seg::Key(String::from("generation"))],
+            Value::Object(value),
+        )
+        .map_err(error_of)
+}
+
+/// Remove `generation` (`delete live.generation`).
+pub fn delete_generation(draft: &DocumentDraft) -> Result<(), PlainError> {
+    draft
+        .delete(&[Seg::Key(String::from("generation"))])
+        .map_err(error_of)
+}
+
+/// Replace the `tools` array with the given slots (`live.tools = slots`).
+pub fn set_tools(draft: &DocumentDraft, slots: &[ToolSlot]) -> Result<(), PlainError> {
+    draft
+        .set(
+            &[Seg::Key(String::from("tools"))],
+            Value::Array(slots.iter().map(ToolSlot::to_json).collect()),
+        )
+        .map_err(error_of)
+}
+
+/// Remove `tools` (`delete live.tools`).
+pub fn delete_tools(draft: &DocumentDraft) -> Result<(), PlainError> {
+    draft
+        .delete(&[Seg::Key(String::from("tools"))])
+        .map_err(error_of)
+}
+
+/// The parsed `tools` array of a live draft (`live.tools ?? []`).
+pub fn tools_of_draft(draft: &DocumentDraft) -> Result<Vec<ToolSlot>, PlainError> {
+    Ok(read_live(draft)?
+        .and_then(|value| value.get("tools").cloned())
+        .and_then(|value| Value::as_array(&value).cloned())
+        .map(|slots| slots.iter().filter_map(ToolSlot::from_json).collect())
+        .unwrap_or_default())
+}
+
+/// The draft path of one slot field (`["tools", index, field...]`).
+pub fn slot_path(index: usize, field: &[&str]) -> Vec<Seg> {
+    let mut path = vec![Seg::Key(String::from("tools")), Seg::Index(index)];
+    path.extend(field.iter().map(|name| Seg::Key((*name).to_owned())));
+    path
+}
+
+/// The index of tool task `taskId` in the current round (`toolSlot`), if the
+/// round still lists it.
+pub fn slot_index_of(draft: &DocumentDraft, task_id: TaskId) -> Result<Option<usize>, PlainError> {
+    Ok(tools_of_draft(draft)?
+        .iter()
+        .position(|slot| slot.task_id == Some(task_id)))
+}
+
+/// Mark slot `index` running (`slot.status = "running"`).
+pub fn set_slot_running(draft: &DocumentDraft, index: usize) -> Result<(), PlainError> {
+    draft
+        .set(&slot_path(index, &["status"]), Value::from("running"))
+        .map_err(error_of)
+}
+
+/// Bind slot `index` to its started tool task (`slot.taskId = taskId`).
+pub fn set_slot_task_id(
+    draft: &DocumentDraft,
+    index: usize,
+    task_id: TaskId,
+) -> Result<(), PlainError> {
+    draft
+        .set(&slot_path(index, &["taskId"]), Value::from(task_id))
+        .map_err(error_of)
+}
+
+/// Write one slot field of a running slot (progress commits).
+pub fn set_slot_field(
+    draft: &DocumentDraft,
+    index: usize,
+    field: &str,
+    value: Value,
+) -> Result<(), PlainError> {
+    draft
+        .set(&slot_path(index, &[field]), value)
+        .map_err(error_of)
+}
+
+/// Delete one slot field (`delete slot.<field>`).
+pub fn delete_slot_field(
+    draft: &DocumentDraft,
+    index: usize,
+    field: &str,
+) -> Result<(), PlainError> {
+    draft.delete(&slot_path(index, &[field])).map_err(error_of)
+}
+
+/// Append diagnostics to slot `index`
+/// (`slot.diagnostics ??= []; slot.diagnostics.push(...)`).
+pub fn push_slot_diagnostics(
+    draft: &DocumentDraft,
+    index: usize,
+    diagnostics: Vec<Value>,
+) -> Result<(), PlainError> {
+    if diagnostics.is_empty() {
+        return Ok(());
+    }
+    let path = slot_path(index, &["diagnostics"]);
+    let existing = draft
+        .read(&path)
+        .map_err(error_of)?
+        .and_then(|value| value.as_array().cloned())
+        .unwrap_or_default();
+    let mut next = existing;
+    next.extend(diagnostics);
+    draft.set(&path, Value::Array(next)).map_err(error_of)
+}
+
+/// Mark slot `index` done (`finishSlot`): the result entry, if any, now
+/// carries its running output, details, and diagnostics.
+pub fn finish_slot(
+    draft: &DocumentDraft,
+    index: usize,
+    entry: Option<EntryId>,
+) -> Result<(), PlainError> {
+    draft
+        .set(&slot_path(index, &["status"]), Value::from("done"))
+        .map_err(error_of)?;
+    if let Some(entry) = entry {
+        draft
+            .set(&slot_path(index, &["entry"]), Value::from(entry))
+            .map_err(error_of)?;
+    }
+    clear_progress(draft, index)
+}
+
+/// Remove what a tool published while running (`clearProgress`); its result
+/// entry or a rerun replaces it.
+pub fn clear_progress(draft: &DocumentDraft, index: usize) -> Result<(), PlainError> {
+    for field in [
+        "output",
+        "droppedBytes",
+        "droppedLines",
+        "details",
+        "diagnostics",
+    ] {
+        draft
+            .delete(&slot_path(index, &[field]))
+            .map_err(error_of)?;
+    }
+    Ok(())
 }
 
 /// End the run owned by `taskId` (`live.ts` `endRun`): settle each of its
 /// inputs and remove `run`. Always removes `generation` and `tools`, whose
 /// presentation belongs to the ending run.
 pub fn end_run(
-    tx: &super::super::session::transaction::Transaction,
-    live: &JsonObject,
+    tx: &Transaction,
+    draft: &DocumentDraft,
     task_id: TaskId,
     settlement: SubmissionSettlement,
 ) -> Result<(), PlainError> {
-    if let Some((run_task_id, inputs)) = run_of(live) {
+    if let Some((run_task_id, inputs)) = run_of_draft(draft)? {
         if run_task_id == task_id {
             for id in inputs {
                 tx.settle_submission(id, settlement.clone())?;
             }
+            draft
+                .delete(&[Seg::Key(String::from("run"))])
+                .map_err(error_of)?;
         }
     }
-    Ok(())
+    delete_generation(draft)?;
+    delete_tools(draft)
 }
 
-/// Remove one key of a mutable live map (`delete live.<key>`).
-pub fn delete_key(live: &mut JsonObject, key: &str) {
-    live.shift_remove(key);
-}
-
-/// The slot of tool task `taskId` in the current round (`live.ts`
-/// `toolSlot`), if the round still lists it.
-pub fn tool_slot(tools: &[ToolSlot], task_id: TaskId) -> Option<&ToolSlot> {
-    tools.iter().find(|slot| slot.task_id == Some(task_id))
-}
-
-/// Mark a slot done (`live.ts` `finishSlot`): the result entry, if any, now
-/// carries its running output, details, and diagnostics.
-pub fn finish_slot(slot: &mut ToolSlot, entry: Option<EntryId>) {
-    slot.status = SlotStatus::Done;
-    if let Some(entry) = entry {
-        slot.entry = Some(entry);
+/// Harness cleanup for a terminal outcome the scheduler writes itself
+/// (`faulted` or `orphaned`, `live.ts` `settleSchedulerOutcome`). A run task
+/// ends its run; a tool task's slot is marked done without an entry, and
+/// context derivation synthesizes the missing result. Ignores other kinds so
+/// it never creates `pi.live` elsewhere. The scheduler calls this without
+/// knowing task kinds; the Harness passes it in (spec §5.4).
+/// REMINDER: a committed generation partial becomes an aborted assistant
+/// entry here, exactly as in the generation abort handler, so the transcript
+/// keeps what the model produced and `pi.usage` counts its spend. The
+/// scheduler's commit has no task scope, so that entry has no `byTaskId`.
+pub fn settle_scheduler_outcome(
+    tx: &Transaction,
+    record: &TaskRecord,
+    outcome: &TaskOutcome,
+) -> Result<(), PlainError> {
+    let live = live_doc();
+    let draft = tx.doc(&live.definition, Some(record.conversation_id), None, None)?;
+    if record.kind == TOOL_TASK_KIND {
+        if let Some(index) = slot_index_of(&draft, record.id)? {
+            finish_slot(&draft, index, None)?;
+        }
+        return Ok(());
     }
-    clear_progress(slot);
-}
-
-/// Remove what a tool published while running (`live.ts` `clearProgress`);
-/// its result entry or a rerun replaces it.
-pub fn clear_progress(slot: &mut ToolSlot) {
-    slot.output = None;
-    slot.dropped_bytes = None;
-    slot.dropped_lines = None;
-    slot.details = None;
-    slot.diagnostics = None;
-}
-
-/// Parse the `tools` array of a live state.
-pub fn tools_of(live: &JsonObject) -> Vec<ToolSlot> {
-    live.get("tools")
-        .and_then(Value::as_array)
-        .map(|slots| slots.iter().filter_map(ToolSlot::from_json).collect())
-        .unwrap_or_default()
-}
-
-/// Write the `tools` array back into a live map.
-pub fn set_tools(live: &mut JsonObject, tools: Vec<ToolSlot>) {
-    live.insert(
-        String::from("tools"),
-        Value::Array(tools.iter().map(ToolSlot::to_json).collect()),
-    );
+    if !RUN_TASK_KINDS.contains(&record.kind.as_str()) {
+        return Ok(());
+    }
+    if run_of_draft(&draft)?.map(|(task_id, _)| task_id) != Some(record.id) {
+        return Ok(());
+    }
+    super::generation::convert_partial(tx, &draft, record.conversation_id)?;
+    let settlement = match outcome {
+        TaskOutcome::Faulted { error } => SubmissionSettlement::Unanswered {
+            reason: String::from("faulted"),
+            detail: Some(Value::String(error.message.clone())),
+        },
+        TaskOutcome::Orphaned { reason } => SubmissionSettlement::Unanswered {
+            reason: reason.clone(),
+            detail: None,
+        },
+        _ => return Ok(()),
+    };
+    end_run(tx, &draft, record.id, settlement)
 }

@@ -277,5 +277,93 @@
       "2.0KB",
       "3.0MB"
     ]
+  },
+  "scheduler_grids": {
+    "probeSettled": {
+      "id": 2,
+      "kind": "probe",
+      "state": {
+        "status": "terminal",
+        "outcome": {
+          "status": "completed",
+          "result": {
+            "steps": 2
+          }
+        }
+      }
+    },
+    "inspectionGrid": [
+      {
+        "kind": "oldish",
+        "state": {
+          "kind": "blocked",
+          "reason": "migration_failed",
+          "error": {}
+        }
+      }
+    ],
+    "orphan": {
+      "abortResult": "marked",
+      "state": {
+        "status": "terminal",
+        "outcome": {
+          "status": "orphaned",
+          "reason": "missing_task"
+        }
+      }
+    },
+    "reportLog": []
+  },
+  "submissions_state": {
+    "resumeCount": 7,
+    "idleInput": {
+      "conversationId": 1,
+      "type": "input",
+      "status": "placed",
+      "entry": 5,
+      "id": 6
+    },
+    "liveRun": {
+      "taskId": 7,
+      "inputs": [
+        6
+      ]
+    },
+    "steer": {
+      "conversationId": 1,
+      "type": "input",
+      "status": "queued",
+      "id": 8
+    },
+    "followUp": {
+      "conversationId": 1,
+      "type": "input",
+      "status": "queued",
+      "id": 9
+    },
+    "busyReject": {
+      "name": "ConversationBusy",
+      "message": "Conversation 1 is busy"
+    },
+    "dedup": {
+      "first": 10,
+      "second": 10,
+      "same": true
+    },
+    "queuedWrite": {
+      "conversationId": 1,
+      "type": "write",
+      "status": "queued",
+      "id": 11
+    },
+    "steerAbort": "aborted",
+    "steerAfterAbort": {
+      "conversationId": 1,
+      "type": "input",
+      "status": "unanswered",
+      "id": 8,
+      "reason": "aborted"
+    },
+    "placedStatus": "placed"
   }
 }

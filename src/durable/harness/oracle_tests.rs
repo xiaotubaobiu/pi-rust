@@ -592,3 +592,595 @@ fn oracle_output_bound() {
         sizes
     );
 }
+
+// Scenario 7/8 oracle tests: scheduler decision grids and the submissions
+// state machine, captured from the upstream TS
+// (`tests/fixtures/durable_oracle/capture_durable_oracle.mjs` scenarios 7-8)
+// and asserted byte-for-byte on the shared fixture.
+
+use std::collections::BTreeMap;
+use std::sync::Mutex;
+
+use super::scheduler::{record_checkpoint, TaskScheduler, TaskSchedulerOptions};
+use super::submissions::Submissions;
+use super::types::{
+    ConversationSetupEntry, HookRegistration, PromptSection, RegistryFailure, RegistryReaderLike,
+    RegistrySnapshotLike, SchedulingState, SubmissionDraft, TaskInspectionState, ToolRegistration,
+    WhenBusy,
+};
+use crate::durable::errors::PlainError;
+use crate::durable::tasks::{
+    define_task, NextTaskState, PhaseArgs, PhaseFn, PlainFailure, TaskDefinition, TaskToken,
+};
+
+// ─── Scenario 7: scheduler decision grids ───────────────────────────────────
+
+fn oracle_grid() -> serde_json::Value {
+    oracle()["scheduler_grids"].clone()
+}
+
+/// The probe/oldish definition registry of scenario 7: a mutable task map
+/// behind the reader surface, so definitions can be swapped between commits
+/// exactly like the capture's `probes` overlay.
+struct GridRegistry {
+    tasks: Mutex<BTreeMap<String, TaskToken>>,
+}
+
+#[derive(Clone)]
+struct GridSnapshot {
+    tasks: BTreeMap<String, TaskToken>,
+}
+
+impl RegistrySnapshotLike for GridSnapshot {
+    fn tools(&self) -> Vec<Arc<ToolRegistration>> {
+        Vec::new()
+    }
+
+    fn tool(&self, _name: &str) -> Option<Arc<ToolRegistration>> {
+        None
+    }
+
+    fn tool_names(&self) -> Vec<String> {
+        Vec::new()
+    }
+
+    fn task(&self, name: &str) -> Option<TaskToken> {
+        self.tasks.get(name).cloned()
+    }
+
+    fn hooks(&self, _task_name: &str) -> Vec<HookRegistration> {
+        Vec::new()
+    }
+
+    fn sections(&self) -> Vec<PromptSection> {
+        Vec::new()
+    }
+
+    fn failures(&self) -> Vec<RegistryFailure> {
+        Vec::new()
+    }
+
+    fn conversation_setups(&self) -> Vec<ConversationSetupEntry> {
+        Vec::new()
+    }
+}
+
+impl RegistryReaderLike for GridRegistry {
+    fn snapshot(&self) -> Arc<dyn RegistrySnapshotLike> {
+        Arc::new(GridSnapshot {
+            tasks: self
+                .tasks
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner())
+                .clone(),
+        })
+    }
+
+    fn subscribe(&self, _listener: Box<dyn Fn() + Send + Sync>) -> Box<dyn FnOnce() + Send> {
+        Box::new(|| {})
+    }
+}
+
+fn grid_task(name: &str, version: i64, phases: &str) -> TaskToken {
+    let mut map = BTreeMap::new();
+    if phases == "probe-run" {
+        map.insert(String::from("run"), Arc::new(probe_run_phase) as PhaseFn);
+    }
+    define_task(TaskDefinition {
+        name: String::from(name),
+        version,
+        initial: Arc::new(|| {
+            serde_json::json!({"phase": "run", "steps": 0})
+                .as_object()
+                .cloned()
+                .unwrap()
+        }),
+        phases: map,
+        abort: Some(Arc::new(|_args: PhaseArgs| Box::pin(async { Ok(()) }))),
+        migrate: None,
+    })
+}
+
+fn probe_run_phase(
+    args: PhaseArgs,
+) -> Pin<Box<dyn Future<Output = Result<(), PlainFailure>> + Send>> {
+    let runtime = Arc::clone(&args.runtime);
+    let context = args.context.clone();
+    let steps = record_checkpoint(&args.record)
+        .and_then(serde_json::Value::as_object)
+        .cloned()
+        .unwrap_or_default()
+        .get("steps")
+        .and_then(serde_json::Value::as_i64)
+        .unwrap_or(0);
+    Box::pin(async move {
+        runtime
+            .commit(
+                Box::new(move |_tx, _current| {
+                    if steps + 1 >= 2 {
+                        Ok(Some(NextTaskState::Terminal {
+                            outcome: crate::durable::types::TaskOutcome::Completed {
+                                result: serde_json::json!({ "steps": steps + 1 }),
+                            },
+                        }))
+                    } else {
+                        Ok(Some(NextTaskState::Running {
+                            checkpoint: serde_json::json!({"phase": "run", "steps": steps + 1}),
+                        }))
+                    }
+                }),
+                context,
+            )
+            .await
+            .map_err(PlainFailure::from)
+    })
+}
+
+#[tokio::test]
+async fn oracle_scheduler_decision_grids() {
+    let expected = oracle_grid();
+    let storage = Arc::new(MemoryStorage::new());
+    let session = create_session(Arc::clone(&storage) as Arc<dyn Storage>);
+    let registry = Arc::new(GridRegistry {
+        tasks: Mutex::new(BTreeMap::new()),
+    });
+    registry
+        .tasks
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .insert(String::from("probe"), grid_task("probe", 1, "probe-run"));
+    registry
+        .tasks
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .insert(String::from("oldish"), grid_task("oldish", 1, "none"));
+
+    let report_log: Arc<Mutex<Vec<String>>> = Arc::default();
+    let scheduler = TaskScheduler::new(TaskSchedulerOptions {
+        session: Arc::clone(&session),
+        storage: Arc::clone(&storage) as Arc<dyn Storage>,
+        registry: Arc::clone(&registry) as Arc<dyn RegistryReaderLike>,
+        models: None,
+        env: None,
+        now: Arc::new(|| 1_758_240_010_000.0),
+        report: {
+            let report_log = Arc::clone(&report_log);
+            Arc::new(move |error: &PlainError| {
+                report_log
+                    .lock()
+                    .unwrap_or_else(|poisoned| poisoned.into_inner())
+                    .push(error.message.clone());
+            })
+        },
+        settle_outcome: Arc::new(|_tx, _record, _outcome| Ok(())),
+        withdraw_inputs: Arc::new(|_tx, _conversation_id| Ok(())),
+        conversation: Arc::new(|_id, _binding, _context| Box::pin(async { Ok(None) })),
+        context: Context::background(),
+    });
+    scheduler.open(Context::background()).await.unwrap();
+
+    session
+        .commit(
+            |tx: Arc<Transaction>| {
+                Box::pin(async move { tx.create_root_conversation().map(|record| record.id) })
+            },
+            Context::background(),
+        )
+        .await
+        .unwrap();
+    let probe_definition = registry.snapshot().task("probe").expect("probe registered");
+    let probe_id = session
+        .commit(
+            move |tx: Arc<Transaction>| {
+                Box::pin(async move {
+                    tx.create_task(
+                        &probe_definition,
+                        serde_json::json!({ "n": 1 }),
+                        crate::durable::types::TaskOptions {
+                            ownership: TaskOwnership::Conversation,
+                            conversation_id: Some(1),
+                            background: None,
+                        },
+                    )
+                })
+            },
+            Context::background(),
+        )
+        .await
+        .unwrap();
+    scheduler.resume();
+    let probe_settled = scheduler
+        .wait_for_task(probe_id, Context::background())
+        .await
+        .unwrap();
+
+    let expected_probe = &expected["probeSettled"];
+    assert_eq!(probe_settled.id, expected_probe["id"].as_i64().unwrap());
+    assert_eq!(probe_settled.kind, expected_probe["kind"].as_str().unwrap());
+    let state_wire = wire(&serde_json::to_value(&probe_settled.state).unwrap());
+    assert_eq!(
+        state_wire,
+        wire(&expected_probe["state"]),
+        "probe settled state bytes"
+    );
+
+    // Oldish task; then swap to a newer definition without `migrate`.
+    let oldish_definition = registry
+        .snapshot()
+        .task("oldish")
+        .expect("oldish registered");
+    let oldish_id = session
+        .commit(
+            move |tx: Arc<Transaction>| {
+                Box::pin(async move {
+                    tx.create_task(
+                        &oldish_definition,
+                        serde_json::json!({}),
+                        crate::durable::types::TaskOptions {
+                            ownership: TaskOwnership::Conversation,
+                            conversation_id: Some(1),
+                            background: None,
+                        },
+                    )
+                })
+            },
+            Context::background(),
+        )
+        .await
+        .unwrap();
+    registry
+        .tasks
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .insert(String::from("oldish"), grid_task("oldish", 2, "none"));
+    let (scheduling, tasks) = scheduler.inspect(registry.snapshot()).await.unwrap();
+    assert_eq!(scheduling, SchedulingState::Running);
+    let oldish = tasks
+        .iter()
+        .find(|entry| entry.record.kind == "oldish")
+        .expect("oldish inspected");
+    let expected_oldish = &expected["inspectionGrid"][0];
+    assert_eq!(
+        oldish.record.kind,
+        expected_oldish["kind"].as_str().unwrap()
+    );
+    match &oldish.state {
+        TaskInspectionState::Blocked { reason, .. } => {
+            assert_eq!(
+                reason.as_str(),
+                expected_oldish["state"]["reason"].as_str().unwrap()
+            );
+        }
+        other => panic!("expected blocked oldish, got {other:?}"),
+    }
+
+    // Orphan grid: no definition can take the oldish task.
+    registry
+        .tasks
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .remove("oldish");
+    let orphan = scheduler
+        .abort(oldish_id, Context::background())
+        .await
+        .unwrap();
+    assert!(
+        format!("{:?}", orphan).contains("Marked"),
+        "orphan abort marks"
+    );
+    let orphan_record = storage
+        .task(oldish_id, &Context::background())
+        .unwrap()
+        .unwrap();
+    let orphan_wire = wire(&serde_json::to_value(&orphan_record.state).unwrap());
+    assert_eq!(
+        orphan_wire,
+        wire(&expected["orphan"]["state"]),
+        "orphan state bytes"
+    );
+
+    assert!(
+        report_log
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .is_empty(),
+        "report log must stay empty"
+    );
+}
+
+// ─── Scenario 8: submissions state machine ──────────────────────────────────
+
+#[tokio::test]
+async fn oracle_submissions_state_machine() {
+    let expected = oracle()["submissions_state"].clone();
+    let storage = Arc::new(MemoryStorage::new());
+    let session = create_session(Arc::clone(&storage) as Arc<dyn Storage>);
+    session
+        .commit(
+            |tx: Arc<Transaction>| {
+                Box::pin(async move { tx.create_root_conversation().map(|record| record.id) })
+            },
+            Context::background(),
+        )
+        .await
+        .unwrap();
+
+    let resume_count = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    let submissions = Submissions::new(
+        Arc::clone(&session),
+        Arc::clone(&storage) as Arc<dyn Storage>,
+        Arc::new(|| 1_758_240_020_000.0),
+        {
+            let resume_count = Arc::clone(&resume_count);
+            Arc::new(move || {
+                resume_count.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            })
+        },
+    )
+    .unwrap();
+
+    fn read(
+        storage: &Arc<dyn Storage>,
+        id: i64,
+    ) -> std::pin::Pin<
+        Box<
+            dyn std::future::Future<Output = Option<crate::durable::types::SubmissionRecord>>
+                + Send
+                + '_,
+        >,
+    > {
+        let storage = Arc::clone(storage);
+        Box::pin(async move { storage.submission(id, &Context::background()).unwrap() })
+    }
+
+    // Idle input: places a user entry, creates a placed submission, starts a
+    // run.
+    let idle_input = submissions
+        .submit(
+            1,
+            SubmissionDraft::Input {
+                request_id: None,
+                content: StringOrBlocks::Text(String::from("hello")),
+                when_busy: None,
+            },
+            Context::background(),
+        )
+        .await
+        .unwrap();
+    let idle_record = read(&(Arc::clone(&storage) as Arc<dyn Storage>), idle_input)
+        .await
+        .unwrap();
+    assert_eq!(
+        wire(&serde_json::to_value(&idle_record).unwrap()),
+        wire(&expected["idleInput"]),
+        "idle input bytes"
+    );
+
+    let live = live_doc();
+    let live_state = session
+        .snapshot(&live.definition, Some(1), None, Context::background())
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        wire(
+            &live_state
+                .get("run")
+                .cloned()
+                .unwrap_or(serde_json::Value::Null)
+        ),
+        wire(&expected["liveRun"]),
+        "live run bytes"
+    );
+
+    // Busy steer and follow-up queue.
+    let steer = submissions
+        .submit(
+            1,
+            SubmissionDraft::Input {
+                request_id: None,
+                content: StringOrBlocks::Text(String::from("steer me")),
+                when_busy: Some(WhenBusy::Steer),
+            },
+            Context::background(),
+        )
+        .await
+        .unwrap();
+    let steer_record = read(&(Arc::clone(&storage) as Arc<dyn Storage>), steer)
+        .await
+        .unwrap();
+    assert_eq!(
+        wire(&serde_json::to_value(&steer_record).unwrap()),
+        wire(&expected["steer"])
+    );
+    let follow_up = submissions
+        .submit(
+            1,
+            SubmissionDraft::Input {
+                request_id: None,
+                content: StringOrBlocks::Text(String::from("follow up")),
+                when_busy: Some(WhenBusy::FollowUp),
+            },
+            Context::background(),
+        )
+        .await
+        .unwrap();
+    let follow_up_record = read(&(Arc::clone(&storage) as Arc<dyn Storage>), follow_up)
+        .await
+        .unwrap();
+    assert_eq!(
+        wire(&serde_json::to_value(&follow_up_record).unwrap()),
+        wire(&expected["followUp"])
+    );
+
+    // Busy reject fails without writing.
+    let busy_error = submissions
+        .submit(
+            1,
+            SubmissionDraft::Input {
+                request_id: None,
+                content: StringOrBlocks::Text(String::from("nope")),
+                when_busy: Some(WhenBusy::Reject),
+            },
+            Context::background(),
+        )
+        .await;
+    assert_eq!(
+        busy_error.unwrap_err().message,
+        expected["busyReject"]["message"].as_str().unwrap()
+    );
+
+    // Request-id dedup resolves to the first submission.
+    let dedup_first = submissions
+        .submit(
+            1,
+            SubmissionDraft::Input {
+                request_id: Some(String::from("req-1")),
+                content: StringOrBlocks::Text(String::from("once")),
+                when_busy: None,
+            },
+            Context::background(),
+        )
+        .await
+        .unwrap();
+    let dedup_second = submissions
+        .submit(
+            1,
+            SubmissionDraft::Input {
+                request_id: Some(String::from("req-1")),
+                content: StringOrBlocks::Text(String::from("once")),
+                when_busy: None,
+            },
+            Context::background(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(
+        dedup_first == dedup_second,
+        expected["dedup"]["same"].as_bool().unwrap()
+    );
+    assert_eq!(
+        dedup_first,
+        expected["dedup"]["first"].as_i64().unwrap(),
+        "dedup id alignment"
+    );
+
+    // Queued write behind the run.
+    let queued_write = submissions
+        .submit(
+            1,
+            SubmissionDraft::Write {
+                request_id: None,
+                entry: serde_json::from_value::<EntryDraft>(serde_json::json!(
+                    { "kind": "note", "data": { "text": "w" } }
+                ))
+                .unwrap(),
+            },
+            Context::background(),
+        )
+        .await
+        .unwrap();
+    let queued_record = read(&(Arc::clone(&storage) as Arc<dyn Storage>), queued_write)
+        .await
+        .unwrap();
+    assert_eq!(
+        wire(&serde_json::to_value(&queued_record).unwrap()),
+        wire(&expected["queuedWrite"])
+    );
+
+    // Withdraw the steer.
+    let steer_abort = submissions
+        .abort(steer, Context::background(), Some(1))
+        .await
+        .unwrap();
+    assert!(matches!(
+        steer_abort,
+        crate::durable::harness::types::AbortSubmissionResult::Found(
+            crate::durable::harness::types::AbortResult::Aborted
+        )
+    ));
+    let steer_after = read(&(Arc::clone(&storage) as Arc<dyn Storage>), steer)
+        .await
+        .unwrap();
+    assert_eq!(
+        wire(&serde_json::to_value(&steer_after).unwrap()),
+        wire(&expected["steerAfterAbort"]),
+        "steer after abort bytes"
+    );
+
+    let placed = submissions
+        .status(idle_input, Context::background())
+        .await
+        .unwrap();
+    assert_eq!(
+        format!("{:?}", placed.status).to_lowercase(),
+        expected["placedStatus"].as_str().unwrap()
+    );
+
+    assert_eq!(
+        resume_count.load(std::sync::atomic::Ordering::SeqCst),
+        expected["resumeCount"].as_u64().unwrap() as usize,
+        "resume call count"
+    );
+}
+
+// Silence unused-import warnings for the surface the tests reference.
+#[allow(unused_imports)]
+use crate::ai::types::UserMessage;
+
+#[allow(unused_imports)]
+fn _unused_context_view(_view: &ContextView) {}
+
+#[allow(unused_imports)]
+fn _unused_conversation_config() -> ConversationConfigState {
+    ConversationConfigState::initial()
+}
+
+#[allow(unused_imports)]
+fn _unused_conversation_config_doc() -> crate::durable::documents::DocToken {
+    conversation_config()
+}
+
+#[allow(unused_imports)]
+fn _unused_system_message() -> SystemMessage {
+    SystemMessage {
+        content: StringOrBlocks::Text(String::new()),
+        sections: None,
+        tools_added: None,
+        tools_removed: None,
+        timestamp: 0,
+    }
+}
+
+#[allow(unused_imports)]
+fn _unused_usage() -> Usage {
+    Usage::default()
+}
+
+#[allow(unused_imports)]
+fn _unused_message() -> Option<Message> {
+    None
+}
+
+use std::future::Future;
+use std::pin::Pin;
