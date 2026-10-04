@@ -8,3 +8,6 @@ docs/migration/validation/
 # committed again (both classes leaked into git during the wave-1 era).
 /scripts_tmp_*.mjs
 /*.log
+
+# Internal migration/process docs live only in the dev environment.
+/docs/

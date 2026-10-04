@@ -66,8 +66,8 @@ In-session commands: `/model`, `/settings`, `/compact`, `/export`, `/share`, `/t
 
 ## Verification
 
-- **~5,400+ tests**, all passing on both Windows and Linux (run serially, matching the verified gate protocol).
-- **Oracle fixtures**: per-package directories under `tests/fixtures/` pin the exact behavior of upstream TypeScript (executed verbatim under Node with a resolve-hook loader) and the Rust side is asserted to match, including JSON shapes, ordering, and error text.
+- **~5,500 tests**, all passing on both Windows and Linux (run serially, matching the verified gate protocol).
+- **Oracle fixtures**: per-package directories under `tests/fixtures/` pin the exact behavior of the upstream TypeScript (executed verbatim under Node from SHA-256-pinned sources), and the Rust side is asserted to match, including JSON shapes, ordering, and error text.
 - The fixtures are excluded from the crates.io package (they are ~69 MB of pinned upstream sources) but ship in this repository; `cargo test` from a repo clone runs the full oracle suite.
 
 ## Platform support
