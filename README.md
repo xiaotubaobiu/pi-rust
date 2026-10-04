@@ -1,93 +1,29 @@
-# pi-rust
+# pi-rs
 
-**中文** | [English](#english)
+**A Rust clone of the original [pi](https://github.com/earendil-works/pi) coding agent.**
 
-[Pi Agent Harness](https://github.com/earendil-works/pi) 的 Rust 全量重写。derived from [earendil-works/pi](https://github.com/earendil-works/pi)（MIT）。
+This project is a faithful re-implementation ("clone") of [pi](https://github.com/earendil-works/pi) — the [Pi Agent Harness](https://github.com/earendil-works/pi) by earendil-works — written from scratch in Rust. It is not affiliated with or endorsed by the upstream project. All design credit for the ported behavior belongs to the original pi authors; the crate is MIT-licensed, same as upstream.
 
-行为级完全兼容（drop-in compatible）——session 文件、`auth.json`、keybindings/themes/skills、JSON 输出、RPC 协议、扩展 API 与上游一致，可互相操作。不是源码逐行翻译（跨语言不存在），而是同架构哲学、同外部行为的全新实现。
+The crate publishes as **`pi-rs`** (this repository is named `pi-rust`); the main binary is **`pirs`**.
 
-规模：约 88 万行 Rust；5,457 项测试全部通过（Windows + Linux 双平台门禁）。
+## Compatibility with upstream
 
-## 构建
+pi-rs is behaviorally drop-in compatible with upstream pi: session files, `auth.json`, themes/keybindings/skills, JSON output, the RPC protocol, and the extension API all interoperate with upstream. That claim is enforced, not aspirational — the verification harness executes the verbatim upstream TypeScript sources (SHA-pinned) and compares their observable behavior byte-for-byte against the Rust implementation, via committed oracle fixtures. See [Verification](#verification).
 
-需要 Rust 稳定版工具链。
+Current alignment: **upstream v1.0.2**. Not a line-by-line translation (impossible across languages), but the same architecture and the same external behavior.
 
-    cargo build --release --offline
-    # 产物：target/release/pirs.exe（主 CLI）、pi-rust.exe、generate-models.exe
+## Install
 
-安装到 PATH：
+From crates.io:
 
-    cargo install --path .
+    cargo install pi-rs
 
-## 使用
+Or build from source (requires a stable Rust toolchain):
 
-### 配置凭据（三选一）
+    cargo build --release
+    # artifacts: target/release/pirs (main CLI), pi-rust, generate-models
 
-**OAuth 登录**（anthropic / codex / copilot / openrouter / xai / kimi / radius 等 9 家）：
-
-    pirs login --provider anthropic
-
-凭据自动存入 `auth.json`（与上游 pi 格式互通；默认路径 Windows 为 `%APPDATA%\pi-rust\auth.json`，Linux 为 `~/.config/pi-rust/auth.json`，macOS 为 `~/Library/Application Support/pi-rust/auth.json`）。
-
-**环境变量**：
-
-    set ANTHROPIC_API_KEY=sk-ant-...        # Windows
-    export ANTHROPIC_API_KEY=sk-ant-...     # Linux/macOS
-
-**命令行显式传入**（优先级最高，不落盘）：
-
-    pirs --provider anthropic --api-key sk-ant-...
-
-### 启动交互会话
-
-    pirs --provider anthropic --model claude-sonnet-4-5
-    pirs --provider openai-compat --base-url https://open.bigmodel.cn/api/paas/v4 --model glm-4.6
-    pirs --provider openai-compat --base-url <url> --model <id> --api-key <key>
-
-支持 `--provider`：anthropic、openai-compat、openai-responses、azure-openai-responses、openai-codex、google、google-vertex、mistral、amazon-bedrock、pi-messages。
-
-会话内支持 `/model`、`/settings`、`/compact`、`/export`、`/share`、`/tree`、`/session`、`/bug` 等命令，扩展系统、skills、hooks、themes、keybindings 均可用。
-
-### 与上游 v0.99 同代的能力
-
-- **MCP 客户端**：stdio / streamable-HTTP 传输、OAuth（动态客户端注册 + 回环回调）、`mcp.json` 配置、`/mcp` 管理、tool/resources/prompts 暴露策略（direct/deferred/codemode/hidden）。
-- **codemode**：内嵌 QuickJS（quickjs-ng）沙箱，模型可以用 JavaScript 组合调用工具（`searchTools`、命名空间、延迟加载）。
-- **tool-search**：BM25 工具检索与延迟加载。
-- **system 主题**：从终端回读的背景/调色板实时生成 OKHSL 配色（对比度规则引擎），支持浅色/深色终端与灰度首帧。
-- **pi-durable**：持久执行库（JSONL/内存/SQLite 存储、fork/事务/观察、调度器与 harness）。
-- **System One / llama.cpp 分类器**、ChatGPT/Meta OAuth 新流程、指数退避重试。
-
-## 平台支持
-
-- **Windows**：全量开发与验证平台。
-- **Linux / macOS**：平台分支代码已移植（Unix socket、termux/wl-copy/xclip/pbcopy 剪贴板等），需在对应平台跑一轮门禁验证。
-
-## 已知限制
-
-- 剪贴板：Windows 文本读与 win/mac 图像读依赖上游预编译 native N-API 模块，当前缺失；Linux 全路径（termux/wl/x11 子进程）与 OSC 52 兜底已实现。
-- experimental 子系统的运行时绑定（Windows named pipe、node:vm 宿主、esbuild 打包）按 seam 惯例留给宿主装配。
-
----
-
-<a name="english"></a>
-# English
-
-A full rewrite of the [Pi Agent Harness](https://github.com/earendil-works/pi) in Rust. derived from [earendil-works/pi](https://github.com/earendil-works/pi) (MIT).
-
-Behaviorally drop-in compatible — session files, `auth.json`, keybindings/themes/skills, JSON output, the RPC protocol and the extension API all interoperate with upstream. Not a line-by-line translation (impossible across languages), but a fresh implementation with the same architecture and identical external behavior.
-
-Scale: ~880k lines of Rust; 5,457 tests, all passing (gates verified on both Windows and Linux).
-
-## Build
-
-Requires a stable Rust toolchain.
-
-    cargo build --release --offline
-    # artifacts: target/release/pirs.exe (main CLI), pi-rust.exe, generate-models.exe
-
-Install onto PATH:
-
-    cargo install --path .
+Prebuilt binaries for Windows / Linux / macOS (x64 + arm64 where applicable) are attached to each [GitHub release](https://github.com/xiaotubaobiu/pi-rust/releases).
 
 ## Usage
 
@@ -118,19 +54,27 @@ Supported `--provider`: anthropic, openai-compat, openai-responses, azure-openai
 
 In-session commands: `/model`, `/settings`, `/compact`, `/export`, `/share`, `/tree`, `/session`, `/bug` and more. Extensions, skills, hooks, themes and custom keybindings all work.
 
-### Capabilities current with upstream v0.99
+### Capabilities current with upstream v1.0.2
 
 - **MCP client**: stdio / streamable-HTTP transports, OAuth (dynamic client registration + loopback callback), `mcp.json` config, `/mcp` management, tool/resources/prompts exposure policies (direct/deferred/codemode/hidden).
 - **codemode**: an embedded QuickJS (quickjs-ng) sandbox where the model composes tool calls in JavaScript (`searchTools`, namespaces, deferred loading).
 - **tool-search**: BM25 tool retrieval with deferred loading.
 - **system theme**: live OKHSL palette generation from the terminal's reported background/palette (contrast-rule engine), light/dark terminals, grayscale first frame.
-- **pi-durable**: the durable-execution library (JSONL/memory/SQLite storage, forks/transactions/observations, scheduler + harness).
+- **pi-durable**: the durable-execution library (JSONL/memory/SQLite storage, forks/transactions/observations, scheduler + harness, provider identities).
+- **Per-level sampling params** merged across model defaults / thinking level / request.
 - **System One / llama.cpp classifiers**, the ChatGPT/Meta OAuth flows, exponential-backoff retries.
+
+## Verification
+
+- **~5,400+ tests**, all passing on both Windows and Linux (run serially, matching the verified gate protocol).
+- **Oracle fixtures**: per-package directories under `tests/fixtures/` pin the exact behavior of upstream TypeScript (executed verbatim under Node with a resolve-hook loader) and the Rust side is asserted to match, including JSON shapes, ordering, and error text.
+- The fixtures are excluded from the crates.io package (they are ~69 MB of pinned upstream sources) but ship in this repository; `cargo test` from a repo clone runs the full oracle suite.
 
 ## Platform support
 
-- **Windows**: fully developed and verified (all gates run here).
-- **Linux / macOS**: platform branches are ported (Unix sockets, termux/wl-copy/xclip/pbcopy clipboard); run the gate suite once on those platforms to confirm.
+- **Windows**: primary development platform, fully verified.
+- **Linux**: full gate suite verified (CI + WSL).
+- **macOS**: platform branches are ported (Unix sockets, pbcopy clipboard); CI does not cover macOS yet.
 
 ## Known limitations
 
@@ -139,4 +83,4 @@ In-session commands: `/model`, `/settings`, `/compact`, `/export`, `/share`, `/t
 
 ## License
 
-MIT, same as upstream. Copyright and design of all ported content belong to the original [earendil-works/pi](https://github.com/earendil-works/pi) authors.
+MIT, same as upstream [pi](https://github.com/earendil-works/pi). The original pi project's copyright and design belong to the earendil-works authors; this repository is an independent Rust clone maintained for the Rust ecosystem.

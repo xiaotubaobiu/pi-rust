@@ -33,6 +33,19 @@ jobs:
       - name: Install lld (ubuntu)
         if: runner.os == 'Linux'
         run: sudo apt-get update -qq && sudo apt-get install -y -qq lld
+      # The ~30-min silent compile+link of the local crate is the job's peak
+      # memory phase. When rustc/lld pressure spills over, the kernel can kill
+      # the runner agent itself — the job then dies as exit 143 (SIGTERM) with
+      # zero output. A 4G swapfile absorbs the spike so the agent survives.
+      - name: Add swapfile (ubuntu)
+        if: runner.os == 'Linux'
+        run: |
+          sudo swapoff -a || true
+          sudo fallocate -l 4G /swapfile
+          sudo chmod 600 /swapfile
+          sudo mkswap /swapfile
+          sudo swapon /swapfile
+          free -h
       - run: cargo fmt --check
       - run: cargo clippy --all-targets -- -D warnings
       # serial matches the verified gate protocol; parallel load on shared

@@ -1,7 +1,30 @@
 [package]
-name = "pi-rust"
-version = "0.2.1"
+name = "pi-rs"
+version = "0.2.2"
 edition = "2021"
+description = "Rust port of the pi coding agent (earendil-works/pi): CLI/TUI agent with multi-provider LLM support, tools, MCP, sessions, and oracle-verified behavioral parity with upstream."
+license = "MIT"
+repository = "https://github.com/xiaotubaobiu/pi-rust"
+readme = "README.md"
+keywords = ["ai", "agent", "cli", "llm", "coding-assistant"]
+categories = ["command-line-utilities", "development-tools"]
+# crates.io ships source archives, not the dev tree: the oracle fixtures
+# (tests/fixtures, ~69 MB) and the internal migration docs (docs/migration,
+# ~87 MB) dwarf the 10 MB package limit and are only needed for the
+# fixture-verification workflow, not for installing the binaries.
+exclude = [
+    "tests/fixtures/**",
+    "docs/migration/**",
+    "docs/superpowers/**",
+    ".github/**",
+]
+
+# The lib keeps its historical name while the package publishes to crates.io
+# as `pi-rs`: bins (`pirs`, `pi-rust`, `generate-models`) and the integration
+# test link against `pi_rust`, and no source churn is wanted in a release.
+[lib]
+name = "pi_rust"
+path = "src/lib.rs"
 
 [[bin]]
 name = "pirs"
