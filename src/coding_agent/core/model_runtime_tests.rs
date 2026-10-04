@@ -225,6 +225,7 @@ async fn register_provider_lifecycle() {
             context_window: 128_000,
             max_tokens: 4096,
             sampling_params: None,
+            sampling_params_by_thinking_level: None,
             headers: None,
             compat: None,
         }]),
@@ -275,6 +276,7 @@ async fn register_provider_lifecycle() {
             context_window: 128_000,
             max_tokens: 4096,
             sampling_params: None,
+            sampling_params_by_thinking_level: None,
             headers: None,
             compat: None,
         }]),
@@ -653,6 +655,7 @@ fn dynamic_provider(id: &str) -> Arc<dyn Provider> {
         context_window: 1000,
         max_tokens: 100,
         sampling_params: None,
+        sampling_params_by_thinking_level: None,
         headers: None,
         compat: None,
     };

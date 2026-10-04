@@ -407,6 +407,14 @@ async fn request_phase(args: PhaseArgs) -> Result<(), PlainFailure> {
     let mut request = SimpleStreamRequest {
         options: stream_options,
         reasoning: None,
+        // Upstream `sessionId: await ensureProviderSessionId(runtime,
+        // context)` (generation.ts @ 200387122): the `pi.provider` identity,
+        // created by one migration commit for a legacy conversation.
+        session_id: Some(
+            super::provider::ensure_provider_session_id(&runtime, &context)
+                .await
+                .map_err(failure)?,
+        ),
         signal: Some(runtime.signal()),
     };
     if thinking_level != crate::ai::types::ModelThinkingLevel::Off {

@@ -659,5 +659,636 @@
     }
    }
   }
+ },
+ "samplingParams": {
+  "resolve": [
+   {
+    "model": "full",
+    "level": "off",
+    "request": null,
+    "result": {
+     "temperature": 0.7,
+     "top_p": 0.95
+    }
+   },
+   {
+    "model": "full",
+    "level": "off",
+    "request": {
+     "top_k": 1
+    },
+    "result": {
+     "temperature": 0.7,
+     "top_p": 0.95,
+     "top_k": 1
+    }
+   },
+   {
+    "model": "full",
+    "level": "minimal",
+    "request": null,
+    "result": {
+     "temperature": 1,
+     "top_p": 0.95
+    }
+   },
+   {
+    "model": "full",
+    "level": "minimal",
+    "request": {
+     "top_k": 1
+    },
+    "result": {
+     "temperature": 1,
+     "top_p": 0.95,
+     "top_k": 1
+    }
+   },
+   {
+    "model": "full",
+    "level": "low",
+    "request": null,
+    "result": {
+     "temperature": 0.8,
+     "top_p": 0.95,
+     "top_k": 64
+    }
+   },
+   {
+    "model": "full",
+    "level": "low",
+    "request": {
+     "top_k": 1
+    },
+    "result": {
+     "temperature": 0.8,
+     "top_p": 0.95,
+     "top_k": 1
+    }
+   },
+   {
+    "model": "full",
+    "level": "medium",
+    "request": null,
+    "result": {
+     "temperature": 0.8,
+     "top_p": 0.95,
+     "top_k": 64
+    }
+   },
+   {
+    "model": "full",
+    "level": "medium",
+    "request": {
+     "top_k": 1
+    },
+    "result": {
+     "temperature": 0.8,
+     "top_p": 0.95,
+     "top_k": 1
+    }
+   },
+   {
+    "model": "full",
+    "level": "high",
+    "request": null,
+    "result": {
+     "temperature": 0.8,
+     "top_p": 0.95,
+     "top_k": 64
+    }
+   },
+   {
+    "model": "full",
+    "level": "high",
+    "request": {
+     "top_k": 1
+    },
+    "result": {
+     "temperature": 0.8,
+     "top_p": 0.95,
+     "top_k": 1
+    }
+   },
+   {
+    "model": "full",
+    "level": "xhigh",
+    "request": null,
+    "result": {
+     "temperature": 0.8,
+     "top_p": 0.95,
+     "top_k": 64
+    }
+   },
+   {
+    "model": "full",
+    "level": "xhigh",
+    "request": {
+     "top_k": 1
+    },
+    "result": {
+     "temperature": 0.8,
+     "top_p": 0.95,
+     "top_k": 1
+    }
+   },
+   {
+    "model": "full",
+    "level": "max",
+    "request": null,
+    "result": {
+     "temperature": 0.8,
+     "top_p": 0.95,
+     "top_k": 64
+    }
+   },
+   {
+    "model": "full",
+    "level": "max",
+    "request": {
+     "top_k": 1
+    },
+    "result": {
+     "temperature": 0.8,
+     "top_p": 0.95,
+     "top_k": 1
+    }
+   },
+   {
+    "model": "bare",
+    "level": "off",
+    "request": null,
+    "result": null
+   },
+   {
+    "model": "bare",
+    "level": "off",
+    "request": {
+     "top_k": 1
+    },
+    "result": {
+     "top_k": 1
+    }
+   },
+   {
+    "model": "bare",
+    "level": "minimal",
+    "request": null,
+    "result": null
+   },
+   {
+    "model": "bare",
+    "level": "minimal",
+    "request": {
+     "top_k": 1
+    },
+    "result": {
+     "top_k": 1
+    }
+   },
+   {
+    "model": "bare",
+    "level": "low",
+    "request": null,
+    "result": null
+   },
+   {
+    "model": "bare",
+    "level": "low",
+    "request": {
+     "top_k": 1
+    },
+    "result": {
+     "top_k": 1
+    }
+   },
+   {
+    "model": "bare",
+    "level": "medium",
+    "request": null,
+    "result": null
+   },
+   {
+    "model": "bare",
+    "level": "medium",
+    "request": {
+     "top_k": 1
+    },
+    "result": {
+     "top_k": 1
+    }
+   },
+   {
+    "model": "bare",
+    "level": "high",
+    "request": null,
+    "result": null
+   },
+   {
+    "model": "bare",
+    "level": "high",
+    "request": {
+     "top_k": 1
+    },
+    "result": {
+     "top_k": 1
+    }
+   },
+   {
+    "model": "bare",
+    "level": "xhigh",
+    "request": null,
+    "result": null
+   },
+   {
+    "model": "bare",
+    "level": "xhigh",
+    "request": {
+     "top_k": 1
+    },
+    "result": {
+     "top_k": 1
+    }
+   },
+   {
+    "model": "bare",
+    "level": "max",
+    "request": null,
+    "result": null
+   },
+   {
+    "model": "bare",
+    "level": "max",
+    "request": {
+     "top_k": 1
+    },
+    "result": {
+     "top_k": 1
+    }
+   },
+   {
+    "model": "noLevels",
+    "level": "off",
+    "request": null,
+    "result": {
+     "temperature": 1,
+     "top_p": 0.95
+    }
+   },
+   {
+    "model": "noLevels",
+    "level": "off",
+    "request": {
+     "top_k": 1
+    },
+    "result": {
+     "temperature": 1,
+     "top_p": 0.95,
+     "top_k": 1
+    }
+   },
+   {
+    "model": "noLevels",
+    "level": "minimal",
+    "request": null,
+    "result": {
+     "temperature": 1,
+     "top_p": 0.95
+    }
+   },
+   {
+    "model": "noLevels",
+    "level": "minimal",
+    "request": {
+     "top_k": 1
+    },
+    "result": {
+     "temperature": 1,
+     "top_p": 0.95,
+     "top_k": 1
+    }
+   },
+   {
+    "model": "noLevels",
+    "level": "low",
+    "request": null,
+    "result": {
+     "temperature": 1,
+     "top_p": 0.95
+    }
+   },
+   {
+    "model": "noLevels",
+    "level": "low",
+    "request": {
+     "top_k": 1
+    },
+    "result": {
+     "temperature": 1,
+     "top_p": 0.95,
+     "top_k": 1
+    }
+   },
+   {
+    "model": "noLevels",
+    "level": "medium",
+    "request": null,
+    "result": {
+     "temperature": 1,
+     "top_p": 0.95
+    }
+   },
+   {
+    "model": "noLevels",
+    "level": "medium",
+    "request": {
+     "top_k": 1
+    },
+    "result": {
+     "temperature": 1,
+     "top_p": 0.95,
+     "top_k": 1
+    }
+   },
+   {
+    "model": "noLevels",
+    "level": "high",
+    "request": null,
+    "result": {
+     "temperature": 1,
+     "top_p": 0.95
+    }
+   },
+   {
+    "model": "noLevels",
+    "level": "high",
+    "request": {
+     "top_k": 1
+    },
+    "result": {
+     "temperature": 1,
+     "top_p": 0.95,
+     "top_k": 1
+    }
+   },
+   {
+    "model": "noLevels",
+    "level": "xhigh",
+    "request": null,
+    "result": {
+     "temperature": 1,
+     "top_p": 0.95
+    }
+   },
+   {
+    "model": "noLevels",
+    "level": "xhigh",
+    "request": {
+     "top_k": 1
+    },
+    "result": {
+     "temperature": 1,
+     "top_p": 0.95,
+     "top_k": 1
+    }
+   },
+   {
+    "model": "noLevels",
+    "level": "max",
+    "request": null,
+    "result": {
+     "temperature": 1,
+     "top_p": 0.95
+    }
+   },
+   {
+    "model": "noLevels",
+    "level": "max",
+    "request": {
+     "top_k": 1
+    },
+    "result": {
+     "temperature": 1,
+     "top_p": 0.95,
+     "top_k": 1
+    }
+   },
+   {
+    "model": "nonReasoning",
+    "level": "off",
+    "request": null,
+    "result": {
+     "temperature": 0.7,
+     "top_p": 0.95
+    }
+   },
+   {
+    "model": "nonReasoning",
+    "level": "off",
+    "request": {
+     "top_k": 1
+    },
+    "result": {
+     "temperature": 0.7,
+     "top_p": 0.95,
+     "top_k": 1
+    }
+   },
+   {
+    "model": "nonReasoning",
+    "level": "minimal",
+    "request": null,
+    "result": {
+     "temperature": 0.7,
+     "top_p": 0.95
+    }
+   },
+   {
+    "model": "nonReasoning",
+    "level": "minimal",
+    "request": {
+     "top_k": 1
+    },
+    "result": {
+     "temperature": 0.7,
+     "top_p": 0.95,
+     "top_k": 1
+    }
+   },
+   {
+    "model": "nonReasoning",
+    "level": "low",
+    "request": null,
+    "result": {
+     "temperature": 0.7,
+     "top_p": 0.95
+    }
+   },
+   {
+    "model": "nonReasoning",
+    "level": "low",
+    "request": {
+     "top_k": 1
+    },
+    "result": {
+     "temperature": 0.7,
+     "top_p": 0.95,
+     "top_k": 1
+    }
+   },
+   {
+    "model": "nonReasoning",
+    "level": "medium",
+    "request": null,
+    "result": {
+     "temperature": 0.7,
+     "top_p": 0.95
+    }
+   },
+   {
+    "model": "nonReasoning",
+    "level": "medium",
+    "request": {
+     "top_k": 1
+    },
+    "result": {
+     "temperature": 0.7,
+     "top_p": 0.95,
+     "top_k": 1
+    }
+   },
+   {
+    "model": "nonReasoning",
+    "level": "high",
+    "request": null,
+    "result": {
+     "temperature": 0.7,
+     "top_p": 0.95
+    }
+   },
+   {
+    "model": "nonReasoning",
+    "level": "high",
+    "request": {
+     "top_k": 1
+    },
+    "result": {
+     "temperature": 0.7,
+     "top_p": 0.95,
+     "top_k": 1
+    }
+   },
+   {
+    "model": "nonReasoning",
+    "level": "xhigh",
+    "request": null,
+    "result": {
+     "temperature": 0.7,
+     "top_p": 0.95
+    }
+   },
+   {
+    "model": "nonReasoning",
+    "level": "xhigh",
+    "request": {
+     "top_k": 1
+    },
+    "result": {
+     "temperature": 0.7,
+     "top_p": 0.95,
+     "top_k": 1
+    }
+   },
+   {
+    "model": "nonReasoning",
+    "level": "max",
+    "request": null,
+    "result": {
+     "temperature": 0.7,
+     "top_p": 0.95
+    }
+   },
+   {
+    "model": "nonReasoning",
+    "level": "max",
+    "request": {
+     "top_k": 1
+    },
+    "result": {
+     "temperature": 0.7,
+     "top_p": 0.95,
+     "top_k": 1
+    }
+   }
+  ],
+  "supported": {
+   "full": [
+    "off",
+    "minimal",
+    "high"
+   ],
+   "bare": [
+    "off",
+    "minimal",
+    "high"
+   ],
+   "noLevels": [
+    "off",
+    "minimal",
+    "high"
+   ],
+   "nonReasoning": [
+    "off"
+   ]
+  },
+  "clamped": {
+   "full": {
+    "off": "off",
+    "minimal": "minimal",
+    "low": "high",
+    "medium": "high",
+    "high": "high",
+    "xhigh": "high",
+    "max": "high"
+   },
+   "bare": {
+    "off": "off",
+    "minimal": "minimal",
+    "low": "high",
+    "medium": "high",
+    "high": "high",
+    "xhigh": "high",
+    "max": "high"
+   },
+   "noLevels": {
+    "off": "off",
+    "minimal": "minimal",
+    "low": "high",
+    "medium": "high",
+    "high": "high",
+    "xhigh": "high",
+    "max": "high"
+   },
+   "nonReasoning": {
+    "off": "off",
+    "minimal": "off",
+    "low": "off",
+    "medium": "off",
+    "high": "off",
+    "xhigh": "off",
+    "max": "off"
+   }
+  },
+  "base": {
+   "samplingParams": {
+    "temperature": 0.8,
+    "top_p": 0.5,
+    "top_k": 64
+   },
+   "maxTokens": 16384
+  },
+  "baseBare": {
+   "maxTokens": 16384
+  }
  }
 }

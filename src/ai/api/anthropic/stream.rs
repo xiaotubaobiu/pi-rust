@@ -1097,6 +1097,7 @@ mod tests {
             context_window: 200000,
             max_tokens: 32000,
             sampling_params: None,
+            sampling_params_by_thinking_level: None,
             headers: None,
             compat: Some(compat),
         }

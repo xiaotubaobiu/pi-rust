@@ -2689,3 +2689,10 @@ WORK_LOG追加前缀：386287 bytes / cadeaf51fe906e35a1531ffc26058289e7d44c061d
 - CI double-green run 37159226024 (ubuntu 29m after one infra-flake rerun — null-step + BlobNotFound = runner death, windows 47m with rust-lld).
 - CI hardening added this round: test profile debug=0 + codegen-units=256 (crate ~880k lines), ubuntu links with lld, windows links with rust-lld (both runners OOMd in the link phase of the grown test binary), 1.98-only clippy lints fixed (manual_checked_division, unnecessary_min_or_max).
 - Tag v0.2.1 pushed; release.yml building 4 platforms.
+
+## 2026-10-04 wave-12: upstream v1.0.2 alignment (4c6fb7cfe..200387122)
+- D8 ported per-thinking-level sampling parameters (#9776): SamplingParams/SamplingParamsByThinkingLevel aliases, Model.samplingParamsByThinkingLevel, resolveSamplingParams (clampThinkingLevel + 3-way merge) applied in azure/openai-responses/completions builders; model-config schemas + provider_composer merge_sampling_params_by_thinking_level plumbing.
+- Durable provider session identities: NEW harness/provider.rs (pi.provider doc, conversation/latest/initial=uuidv7, ensure_provider_session_id with legacy migration commit), generation request_phase fills session_id, builtin_setup creates pi.provider, view MOUNTED+hydration, re-exports.
+- Oracle: ai samplingParams 56-entry grid (ai_delta_oracle ff361a03), durable provider_identity lifecycle (durable_oracle 701931da); both capture drivers now stage from pinned git blobs (the pi worktree moved past the old durable baseline which can no longer run).
+- D31-D33 disclosed: compaction +2 lines landless (phase machine not ported), reasoningSummary medium-branch unreachable (no port surface), staged-blob provenance.
+- Whole-lib serial 5445/0; clippy 0; fmt clean.

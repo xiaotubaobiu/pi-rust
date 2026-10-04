@@ -639,6 +639,29 @@ fn thinking_level_map_schema() -> Schema {
     }
 }
 
+/// Upstream `SamplingParamsSchema` (`Type.Record(Type.String(), Type.Unknown())`).
+fn sampling_params_schema() -> Schema {
+    Schema::Record(Box::new(Schema::Unknown))
+}
+
+/// Upstream `SamplingParamsByThinkingLevelSchema`: the seven optional
+/// `ModelThinkingLevel` keys, each a [`sampling_params_schema`] record.
+fn sampling_params_by_thinking_level_schema() -> Schema {
+    let value = || sampling_params_schema();
+    Schema::Object {
+        properties: vec![
+            ("off", value()),
+            ("minimal", value()),
+            ("low", value()),
+            ("medium", value()),
+            ("high", value()),
+            ("xhigh", value()),
+            ("max", value()),
+        ],
+        required: &[],
+    }
+}
+
 fn chat_template_kwarg_schema() -> Schema {
     // Union([scalar union, { $var: Union([...]), omitWhenOff? }])
     Schema::AnyOf(vec![
@@ -857,7 +880,11 @@ fn model_definition_schema() -> Schema {
             ("cost", model_cost_schema()),
             ("contextWindow", Schema::Number),
             ("maxTokens", Schema::Number),
-            ("samplingParams", Schema::Record(Box::new(Schema::Unknown))),
+            ("samplingParams", sampling_params_schema()),
+            (
+                "samplingParamsByThinkingLevel",
+                sampling_params_by_thinking_level_schema(),
+            ),
             ("headers", Schema::Record(Box::new(non_empty_string()))),
             ("compat", provider_compat_schema()),
         ],
@@ -920,7 +947,11 @@ fn model_override_schema() -> Schema {
             ("cost", model_override_cost_schema()),
             ("contextWindow", Schema::Number),
             ("maxTokens", Schema::Number),
-            ("samplingParams", Schema::Record(Box::new(Schema::Unknown))),
+            ("samplingParams", sampling_params_schema()),
+            (
+                "samplingParamsByThinkingLevel",
+                sampling_params_by_thinking_level_schema(),
+            ),
             ("headers", Schema::Record(Box::new(non_empty_string()))),
             ("compat", provider_compat_schema()),
         ],
@@ -1004,6 +1035,8 @@ pub struct ModelsJsonModel {
     pub context_window: Option<f64>,
     pub max_tokens: Option<f64>,
     pub sampling_params: Option<OrderedValue>,
+    /// Ordered `samplingParamsByThinkingLevel` record.
+    pub sampling_params_by_thinking_level: Option<OrderedValue>,
     pub headers: Option<Vec<(String, String)>>,
     pub compat: Option<OrderedValue>,
 }
@@ -1019,6 +1052,8 @@ pub struct ModelsJsonModelOverride {
     pub context_window: Option<f64>,
     pub max_tokens: Option<f64>,
     pub sampling_params: Option<OrderedValue>,
+    /// Ordered `samplingParamsByThinkingLevel` record.
+    pub sampling_params_by_thinking_level: Option<OrderedValue>,
     pub headers: Option<Vec<(String, String)>>,
     pub compat: Option<OrderedValue>,
 }
@@ -1080,6 +1115,10 @@ impl ModelsJsonModel {
             context_window: optional_f64(value, "contextWindow"),
             max_tokens: optional_f64(value, "maxTokens"),
             sampling_params: optional_ordered(value, "samplingParams"),
+            sampling_params_by_thinking_level: optional_ordered(
+                value,
+                "samplingParamsByThinkingLevel",
+            ),
             headers: optional_string_record(value, "headers"),
             compat: optional_ordered(value, "compat"),
         }
@@ -1097,6 +1136,10 @@ impl ModelsJsonModelOverride {
             context_window: optional_f64(value, "contextWindow"),
             max_tokens: optional_f64(value, "maxTokens"),
             sampling_params: optional_ordered(value, "samplingParams"),
+            sampling_params_by_thinking_level: optional_ordered(
+                value,
+                "samplingParamsByThinkingLevel",
+            ),
             headers: optional_string_record(value, "headers"),
             compat: optional_ordered(value, "compat"),
         }

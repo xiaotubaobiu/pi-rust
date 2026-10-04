@@ -76,8 +76,8 @@ use serde_json::{json, Map, Value};
 
 use crate::ai::api::openai_completions::request::{
     clamp_max_tokens_to_context, clamp_openai_prompt_cache_key, clamp_thinking_level,
-    create_grammar_tool_input_properties, level_key, map_level, remove_header, set_header,
-    MappedLevel,
+    create_grammar_tool_input_properties, level_key, map_level, remove_header,
+    resolve_sampling_params, set_header, MappedLevel,
 };
 use crate::ai::api::openai_completions::stream::{
     truncate_error_text, MAX_PROVIDER_ERROR_BODY_CHARS,
@@ -654,18 +654,20 @@ fn build_params(
         }
     }
 
-    // Last so custom keys override the named request fields (upstream lines
-    // 345-347). The streamSimple base-option merge folds
-    // `model.samplingParams` into `options.samplingParams` upstream; the port
-    // merges both here.
-    let mut sampling = model.sampling_params.clone().unwrap_or_default();
-    if let Some(option_params) = &options.stream.sampling_params {
-        for (key, value) in option_params {
-            sampling.insert(key.clone(), value.clone());
+    // Last so model and request sampling parameters override the named
+    // request fields (upstream lines 348-351): `resolveSamplingParams(model,
+    // reasoningEffort ?? "off", options?.samplingParams)`. The port's
+    // `options.reasoning` is the clamped `reasoningEffort` surface (the
+    // summary-only `"medium"` default has no port surface; the resolver
+    // clamps again, so raw or clamped look up identically).
+    if let Some(sampling) = resolve_sampling_params(
+        model,
+        options.reasoning,
+        options.stream.sampling_params.as_ref(),
+    ) {
+        for (key, value) in sampling {
+            params.insert(key, value);
         }
-    }
-    for (key, value) in sampling {
-        params.insert(key, value);
     }
 
     Ok(Value::Object(params))
@@ -795,6 +797,7 @@ mod tests {
             context_window: 400000,
             max_tokens: 128000,
             sampling_params: None,
+            sampling_params_by_thinking_level: None,
             headers: None,
             compat: None,
         }

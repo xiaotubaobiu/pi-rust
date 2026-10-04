@@ -34,6 +34,7 @@ pub mod json;
 pub mod live;
 pub mod output;
 pub mod prompt;
+pub mod provider;
 pub mod registry;
 pub mod scheduler;
 pub mod submissions;

@@ -327,6 +327,7 @@ pub(crate) fn model_view(
         context_window: 0,
         max_tokens: 0,
         sampling_params: None,
+        sampling_params_by_thinking_level: None,
         headers,
         compat: None,
     }

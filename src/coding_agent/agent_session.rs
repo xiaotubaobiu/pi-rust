@@ -6893,6 +6893,8 @@ pub(crate) fn provider_config_from_value(config: &Value) -> Result<ProviderConfi
         context_window: u64,
         max_tokens: u64,
         sampling_params: Option<BTreeMap<String, Value>>,
+        sampling_params_by_thinking_level:
+            Option<std::collections::BTreeMap<String, BTreeMap<String, Value>>>,
         headers: Option<serde_json::Map<String, Value>>,
         #[serde(default, deserialize_with = "crate::serde_support::present_json")]
         compat: Option<Value>,
@@ -6947,6 +6949,7 @@ pub(crate) fn provider_config_from_value(config: &Value) -> Result<ProviderConfi
                         context_window: model.context_window,
                         max_tokens: model.max_tokens,
                         sampling_params: model.sampling_params,
+                        sampling_params_by_thinking_level: model.sampling_params_by_thinking_level,
                         headers: headers(model.headers, &format!("models[{index}].headers"))?,
                         compat: model.compat,
                     })

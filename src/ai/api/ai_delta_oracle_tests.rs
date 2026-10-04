@@ -659,3 +659,214 @@ mod model_catalog {
         assert_eq!(chat_keys, vec!["v1".to_string(), "v2".to_string()]);
     }
 }
+
+// ---------------------------------------------------------------------------
+// 4. v1.0.2 sampling-params surface (upstream 200387122)
+// ---------------------------------------------------------------------------
+#[cfg(test)]
+mod sampling_params {
+    //! Mirror of the `samplingParams` scenario (captured by
+    //! `capture_ai_delta.mjs` from the `origin/main` blobs of
+    //! `api/simple-options.ts` + `models.ts` under the disclosed stubs): the
+    //! `resolveSamplingParams` grid, the `clampThinkingLevel` grid and
+    //! supported sets, and the `buildBaseOptions` merge.
+
+    use std::collections::BTreeMap;
+
+    use serde_json::{json, Map, Value};
+
+    use super::oracle;
+    use crate::ai::api::openai_completions::request::{
+        clamp_max_tokens_to_context, clamp_thinking_level, resolve_sampling_params,
+    };
+    use crate::ai::transcript::{normalize_context, Context, TranscriptContext};
+    use crate::ai::types::model::Model;
+    use crate::ai::types::primitives::ModelCost;
+    use crate::ai::types::primitives::ThinkingLevel;
+
+    fn oracle_scenario() -> Value {
+        oracle()["samplingParams"].clone()
+    }
+
+    /// The capture's model base, rebuilt per shape (`full`, `bare`,
+    /// `noLevels`, `nonReasoning`).
+    fn oracle_model(name: &str) -> Model {
+        Model {
+            r#type: None,
+            prompt_cache: None,
+            input_limits: None,
+            id: String::from("custom-model"),
+            name: String::from("Custom Model"),
+            api: String::from("openai-completions"),
+            provider: String::from("custom"),
+            base_url: String::from("https://api.example.com/v1"),
+            reasoning: name != "nonReasoning",
+            thinking_level_map: Some(BTreeMap::from([
+                (String::from("low"), None),
+                (String::from("medium"), None),
+            ])),
+            input: vec![crate::ai::types::ModelInput::Text],
+            cost: ModelCost {
+                input: 1.0,
+                output: 2.0,
+                cache_read: 0.0,
+                cache_write: 0.0,
+                tiers: None,
+            },
+            context_window: 128_000,
+            max_tokens: 16_384,
+            sampling_params: if name == "bare" {
+                None
+            } else {
+                Some(BTreeMap::from([
+                    (String::from("temperature"), json!(1)),
+                    (String::from("top_p"), json!(0.95)),
+                ]))
+            },
+            sampling_params_by_thinking_level: match name {
+                "bare" | "noLevels" => None,
+                _ => Some(BTreeMap::from([
+                    (
+                        String::from("high"),
+                        BTreeMap::from([
+                            (String::from("temperature"), json!(0.8)),
+                            (String::from("top_k"), json!(64)),
+                        ]),
+                    ),
+                    (
+                        String::from("off"),
+                        BTreeMap::from([(String::from("temperature"), json!(0.7))]),
+                    ),
+                ])),
+            },
+            headers: None,
+            compat: None,
+        }
+    }
+
+    fn level_of(wire: &str) -> Option<ThinkingLevel> {
+        match wire {
+            "off" => None,
+            "minimal" => Some(ThinkingLevel::Minimal),
+            "low" => Some(ThinkingLevel::Low),
+            "medium" => Some(ThinkingLevel::Medium),
+            "high" => Some(ThinkingLevel::High),
+            "xhigh" => Some(ThinkingLevel::Xhigh),
+            "max" => Some(ThinkingLevel::Max),
+            other => panic!("unexpected level {other}"),
+        }
+    }
+
+    fn empty_context() -> TranscriptContext {
+        normalize_context(&Context {
+            system_prompt: None,
+            messages: Vec::new(),
+            tools: None,
+        })
+    }
+
+    /// The full `resolveSamplingParams` grid (model shape x level x request
+    /// keys), compared entry-for-entry in capture order.
+    #[test]
+    fn resolve_grid_matches_upstream() {
+        let expected = oracle_scenario()["resolve"].as_array().unwrap().clone();
+        let models = ["full", "bare", "noLevels", "nonReasoning"];
+        let levels = ["off", "minimal", "low", "medium", "high", "xhigh", "max"];
+        let request = BTreeMap::from([(String::from("top_k"), json!(1))]);
+        let mut actual = Vec::new();
+        for model_name in models {
+            let model = oracle_model(model_name);
+            for level in levels {
+                for request_wire in [json!(null), json!({"top_k": 1})] {
+                    let request_params = if request_wire.is_null() {
+                        None
+                    } else {
+                        Some(&request)
+                    };
+                    let result = resolve_sampling_params(&model, level_of(level), request_params);
+                    actual.push(json!({
+                        "model": model_name,
+                        "level": level,
+                        "request": request_wire,
+                        "result": result
+                            .map(|params| Value::Object(params.into_iter().collect())),
+                    }));
+                }
+            }
+        }
+        assert_eq!(Value::Array(actual), Value::Array(expected), "resolve grid");
+    }
+
+    /// `clampThinkingLevel` per model and the supported set it derives from
+    /// (a level is supported exactly when the clamp is the identity).
+    #[test]
+    fn clamp_and_supported_match_upstream() {
+        let expected = oracle_scenario();
+        let models = ["full", "bare", "noLevels", "nonReasoning"];
+        let levels = ["off", "minimal", "low", "medium", "high", "xhigh", "max"];
+        for model_name in models {
+            let model = oracle_model(model_name);
+            let wire = |level: Option<ThinkingLevel>| match level {
+                None => json!("off"),
+                Some(level) => json!(serde_json::to_value(level).unwrap()),
+            };
+            for level in levels {
+                assert_eq!(
+                    wire(clamp_thinking_level(&model, level_of(level))),
+                    expected["clamped"][model_name][level],
+                    "clamped[{model_name}][{level}]"
+                );
+            }
+            let supported: Vec<Value> = levels
+                .iter()
+                .filter(|level| clamp_thinking_level(&model, level_of(level)) == level_of(level))
+                .map(|level| json!(level))
+                .collect();
+            assert_eq!(
+                Value::Array(supported),
+                expected["supported"][model_name].clone(),
+                "supported[{model_name}]"
+            );
+        }
+    }
+
+    /// `buildBaseOptions`: the resolved `samplingParams` member and the
+    /// context-clamped `maxTokens` for the reasoning request with per-request
+    /// keys, and for the bare model with no sampling configuration.
+    #[test]
+    fn build_base_options_matches_upstream() {
+        let expected = oracle_scenario();
+        let ctx = empty_context();
+
+        let full = oracle_model("full");
+        let request = BTreeMap::from([(String::from("top_p"), json!(0.5))]);
+        let resolved = resolve_sampling_params(&full, Some(ThinkingLevel::Low), Some(&request));
+        // JSON.stringify drops the undefined member; mirror that shape.
+        let mut base = Map::new();
+        if let Some(params) = resolved {
+            base.insert(
+                String::from("samplingParams"),
+                Value::Object(params.into_iter().collect()),
+            );
+        }
+        base.insert(
+            String::from("maxTokens"),
+            json!(clamp_max_tokens_to_context(&full, &ctx, full.max_tokens)),
+        );
+        assert_eq!(Value::Object(base), expected["base"], "base");
+
+        let bare = oracle_model("bare");
+        let mut base_bare = Map::new();
+        if let Some(params) = resolve_sampling_params(&bare, Some(ThinkingLevel::Low), None) {
+            base_bare.insert(
+                String::from("samplingParams"),
+                Value::Object(params.into_iter().collect()),
+            );
+        }
+        base_bare.insert(
+            String::from("maxTokens"),
+            json!(clamp_max_tokens_to_context(&bare, &ctx, bare.max_tokens)),
+        );
+        assert_eq!(Value::Object(base_bare), expected["baseBare"], "baseBare");
+    }
+}

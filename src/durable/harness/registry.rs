@@ -72,9 +72,10 @@ pub fn builtin_tasks() -> Vec<TaskToken> {
 /// The built-in conversation setup key (`BUILTIN_SETUP_KEY`).
 pub const BUILTIN_SETUP_KEY: &str = "pi";
 
-/// Built-in documents: empty `pi.live`, `pi.inbox`, and `pi.usage`, and for a
-/// new conversation the default configuration with every registered tool
-/// active (`builtinSetup`) (D29: sync over the port's transaction).
+/// Built-in documents: empty `pi.live`, `pi.inbox`, and `pi.usage`, a fresh
+/// `pi.provider` identity, and for a new conversation the default
+/// configuration with every registered tool active (`builtinSetup`) (D29:
+/// sync over the port's transaction).
 pub fn builtin_setup(
     tx: &Transaction,
     conversation: &ConversationRecord,
@@ -86,6 +87,8 @@ pub fn builtin_setup(
     tx.doc(&inbox.definition, Some(conversation.id), None, None)?;
     let usage = usage_doc();
     tx.doc(&usage.definition, Some(conversation.id), None, None)?;
+    let provider = super::provider::provider_doc();
+    tx.doc(&provider.definition, Some(conversation.id), None, None)?;
     if conversation.parent.is_some() {
         return Ok(());
     }

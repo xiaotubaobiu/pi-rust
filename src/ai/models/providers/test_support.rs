@@ -154,6 +154,7 @@ pub(crate) fn gateway_model(base_url: &str) -> crate::ai::types::Model {
         context_window: 10_000,
         max_tokens: 1_000,
         sampling_params: None,
+        sampling_params_by_thinking_level: None,
         headers: None,
         compat: None,
     }

@@ -56,8 +56,11 @@ pub struct ConversationView {
     /// Raw active entries: the head marker, then the non-head entries from
     /// its head.
     pub entries: Vec<EntryRecord>,
-    /// `pi.conversation.config`, `pi.live`, `pi.inbox`, and `pi.usage`, keyed
-    /// by kind; absent documents are absent.
+    /// Built-in conversation documents keyed by kind (upstream: "`pi.agent`,
+    /// `pi.live`, `pi.inbox`, `pi.usage`, and the fresh `pi.provider`, keyed
+    /// by kind"); absent documents are absent. The port mounts
+    /// `pi.conversation.config` for `pi.agent`, per the base-architecture
+    /// ruling recorded on the module.
     pub docs: Map<String, Value>,
 }
 
@@ -131,9 +134,17 @@ pub trait ViewObserver: Send + Sync {
     fn close_session(&self);
 }
 
-/// The built-in mounted document kinds (`MOUNTED`).
+/// The built-in mounted document kinds (`MOUNTED`): the conversation's agent
+/// document (`pi.agent`, the port's `pi.conversation.config`), `pi.live`,
+/// `pi.inbox`, the fresh `pi.provider`, and `pi.usage`.
 fn mounted_kinds() -> BTreeSet<&'static str> {
-    BTreeSet::from(["pi.conversation.config", "pi.live", "pi.inbox", "pi.usage"])
+    BTreeSet::from([
+        "pi.conversation.config",
+        "pi.live",
+        "pi.inbox",
+        "pi.provider",
+        "pi.usage",
+    ])
 }
 
 /// One conversation's mount (`Mount`).
@@ -405,7 +416,13 @@ impl ConversationViews {
         let entries = active_entries(self.storage.as_ref(), id, bounds, context)?;
         let mut docs: Map<String, Value> = Map::new();
         let mut incarnations: HashMap<String, (i64, i64)> = HashMap::new();
-        for definition in [conversation_config(), live_doc(), inbox_doc(), usage_doc()] {
+        for definition in [
+            conversation_config(),
+            live_doc(),
+            inbox_doc(),
+            super::provider::provider_doc(),
+            usage_doc(),
+        ] {
             let loaded =
                 self.session
                     .conversation_document_on_line(&definition.definition, id, context)?;

@@ -62,7 +62,9 @@ use crate::ai::models::{ModelsPublication, Provider, RefreshModelsContext, Refre
 use crate::ai::transcript::TranscriptContext;
 use crate::ai::types::events::AssistantMessageEvent;
 use crate::ai::types::options::{ProviderHeaders, SimpleStreamOptions};
-use crate::ai::types::primitives::{ModelCost, ModelCostTier, ThinkingLevelMap};
+use crate::ai::types::primitives::{
+    ModelCost, ModelCostTier, SamplingParamsByThinkingLevel, ThinkingLevelMap,
+};
 use crate::ai::types::{Model, ModelInput};
 
 use super::model_config::{
@@ -251,6 +253,8 @@ pub struct ExtensionModelDefinition {
     pub context_window: u64,
     pub max_tokens: u64,
     pub sampling_params: Option<BTreeMap<String, serde_json::Value>>,
+    /// Upstream `ProviderChatModelConfig.samplingParamsByThinkingLevel`.
+    pub sampling_params_by_thinking_level: Option<SamplingParamsByThinkingLevel>,
     pub headers: Option<HeaderRecord>,
     pub compat: Option<serde_json::Value>,
 }
@@ -509,6 +513,37 @@ fn merge_compat(
     Some(serde_json::Value::Object(merged))
 }
 
+/// Upstream `mergeSamplingParamsByThinkingLevel`: per-level shallow merge of
+/// the override over the base. Levels absent from the override keep the base
+/// value (the whole base spreads first); a present level merges
+/// `{ ...base?.[level], ...params }` — an empty override object keeps the
+/// base level (JS truthiness), and override keys outside the seven canonical
+/// `ModelThinkingLevel`s are not read, exactly like upstream's fixed level
+/// list.
+fn merge_sampling_params_by_thinking_level(
+    base: Option<&SamplingParamsByThinkingLevel>,
+    override_by_level: Option<&SamplingParamsByThinkingLevel>,
+) -> Option<SamplingParamsByThinkingLevel> {
+    // Upstream: `if (!override) return base;`
+    let override_by_level = override_by_level?;
+    const LEVELS: [&str; 7] = ["off", "minimal", "low", "medium", "high", "xhigh", "max"];
+    let mut merged = base.cloned().unwrap_or_default();
+    for level in LEVELS {
+        let Some(params) = override_by_level.get(level) else {
+            continue;
+        };
+        let mut level_merged = base
+            .and_then(|base| base.get(level))
+            .cloned()
+            .unwrap_or_default();
+        for (key, value) in params {
+            level_merged.insert(key.clone(), value.clone());
+        }
+        merged.insert(String::from(level), level_merged);
+    }
+    Some(merged)
+}
+
 /// Upstream `applyModelOverride` — the topmost user-config layer.
 fn apply_model_override(mut model: Model, override_value: &ModelsJsonModelOverride) -> Model {
     if let Some(name) = &override_value.name {
@@ -560,6 +595,14 @@ fn apply_model_override(mut model: Model, override_value: &ModelsJsonModelOverri
         }
         model.sampling_params = Some(merged);
     }
+    let override_by_level: Option<SamplingParamsByThinkingLevel> = override_value
+        .sampling_params_by_thinking_level
+        .as_ref()
+        .and_then(ordered_as);
+    model.sampling_params_by_thinking_level = merge_sampling_params_by_thinking_level(
+        model.sampling_params_by_thinking_level.as_ref(),
+        override_by_level.as_ref(),
+    );
     let override_compat = override_value.compat.as_ref().map(OrderedValue::to_serde);
     model.compat = merge_compat(model.compat.as_ref(), override_compat.as_ref());
     model
@@ -638,6 +681,10 @@ fn model_from_json(
         context_window: definition.context_window.unwrap_or(128_000.0) as u64,
         max_tokens: definition.max_tokens.unwrap_or(16_384.0) as u64,
         sampling_params: definition.sampling_params.as_ref().and_then(ordered_as),
+        sampling_params_by_thinking_level: definition
+            .sampling_params_by_thinking_level
+            .as_ref()
+            .and_then(ordered_as),
         headers: None,
         compat: merge_compat(
             provider_config
@@ -810,6 +857,9 @@ fn apply_extension(
                 context_window: definition.context_window,
                 max_tokens: definition.max_tokens,
                 sampling_params: definition.sampling_params.clone(),
+                sampling_params_by_thinking_level: definition
+                    .sampling_params_by_thinking_level
+                    .clone(),
                 headers: None,
                 compat: definition.compat.clone(),
             })

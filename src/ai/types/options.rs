@@ -123,12 +123,14 @@ pub struct StreamOptions {
     pub temperature: Option<f64>,
     /// Arbitrary sampling parameters merged into the request body as-is,
     /// after the named request fields, so keys here override them
-    /// (types.ts:193). Lets custom OpenAI-compatible servers (llama.cpp,
-    /// vLLM, SGLang, ...) receive parameters pi does not model. Merged over
-    /// `Model.samplingParams` per key; only applied by OpenAI-compatible
-    /// adapters — other APIs ignore it.
+    /// (types.ts:209, `StreamOptions.samplingParams` re-typed to the
+    /// `SamplingParams` alias). Lets custom OpenAI-compatible servers
+    /// (llama.cpp, vLLM, SGLang, ...) receive parameters pi does not model.
+    /// Merged over `Model.samplingParams`/`samplingParamsByThinkingLevel`
+    /// per key; only applied by OpenAI-compatible adapters (completions,
+    /// responses, Azure responses) — other APIs ignore it.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub sampling_params: Option<BTreeMap<String, serde_json::Value>>,
+    pub sampling_params: Option<super::primitives::SamplingParams>,
     /// Maximum output tokens (types.ts:194).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub max_tokens: Option<u64>,

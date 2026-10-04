@@ -185,8 +185,16 @@
       "sha256": "cad0c126cdfadc1b4f430cc5a95b1c9285ecd1ee9957642d7773b1357bbc9ac5"
     },
     {
+      "file": "packages/ai/src/utils/uuid.ts (origin/main blob)",
+      "sha256": "234a48d4b999e69188fdfa49173ccfa7887d947e443ef206cc30219515105a1f"
+    },
+    {
       "file": "packages/ai/src/utils/validation.ts",
       "sha256": "460786b57dead200e411b9afec916a5049c96ebcff4da082096456ac06d44fb7"
+    },
+    {
+      "file": "packages/durable/src/harness/provider.ts",
+      "sha256": "bf3d9815888d48f85bed50d1c4d5bc38fa71d46121d19b0669c78fc88e784f39"
     },
     {
       "file": "services/consumer.ts",
@@ -667,9 +675,10 @@
     "tools/path-utils.ts": "workspace specifier rewritten to staged file URL",
     "tools/read.ts": "workspace specifier rewritten to staged file URL",
     "types.ts": "workspace specifier rewritten to staged file URL",
+    "packages/durable/src/harness/provider.ts": "working tree pinned at the 4c6fb7cfe delta baseline: staged from the origin/main (200387122) blob via git show; workspace specifier rewritten to staged file URL",
     "packages/ai/src/utils/validation.ts": "typebox unavailable in staging: validateToolArguments replaced with a passthrough stub (coercion not exercised by the scenarios)",
     "node_modules/diff": "staged verbatim from the vendored jsdiff 8.0.4 libesm build (vendor/diff, hashed above)",
     "node_modules/typebox": "typebox unavailable in staging: Type.{Object,String,Number,Array,Optional} stub reproducing typebox 1.3.27 emission (schema bytes pinned by the tools_decl scenario)"
   },
-  "stagedCount": 157
+  "stagedCount": 159
 }

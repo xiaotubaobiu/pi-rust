@@ -132,6 +132,17 @@ pub enum ModelThinkingLevel {
 /// deterministic — the wire shape is unchanged, only key ordering is pinned.
 pub type ThinkingLevelMap = BTreeMap<String, Option<String>>;
 
+/// Upstream `SamplingParams` (types.ts:88): `Record<string, unknown>`.
+/// A `BTreeMap` carrier like [`ThinkingLevelMap`]: the wire stays a
+/// string-keyed JSON object; only key ordering is pinned.
+pub type SamplingParams = BTreeMap<String, serde_json::Value>;
+
+/// Upstream `SamplingParamsByThinkingLevel` (types.ts:89):
+/// `Partial<Record<ModelThinkingLevel, SamplingParams>>`. Keys are the
+/// upstream `ModelThinkingLevel` wire strings; unknown keys round-trip
+/// (upstream applies no runtime validation to the partial record).
+pub type SamplingParamsByThinkingLevel = BTreeMap<String, SamplingParams>;
+
 /// Upstream `ChatTemplateKwargValue` (types.ts:86-94): a literal value or a
 /// `$var` reference resolved by providers that expand chat-template kwargs.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

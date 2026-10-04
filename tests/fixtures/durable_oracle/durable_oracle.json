@@ -2511,5 +2511,40 @@
         "run": 4
       }
     ]
+  },
+  "provider_identity": {
+    "definition": {
+      "kind": "pi.provider",
+      "version": 1,
+      "scope": "conversation",
+      "history": "latest",
+      "fork": "initial"
+    },
+    "initial": {
+      "keys": [
+        "sessionId"
+      ],
+      "sessionIdIsUuidV7": true
+    },
+    "checkpointWhenAlwaysTrue": true,
+    "lifecycle": {
+      "fresh": {
+        "stable": true,
+        "uuidV7Shape": true,
+        "matchesStored": true
+      },
+      "legacy": {
+        "absentAfterRetire": true,
+        "freshIdentity": true
+      },
+      "fork": {
+        "freshIdentity": true
+      },
+      "relations": {
+        "stable": true,
+        "migratedDiffers": true,
+        "forkDiffers": true
+      }
+    }
   }
 }

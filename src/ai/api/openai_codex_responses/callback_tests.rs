@@ -67,6 +67,7 @@ fn model_on(server: &wiremock::MockServer) -> Model {
         context_window: 400000,
         max_tokens: 128000,
         sampling_params: None,
+        sampling_params_by_thinking_level: None,
         headers: None,
         compat: None,
     }

@@ -48,6 +48,7 @@ fn model(
         context_window,
         max_tokens,
         sampling_params: None,
+        sampling_params_by_thinking_level: None,
         headers: None,
         compat: None,
     }

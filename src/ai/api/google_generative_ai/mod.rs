@@ -1203,6 +1203,7 @@ mod tests {
             context_window: 128000,
             max_tokens: 8192,
             sampling_params: None,
+            sampling_params_by_thinking_level: None,
             headers: None,
             compat: None,
         }

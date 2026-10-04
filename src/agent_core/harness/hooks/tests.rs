@@ -143,6 +143,7 @@ fn test_model() -> Model {
         context_window: 100_000,
         max_tokens: 4096,
         sampling_params: None,
+        sampling_params_by_thinking_level: None,
         headers: None,
         compat: None,
         r#type: None,

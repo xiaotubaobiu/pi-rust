@@ -278,15 +278,20 @@ fn build_params(
         }
     }
 
-    // Last so custom keys override the named request fields (line 996-999).
-    let mut sampling = model.sampling_params.clone().unwrap_or_default();
-    if let Some(option_params) = &options.stream.sampling_params {
-        for (key, value) in option_params {
-            sampling.insert(key.clone(), value.clone());
+    // Last so model and request sampling parameters override the named
+    // request fields (upstream lines 1003-1006):
+    // `resolveSamplingParams(model, options?.reasoningEffort ?? "off",
+    // options?.samplingParams)` — the port's `options.reasoning` is the
+    // effort surface, and the resolver clamps it to the model's supported
+    // levels before the per-level lookup.
+    if let Some(sampling) = resolve_sampling_params(
+        model,
+        options.reasoning,
+        options.stream.sampling_params.as_ref(),
+    ) {
+        for (key, value) in sampling {
+            params.insert(key, value);
         }
-    }
-    for (key, value) in sampling {
-        params.insert(key, value);
     }
 
     Ok(Value::Object(params))
@@ -354,6 +359,42 @@ pub(crate) fn clamp_thinking_level(
         }
     }
     available.first().copied().flatten()
+}
+
+/// Upstream `resolveSamplingParams` (`api/simple-options.ts:24-35`): the
+/// sampling parameters for one request — the model defaults
+/// (`Model.samplingParams`), the per-level overrides selected by the
+/// EFFECTIVE (clamped) pi thinking level
+/// (`Model.samplingParamsByThinkingLevel`, `None` is `"off"`), and the
+/// per-request keys, merged in that order. `None` when none of the three
+/// sources is present, matching the upstream `||`-chain short-circuit, so
+/// callers only override the named request fields when there is something to
+/// apply.
+pub(crate) fn resolve_sampling_params(
+    model: &Model,
+    thinking_level: Option<ThinkingLevel>,
+    request_params: Option<&BTreeMap<String, serde_json::Value>>,
+) -> Option<BTreeMap<String, serde_json::Value>> {
+    let effective = clamp_thinking_level(model, thinking_level);
+    let level_params = model
+        .sampling_params_by_thinking_level
+        .as_ref()
+        .and_then(|by_level| by_level.get(level_key(effective)));
+    if model.sampling_params.is_none() && level_params.is_none() && request_params.is_none() {
+        return None;
+    }
+    let mut merged = model.sampling_params.clone().unwrap_or_default();
+    if let Some(level_params) = level_params {
+        for (key, value) in level_params {
+            merged.insert(key.clone(), value.clone());
+        }
+    }
+    if let Some(request_params) = request_params {
+        for (key, value) in request_params {
+            merged.insert(key.clone(), value.clone());
+        }
+    }
+    Some(merged)
 }
 
 pub(crate) fn level_key(level: Option<ThinkingLevel>) -> &'static str {
@@ -2208,6 +2249,7 @@ mod tests {
             context_window: 128000,
             max_tokens: 4096,
             sampling_params: None,
+            sampling_params_by_thinking_level: None,
             headers: None,
             compat: Some(compat),
         }
@@ -3694,6 +3736,181 @@ mod tests {
         assert_eq!(body["max_tokens"], json!(999));
     }
 
+    // Per-thinking-level sampling parameters (upstream
+    // sampling-options.test.ts @ 200387122).
+
+    /// Upstream "applies sampling params for the effective thinking level
+    /// over model defaults": the requested level (`low`) is unsupported
+    /// (`thinkingLevelMap` marks it `null`), so the resolver clamps to
+    /// `high` and applies that level's overrides over the model defaults.
+    #[test]
+    fn sampling_params_by_thinking_level_apply_over_model_defaults() {
+        let mut model = make_model(
+            "openai",
+            "https://api.openai.com/v1",
+            "gpt-4o-mini",
+            true,
+            json!({}),
+        );
+        model.thinking_level_map = Some(BTreeMap::from([
+            (String::from("low"), None),
+            (String::from("medium"), None),
+        ]));
+        model.sampling_params = Some(BTreeMap::from([
+            (String::from("temperature"), json!(1)),
+            (String::from("top_p"), json!(0.95)),
+        ]));
+        model.sampling_params_by_thinking_level = Some(BTreeMap::from([(
+            String::from("high"),
+            BTreeMap::from([
+                (String::from("temperature"), json!(0.8)),
+                (String::from("top_k"), json!(64)),
+            ]),
+        )]));
+
+        let mut options = opts();
+        options.reasoning = Some(ThinkingLevel::Low);
+        let body = build(&model, &ctx_of(vec![user("hi")]), &options).unwrap();
+        assert_eq!(body["temperature"], json!(0.8));
+        assert_eq!(body["top_p"], json!(0.95));
+        assert_eq!(body["top_k"], json!(64));
+    }
+
+    /// Upstream "applies off sampling params when reasoning is disabled": a
+    /// non-reasoning model clamps every level to `off`, whose overrides still
+    /// apply.
+    #[test]
+    fn sampling_params_off_level_applies_when_reasoning_disabled() {
+        let mut model = make_model(
+            "openai",
+            "https://api.openai.com/v1",
+            "gpt-4o-mini",
+            false,
+            json!({}),
+        );
+        model.sampling_params_by_thinking_level = Some(BTreeMap::from([(
+            String::from("off"),
+            BTreeMap::from([(String::from("temperature"), json!(0.7))]),
+        )]));
+
+        let body = build(&model, &ctx_of(vec![user("hi")]), &opts()).unwrap();
+        assert_eq!(body["temperature"], json!(0.7));
+    }
+
+    /// Upstream "merges stream-option keys over thinking-level keys".
+    #[test]
+    fn sampling_params_request_keys_override_level_keys() {
+        let mut model = make_model(
+            "openai",
+            "https://api.openai.com/v1",
+            "gpt-4o-mini",
+            true,
+            json!({}),
+        );
+        model.sampling_params_by_thinking_level = Some(BTreeMap::from([(
+            String::from("low"),
+            BTreeMap::from([
+                (String::from("temperature"), json!(0.6)),
+                (String::from("top_p"), json!(0.95)),
+            ]),
+        )]));
+
+        let mut options = opts();
+        options.reasoning = Some(ThinkingLevel::Low);
+        options.stream.sampling_params =
+            Some(BTreeMap::from([(String::from("top_p"), json!(0.5))]));
+        let body = build(&model, &ctx_of(vec![user("hi")]), &options).unwrap();
+        assert_eq!(body["temperature"], json!(0.6));
+        assert_eq!(body["top_p"], json!(0.5));
+    }
+
+    /// The resolver grid itself (`resolveSamplingParams`): presence
+    /// short-circuit, per-level lookup with clamping, and the merge order
+    /// model → level → request.
+    #[test]
+    fn resolve_sampling_params_grid() {
+        let mut model = make_model(
+            "openai",
+            "https://api.openai.com/v1",
+            "gpt-4o-mini",
+            true,
+            json!({}),
+        );
+        model.thinking_level_map = Some(BTreeMap::from([
+            (String::from("low"), None),
+            (String::from("medium"), None),
+        ]));
+        model.sampling_params = Some(BTreeMap::from([(String::from("top_p"), json!(0.95))]));
+        model.sampling_params_by_thinking_level = Some(BTreeMap::from([
+            (
+                String::from("high"),
+                BTreeMap::from([
+                    (String::from("temperature"), json!(0.8)),
+                    (String::from("top_k"), json!(64)),
+                ]),
+            ),
+            (
+                String::from("off"),
+                BTreeMap::from([(String::from("temperature"), json!(0.7))]),
+            ),
+        ]));
+        let request = BTreeMap::from([(String::from("top_k"), json!(1))]);
+
+        let bare = {
+            let mut bare = model.clone();
+            bare.sampling_params = None;
+            bare.sampling_params_by_thinking_level = None;
+            bare
+        };
+        // All three sources absent: `undefined`.
+        assert_eq!(resolve_sampling_params(&bare, None, None), None);
+
+        // Model defaults only (no override for the effective level).
+        let mut no_levels = model.clone();
+        no_levels.sampling_params_by_thinking_level = None;
+        assert_eq!(
+            resolve_sampling_params(&no_levels, Some(ThinkingLevel::Low), None),
+            Some(BTreeMap::from([(String::from("top_p"), json!(0.95))]))
+        );
+
+        // `low` is unsupported: clamped to `high`, whose overrides win over
+        // the model defaults and lose to the request keys.
+        assert_eq!(
+            resolve_sampling_params(&model, Some(ThinkingLevel::Low), Some(&request)),
+            Some(BTreeMap::from([
+                (String::from("top_p"), json!(0.95)),
+                (String::from("temperature"), json!(0.8)),
+                (String::from("top_k"), json!(1)),
+            ]))
+        );
+
+        // `off` (None) on a reasoning model with `off` overrides.
+        assert_eq!(
+            resolve_sampling_params(&model, None, None),
+            Some(BTreeMap::from([
+                (String::from("top_p"), json!(0.95)),
+                (String::from("temperature"), json!(0.7)),
+            ]))
+        );
+
+        // A non-reasoning model clamps every level to `off`.
+        let mut non_reasoning = model.clone();
+        non_reasoning.reasoning = false;
+        assert_eq!(
+            resolve_sampling_params(&non_reasoning, Some(ThinkingLevel::Xhigh), None),
+            Some(BTreeMap::from([
+                (String::from("top_p"), json!(0.95)),
+                (String::from("temperature"), json!(0.7)),
+            ]))
+        );
+
+        // Request keys alone.
+        assert_eq!(
+            resolve_sampling_params(&bare, None, Some(&request)),
+            Some(BTreeMap::from([(String::from("top_k"), json!(1))]))
+        );
+    }
+
     #[test]
     fn temperature_passthrough() {
         let model = make_model(
@@ -3731,6 +3948,7 @@ mod tests {
             context_window: 262144,
             max_tokens: 16384,
             sampling_params: None,
+            sampling_params_by_thinking_level: None,
             headers: None,
             compat: Some(compat),
         }

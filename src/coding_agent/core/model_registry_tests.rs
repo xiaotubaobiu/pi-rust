@@ -195,6 +195,7 @@ async fn facade_display_names_and_registration_surface() {
                         context_window: 128_000,
                         max_tokens: 4096,
                         sampling_params: None,
+                        sampling_params_by_thinking_level: None,
                         headers: None,
                         compat: None,
                     },
@@ -274,6 +275,7 @@ async fn facade_registers_native_providers() {
                 context_window: 1000,
                 max_tokens: 100,
                 sampling_params: None,
+                sampling_params_by_thinking_level: None,
                 headers: None,
                 compat: None,
             }])

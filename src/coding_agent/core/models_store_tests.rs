@@ -44,6 +44,7 @@ fn model(provider: &str, id: &str) -> Model {
         context_window: 1000,
         max_tokens: 100,
         sampling_params: None,
+        sampling_params_by_thinking_level: None,
         headers: None,
         compat: None,
     }

@@ -149,6 +149,7 @@ pub fn build_model(cfg: &Config) -> anyhow::Result<Model> {
         context_window: cfg.context_window,
         max_tokens: cfg.max_tokens,
         sampling_params: None,
+        sampling_params_by_thinking_level: None,
         headers: None,
         compat: None,
     })

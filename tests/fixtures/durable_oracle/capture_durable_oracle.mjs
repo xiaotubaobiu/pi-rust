@@ -45,34 +45,53 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
 import { createHash } from "node:crypto";
+import { execFileSync } from "node:child_process";
 import { pathToFileURL, fileURLToPath } from "node:url";
 
 const upstreamRoot = fileURLToPath(new URL("../../../../pi/", import.meta.url));
-const durableSrc = path.join(upstreamRoot, "packages", "durable", "src");
-const chordSrc = path.join(upstreamRoot, "packages", "chord", "src");
+// The read-only working tree is pinned at the v1.0.2 delta baseline
+// (4c6fb7cfe); the v1.0.2-only `harness/provider.ts` is staged from the
+// origin/main blob instead (disclosed in the manifest).
+const PROVIDER_REF = "origin/main";
 
 const staging = fs.mkdtempSync(path.join(os.tmpdir(), "durable-oracle-"));
 const durableOut = path.join(staging, "durable");
 const chordOut = path.join(staging, "chord");
 const aiUtilsOut = path.join(staging, "ai", "utils");
+fs.mkdirSync(aiUtilsOut, { recursive: true });
 fs.mkdirSync(durableOut, { recursive: true });
 fs.mkdirSync(chordOut, { recursive: true });
 
 const manifest = { staged: [], substitutions: {} };
 
-function stageDir(srcRoot, outRoot) {
-  const files = [];
-  const walk = (dir) => {
-    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-      const full = path.join(dir, entry.name);
-      if (entry.isDirectory()) walk(full);
-      else if (entry.name.endsWith(".ts")) files.push(full);
-    }
-  };
-  walk(srcRoot);
-  for (const file of files) {
-    const rel = path.relative(srcRoot, file).replaceAll("\\", "/");
-    const text = fs.readFileSync(file, "utf8");
+// Staging source (disclosed): the fixture was captured against upstream
+// 2bbfcca43, but the read-only working tree has since moved to the v1.0.2
+// delta baseline (4c6fb7cfe) — files the capture needs (e.g.
+// `harness/config.ts`) no longer exist there. The baseline sources are
+// therefore staged from the PINNED 2bbfcca43 blobs (`git show`), which is
+// byte-equivalent modulo CRLF: the committed capture hashed the autocrlf
+// working-tree checkouts, blob staging hashes the LF repository bytes.
+const BASELINE_REF = "2bbfcca43";
+
+function gitShow(ref, repoPath) {
+  return execFileSync("git", ["-C", upstreamRoot, "show", `${ref}:${repoPath}`], {
+    maxBuffer: 1 << 26,
+    encoding: "utf8",
+  });
+}
+
+function stageDir(repoPrefix, outRoot, ref = BASELINE_REF) {
+  const list = execFileSync(
+    "git",
+    ["-C", upstreamRoot, "ls-tree", "-r", "--name-only", ref, "--", repoPrefix],
+    { maxBuffer: 1 << 26, encoding: "utf8" },
+  )
+    .split("\n")
+    .filter((file) => file.endsWith(".ts"))
+    .sort();
+  for (const repoPath of list) {
+    const rel = repoPath.slice(repoPrefix.length);
+    const text = gitShow(ref, repoPath);
     let stagedText = text;
     // Workspace package specifiers -> relative file URLs (staged copies only;
     // the manifest hashes the ORIGINAL text).
@@ -100,6 +119,10 @@ function stageDir(srcRoot, outRoot) {
       '"@earendil-works/pi-ai/utils/validation"',
       JSON.stringify(pathToFileURL(path.join(aiUtilsOut, "validation.ts")).href),
     );
+    stagedText = stagedText.replaceAll(
+      '"@earendil-works/pi-ai/utils/uuid"',
+      JSON.stringify(pathToFileURL(path.join(aiUtilsOut, "uuid.ts")).href),
+    );
     // Harness slice staging shims (disclosed): the earlier slice staged
     // `harness/live.ts` without `settleSchedulerOutcome` (its `convertPartial`
     // dependency pulled the pi-ai surface before the retry/validation stubs
@@ -118,8 +141,28 @@ function stageDir(srcRoot, outRoot) {
   }
 }
 
-stageDir(chordSrc, chordOut);
-stageDir(durableSrc, durableOut);
+stageDir("packages/chord/src/", chordOut);
+stageDir("packages/durable/src/", durableOut);
+// v1.0.2-only file: stage the origin/main blob over the baseline tree (the
+// workspace specifier is rewritten to the staged `utils/uuid.ts` like every
+// other staged file).
+{
+  const rel = "harness/provider.ts";
+  const text = gitShow(PROVIDER_REF, `packages/durable/src/${rel}`);
+  const stagedText = text.replaceAll(
+    '"@earendil-works/pi-ai/utils/uuid"',
+    JSON.stringify(pathToFileURL(path.join(aiUtilsOut, "uuid.ts")).href),
+  );
+  const out = path.join(durableOut, ...rel.split("/"));
+  fs.mkdirSync(path.dirname(out), { recursive: true });
+  fs.writeFileSync(out, stagedText);
+  manifest.staged.push({
+    file: `packages/durable/src/${rel}`,
+    sha256: createHash("sha256").update(text, "utf8").digest("hex"),
+  });
+  manifest.substitutions[`packages/durable/src/${rel}`] =
+    "working tree pinned at the 4c6fb7cfe delta baseline: staged from the origin/main (200387122) blob via git show; workspace specifier rewritten to staged file URL";
+}
 manifest.staged.sort((a, b) => (a.file < b.file ? -1 : 1));
 
 // Stage the pi-ai util files the harness modules use at runtime
@@ -128,11 +171,11 @@ manifest.staged.sort((a, b) => (a.file < b.file ? -1 : 1));
 // needs the `typebox` package, which the staging environment does not ship;
 // the staged copy is a disclosed passthrough stub (the byte-oracle scenarios
 // only feed schema-valid arguments, so coercion is not exercised). Hashed for
-// provenance like the durable/chord staging.
-const aiSrc = path.join(upstreamRoot, "packages", "ai", "src", "utils");
-fs.mkdirSync(aiUtilsOut, { recursive: true });
+// provenance like the durable/chord staging. Pinned to the same baseline
+// blobs; `uuid.ts` — introduced for the v1.0.2 provider identity — comes
+// from the origin/main blob its consumer was staged from.
 for (const name of ["transcript.ts", "text.ts", "retry.ts"]) {
-  const text = fs.readFileSync(path.join(aiSrc, name), "utf8");
+  const text = gitShow(BASELINE_REF, `packages/ai/src/utils/${name}`);
   fs.writeFileSync(path.join(aiUtilsOut, name), text);
   manifest.staged.push({
     file: `packages/ai/src/utils/${name}`,
@@ -140,7 +183,15 @@ for (const name of ["transcript.ts", "text.ts", "retry.ts"]) {
   });
 }
 {
-  const original = fs.readFileSync(path.join(aiSrc, "validation.ts"), "utf8");
+  const text = gitShow(PROVIDER_REF, "packages/ai/src/utils/uuid.ts");
+  fs.writeFileSync(path.join(aiUtilsOut, "uuid.ts"), text);
+  manifest.staged.push({
+    file: "packages/ai/src/utils/uuid.ts (origin/main blob)",
+    sha256: createHash("sha256").update(text, "utf8").digest("hex"),
+  });
+}
+{
+  const original = gitShow(BASELINE_REF, "packages/ai/src/utils/validation.ts");
   manifest.staged.push({
     file: "packages/ai/src/utils/validation.ts",
     sha256: createHash("sha256").update(original, "utf8").digest("hex"),
@@ -1431,8 +1482,117 @@ for (const writeBenchmark of bench.STORAGE_WRITE_BENCHMARKS) {
   });
 }
 
-const oracle = { commit_bytes, document_bytes, read_after_write, harness_docs, prompt_plan, output_bound, scheduler_grids, submissions_state, tools_decl_and_exec, diff_surface, image_detect, path_utils, testing_conformance, testing_benchmark };
 
+// ─── Scenario 13: provider session identity (v1.0.2) ───────────────────────
+// Mirrored one-to-one by `src/durable/harness/provider.rs` tests. Raw
+// identities are NOT recorded (`uuidv7()` mixes wall clock + randomness, and
+// the durable capture keeps its no-clock/no-random contract); the recorded
+// contract is the definition surface, the v7 shape, and the identity
+// relations across the lifecycle.
+{
+  const { ProviderDoc, ensureProviderSessionId } = await import(
+    durableUrl("harness/provider.ts")
+  );
+
+  const scenario13Dir = path.join(staging, "scenario13");
+  fs.mkdirSync(scenario13Dir, { recursive: true });
+  const storage13 = await JsonlStorage.open(scenario13Dir, fileSystemShim, BACKGROUND, {});
+  const session13 = createSession(storage13);
+
+  const root13 = await session13.commitWith(async (tx) => {
+    return tx.createRootConversation();
+  }, BACKGROUND);
+
+  // A minimal TaskRuntime over the Session: `snapshot` + `commit` are the
+  // only operations `ensureProviderSessionId` uses.
+  function runtimeFor(conversationId) {
+    return {
+      conversationId,
+      snapshot: (doc, id, ctx) => session13.snapshot(doc, id, ctx),
+      commit: (change, ctx) => session13.commitWith(change, ctx),
+    };
+  }
+
+  const runtime13 = runtimeFor(root13.id);
+  const first = await ensureProviderSessionId(runtime13, BACKGROUND);
+  const second = await ensureProviderSessionId(runtime13, BACKGROUND);
+  const stored13 = await session13.snapshot(ProviderDoc, root13.id, BACKGROUND);
+  const UUID_V7 = /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u;
+
+  // Legacy conversation: retire `pi.provider`, then the next request
+  // migrates a fresh identity in.
+  await session13.commitWith(async (tx) => {
+    await tx.retireDoc(ProviderDoc, root13.id, BACKGROUND);
+  }, BACKGROUND);
+  const retired13 = await session13.snapshot(ProviderDoc, root13.id, BACKGROUND);
+  const migrated = await ensureProviderSessionId(runtime13, BACKGROUND);
+
+  // A fork starts a fresh identity instead of copying its parent
+  // (`fork: "initial"`).
+  const entry13 = await session13.commitWith(async (tx) => {
+    return (await tx.appendEntry(root13.id, {
+      kind: UserEntry.kind,
+      model: [{ role: "user", content: "hello", timestamp: 1758240000000 }],
+    })).id;
+  }, BACKGROUND);
+  const fork13 = await session13.commitWith(async (tx) => {
+    return tx.forkConversation(root13.id, entry13, { ownership: { kind: "ownerless" } });
+  }, BACKGROUND);
+  const forkIdentity = await ensureProviderSessionId(runtimeFor(fork13.id), BACKGROUND);
+
+  const definition = ProviderDoc.definition;
+  const relations = {
+    stable: first === second,
+    migratedDiffers: migrated !== first,
+    forkDiffers: forkIdentity !== first,
+  };
+  const lifecycle = {
+    fresh: {
+      stable: relations.stable,
+      uuidV7Shape: UUID_V7.test(first),
+      matchesStored: stored13 !== undefined && stored13.sessionId === first,
+    },
+    legacy: {
+      absentAfterRetire: retired13 === undefined,
+      freshIdentity: UUID_V7.test(migrated) && relations.migratedDiffers,
+    },
+    fork: {
+      freshIdentity: UUID_V7.test(forkIdentity) && relations.forkDiffers,
+    },
+    relations,
+  };
+  for (const value of [
+    lifecycle.fresh.stable,
+    lifecycle.fresh.uuidV7Shape,
+    lifecycle.fresh.matchesStored,
+    lifecycle.legacy.absentAfterRetire,
+    lifecycle.legacy.freshIdentity,
+    lifecycle.fork.freshIdentity,
+    ...Object.values(relations),
+  ]) {
+    if (value !== true) throw new Error(`provider_identity lifecycle expectation failed: ${JSON.stringify(lifecycle)}`);
+  }
+  await session13.close(BACKGROUND);
+
+  const provider_identity = {
+    definition: {
+      kind: definition.kind,
+      version: definition.version,
+      scope: definition.scope,
+      history: definition.history,
+      fork: definition.fork,
+    },
+    initial: {
+      keys: Object.keys(definition.initial()),
+      sessionIdIsUuidV7: UUID_V7.test(definition.initial().sessionId),
+    },
+    checkpointWhenAlwaysTrue: definition.checkpointWhen({}, [], { deltasSinceBase: 0 }) === true,
+    lifecycle,
+  };
+  var provider_identity_out = provider_identity;
+}
+
+const oracle = { commit_bytes, document_bytes, read_after_write, harness_docs, prompt_plan, output_bound, scheduler_grids, submissions_state, tools_decl_and_exec, diff_surface, image_detect, path_utils, testing_conformance, testing_benchmark, provider_identity: provider_identity_out };
 // ─── Emit ───────────────────────────────────────────────────────────────────
 const outDir = fileURLToPath(new URL(".", import.meta.url));
 fs.writeFileSync(path.join(outDir, "durable_oracle.json"), JSON.stringify(oracle, null, 2) + "\n");

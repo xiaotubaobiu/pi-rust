@@ -620,14 +620,19 @@ pub trait ModelHandle: Send + Sync {
     fn model_id(&self) -> &str;
 }
 
-/// Upstream `SimpleStreamOptions` (`{...streamOptions, signal, reasoning?}`):
-/// the configured request options with the thinking level the configuration
-/// selected, and the caller's signal.
+/// Upstream `SimpleStreamOptions` (`{...streamOptions, signal, sessionId,
+/// reasoning?}`): the configured request options with the thinking level the
+/// configuration selected, the conversation's provider session identity, and
+/// the caller's signal.
 #[derive(Debug, Clone, Default)]
 pub struct SimpleStreamRequest {
     pub options: ConversationStreamOptions,
     /// Absent for `thinkingLevel: "off"` and for an unconfigured level.
     pub reasoning: Option<ModelThinkingLevel>,
+    /// Upstream `sessionId: await ensureProviderSessionId(runtime, context)`
+    /// (generation.ts @ 200387122): the stable `pi.provider` identity of the
+    /// conversation, resolved before every provider request.
+    pub session_id: Option<String>,
     pub signal: Option<tokio_util::sync::CancellationToken>,
 }
 

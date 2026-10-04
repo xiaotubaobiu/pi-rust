@@ -12,10 +12,20 @@
 //    catalog-priced usage and canned error paths.
 // 3. model-catalog flatten (chat/image/classifier) over every embedded data
 //    shard plus synthetic mixed entries.
+// 4. sampling-params surface (v1.0.2 delta, upstream 200387122):
+//    resolveSamplingParams / clampThinkingLevel grids and the
+//    buildBaseOptions merge over `api/simple-options.ts`. Disclosed: the
+//    closure for THIS scenario is materialized from the `origin/main` BLOBS
+//    (`git show`, hashing the blob bytes) because the read-only working tree
+//    is pinned at the delta baseline 4c6fb7cfe; unavailable bare specifiers
+//    inside its `models.ts` closure (provider SDKs) resolve to generated
+//    stub modules whose exports are never invoked by the pure functions
+//    under test.
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
 import { createHash } from "node:crypto";
+import { execFileSync } from "node:child_process";
 import { pathToFileURL, fileURLToPath } from "node:url";
 
 const upstreamRoot = fileURLToPath(new URL("../../../../pi/", import.meta.url));
@@ -56,6 +66,126 @@ function copyClosure(entry) {
       }
     }
   }
+}
+
+// ---------------------------------------------------------------------------
+// v1.0.2 sampling closure: staged from origin/main blobs with bare-specifier
+// stubs (see the header). Kept fully separate from the baseline closures so
+// their provenance stays byte-identical to the 2bbfcca43 capture.
+// ---------------------------------------------------------------------------
+const GIT_REF = "origin/main";
+const samplingHashes = {};
+const samplingBare = new Map(); // bare specifier -> imported names
+let samplingStaging;
+let samplingRoot;
+
+function gitShow(rel) {
+  return execFileSync(
+    "git",
+    ["-C", upstreamRoot, "show", `${GIT_REF}:packages/ai/src/${rel}`],
+    { maxBuffer: 1 << 26, encoding: "utf8" },
+  );
+}
+
+function escapeRegExp(text) {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function collectBareNames(spec, source) {
+  const names = samplingBare.get(spec) ?? new Set();
+  const named = new RegExp(
+    "import\\s+(type\\s+)?\\{([^}]*)\\}\\s*from\\s+\"" + escapeRegExp(spec) + "\"",
+    "g",
+  );
+  for (const match of source.matchAll(named)) {
+    if (match[1]) continue; // `import type` — erased by strip-types
+    for (const part of match[2].split(",")) {
+      const name = part.trim().split(/\s+as\s+/)[0].trim();
+      if (!name || name.startsWith("type ")) continue;
+      names.add(name);
+    }
+  }
+  const defaulted = new RegExp(
+    "import\\s+(\\w+)\\s+from\\s+\"" + escapeRegExp(spec) + "\"",
+    "g",
+  );
+  for (const match of source.matchAll(defaulted)) names.add("default");
+  samplingBare.set(spec, names);
+}
+
+function copySamplingClosure(entry) {
+  const seen = new Set();
+  const queue = [entry];
+  while (queue.length > 0) {
+    const rel = queue.pop().split(path.sep).join("/");
+    if (seen.has(rel)) continue;
+    seen.add(rel);
+    const source = gitShow(rel);
+    samplingHashes[`packages/ai/src/${rel}`] = createHash("sha256").update(source).digest("hex");
+    const target = path.join(samplingRoot, ...rel.split("/"));
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.writeFileSync(target, source);
+    for (const match of source.matchAll(/^\s*import\s+(?:type\s+)?([\s\S]*?)\s+from\s+"([^"]+)"/gm)) {
+      const [, names, spec] = match;
+      if (!spec.startsWith(".")) {
+        if (!spec.startsWith("node:")) collectBareNames(spec, source);
+        continue;
+      }
+      if (!spec.endsWith(".ts")) continue;
+      if (names.trim().startsWith("*")) continue; // namespace: no module object
+      queue.push(path.posix.normalize(path.posix.join(path.posix.dirname(rel), spec)));
+    }
+    for (const match of source.matchAll(/^\s*import\s+"([^"]+)"/gm)) {
+      const spec = match[1];
+      if (!spec.startsWith(".")) {
+        if (!spec.startsWith("node:")) collectBareNames(spec, source);
+        continue;
+      }
+      queue.push(path.posix.normalize(path.posix.join(path.posix.dirname(rel), spec)));
+    }
+  }
+}
+
+async function stageSamplingClosure() {
+  samplingStaging = fs.mkdtempSync(path.join(os.tmpdir(), "ai-delta-sampling-"));
+  samplingRoot = path.join(samplingStaging, "packages", "ai", "src");
+  copySamplingClosure("api/simple-options.ts");
+
+  // Generated stub modules for the closure's bare specifiers (provider SDKs
+  // and telemetry): every runtime-imported name resolves to a benign
+  // self-referential proxy; the pure functions under test never invoke them.
+  const stubDir = path.join(samplingStaging, "stubs");
+  fs.mkdirSync(stubDir, { recursive: true });
+  for (const [spec, names] of samplingBare) {
+    const lines = [
+      "// Generated bare-specifier stub (disclosed in the manifest).",
+      "const anyFactory = () => new Proxy(function () {}, {",
+      "  get: (_target, property) => (property === Symbol.toPrimitive ? () => \"\" : anyFactory()),",
+      "  apply: () => anyFactory(),",
+      "});",
+    ];
+    for (const name of names) {
+      if (name === "default") lines.push("export default anyFactory();");
+      else lines.push(`export const ${name} = anyFactory();`);
+    }
+    fs.writeFileSync(path.join(stubDir, encodeURIComponent(spec) + ".mjs"), lines.join("\n") + "\n");
+  }
+  const hookSource = [
+    'import { pathToFileURL } from "node:url";',
+    `const stubDir = ${JSON.stringify(stubDir)};`,
+    "export async function resolve(specifier, context, next) {",
+    "  if (!specifier.startsWith(\".\") && !specifier.startsWith(\"node:\") && !specifier.startsWith(\"file:\")) {",
+    "    return {",
+    "      url: pathToFileURL(stubDir + \"/\" + encodeURIComponent(specifier) + \".mjs\").href,",
+    "      shortCircuit: true,",
+    "    };",
+    "  }",
+    "  return next(specifier, context);",
+    "}",
+  ].join("\n");
+  fs.writeFileSync(path.join(samplingStaging, "hook.mjs"), hookSource);
+  const { register } = await import("node:module");
+  register(pathToFileURL(path.join(samplingStaging, "hook.mjs")).href);
 }
 
 for (const entries of Object.values(CLOSURES)) {
@@ -329,14 +459,113 @@ const out = {};
   out.modelCatalog = shards;
 }
 
+// ---------------------------------------------------------------------------
+// 4. v1.0.2 sampling-params surface (origin/main simple-options.ts)
+// ---------------------------------------------------------------------------
+{
+  await stageSamplingClosure();
+  const ns = await import(
+    pathToFileURL(path.join(samplingRoot, "api", "simple-options.ts")).href
+  );
+
+  const fullModel = {
+    id: "custom-model",
+    name: "Custom Model",
+    api: "openai-completions",
+    provider: "custom",
+    baseUrl: "https://api.example.com/v1",
+    reasoning: true,
+    thinkingLevelMap: { low: null, medium: null },
+    input: ["text"],
+    cost: { input: 1, output: 2, cacheRead: 0, cacheWrite: 0 },
+    contextWindow: 128000,
+    maxTokens: 16384,
+    samplingParams: { temperature: 1, top_p: 0.95 },
+    samplingParamsByThinkingLevel: {
+      high: { temperature: 0.8, top_k: 64 },
+      off: { temperature: 0.7 },
+    },
+  };
+  const bareModel = { ...fullModel };
+  delete bareModel.samplingParams;
+  delete bareModel.samplingParamsByThinkingLevel;
+  const noLevelsModel = { ...fullModel };
+  delete noLevelsModel.samplingParamsByThinkingLevel;
+  const nonReasoningModel = { ...fullModel, reasoning: false };
+
+  const request = { top_k: 1 };
+  const json = (value) => (value === undefined ? null : JSON.parse(JSON.stringify(value)));
+
+  const levels = ["off", "minimal", "low", "medium", "high", "xhigh", "max"];
+  const models = {
+    full: fullModel,
+    bare: bareModel,
+    noLevels: noLevelsModel,
+    nonReasoning: nonReasoningModel,
+  };
+
+  // resolveSamplingParams grid: model shape x thinking level x request keys.
+  const resolve = [];
+  for (const [modelName, model] of Object.entries(models)) {
+    for (const level of levels) {
+      for (const requestParams of [undefined, request]) {
+        resolve.push({
+          model: modelName,
+          level,
+          request: requestParams === undefined ? null : requestParams,
+          result: json(ns.resolveSamplingParams(model, level, requestParams)),
+        });
+      }
+    }
+  }
+
+  // clampThinkingLevel grid + the supported set it derives from (models.ts).
+  const modelsNs = await import(
+    pathToFileURL(path.join(samplingRoot, "models.ts")).href
+  );
+  const supported = {};
+  const clamped = {};
+  for (const [modelName, model] of Object.entries(models)) {
+    supported[modelName] = modelsNs.getSupportedThinkingLevels(model);
+    clamped[modelName] = Object.fromEntries(
+      levels.map((level) => [level, modelsNs.clampThinkingLevel(model, level)]),
+    );
+  }
+
+  // buildBaseOptions: the simple-path base for a reasoning request with
+  // per-request keys (the samplingParams member is the resolved merge) and
+  // for a bare model without any sampling configuration.
+  const contextObj = { systemPrompt: undefined, messages: [], tools: undefined };
+  const base = json(
+    ns.buildBaseOptions(fullModel, contextObj, {
+      reasoning: "low",
+      samplingParams: { top_p: 0.5 },
+    }),
+  );
+  const baseBare = json(
+    ns.buildBaseOptions(bareModel, contextObj, { reasoning: "low" }),
+  );
+
+  out.samplingParams = { resolve, supported, clamped, base, baseBare };
+}
+
 const fixtureDir = fileURLToPath(new URL(".", import.meta.url));
 fs.writeFileSync(path.join(fixtureDir, "ai_delta_oracle.json"), JSON.stringify(out, null, 1));
 const manifest = {
-  upstream: "2bbfcca43 (v0.99.1)",
+  upstream: "2bbfcca43 (v0.99.1); samplingParams scenario from origin/main (200387122, v1.0.2)",
   baseline: "590144609",
   fixedNow: FIXED_NOW,
   method: "verbatim dependency closure executed under node --experimental-strip-types",
   sources: Object.fromEntries(Object.entries(hashes).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))),
+  samplingClosure: {
+    ref: GIT_REF,
+    disclosed:
+      "staged from origin/main blobs via git show (read-only working tree pinned at the 4c6fb7cfe baseline); bare specifiers inside the models.ts closure (provider SDKs, telemetry, typebox, partial-json) resolve to generated stub modules never invoked by the pure functions under test",
+    sources: Object.fromEntries(
+      Object.entries(samplingHashes).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)),
+    ),
+    stubbedSpecifiers: [...samplingBare.keys()].sort(),
+  },
 };
 fs.writeFileSync(
   path.join(fixtureDir, "ai_delta_oracle.manifest.json"),

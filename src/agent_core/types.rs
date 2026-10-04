@@ -623,6 +623,7 @@ pub fn unknown_model() -> Model {
         base_url: String::new(),
         reasoning: false,
         thinking_level_map: None,
+        sampling_params_by_thinking_level: None,
         input: Vec::new(),
         cost: ModelCost::default(),
         context_window: 0,

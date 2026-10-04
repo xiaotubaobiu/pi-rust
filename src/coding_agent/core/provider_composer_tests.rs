@@ -149,6 +149,7 @@ fn base_model(provider: &str, id: &str, extra: serde_json::Value) -> Model {
         sampling_params: extra.get("samplingParams").map(|value| {
             serde_json::from_value::<BTreeMap<String, serde_json::Value>>(value.clone()).unwrap()
         }),
+        sampling_params_by_thinking_level: None,
         headers: None,
         compat: extra.get("compat").cloned(),
     }
@@ -482,6 +483,7 @@ async fn composed_models_match_the_upstream_oracle() {
                 context_window: 4096,
                 max_tokens: 512,
                 sampling_params: None,
+                sampling_params_by_thinking_level: None,
                 headers: Some(vec![("x-ext".to_string(), "dropped".to_string())]),
                 compat: None,
             }]),
@@ -538,6 +540,7 @@ async fn composed_models_match_the_upstream_oracle() {
                 context_window: 4096,
                 max_tokens: 512,
                 sampling_params: None,
+                sampling_params_by_thinking_level: None,
                 headers: None,
                 compat: None,
             }]),
@@ -1128,6 +1131,7 @@ async fn oauth_only_provider_matches_the_upstream_oracle() {
             context_window: 4096,
             max_tokens: 512,
             sampling_params: None,
+            sampling_params_by_thinking_level: None,
             headers: None,
             compat: None,
         }]),
@@ -1149,4 +1153,114 @@ async fn oauth_only_provider_matches_the_upstream_oracle() {
         &case["models"],
         "oauthOnly models",
     );
+}
+
+/// Upstream `ModelRegistry` "custom models and model overrides carry sampling
+/// params" (model-registry.test.ts @ 200387122) over the composer: the
+/// custom model definition carries `samplingParams` +
+/// `samplingParamsByThinkingLevel`, and the model override per-level
+/// shallow-merges over it (`{ ...base?.[level], ...params }`); models without
+/// sampling config keep both fields unset.
+#[tokio::test]
+async fn custom_models_and_model_overrides_carry_sampling_params_by_thinking_level() {
+    let config = load_config(serde_json::json!({
+        "providers": { "openrouter": {
+            "models": [
+                {
+                    "id": "custom/sampling-model",
+                    "api": "openai-completions",
+                    "baseUrl": "https://my-proxy.example.com/v1",
+                    "samplingParams": {"temperature": 1, "top_p": 0.95, "top_k": 0},
+                    "samplingParamsByThinkingLevel": {
+                        "low": {"temperature": 0.6, "top_p": 0.95},
+                        "high": {"temperature": 0.8},
+                    },
+                },
+            ],
+            "modelOverrides": {
+                "custom/sampling-model": {
+                    "samplingParamsByThinkingLevel": {
+                        "low": {"temperature": 0.5, "top_k": 20},
+                        "max": {"temperature": 1},
+                    },
+                },
+                "anthropic/claude-sonnet-4": {
+                    "samplingParams": {"top_p": 0.9},
+                    "samplingParamsByThinkingLevel": {"high": {"temperature": 0.8}},
+                },
+            },
+        } }
+    }))
+    .await;
+    let provider = compose_model_provider(
+        "openrouter",
+        Some(openrouter_base()),
+        provider_slice(&config, "openrouter"),
+        None,
+    )
+    .unwrap();
+    let models = provider.get_models().unwrap();
+
+    let custom = models
+        .iter()
+        .find(|model| model.id == "custom/sampling-model")
+        .unwrap();
+    assert_eq!(
+        custom.sampling_params.as_ref().unwrap(),
+        &BTreeMap::from([
+            (String::from("temperature"), serde_json::json!(1)),
+            (String::from("top_p"), serde_json::json!(0.95)),
+            (String::from("top_k"), serde_json::json!(0)),
+        ]),
+    );
+    assert_eq!(
+        custom.sampling_params_by_thinking_level.as_ref().unwrap(),
+        &BTreeMap::from([
+            (
+                String::from("low"),
+                BTreeMap::from([
+                    (String::from("temperature"), serde_json::json!(0.5)),
+                    (String::from("top_p"), serde_json::json!(0.95)),
+                    (String::from("top_k"), serde_json::json!(20)),
+                ]),
+            ),
+            (
+                String::from("high"),
+                BTreeMap::from([(String::from("temperature"), serde_json::json!(0.8))]),
+            ),
+            (
+                String::from("max"),
+                BTreeMap::from([(String::from("temperature"), serde_json::json!(1))]),
+            ),
+        ]),
+    );
+
+    let sonnet = models
+        .iter()
+        .find(|model| model.id == "anthropic/claude-sonnet-4")
+        .unwrap();
+    // The stub base model carries `{temperature: 0.5, top_p: 0.9}`; the
+    // override shallow-merges `{...model.samplingParams, ...override}`.
+    assert_eq!(
+        sonnet.sampling_params.as_ref().unwrap(),
+        &BTreeMap::from([
+            (String::from("temperature"), serde_json::json!(0.5)),
+            (String::from("top_p"), serde_json::json!(0.9)),
+        ]),
+    );
+    assert_eq!(
+        sonnet.sampling_params_by_thinking_level.as_ref().unwrap(),
+        &BTreeMap::from([(
+            String::from("high"),
+            BTreeMap::from([(String::from("temperature"), serde_json::json!(0.8))]),
+        )]),
+    );
+
+    // Models without sampling config keep both fields unset.
+    let opus = models
+        .iter()
+        .find(|model| model.id == "anthropic/claude-opus-4")
+        .unwrap();
+    assert_eq!(opus.sampling_params, None);
+    assert_eq!(opus.sampling_params_by_thinking_level, None);
 }

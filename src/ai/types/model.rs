@@ -29,7 +29,9 @@ use super::compat::{
     OpenAiResponsesCompat,
 };
 use super::options::ProviderHeaders;
-use super::primitives::{KnownApi, ModelCost, ThinkingLevelMap};
+use super::primitives::{
+    KnownApi, ModelCost, SamplingParams, SamplingParamsByThinkingLevel, ThinkingLevelMap,
+};
 
 /// Upstream `ModelType` (types.ts, `keyof ModelTypeMap`): what a catalog entry
 /// is for. Wire values are the upstream literal strings; chat is the default —
@@ -169,9 +171,15 @@ pub struct Model {
     /// Maximum output tokens (types.ts:966).
     pub max_tokens: u64,
     /// Default sampling parameters merged into request bodies; per-request
-    /// keys override these (types.ts:967; see `StreamOptions.samplingParams`).
+    /// keys override these (types.ts:1129; see `StreamOptions.samplingParams`).
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub sampling_params: Option<BTreeMap<String, serde_json::Value>>,
+    pub sampling_params: Option<SamplingParams>,
+    /// Sampling parameter overrides selected by the effective pi thinking
+    /// level (types.ts:1130, `Model.samplingParamsByThinkingLevel`). Looked up
+    /// with the clamped thinking level of each request and merged over
+    /// [`Model::sampling_params`] before the per-request keys.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sampling_params_by_thinking_level: Option<SamplingParamsByThinkingLevel>,
     /// Custom HTTP headers merged over provider defaults (types.ts:968).
     /// Upstream declares `Record<string, string>` but every merge path treats
     /// it as [`ProviderHeaders`]: a `null` value (here `None`) suppresses the
@@ -561,6 +569,7 @@ mod tests {
             context_window: 100000,
             max_tokens: 4096,
             sampling_params: None,
+            sampling_params_by_thinking_level: None,
             headers: None,
             compat: None,
         }

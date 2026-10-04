@@ -146,6 +146,7 @@ pub use harness::output::{
     Progress, MIN_PROGRESS_INTERVAL_MS, PROGRESS_BYTES_PER_SECOND,
 };
 pub use harness::prompt::{desired_tools, plan_system_entries, render_sections, replay_sections};
+pub use harness::provider::{provider_doc, ProviderState};
 pub use harness::registry::{builtin_setup, builtin_tasks, create_registry, BUILTIN_SETUP_KEY};
 pub use harness::scheduler::{InvocationBinding, TaskScheduler, TaskSchedulerOptions};
 pub use harness::submissions::Submissions;

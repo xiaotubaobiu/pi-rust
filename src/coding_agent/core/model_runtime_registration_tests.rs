@@ -102,6 +102,7 @@ fn configured_provider(model_id: &str) -> ProviderConfigInput {
             context_window: 4096,
             max_tokens: 512,
             sampling_params: None,
+            sampling_params_by_thinking_level: None,
             headers: None,
             compat: None,
         }]),
