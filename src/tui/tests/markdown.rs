@@ -664,7 +664,7 @@ fn markdown_latex_utf16_raw_lines_widths_and_cache_match_upstream() {
 fn markdown_oracle_artifact_hashes_match_manifest() {
     use sha2::{Digest, Sha256};
     let manifest: serde_json::Value = serde_json::from_str(include_str!(
-        "../../../docs/migration/reference/markdown/source-manifest.json"
+        "../../../tests/fixtures/reference/markdown/source-manifest.json"
     ))
     .unwrap();
     let files: &[(&str, &[u8])] = &[

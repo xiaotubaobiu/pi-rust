@@ -88,7 +88,7 @@ fn all_generated_differential_cases_match_byte_for_byte() {
 #[test]
 fn reference_manifest_matches_checked_in_tables_and_fixtures() {
     let manifest: serde_json::Value = serde_json::from_str(include_str!(
-        "../../../docs/migration/reference/latex/source-manifest.json"
+        "../../../tests/fixtures/reference/latex/source-manifest.json"
     ))
     .unwrap();
     // The v0.99.1 latex delta (script layout nodes, font switches, cases
@@ -117,7 +117,7 @@ fn reference_manifest_matches_checked_in_tables_and_fixtures() {
         ),
         (
             "utf16DomainSha256",
-            include_bytes!("../../../docs/migration/reference/latex/utf16-domain.json").as_slice(),
+            include_bytes!("../../../tests/fixtures/reference/latex/utf16-domain.json").as_slice(),
         ),
     ] {
         let digest = Sha256::digest(bytes)
@@ -152,7 +152,7 @@ struct Utf16Cases {
 #[test]
 fn unbraced_astral_arguments_match_upstream_terminal_encoding() {
     let file: Utf16Cases = serde_json::from_str(include_str!(
-        "../../../docs/migration/reference/latex/utf16-domain.json"
+        "../../../tests/fixtures/reference/latex/utf16-domain.json"
     ))
     .unwrap();
     assert_eq!(file.cases.len(), 22);
@@ -179,7 +179,7 @@ fn unbraced_astral_arguments_match_upstream_terminal_encoding() {
 #[test]
 fn unbraced_astral_arguments_preserve_exact_upstream_utf16_units() {
     let file: Utf16Cases = serde_json::from_str(include_str!(
-        "../../../docs/migration/reference/latex/utf16-domain.json"
+        "../../../tests/fixtures/reference/latex/utf16-domain.json"
     ))
     .unwrap();
     for case in file.cases {

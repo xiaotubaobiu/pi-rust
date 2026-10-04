@@ -15,7 +15,7 @@ use serde::Serialize;
 fn oracle_lines() -> Vec<String> {
     let oracle = std::fs::read_to_string(concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/docs/migration/reference/telemetry/telemetry_oracle.json"
+        "/tests/fixtures/reference/telemetry/telemetry_oracle.json"
     ))
     .expect("telemetry oracle file");
     oracle
