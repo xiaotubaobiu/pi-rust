@@ -13,6 +13,11 @@ on:
       - "docs/**"
       - "**.md"
       - ".gitignore"
+  # Full runtime verification is local-first: the authoritative gates (fmt +
+  # clippy + the ~5.5k-test serial suite) run on dev hardware (Windows + WSL).
+  # Push/PR runs keep the fast compile-surface checks; the 25-50 min serial
+  # suite re-runs here only on demand via workflow_dispatch ("Run workflow").
+  workflow_dispatch:
 
 jobs:
   test:
@@ -59,8 +64,10 @@ jobs:
       - run: cargo fmt --check
       - run: cargo clippy --all-targets -- -D warnings
       # serial matches the verified gate protocol; parallel load on shared
-      # runners pushed process-spawning tests past their oracle deadlines
+      # runners pushed process-spawning tests past their oracle deadlines.
+      # Only runs on workflow_dispatch (see trigger comment above).
       - run: cargo test -- --test-threads=1
+        if: github.event_name == 'workflow_dispatch'
         env:
           NO_PROXY: 127.0.0.1,localhost
           # Both runners OOM in the link phase of the ~880k-line test binary:
