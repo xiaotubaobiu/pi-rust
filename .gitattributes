@@ -28,3 +28,8 @@ docs/migration/reference/markdown/source-manifest.json text eol=lf
 # per-file `text eol=lf` line that used to guard evals_m6 from the scratch/
 # era is subsumed by this rule.
 tests/fixtures/** -text
+
+# The codemode prelude is include_str!'d into the lib and SHA-256-pinned to its
+# ground-truth fixture in tests/fixtures (which is already -text below); the
+# asset copy must check out byte-identical on every platform too.
+assets/codemode/** -text
