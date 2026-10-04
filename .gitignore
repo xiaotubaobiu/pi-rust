@@ -3,3 +3,8 @@
 
 scratch/
 docs/migration/validation/
+
+# One-off migration patch scripts and downloaded CI logs must never be
+# committed again (both classes leaked into git during the wave-1 era).
+/scripts_tmp_*.mjs
+/*.log
